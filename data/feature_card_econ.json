@@ -1,0 +1,246 @@
+{
+  "schema_version": "1.0",
+  "currency": "CNY",
+  "units": {
+    "dCOGS": "CNY_per_unit_vs_LOVOT_baseline",
+    "risk": "0_to_1_index",
+    "sub_lift": "unitless_index"
+  },
+  "definitions": {
+    "dCOGS": "Per-unit incremental cost vs LOVOT baseline; may include hardware BOM delta plus amortized software/algorithm cost. Negative values represent cost-down moves.",
+    "risk": "Implementation/quality risk index (0-1). Higher means higher probability of defects, reliability issues, compliance or operational risk.",
+    "sub_lift": "Subscription pull index. Higher means stronger likelihood to attach/retain subscription (or willingness to pay for recurring services). Negative means subscription demand may drop."
+  },
+  "cards": [
+    {
+      "id": "voice_basic",
+      "name": "语音基础",
+      "dCOGS": 120,
+      "risk": 0.08,
+      "sub_lift": 0.03,
+      "covers": [
+        "语音交互",
+        "情感陪伴"
+      ],
+      "notes": "语音交互最低门槛。",
+      "cost_driver": [
+        "本地唤醒/ASR/NLU",
+        "音频调参摊销"
+      ],
+      "assumptions": [
+        "基线具备基础音频硬件；此处主要计软件/调参摊销"
+      ]
+    },
+    {
+      "id": "persona_dialog",
+      "name": "多轮对话个性化",
+      "dCOGS": 260,
+      "risk": 0.18,
+      "sub_lift": 0.08,
+      "covers": [
+        "情感陪伴",
+        "语音交互",
+        "个性化推荐"
+      ],
+      "notes": "显著提升陪伴体验与粘性。",
+      "cost_driver": [
+        "记忆/画像存储与推理",
+        "对话质量评测与安全对齐"
+      ],
+      "assumptions": [
+        "隐私/一致性带来额外交付风险"
+      ]
+    },
+    {
+      "id": "family_guardian",
+      "name": "家庭监护",
+      "dCOGS": 340,
+      "risk": 0.24,
+      "sub_lift": 0.06,
+      "covers": [
+        "家庭版"
+      ],
+      "notes": "流程与合规型能力。",
+      "cost_driver": [
+        "权限/告警/记录系统",
+        "合规与安全审计摊销"
+      ],
+      "assumptions": [
+        "误报/漏报责任与隐私合规风险较高"
+      ]
+    },
+    {
+      "id": "emotion_recognition",
+      "name": "情绪识别与表情捕捉",
+      "dCOGS": 260,
+      "risk": 0.16,
+      "sub_lift": 0.07,
+      "covers": [
+        "情绪识别",
+        "情感陪伴",
+        "拍照功能"
+      ],
+      "notes": "情感互动质量提升。",
+      "cost_driver": [
+        "摄像头/ISP(如需升级)",
+        "情绪识别模型训练与评测摊销"
+      ],
+      "assumptions": [
+        "光照/遮挡导致性能波动"
+      ]
+    },
+    {
+      "id": "lidar_nav",
+      "name": "室内导航与避障（LiDAR）",
+      "dCOGS": 480,
+      "risk": 0.22,
+      "sub_lift": 0.05,
+      "covers": [
+        "家庭版"
+      ],
+      "notes": "重硬件增配。",
+      "cost_driver": [
+        "LiDAR模块",
+        "SLAM/导航算法与调参"
+      ],
+      "assumptions": [
+        "家庭场景边界条件多，校准与供应增加风险"
+      ]
+    },
+    {
+      "id": "touch_hug",
+      "name": "触摸/拥抱交互增强",
+      "dCOGS": 120,
+      "risk": 0.1,
+      "sub_lift": 0.04,
+      "covers": [
+        "情感陪伴"
+      ],
+      "notes": "低成本增强情绪价值。",
+      "cost_driver": [
+        "触摸/压力传感增强",
+        "交互策略校准"
+      ],
+      "assumptions": [
+        "耐久/误触需要额外测试"
+      ]
+    },
+    {
+      "id": "oled_screen",
+      "name": "屏幕表情/视觉陪伴（OLED）",
+      "dCOGS": 340,
+      "risk": 0.14,
+      "sub_lift": 0.04,
+      "covers": [
+        "情感陪伴"
+      ],
+      "notes": "视觉表达增强但常为锦上添花。",
+      "cost_driver": [
+        "OLED屏",
+        "驱动与UI适配"
+      ],
+      "assumptions": [
+        "破损/功耗是主要风险"
+      ]
+    },
+    {
+      "id": "adaptive_learning",
+      "name": "自适应学习（习惯/作息/偏好）",
+      "dCOGS": 260,
+      "risk": 0.2,
+      "sub_lift": 0.09,
+      "covers": [
+        "个性化推荐",
+        "情感陪伴"
+      ],
+      "notes": "对粘性与订阅拉动较强。",
+      "cost_driver": [
+        "数据闭环/特征工程",
+        "在线评测与回退"
+      ],
+      "assumptions": [
+        "漂移与隐私合规增加工程量"
+      ]
+    },
+    {
+      "id": "kids_content",
+      "name": "儿童教育内容包（故事/陪练）",
+      "dCOGS": 120,
+      "risk": 0.12,
+      "sub_lift": 0.08,
+      "covers": [
+        "家庭版",
+        "音乐播放"
+      ],
+      "notes": "内容与订阅价值。",
+      "cost_driver": [
+        "内容授权/制作摊销",
+        "家长控制/审核流程"
+      ],
+      "assumptions": [
+        "版权/年龄分级合规"
+      ]
+    },
+    {
+      "id": "cloud_premium",
+      "name": "云端智更新高级版",
+      "dCOGS": 120,
+      "risk": 0.15,
+      "sub_lift": 0.06,
+      "covers": [
+        "个性化推荐",
+        "家庭版"
+      ],
+      "notes": "持续优化能力。",
+      "cost_driver": [
+        "灰度发布/回滚/遥测",
+        "云运维体系摊销"
+      ],
+      "assumptions": [
+        "云成本主要体现在订阅毛利；此处记系统摊销"
+      ]
+    },
+    {
+      "id": "no_screen_costdown",
+      "name": "无屏降本（删 OLED）",
+      "dCOGS": -300,
+      "risk": 0.18,
+      "sub_lift": -0.02,
+      "covers": [],
+      "notes": "降本但牺牲部分体验。",
+      "cost_driver": [
+        "去除OLED与相关结构件"
+      ],
+      "assumptions": [
+        "体验降级增加退货/差评风险"
+      ]
+    },
+    {
+      "id": "no_lidar_costdown",
+      "name": "轻量感知（删 LiDAR，改低配避障）",
+      "dCOGS": -300,
+      "risk": 0.26,
+      "sub_lift": -0.03,
+      "covers": [],
+      "notes": "降本但可靠性风险显著上升。",
+      "cost_driver": [
+        "去除LiDAR改低配避障"
+      ],
+      "assumptions": [
+        "边界条件更多，投诉/故障风险更高"
+      ]
+    }
+  ],
+  "calibration_notes": {
+    "how_to_use": [
+      "COGS = COGS_base + sum(dCOGS_i for selected cards)",
+      "risk = sum(risk_i); sub_lift = sum(sub_lift_i)",
+      "Avoid double-counting: if amortized R&D is included in dCOGS, do not subtract a separate fixed R&D cost."
+    ],
+    "typical_ranges": {
+      "dCOGS": "[-500, +600] per card (teaching-scale)",
+      "risk": "[0.05, 0.30] per card",
+      "sub_lift": "[-0.05, +0.10] per card"
+    }
+  }
+}

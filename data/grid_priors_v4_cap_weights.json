@@ -1,0 +1,1146 @@
+{
+  "schema_version": "1.0",
+  "radar_dims": [
+    "感知与理解",
+    "运动与导航",
+    "交互与表达",
+    "安全与信任",
+    "可扩展与连接",
+    "可运营与可维护"
+  ],
+  "source": "Derived from grid_priors_v3_with_weights.json + capability_groups.json",
+  "weight_generation": {
+    "alpha": 0.4,
+    "method": "raw=alpha*count_norm+(1-alpha)*dim_sum_norm; weights normalized over recommended_capabilities",
+    "selection": "top2 per group + fill to 10 total by raw score"
+  },
+  "grids": [
+    {
+      "id": "B2B_Differentiation_Experience",
+      "axes": {
+        "segment": "B2B",
+        "strategy": "Differentiation",
+        "focus": "Experience"
+      },
+      "radar_weight_prior": {
+        "感知与理解": 0.21904761904761905,
+        "运动与导航": 0.12380952380952381,
+        "交互与表达": 0.2285714285714286,
+        "安全与信任": 0.1619047619047619,
+        "可扩展与连接": 0.15238095238095237,
+        "可运营与可维护": 0.11428571428571428
+      },
+      "recommended_core_tags": [
+        "个性化推荐",
+        "家庭版",
+        "自动充电",
+        "语音交互"
+      ],
+      "recommended_capabilities": [
+        "persona_dialog",
+        "voice_basic",
+        "recommendation_engine",
+        "adaptive_learning",
+        "auto_dock_charge",
+        "lidar_nav",
+        "kids_mode",
+        "family_guardian",
+        "multi_device",
+        "mobile_app",
+        "remote_diagnostics",
+        "cloud_update"
+      ],
+      "recommended_capability_weights_v4": {
+        "persona_dialog": 0.1617,
+        "voice_basic": 0.0819,
+        "recommendation_engine": 0.0798,
+        "adaptive_learning": 0.0798,
+        "auto_dock_charge": 0.1246,
+        "lidar_nav": 0.0674,
+        "kids_mode": 0.0674,
+        "family_guardian": 0.0674,
+        "multi_device": 0.0674,
+        "mobile_app": 0.0674,
+        "remote_diagnostics": 0.0674,
+        "cloud_update": 0.0674
+      },
+      "recommended_by_group": {
+        "interaction_expression": [
+          "persona_dialog",
+          "voice_basic"
+        ],
+        "perception_understanding": [
+          "recommendation_engine",
+          "adaptive_learning"
+        ],
+        "mobility_navigation": [
+          "auto_dock_charge",
+          "lidar_nav"
+        ],
+        "safety_trust": [
+          "kids_mode",
+          "family_guardian"
+        ],
+        "expand_connect": [
+          "multi_device",
+          "mobile_app"
+        ],
+        "ops_maintenance": [
+          "remote_diagnostics",
+          "cloud_update"
+        ]
+      }
+    },
+    {
+      "id": "B2B_Differentiation_Mixed",
+      "axes": {
+        "segment": "B2B",
+        "strategy": "Differentiation",
+        "focus": "Mixed"
+      },
+      "radar_weight_prior": {
+        "感知与理解": 0.18269230769230768,
+        "运动与导航": 0.11538461538461539,
+        "交互与表达": 0.15384615384615388,
+        "安全与信任": 0.17307692307692307,
+        "可扩展与连接": 0.18269230769230768,
+        "可运营与可维护": 0.1923076923076923
+      },
+      "recommended_core_tags": [
+        "个性化推荐",
+        "家庭版",
+        "自动充电",
+        "语音交互"
+      ],
+      "recommended_capabilities": [
+        "persona_dialog",
+        "voice_basic",
+        "recommendation_engine",
+        "adaptive_learning",
+        "auto_dock_charge",
+        "lidar_nav",
+        "kids_mode",
+        "family_guardian",
+        "multi_device",
+        "mobile_app",
+        "remote_diagnostics",
+        "cloud_update"
+      ],
+      "recommended_capability_weights_v4": {
+        "persona_dialog": 0.1402,
+        "voice_basic": 0.0666,
+        "recommendation_engine": 0.0736,
+        "adaptive_learning": 0.0736,
+        "auto_dock_charge": 0.1472,
+        "lidar_nav": 0.0713,
+        "kids_mode": 0.0713,
+        "family_guardian": 0.0713,
+        "multi_device": 0.0713,
+        "mobile_app": 0.0713,
+        "remote_diagnostics": 0.0713,
+        "cloud_update": 0.0713
+      },
+      "recommended_by_group": {
+        "interaction_expression": [
+          "persona_dialog",
+          "voice_basic"
+        ],
+        "perception_understanding": [
+          "recommendation_engine",
+          "adaptive_learning"
+        ],
+        "mobility_navigation": [
+          "auto_dock_charge",
+          "lidar_nav"
+        ],
+        "safety_trust": [
+          "kids_mode",
+          "family_guardian"
+        ],
+        "expand_connect": [
+          "multi_device",
+          "mobile_app"
+        ],
+        "ops_maintenance": [
+          "remote_diagnostics",
+          "cloud_update"
+        ]
+      }
+    },
+    {
+      "id": "B2B_Differentiation_Function",
+      "axes": {
+        "segment": "B2B",
+        "strategy": "Differentiation",
+        "focus": "Function"
+      },
+      "radar_weight_prior": {
+        "感知与理解": 0.24038461538461536,
+        "运动与导航": 0.14423076923076922,
+        "交互与表达": 0.13461538461538464,
+        "安全与信任": 0.21153846153846154,
+        "可扩展与连接": 0.16346153846153846,
+        "可运营与可维护": 0.10576923076923075
+      },
+      "recommended_core_tags": [
+        "个性化推荐",
+        "家庭版",
+        "情绪识别",
+        "自动充电",
+        "语音交互"
+      ],
+      "recommended_capabilities": [
+        "persona_dialog",
+        "voice_basic",
+        "recommendation_engine",
+        "emotion_recognition",
+        "auto_dock_charge",
+        "lidar_nav",
+        "kids_mode",
+        "family_guardian",
+        "multi_device",
+        "mobile_app",
+        "remote_diagnostics",
+        "cloud_update"
+      ],
+      "recommended_capability_weights_v4": {
+        "persona_dialog": 0.1377,
+        "voice_basic": 0.0572,
+        "recommendation_engine": 0.0805,
+        "emotion_recognition": 0.0805,
+        "auto_dock_charge": 0.125,
+        "lidar_nav": 0.0742,
+        "kids_mode": 0.0742,
+        "family_guardian": 0.0742,
+        "multi_device": 0.0742,
+        "mobile_app": 0.0742,
+        "remote_diagnostics": 0.0742,
+        "cloud_update": 0.0742
+      },
+      "recommended_by_group": {
+        "interaction_expression": [
+          "persona_dialog",
+          "voice_basic"
+        ],
+        "perception_understanding": [
+          "recommendation_engine",
+          "emotion_recognition"
+        ],
+        "mobility_navigation": [
+          "auto_dock_charge",
+          "lidar_nav"
+        ],
+        "safety_trust": [
+          "kids_mode",
+          "family_guardian"
+        ],
+        "expand_connect": [
+          "multi_device",
+          "mobile_app"
+        ],
+        "ops_maintenance": [
+          "remote_diagnostics",
+          "cloud_update"
+        ]
+      }
+    },
+    {
+      "id": "B2B_Cost_Experience",
+      "axes": {
+        "segment": "B2B",
+        "strategy": "Cost",
+        "focus": "Experience"
+      },
+      "radar_weight_prior": {
+        "感知与理解": 0.15841584158415842,
+        "运动与导航": 0.10891089108910891,
+        "交互与表达": 0.15841584158415842,
+        "安全与信任": 0.22772277227722773,
+        "可扩展与连接": 0.12871287128712872,
+        "可运营与可维护": 0.21782178217821785
+      },
+      "recommended_core_tags": [
+        "家庭版",
+        "自动充电"
+      ],
+      "recommended_capabilities": [
+        "auto_dock_charge",
+        "lidar_nav",
+        "kids_mode",
+        "family_guardian",
+        "multi_device",
+        "mobile_app",
+        "remote_diagnostics",
+        "cloud_update",
+        "home_iot",
+        "follow_mode"
+      ],
+      "recommended_capability_weights_v4": {
+        "auto_dock_charge": 0.1799,
+        "lidar_nav": 0.0911,
+        "kids_mode": 0.0911,
+        "family_guardian": 0.0911,
+        "multi_device": 0.0911,
+        "mobile_app": 0.0911,
+        "remote_diagnostics": 0.0911,
+        "cloud_update": 0.0911,
+        "home_iot": 0.0911,
+        "follow_mode": 0.0911
+      },
+      "recommended_by_group": {
+        "mobility_navigation": [
+          "auto_dock_charge",
+          "lidar_nav",
+          "follow_mode"
+        ],
+        "safety_trust": [
+          "kids_mode",
+          "family_guardian"
+        ],
+        "expand_connect": [
+          "multi_device",
+          "mobile_app",
+          "home_iot"
+        ],
+        "ops_maintenance": [
+          "remote_diagnostics",
+          "cloud_update"
+        ]
+      }
+    },
+    {
+      "id": "B2B_Cost_Mixed",
+      "axes": {
+        "segment": "B2B",
+        "strategy": "Cost",
+        "focus": "Mixed"
+      },
+      "radar_weight_prior": {
+        "感知与理解": 0.12000000000000001,
+        "运动与导航": 0.1,
+        "交互与表达": 0.08,
+        "安全与信任": 0.24,
+        "可扩展与连接": 0.16,
+        "可运营与可维护": 0.30000000000000004
+      },
+      "recommended_core_tags": [
+        "家庭版",
+        "自动充电"
+      ],
+      "recommended_capabilities": [
+        "auto_dock_charge",
+        "lidar_nav",
+        "kids_mode",
+        "family_guardian",
+        "multi_device",
+        "mobile_app",
+        "remote_diagnostics",
+        "cloud_update",
+        "home_iot",
+        "follow_mode"
+      ],
+      "recommended_capability_weights_v4": {
+        "auto_dock_charge": 0.1923,
+        "lidar_nav": 0.0897,
+        "kids_mode": 0.0897,
+        "family_guardian": 0.0897,
+        "multi_device": 0.0897,
+        "mobile_app": 0.0897,
+        "remote_diagnostics": 0.0897,
+        "cloud_update": 0.0897,
+        "home_iot": 0.0897,
+        "follow_mode": 0.0897
+      },
+      "recommended_by_group": {
+        "mobility_navigation": [
+          "auto_dock_charge",
+          "lidar_nav",
+          "follow_mode"
+        ],
+        "safety_trust": [
+          "kids_mode",
+          "family_guardian"
+        ],
+        "expand_connect": [
+          "multi_device",
+          "mobile_app",
+          "home_iot"
+        ],
+        "ops_maintenance": [
+          "remote_diagnostics",
+          "cloud_update"
+        ]
+      }
+    },
+    {
+      "id": "B2B_Cost_Function",
+      "axes": {
+        "segment": "B2B",
+        "strategy": "Cost",
+        "focus": "Function"
+      },
+      "radar_weight_prior": {
+        "感知与理解": 0.18,
+        "运动与导航": 0.13,
+        "交互与表达": 0.060000000000000005,
+        "安全与信任": 0.28,
+        "可扩展与连接": 0.14,
+        "可运营与可维护": 0.21000000000000002
+      },
+      "recommended_core_tags": [
+        "家庭版",
+        "情绪识别",
+        "自动充电"
+      ],
+      "recommended_capabilities": [
+        "emotion_recognition",
+        "auto_dock_charge",
+        "lidar_nav",
+        "kids_mode",
+        "family_guardian",
+        "multi_device",
+        "mobile_app",
+        "remote_diagnostics",
+        "cloud_update",
+        "home_iot"
+      ],
+      "recommended_capability_weights_v4": {
+        "emotion_recognition": 0.0729,
+        "auto_dock_charge": 0.1735,
+        "lidar_nav": 0.0942,
+        "kids_mode": 0.0942,
+        "family_guardian": 0.0942,
+        "multi_device": 0.0942,
+        "mobile_app": 0.0942,
+        "remote_diagnostics": 0.0942,
+        "cloud_update": 0.0942,
+        "home_iot": 0.0942
+      },
+      "recommended_by_group": {
+        "perception_understanding": [
+          "emotion_recognition"
+        ],
+        "mobility_navigation": [
+          "auto_dock_charge",
+          "lidar_nav"
+        ],
+        "safety_trust": [
+          "kids_mode",
+          "family_guardian"
+        ],
+        "expand_connect": [
+          "multi_device",
+          "mobile_app",
+          "home_iot"
+        ],
+        "ops_maintenance": [
+          "remote_diagnostics",
+          "cloud_update"
+        ]
+      }
+    },
+    {
+      "id": "B2C_Differentiation_Experience",
+      "axes": {
+        "segment": "B2C",
+        "strategy": "Differentiation",
+        "focus": "Experience"
+      },
+      "radar_weight_prior": {
+        "感知与理解": 0.23809523809523814,
+        "运动与导航": 0.10476190476190478,
+        "交互与表达": 0.3428571428571429,
+        "安全与信任": 0.08571428571428574,
+        "可扩展与连接": 0.09523809523809526,
+        "可运营与可维护": 0.13333333333333333
+      },
+      "recommended_core_tags": [
+        "个性化推荐",
+        "情感陪伴",
+        "自动充电",
+        "语音交互"
+      ],
+      "recommended_capabilities": [
+        "persona_dialog",
+        "voice_basic",
+        "adaptive_learning",
+        "scene_triggers",
+        "auto_dock_charge",
+        "visual_expression",
+        "touch_hug",
+        "music_companion",
+        "memory_album",
+        "expressive_style_pack"
+      ],
+      "recommended_capability_weights_v4": {
+        "persona_dialog": 0.2122,
+        "voice_basic": 0.1511,
+        "adaptive_learning": 0.1367,
+        "scene_triggers": 0.0756,
+        "auto_dock_charge": 0.0467,
+        "visual_expression": 0.0756,
+        "touch_hug": 0.0756,
+        "music_companion": 0.0756,
+        "memory_album": 0.0756,
+        "expressive_style_pack": 0.0756
+      },
+      "recommended_by_group": {
+        "interaction_expression": [
+          "persona_dialog",
+          "voice_basic",
+          "visual_expression",
+          "touch_hug",
+          "music_companion",
+          "expressive_style_pack"
+        ],
+        "perception_understanding": [
+          "adaptive_learning",
+          "scene_triggers",
+          "memory_album"
+        ],
+        "mobility_navigation": [
+          "auto_dock_charge"
+        ]
+      }
+    },
+    {
+      "id": "B2C_Differentiation_Mixed",
+      "axes": {
+        "segment": "B2C",
+        "strategy": "Differentiation",
+        "focus": "Mixed"
+      },
+      "radar_weight_prior": {
+        "感知与理解": 0.2019230769230769,
+        "运动与导航": 0.09615384615384616,
+        "交互与表达": 0.2692307692307692,
+        "安全与信任": 0.09615384615384617,
+        "可扩展与连接": 0.125,
+        "可运营与可维护": 0.2115384615384615
+      },
+      "recommended_core_tags": [
+        "个性化推荐",
+        "情感陪伴",
+        "自动充电",
+        "语音交互"
+      ],
+      "recommended_capabilities": [
+        "persona_dialog",
+        "voice_basic",
+        "adaptive_learning",
+        "scene_triggers",
+        "auto_dock_charge",
+        "visual_expression",
+        "touch_hug",
+        "music_companion",
+        "memory_album",
+        "expressive_style_pack"
+      ],
+      "recommended_capability_weights_v4": {
+        "persona_dialog": 0.2098,
+        "voice_basic": 0.1475,
+        "adaptive_learning": 0.1361,
+        "scene_triggers": 0.0738,
+        "auto_dock_charge": 0.064,
+        "visual_expression": 0.0738,
+        "touch_hug": 0.0738,
+        "music_companion": 0.0738,
+        "memory_album": 0.0738,
+        "expressive_style_pack": 0.0738
+      },
+      "recommended_by_group": {
+        "interaction_expression": [
+          "persona_dialog",
+          "voice_basic",
+          "visual_expression",
+          "touch_hug",
+          "music_companion",
+          "expressive_style_pack"
+        ],
+        "perception_understanding": [
+          "adaptive_learning",
+          "scene_triggers",
+          "memory_album"
+        ],
+        "mobility_navigation": [
+          "auto_dock_charge"
+        ]
+      }
+    },
+    {
+      "id": "B2C_Differentiation_Function",
+      "axes": {
+        "segment": "B2C",
+        "strategy": "Differentiation",
+        "focus": "Function"
+      },
+      "radar_weight_prior": {
+        "感知与理解": 0.25961538461538464,
+        "运动与导航": 0.125,
+        "交互与表达": 0.25,
+        "安全与信任": 0.13461538461538464,
+        "可扩展与连接": 0.10576923076923077,
+        "可运营与可维护": 0.12499999999999997
+      },
+      "recommended_core_tags": [
+        "情感陪伴",
+        "情绪识别",
+        "自动充电",
+        "语音交互"
+      ],
+      "recommended_capabilities": [
+        "voice_basic",
+        "persona_dialog",
+        "emotion_recognition",
+        "scene_triggers",
+        "auto_dock_charge",
+        "visual_expression",
+        "touch_hug",
+        "music_companion",
+        "memory_album",
+        "expressive_style_pack"
+      ],
+      "recommended_capability_weights_v4": {
+        "voice_basic": 0.1572,
+        "persona_dialog": 0.1572,
+        "emotion_recognition": 0.159,
+        "scene_triggers": 0.0786,
+        "auto_dock_charge": 0.0552,
+        "visual_expression": 0.0786,
+        "touch_hug": 0.0786,
+        "music_companion": 0.0786,
+        "memory_album": 0.0786,
+        "expressive_style_pack": 0.0786
+      },
+      "recommended_by_group": {
+        "interaction_expression": [
+          "voice_basic",
+          "persona_dialog",
+          "visual_expression",
+          "touch_hug",
+          "music_companion",
+          "expressive_style_pack"
+        ],
+        "perception_understanding": [
+          "emotion_recognition",
+          "scene_triggers",
+          "memory_album"
+        ],
+        "mobility_navigation": [
+          "auto_dock_charge"
+        ]
+      }
+    },
+    {
+      "id": "B2C_Cost_Experience",
+      "axes": {
+        "segment": "B2C",
+        "strategy": "Cost",
+        "focus": "Experience"
+      },
+      "radar_weight_prior": {
+        "感知与理解": 0.1782178217821782,
+        "运动与导航": 0.08910891089108912,
+        "交互与表达": 0.27722772277227725,
+        "安全与信任": 0.14851485148514854,
+        "可扩展与连接": 0.06930693069306931,
+        "可运营与可维护": 0.2376237623762376
+      },
+      "recommended_core_tags": [
+        "个性化推荐",
+        "情感陪伴",
+        "自动充电",
+        "语音交互"
+      ],
+      "recommended_capabilities": [
+        "persona_dialog",
+        "voice_basic",
+        "adaptive_learning",
+        "scene_triggers",
+        "auto_dock_charge",
+        "visual_expression",
+        "touch_hug",
+        "music_companion",
+        "memory_album",
+        "expressive_style_pack"
+      ],
+      "recommended_capability_weights_v4": {
+        "persona_dialog": 0.2062,
+        "voice_basic": 0.1486,
+        "adaptive_learning": 0.1319,
+        "scene_triggers": 0.0743,
+        "auto_dock_charge": 0.0676,
+        "visual_expression": 0.0743,
+        "touch_hug": 0.0743,
+        "music_companion": 0.0743,
+        "memory_album": 0.0743,
+        "expressive_style_pack": 0.0743
+      },
+      "recommended_by_group": {
+        "interaction_expression": [
+          "persona_dialog",
+          "voice_basic",
+          "visual_expression",
+          "touch_hug",
+          "music_companion",
+          "expressive_style_pack"
+        ],
+        "perception_understanding": [
+          "adaptive_learning",
+          "scene_triggers",
+          "memory_album"
+        ],
+        "mobility_navigation": [
+          "auto_dock_charge"
+        ]
+      }
+    },
+    {
+      "id": "B2C_Cost_Mixed",
+      "axes": {
+        "segment": "B2C",
+        "strategy": "Cost",
+        "focus": "Mixed"
+      },
+      "radar_weight_prior": {
+        "感知与理解": 0.13999999999999999,
+        "运动与导航": 0.08000000000000002,
+        "交互与表达": 0.2,
+        "安全与信任": 0.16,
+        "可扩展与连接": 0.1,
+        "可运营与可维护": 0.32
+      },
+      "recommended_core_tags": [
+        "个性化推荐",
+        "情感陪伴",
+        "自动充电",
+        "语音交互"
+      ],
+      "recommended_capabilities": [
+        "persona_dialog",
+        "voice_basic",
+        "adaptive_learning",
+        "scene_triggers",
+        "auto_dock_charge",
+        "visual_expression",
+        "touch_hug",
+        "music_companion",
+        "memory_album",
+        "expressive_style_pack"
+      ],
+      "recommended_capability_weights_v4": {
+        "persona_dialog": 0.2009,
+        "voice_basic": 0.1429,
+        "adaptive_learning": 0.1295,
+        "scene_triggers": 0.0714,
+        "auto_dock_charge": 0.0982,
+        "visual_expression": 0.0714,
+        "touch_hug": 0.0714,
+        "music_companion": 0.0714,
+        "memory_album": 0.0714,
+        "expressive_style_pack": 0.0714
+      },
+      "recommended_by_group": {
+        "interaction_expression": [
+          "persona_dialog",
+          "voice_basic",
+          "visual_expression",
+          "touch_hug",
+          "music_companion",
+          "expressive_style_pack"
+        ],
+        "perception_understanding": [
+          "adaptive_learning",
+          "scene_triggers",
+          "memory_album"
+        ],
+        "mobility_navigation": [
+          "auto_dock_charge"
+        ]
+      }
+    },
+    {
+      "id": "B2C_Cost_Function",
+      "axes": {
+        "segment": "B2C",
+        "strategy": "Cost",
+        "focus": "Function"
+      },
+      "radar_weight_prior": {
+        "感知与理解": 0.2,
+        "运动与导航": 0.11000000000000001,
+        "交互与表达": 0.18,
+        "安全与信任": 0.2,
+        "可扩展与连接": 0.08,
+        "可运营与可维护": 0.22999999999999998
+      },
+      "recommended_core_tags": [
+        "情感陪伴",
+        "情绪识别",
+        "自动充电",
+        "语音交互"
+      ],
+      "recommended_capabilities": [
+        "voice_basic",
+        "persona_dialog",
+        "emotion_recognition",
+        "scene_triggers",
+        "auto_dock_charge",
+        "visual_expression",
+        "touch_hug",
+        "music_companion",
+        "memory_album",
+        "expressive_style_pack"
+      ],
+      "recommended_capability_weights_v4": {
+        "voice_basic": 0.1512,
+        "persona_dialog": 0.1512,
+        "emotion_recognition": 0.1561,
+        "scene_triggers": 0.0756,
+        "auto_dock_charge": 0.0879,
+        "visual_expression": 0.0756,
+        "touch_hug": 0.0756,
+        "music_companion": 0.0756,
+        "memory_album": 0.0756,
+        "expressive_style_pack": 0.0756
+      },
+      "recommended_by_group": {
+        "interaction_expression": [
+          "voice_basic",
+          "persona_dialog",
+          "visual_expression",
+          "touch_hug",
+          "music_companion",
+          "expressive_style_pack"
+        ],
+        "perception_understanding": [
+          "emotion_recognition",
+          "scene_triggers",
+          "memory_album"
+        ],
+        "mobility_navigation": [
+          "auto_dock_charge"
+        ]
+      }
+    }
+  ],
+  "capability_catalog": [
+    {
+      "cap_id": "voice_basic",
+      "name": "语音基础",
+      "group_id": "interaction_expression",
+      "group_name": "交互与表达",
+      "covers": [
+        "语音交互",
+        "情感陪伴"
+      ]
+    },
+    {
+      "cap_id": "persona_dialog",
+      "name": "多轮对话个性化",
+      "group_id": "interaction_expression",
+      "group_name": "交互与表达",
+      "covers": [
+        "情感陪伴",
+        "语音交互",
+        "个性化推荐"
+      ]
+    },
+    {
+      "cap_id": "touch_hug",
+      "name": "触摸/拥抱交互增强",
+      "group_id": "interaction_expression",
+      "group_name": "交互与表达",
+      "covers": [
+        "情感陪伴"
+      ]
+    },
+    {
+      "cap_id": "music_companion",
+      "name": "音乐播放与陪伴",
+      "group_id": "interaction_expression",
+      "group_name": "交互与表达",
+      "covers": [
+        "音乐播放",
+        "情感陪伴"
+      ]
+    },
+    {
+      "cap_id": "visual_expression",
+      "name": "视觉表达（OLED/灯效）",
+      "group_id": "interaction_expression",
+      "group_name": "交互与表达",
+      "covers": [
+        "情感陪伴"
+      ]
+    },
+    {
+      "cap_id": "expressive_style_pack",
+      "name": "表达风格包（角色/语气/动作脚本）",
+      "group_id": "interaction_expression",
+      "group_name": "交互与表达",
+      "covers": [
+        "情感陪伴"
+      ]
+    },
+    {
+      "cap_id": "perception_base",
+      "name": "基础感知（摄像头/语音融合）",
+      "group_id": "perception_understanding",
+      "group_name": "感知与理解",
+      "covers": [
+        "拍照功能"
+      ]
+    },
+    {
+      "cap_id": "emotion_recognition",
+      "name": "情绪识别与表情捕捉",
+      "group_id": "perception_understanding",
+      "group_name": "感知与理解",
+      "covers": [
+        "情绪识别",
+        "情感陪伴",
+        "拍照功能"
+      ]
+    },
+    {
+      "cap_id": "adaptive_learning",
+      "name": "自适应学习（习惯/偏好）",
+      "group_id": "perception_understanding",
+      "group_name": "感知与理解",
+      "covers": [
+        "个性化推荐",
+        "情感陪伴"
+      ]
+    },
+    {
+      "cap_id": "memory_album",
+      "name": "拍照/回忆（相册触发）",
+      "group_id": "perception_understanding",
+      "group_name": "感知与理解",
+      "covers": [
+        "拍照功能",
+        "情感陪伴"
+      ]
+    },
+    {
+      "cap_id": "scene_triggers",
+      "name": "场景识别与触发（家庭情境）",
+      "group_id": "perception_understanding",
+      "group_name": "感知与理解",
+      "covers": [
+        "情感陪伴"
+      ]
+    },
+    {
+      "cap_id": "recommendation_engine",
+      "name": "个性化推荐（内容/互动）",
+      "group_id": "perception_understanding",
+      "group_name": "感知与理解",
+      "covers": [
+        "个性化推荐"
+      ]
+    },
+    {
+      "cap_id": "basic_avoidance",
+      "name": "基础避障（低配）",
+      "group_id": "mobility_navigation",
+      "group_name": "运动与导航",
+      "covers": [
+        "家庭版"
+      ]
+    },
+    {
+      "cap_id": "lidar_nav",
+      "name": "室内导航与避障（LiDAR）",
+      "group_id": "mobility_navigation",
+      "group_name": "运动与导航",
+      "covers": [
+        "家庭版"
+      ]
+    },
+    {
+      "cap_id": "auto_dock_charge",
+      "name": "自动充电/回桩",
+      "group_id": "mobility_navigation",
+      "group_name": "运动与导航",
+      "covers": [
+        "自动充电",
+        "家庭版"
+      ]
+    },
+    {
+      "cap_id": "follow_mode",
+      "name": "跟随/伴行模式",
+      "group_id": "mobility_navigation",
+      "group_name": "运动与导航",
+      "covers": [
+        "家庭版"
+      ]
+    },
+    {
+      "cap_id": "safety_collision_protection",
+      "name": "碰撞/跌落保护策略",
+      "group_id": "mobility_navigation",
+      "group_name": "运动与导航",
+      "covers": [
+        "安全与信任"
+      ]
+    },
+    {
+      "cap_id": "no_lidar_costdown",
+      "name": "轻量感知降本（删LiDAR）",
+      "group_id": "mobility_navigation",
+      "group_name": "运动与导航",
+      "covers": []
+    },
+    {
+      "cap_id": "privacy_trust",
+      "name": "隐私模式与信任保障",
+      "group_id": "safety_trust",
+      "group_name": "安全与信任",
+      "covers": [
+        "安全与信任"
+      ]
+    },
+    {
+      "cap_id": "family_guardian",
+      "name": "家庭监护（告警/权限/记录）",
+      "group_id": "safety_trust",
+      "group_name": "安全与信任",
+      "covers": [
+        "家庭版"
+      ]
+    },
+    {
+      "cap_id": "kids_mode",
+      "name": "儿童模式（权限/内容/时长）",
+      "group_id": "safety_trust",
+      "group_name": "安全与信任",
+      "covers": [
+        "家庭版"
+      ]
+    },
+    {
+      "cap_id": "elder_mode",
+      "name": "老人模式（紧急联系人/提醒）",
+      "group_id": "safety_trust",
+      "group_name": "安全与信任",
+      "covers": [
+        "家庭版"
+      ]
+    },
+    {
+      "cap_id": "content_compliance",
+      "name": "内容合规与审核机制",
+      "group_id": "safety_trust",
+      "group_name": "安全与信任",
+      "covers": [
+        "安全与信任"
+      ]
+    },
+    {
+      "cap_id": "audit_logging",
+      "name": "可信日志/审计（可追溯）",
+      "group_id": "safety_trust",
+      "group_name": "安全与信任",
+      "covers": [
+        "安全与信任"
+      ]
+    },
+    {
+      "cap_id": "connect_base",
+      "name": "基础联网与同步",
+      "group_id": "expand_connect",
+      "group_name": "可扩展与连接",
+      "covers": []
+    },
+    {
+      "cap_id": "mobile_app",
+      "name": "手机App联动（家庭成员控制）",
+      "group_id": "expand_connect",
+      "group_name": "可扩展与连接",
+      "covers": [
+        "家庭版"
+      ]
+    },
+    {
+      "cap_id": "home_iot",
+      "name": "家庭IoT联动（灯/音箱/门锁）",
+      "group_id": "expand_connect",
+      "group_name": "可扩展与连接",
+      "covers": [
+        "家庭版"
+      ]
+    },
+    {
+      "cap_id": "skill_store",
+      "name": "第三方技能/插件（Skill store）",
+      "group_id": "expand_connect",
+      "group_name": "可扩展与连接",
+      "covers": []
+    },
+    {
+      "cap_id": "multi_device",
+      "name": "多设备协同（家庭共享）",
+      "group_id": "expand_connect",
+      "group_name": "可扩展与连接",
+      "covers": [
+        "家庭版"
+      ]
+    },
+    {
+      "cap_id": "offline_mode",
+      "name": "离线模式（断网可用）",
+      "group_id": "expand_connect",
+      "group_name": "可扩展与连接",
+      "covers": []
+    },
+    {
+      "cap_id": "cloud_update",
+      "name": "云端智更新（灰度/回滚/遥测）",
+      "group_id": "ops_maintenance",
+      "group_name": "可运营与可维护",
+      "covers": [
+        "家庭版"
+      ]
+    },
+    {
+      "cap_id": "remote_diagnostics",
+      "name": "远程诊断（日志/故障定位）",
+      "group_id": "ops_maintenance",
+      "group_name": "可运营与可维护",
+      "covers": [
+        "家庭版"
+      ]
+    },
+    {
+      "cap_id": "qa_system",
+      "name": "质量体系（测试/回归）",
+      "group_id": "ops_maintenance",
+      "group_name": "可运营与可维护",
+      "covers": []
+    },
+    {
+      "cap_id": "cost_engineering",
+      "name": "成本工程（供应链优化）",
+      "group_id": "ops_maintenance",
+      "group_name": "可运营与可维护",
+      "covers": []
+    },
+    {
+      "cap_id": "sla_support",
+      "name": "客服/SLA体系",
+      "group_id": "ops_maintenance",
+      "group_name": "可运营与可维护",
+      "covers": []
+    },
+    {
+      "cap_id": "no_screen_costdown",
+      "name": "无屏降本（删OLED）",
+      "group_id": "ops_maintenance",
+      "group_name": "可运营与可维护",
+      "covers": []
+    }
+  ]
+}

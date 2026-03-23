@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EMBA Simulation - Round 2</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <style>
+    #panel-round1 {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <h1>EMBA AI机器人生态 Simulation - Round 2</h1>
+    <p>本页显示 Round 2 计算、迭代与最终结果。</p>
+    <p>
+      页面导航：
+      <a href="round1.html">Round 1 页面</a> |
+      <a href="round2.html">Round 2 页面</a> |
+      <a href="index.html">全流程页面</a>
+    </p>
+  </header>
+
+  <main class="layout">
+
+    <section class="panel" id="panel-round1">
+      <h2>Round 1: 宏观 PMF + 商业模式假设</h2>
+      <div class="grid three">
+        <label>客户类型
+          <select id="customer-type"></select>
+        </label>
+        <label>竞争策略
+          <select id="strategy"></select>
+        </label>
+        <label>年龄段
+          <select id="age-group"></select>
+        </label>
+      </div>
+      <div class="grid two">
+        <label>架构标签
+          <select id="arch-tag"></select>
+        </label>
+        <label>价值主张文本系数 fit_text
+          <select id="fit-text"></select>
+        </label>
+      </div>
+      <div class="subpanel">
+        <h3>渠道策略（3选2）</h3>
+        <div class="grid two">
+          <label>渠道1
+            <select id="r1-channel-1"></select>
+          </label>
+          <label>渠道2
+            <select id="r1-channel-2"></select>
+          </label>
+          <label>渠道1占比（%）
+            <input id="r1-channel-share" type="range" min="0" max="100" step="1" value="60" />
+          </label>
+          <div id="r1-channel-share-label" class="hint"></div>
+        </div>
+        <div id="r1-channel-fee-preview" class="hint"></div>
+      </div>
+
+      <div class="subpanel">
+        <h3>毛利率KPI（Round 1）</h3>
+        <div class="grid two">
+          <label>target_gm 选择（冻结前可调）
+            <input id="r1-target-gm" type="range" min="0.20" max="0.70" step="0.01" value="0.35" />
+          </label>
+          <div id="r1-target-gm-label" class="hint"></div>
+        </div>
+        <div id="r1-gm-error" class="hint" style="color:#8e2e21;"></div>
+        <div class="actions">
+          <button id="freeze-target-gm" class="btn secondary">冻结 target_gm</button>
+          <button id="reset-round1" class="btn secondary">重新开始 Round 1</button>
+        </div>
+      </div>
+      <button id="run-round1" class="btn">计算 Round 1</button>
+      <pre id="round1-output" class="output"></pre>
+
+      <div class="subpanel">
+        <h3>Round 1 Wizard (LLM)</h3>
+        <div class="hint">基于选择的推断，不是外部数据。</div>
+        <div class="grid two">
+          <label>上下文补充（可选）
+            <textarea id="llm-context" rows="3" placeholder="补充课堂背景/约束/语气要求"></textarea>
+          </label>
+          <label>Summary 使用 Reasoner（可选）
+            <input id="llm-summary-reasoning" type="checkbox" />
+          </label>
+        </div>
+        <div class="actions">
+          <button id="llm-pain" class="btn secondary">生成 Pain Card</button>
+          <button id="llm-archetypes" class="btn secondary">生成 3 个 Archetypes</button>
+        </div>
+        <div class="actions">
+          <button id="llm-features" class="btn secondary">Step3 生成 Feature Causal Chain</button>
+          <button id="llm-summary" class="btn secondary">Step4 生成 Story + Summary</button>
+          <button id="llm-apply-round1" class="btn">应用到Round1</button>
+        </div>
+        <div id="llm-status" class="hint"></div>
+        <pre id="llm-pain-output" class="output"></pre>
+        <pre id="llm-archetypes-output" class="output"></pre>
+        <div id="llm-features-table" class="output"></div>
+        <div class="grid two">
+          <label>30秒故事（可轻微编辑）
+            <textarea id="llm-story-30s" rows="4"></textarea>
+          </label>
+          <label>2分钟故事（可轻微编辑）
+            <textarea id="llm-story-2min" rows="6"></textarea>
+          </label>
+        </div>
+        <pre id="llm-summary-output" class="output"></pre>
+      </div>
+    </section>
+
+    <section class="panel" id="marketing-section" style="display:none;">
+      <h2>Round 2 - Marketing：客户访谈</h2>
+      <div id="marketing-start-block">
+        <p>基于你在 Round 1 完成的 Value Proposition，系统将为你生成目标客户 Persona。请通过访谈挖掘需求，并整理给 R&D。</p>
+        <button id="marketing-start-btn" class="btn">生成客户 Persona，开始访谈</button>
+        <div id="marketing-start-loading" class="hint" style="display:none;">正在生成客户画像...</div>
+      </div>
+
+      <div id="marketing-interview-block" style="display:none;">
+        <div id="marketing-persona-card" style="background:#f0f7f4;border-radius:8px;padding:16px;margin-bottom:16px;border-left:4px solid #2d6a4f;"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span class="hint">访谈进度：<span id="marketing-turn-count">0</span>/10 轮</span>
+          <span id="marketing-can-end-hint" class="hint" style="color:#2d6a4f;"></span>
+        </div>
+        <div id="marketing-chat-messages" style="border:1px solid #ddd;border-radius:8px;padding:16px;min-height:200px;max-height:480px;overflow-y:auto;background:#fafafa;"></div>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <textarea id="marketing-chat-input" rows="2" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:6px;" placeholder="向客户提问..."></textarea>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <button id="marketing-send-btn" style="background:#2d6a4f;color:white;padding:8px 16px;border:none;border-radius:6px;cursor:pointer;">发送</button>
+            <button id="end-interview-btn" style="background:#e07b39;color:white;padding:8px 16px;border:none;border-radius:6px;cursor:pointer;">结束访谈</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="marketing-score-block" style="display:none; margin-top:24px;">
+        <h3>市场需求分析</h3>
+        <div style="margin-bottom:16px;">
+          <p style="color:#555; margin-bottom:8px;">从访谈中提取的需求标签：</p>
+          <div id="marketing-tags-display" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+        </div>
+        <div style="max-width:480px; margin:0 auto;">
+          <canvas id="marketing-radar-chart"></canvas>
+        </div>
+        <div id="marketing-dimension-details" style="margin-top:16px; display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;"></div>
+        <div style="margin-top:16px;display:flex;gap:12px;">
+          <button id="marketing-download-btn" style="background:#e07b39;color:white;padding:10px 20px;border:none;border-radius:6px;cursor:pointer;">下载访谈记录</button>
+          <button id="marketing-proceed-rd-btn" class="btn">提交给 R&D →</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-round2" style="display:none;">
+      <h2>Round 2: R&D 选卡与商业结果</h2>
+
+      <div id="rd-block" style="display:block;">
+        <div id="rd-status-bar" class="status-bar">
+          <div class="status-item">
+            已选 <strong id="total-count">0</strong> / 8-10 张
+          </div>
+          <div class="status-item">
+            <span>BOM预算</span>
+            <div class="bar-track"><div class="bar-fill budget-fill" id="budget-fill"></div></div>
+            <span id="budget-label">0 / -- 元</span>
+          </div>
+          <div class="status-item">
+            <span>系统负载</span>
+            <div class="bar-track"><div class="bar-fill capacity-fill" id="capacity-fill"></div></div>
+            <span id="capacity-label">0 / 24 点</span>
+          </div>
+        </div>
+        <div id="rd-alerts"></div>
+
+        <div class="section-card">
+          <h3>选择能力卡（分组 + 档位） <span id="card-count-badge">(已选 0 / 8-10)</span></h3>
+          <p class="hint">6 个分组每组需选 1-3 张，总计 8-10 张；每张卡可选 low/mid/high 档位。</p>
+          <div id="rd-validate-hint" class="hint"></div>
+          <div class="rd-picker-layout">
+            <div class="rd-picker-left">
+              <div id="group-panels">
+                <div id="card-grid"></div>
+              </div>
+            </div>
+            <aside class="rd-preview-panel">
+              <h4>实时预览</h4>
+              <div class="rd-progress-head">
+                <span>已选卡进度</span>
+                <strong id="rd-select-progress-text">0/10</strong>
+              </div>
+              <div class="rd-progress-track">
+                <div id="rd-select-progress-fill"></div>
+              </div>
+
+              <div class="rd-bars-title">预估结果</div>
+              <div id="rd-preview-placeholder" class="rd-placeholder">请至少选满8张并满足分组约束后查看完整预估</div>
+              <div id="rd-preview-bars">
+                <div class="rd-bar-item">
+                  <div class="rd-bar-meta">
+                    <span>硬件毛利（单台）</span>
+                    <strong id="rd-bar-hw-value">--</strong>
+                  </div>
+                  <div class="rd-bar-track"><div id="rd-bar-hw-fill" class="rd-bar-fill hw"></div></div>
+                </div>
+                <div class="rd-bar-item">
+                  <div class="rd-bar-meta">
+                    <span>预估订阅LTV（单台）</span>
+                    <strong id="rd-bar-sub-value">--</strong>
+                  </div>
+                  <div class="rd-bar-track"><div id="rd-bar-sub-fill" class="rd-bar-fill sub"></div></div>
+                </div>
+                <div class="rd-bar-item">
+                  <div class="rd-bar-meta">
+                    <span>总预估利润</span>
+                    <strong id="rd-bar-profit-value">--</strong>
+                  </div>
+                  <div class="rd-bar-track"><div id="rd-bar-profit-fill" class="rd-bar-fill profit"></div></div>
+                </div>
+              </div>
+
+              <div class="rd-bars-title">关键指标概览</div>
+              <div class="rd-kpi-grid">
+                <div>累计 ΔBOM：<strong id="rd-kpi-dcogs">--</strong></div>
+                <div>性能指数均值：<strong id="rd-kpi-perf">--</strong></div>
+                <div>订阅拉动合计：<strong id="rd-kpi-sublift">--</strong></div>
+                <div>预估渗透率区间：<strong id="rd-kpi-share">--</strong></div>
+              </div>
+            </aside>
+          </div>
+          <button id="btn-calculate-rd" class="btn" disabled onclick="calculateRD()">计算 Round 2</button>
+          <div id="rd-submit-status" class="hint rd-submit-status" style="display:none;">
+            <span class="rd-spinner"></span>
+            <span>提交中，请稍候…</span>
+          </div>
+        </div>
+
+        <div id="rd-result-block" style="display:none;">
+          <div id="rd-emoji-block" style="text-align:center; padding: 20px 0 10px;">
+            <div id="rd-emoji" style="font-size:100px; line-height:1;">😐</div>
+            <div id="rd-emoji-label" style="font-size:16px; font-weight:600; margin-top:8px; color:#666;">--</div>
+          </div>
+          <div class="metrics-row">
+            <div class="metric-card">
+              <div class="metric-label">市场渗透率</div>
+              <div class="metric-value" id="rd-share">--</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">预计销量</div>
+              <div class="metric-value" id="rd-units">--</div>
+            </div>
+            <div class="metric-card highlight">
+              <div class="metric-label">总利润</div>
+              <div class="metric-value" id="rd-profit">--</div>
+            </div>
+          </div>
+
+          <div class="breakdown-row">
+            <span>硬件利润：<strong id="rd-profit-hw">--</strong></span>
+            <span>订阅利润：<strong id="rd-profit-sub">--</strong></span>
+            <span>订阅附加率：<strong id="rd-attach">--</strong></span>
+          </div>
+
+          <details>
+            <summary>查看计算中间量</summary>
+            <div class="intermediate-grid">
+              <div>定位命中 fit：<strong id="rd-fit">--</strong></div>
+              <div>Core 覆盖率：<strong id="rd-covercore">--</strong></div>
+              <div>Nice 覆盖率：<strong id="rd-covernice">--</strong></div>
+              <div>
+                访谈可靠度 evi：<strong id="rd-evi">--</strong>
+                <span id="rd-evi-detail" style="font-size:12px;color:#666;"></span>
+              </div>
+              <div>访谈信号 I：<strong id="rd-I">--</strong></div>
+              <div>综合得分 z：<strong id="rd-z">--</strong></div>
+              <div>风险指数：<strong id="rd-risk">--</strong></div>
+              <div>复杂度：<strong id="rd-complexity">--</strong></div>
+              <div>增量成本 dCOGS：<strong id="rd-dcogs">--</strong></div>
+              <div>系统负载：<strong id="rd-load">--</strong></div>
+              <div>预算状态：<strong id="rd-budget-status">--</strong></div>
+              <div>软约束惩罚 z_penalty：<strong id="rd-z-penalty">--</strong></div>
+            </div>
+          </details>
+
+          <div id="rd-analysis-block" class="subpanel">
+            <button id="btn-analysis" class="btn secondary" onclick="generateAnalysis()">生成复盘分析报告</button>
+            <div id="rd-analysis-content" style="display:none;">
+              <div id="rd-analysis-text"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:none;">
+        <div id="frozen-gm-display"></div>
+        <select id="subscription-tier"></select>
+        <select id="compliance-tier"></select>
+        <select id="content-tier"></select>
+        <select id="channel-1"></select>
+        <select id="channel-2"></select>
+        <select id="persona-question"></select>
+        <button id="ask-persona"></button>
+        <div id="persona-answer"></div>
+        <div id="feature-cards"></div>
+        <button id="run-round2"></button>
+        <pre id="round2-output"></pre>
+        <select id="change-1"></select>
+        <select id="change-2"></select>
+        <select id="change-sub-tier"></select>
+        <select id="change-compliance-tier"></select>
+        <button id="apply-iteration"></button>
+        <div id="iteration-log"></div>
+        <div id="db-status"></div>
+        <div id="team-summary"></div>
+        <table><tbody id="ranking-body"></tbody></table>
+      </div>
+    </section>
+  </main>
+
+  <script src="settings.js"></script>
+  <script src="cards.js"></script>
+  <script src="macro-db.js"></script>
+  <script src="persona-db.js"></script>
+  <script src="/engine.js"></script>
+  <script src="student-db.js"></script>
+  <script src="api-client.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

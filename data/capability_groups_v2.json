@@ -1,0 +1,582 @@
+{
+  "schema_version": "2.0",
+  "selection_policy": {
+    "per_group_min": 1,
+    "total_min": 6,
+    "tier_values": ["low", "mid", "high"]
+  },
+  "global_capacity": {
+    "capacity_enabled": true,
+    "capacity_points": 24,
+    "notes": "Sum(load) across selected tier-caps should not exceed capacity; if exceeded, apply soft penalty or require Ops tier >= mid."
+  },
+  "groups": [
+    {
+      "group_id": "interaction_expression",
+      "name": "交互与表达",
+      "min_select": 1,
+      "capabilities": [
+        {
+          "cap_id": "voice_basic",
+          "name": "语音基础",
+          "nre": 98,
+          "nre_desc": "嵌入式8月+语音算法6月+QA4月+SDK授权+消音室+样机",
+          "covers": ["语音交互", "情感陪伴"],
+          "tiers": {
+            "low": { "dCOGS": 150, "risk": 0.05, "sub_lift": 0.01, "load": 1 },
+            "mid": { "dCOGS": 280, "risk": 0.08, "sub_lift": 0.03, "load": 2 },
+            "high": { "dCOGS": 420, "risk": 0.1, "sub_lift": 0.04, "load": 3 }
+          }
+        },
+        {
+          "cap_id": "persona_dialog",
+          "name": "多轮对话个性化",
+          "nre": 211,
+          "nre_desc": "NLP高级10月+嵌入式AI8月+后端6月+标注×2人6月+QA4月+GPU算力+训练数据+样机",
+          "covers": ["情感陪伴", "语音交互", "个性化推荐", "多轮对话"],
+          "tiers": {
+            "low": { "dCOGS": 400, "risk": 0.14, "sub_lift": 0.05, "load": 3 },
+            "mid": { "dCOGS": 650, "risk": 0.18, "sub_lift": 0.08, "load": 4 },
+            "high": {
+              "dCOGS": 950,
+              "risk": 0.22,
+              "sub_lift": 0.1,
+              "load": 6,
+              "requires": [
+                {
+                  "cap": "cloud_update",
+                  "min_tier": "mid",
+                  "type": "hard",
+                  "reason": "高档多轮对话需要运维与灰度发布保障一致性"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "cap_id": "touch_hug",
+          "name": "触摸/拥抱交互增强",
+          "nre": 99,
+          "nre_desc": "硬件8月+嵌入式6月+结构4月+QA3月+柔性PCB打样+传感器样品+样机",
+          "covers": ["情感陪伴"],
+          "tiers": {
+            "low": { "dCOGS": 180, "risk": 0.07, "sub_lift": 0.02, "load": 1 },
+            "mid": { "dCOGS": 350, "risk": 0.1, "sub_lift": 0.04, "load": 2 },
+            "high": { "dCOGS": 520, "risk": 0.12, "sub_lift": 0.05, "load": 2 }
+          }
+        },
+        {
+          "cap_id": "music_companion",
+          "name": "音乐播放与陪伴",
+          "nre": 64,
+          "nre_desc": "嵌入式6月+音频4月+QA2月+版权授权+音频测试+样机",
+          "covers": ["音乐播放", "情感陪伴"],
+          "tiers": {
+            "low": { "dCOGS": 100, "risk": 0.05, "sub_lift": 0.03, "load": 1 },
+            "mid": { "dCOGS": 200, "risk": 0.07, "sub_lift": 0.05, "load": 2 },
+            "high": { "dCOGS": 320, "risk": 0.09, "sub_lift": 0.06, "load": 3 }
+          }
+        },
+        {
+          "cap_id": "visual_expression",
+          "name": "视觉表达（OLED/灯效）",
+          "nre": 191,
+          "nre_desc": "显示驱动8月+嵌入式6月+结构6月+工业设计师6月+动画4月+QA4月+OLED样品+动画外包+显示模具+样机",
+          "covers": ["情感陪伴", "表情显示"],
+          "tiers": {
+            "low": {
+              "dCOGS": 300,
+              "risk": 0.06,
+              "sub_lift": 0.02,
+              "load": 1,
+              "notes": "用灯效/表情策略替代屏幕"
+            },
+            "mid": {
+              "dCOGS": 600,
+              "risk": 0.1,
+              "sub_lift": 0.03,
+              "load": 2,
+              "notes": "小屏或低配显示",
+              "excludes": [
+                {
+                  "cap": "no_screen_costdown",
+                  "any_tier": true,
+                  "type": "hard",
+                  "reason": "中档视觉表达与无屏降本冲突"
+                }
+              ]
+            },
+            "high": {
+              "dCOGS": 850,
+              "risk": 0.14,
+              "sub_lift": 0.04,
+              "load": 2,
+              "excludes": [
+                {
+                  "cap": "no_screen_costdown",
+                  "any_tier": true,
+                  "type": "hard",
+                  "reason": "无屏降本与OLED高档冲突"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "cap_id": "expressive_style_pack",
+          "name": "表达风格包（角色/语气/动作脚本）",
+          "nre": 151,
+          "nre_desc": "工业设计师8月+结构6月+动作设计6月+QA3月+外壳开模30万+3D打样+样机",
+          "covers": ["情感陪伴", "多轮对话"],
+          "tiers": {
+            "low": { "dCOGS": 120, "risk": 0.04, "sub_lift": 0.02, "load": 1 },
+            "mid": { "dCOGS": 250, "risk": 0.06, "sub_lift": 0.04, "load": 2 },
+            "high": { "dCOGS": 400, "risk": 0.08, "sub_lift": 0.06, "load": 3 }
+          }
+        },
+        {
+          "cap_id": "no_screen_costdown",
+          "name": "无屏降本（删OLED）",
+          "nre": 61,
+          "nre_desc": "结构4月+嵌入式3月+QA回归4月+认证2月+结构件打样+重新认证费+回归测试",
+          "covers": [],
+          "tiers": {
+            "low": {
+              "dCOGS": -250,
+              "risk": 0.1,
+              "sub_lift": -0.01,
+              "load": 0,
+              "excludes": [
+                {
+                  "cap": "visual_expression",
+                  "tier_in": ["mid", "high"],
+                  "type": "hard",
+                  "reason": "无屏降本与中高档视觉表达冲突"
+                }
+              ]
+            },
+            "mid": {
+              "dCOGS": -450,
+              "risk": 0.14,
+              "sub_lift": -0.02,
+              "load": 0,
+              "excludes": [
+                {
+                  "cap": "visual_expression",
+                  "tier_in": ["mid", "high"],
+                  "type": "hard",
+                  "reason": "无屏降本与中高档视觉表达冲突"
+                }
+              ]
+            },
+            "high": {
+              "dCOGS": -600,
+              "risk": 0.18,
+              "sub_lift": -0.02,
+              "load": 0,
+              "excludes": [
+                {
+                  "cap": "visual_expression",
+                  "tier_in": ["mid", "high"],
+                  "type": "hard",
+                  "reason": "无屏降本与中高档视觉表达冲突"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "group_id": "perception_understanding",
+      "name": "感知与理解",
+      "min_select": 1,
+      "capabilities": [
+        {
+          "cap_id": "perception_base",
+          "name": "基础感知（摄像头/语音融合）",
+          "nre": 76,
+          "nre_desc": "视觉6月+嵌入式6月+QA3月+摄像头样品+ISP工具+标定设备+样机",
+          "covers": ["拍照功能", "场景感知"],
+          "tiers": {
+            "low": { "dCOGS": 200, "risk": 0.06, "sub_lift": 0.01, "load": 1 },
+            "mid": { "dCOGS": 380, "risk": 0.09, "sub_lift": 0.02, "load": 2 },
+            "high": { "dCOGS": 550, "risk": 0.12, "sub_lift": 0.03, "load": 3 }
+          }
+        },
+        {
+          "cap_id": "emotion_recognition",
+          "name": "情绪识别与表情捕捉",
+          "nre": 186,
+          "nre_desc": "CV高级10月+嵌入式AI8月+标注×2人6月+QA4月+GPU算力+表情数据集+AI芯片+样机",
+          "covers": ["情绪识别", "情感陪伴", "拍照功能"],
+          "tiers": {
+            "low": {
+              "dCOGS": 350,
+              "risk": 0.12,
+              "sub_lift": 0.04,
+              "load": 2,
+              "requires": [
+                {
+                  "cap": "perception_base",
+                  "min_tier": "low",
+                  "type": "hard",
+                  "reason": "情绪识别需要基础感知输入"
+                }
+              ]
+            },
+            "mid": {
+              "dCOGS": 600,
+              "risk": 0.16,
+              "sub_lift": 0.07,
+              "load": 4,
+              "requires": [
+                {
+                  "cap": "perception_base",
+                  "min_tier": "mid",
+                  "type": "hard",
+                  "reason": "中档情绪识别需要更稳定感知"
+                }
+              ]
+            },
+            "high": {
+              "dCOGS": 880,
+              "risk": 0.2,
+              "sub_lift": 0.09,
+              "load": 6,
+              "requires": [
+                {
+                  "cap": "perception_base",
+                  "min_tier": "high",
+                  "type": "hard",
+                  "reason": "高档情绪识别需要更强感知与算力"
+                },
+                {
+                  "cap": "privacy_trust",
+                  "min_tier": "mid",
+                  "type": "hard",
+                  "reason": "高档摄像/情绪识别需隐私与信任保障"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "cap_id": "adaptive_learning",
+          "name": "自适应学习（习惯/偏好）",
+          "nre": 197,
+          "nre_desc": "ML高级12月+嵌入式AI8月+数据工程6月+QA6月+GPU算力12月+边缘模组+用户测试+样机",
+          "covers": ["个性化推荐", "情感陪伴", "记忆回溯"],
+          "tiers": {
+            "low": { "dCOGS": 350, "risk": 0.14, "sub_lift": 0.05, "load": 3 },
+            "mid": {
+              "dCOGS": 620,
+              "risk": 0.2,
+              "sub_lift": 0.09,
+              "load": 5,
+              "requires": [
+                {
+                  "cap": "cloud_update",
+                  "min_tier": "mid",
+                  "type": "soft",
+                  "penalty": { "risk": 0.05 },
+                  "reason": "自适应学习需要监控/回退，运维不足会增加风险"
+                }
+              ]
+            },
+            "high": {
+              "dCOGS": 900,
+              "risk": 0.24,
+              "sub_lift": 0.12,
+              "load": 7,
+              "requires": [
+                {
+                  "cap": "cloud_update",
+                  "min_tier": "high",
+                  "type": "hard",
+                  "reason": "高档自适应学习强依赖灰度/回滚与遥测"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "cap_id": "memory_album",
+          "name": "社交记忆（关系与偏好）",
+          "nre": 105,
+          "nre_desc": "后端8月+安全高级6月+QA4月+隐私审查律所+渗透测试+加密芯片+样机",
+          "covers": ["拍照功能", "情感陪伴", "记忆回溯"],
+          "tiers": {
+            "low": { "dCOGS": 250, "risk": 0.07, "sub_lift": 0.03, "load": 2 },
+            "mid": { "dCOGS": 450, "risk": 0.09, "sub_lift": 0.05, "load": 3 },
+            "high": {
+              "dCOGS": 680,
+              "risk": 0.12,
+              "sub_lift": 0.06,
+              "load": 4,
+              "requires": [
+                {
+                  "cap": "privacy_trust",
+                  "min_tier": "mid",
+                  "type": "hard",
+                  "reason": "高档记忆能力需要隐私/信任保障"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "group_id": "mobility_navigation",
+      "name": "运动与导航",
+      "min_select": 1,
+      "capabilities": [
+        {
+          "cap_id": "basic_avoidance",
+          "name": "基础避障",
+          "nre": 55,
+          "nre_desc": "嵌入式6月+算法3月+QA3月+超声波模组+测试场地+样机",
+          "covers": ["碰撞保护", "自主移动"],
+          "tiers": {
+            "low": { "dCOGS": 150, "risk": 0.08, "sub_lift": 0.01, "load": 1 },
+            "mid": { "dCOGS": 300, "risk": 0.1, "sub_lift": 0.02, "load": 2 },
+            "high": { "dCOGS": 450, "risk": 0.12, "sub_lift": 0.02, "load": 3 }
+          }
+        },
+        {
+          "cap_id": "follow_mode",
+          "name": "跟随/伴行模式",
+          "nre": 122,
+          "nre_desc": "电机控制8月+算法8月+硬件4月+QA6月+伺服电机样品+路测+开发板+样机",
+          "covers": ["跟随陪伴", "自主移动"],
+          "tiers": {
+            "low": { "dCOGS": 320, "risk": 0.1, "sub_lift": 0.01, "load": 2 },
+            "mid": { "dCOGS": 550, "risk": 0.12, "sub_lift": 0.02, "load": 3 },
+            "high": { "dCOGS": 800, "risk": 0.15, "sub_lift": 0.03, "load": 4 }
+          }
+        },
+        {
+          "cap_id": "lidar_nav",
+          "name": "室内导航与避障（LiDAR）",
+          "nre": 184,
+          "nre_desc": "SLAM高级10月+嵌入式8月+电机控制4月+QA8月+LiDAR多款评估+SLAM平台+大量路测+地图设备+样机",
+          "covers": ["室内导航", "自主移动"],
+          "tiers": {
+            "low": { "dCOGS": 500, "risk": 0.16, "sub_lift": 0.03, "load": 3 },
+            "mid": {
+              "dCOGS": 850,
+              "risk": 0.2,
+              "sub_lift": 0.04,
+              "load": 5,
+              "requires": [
+                {
+                  "cap": "cloud_update",
+                  "min_tier": "mid",
+                  "type": "soft",
+                  "penalty": { "risk": 0.05 },
+                  "reason": "中档导航需要云端运维保障地图更新与故障恢复"
+                }
+              ]
+            },
+            "high": {
+              "dCOGS": 1200,
+              "risk": 0.22,
+              "sub_lift": 0.05,
+              "load": 7,
+              "requires": [
+                {
+                  "cap": "cloud_update",
+                  "min_tier": "mid",
+                  "type": "hard",
+                  "reason": "高档导航需要云端运维与远程校准能力"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "group_id": "safety_trust",
+      "name": "安全与信任",
+      "min_select": 1,
+      "capabilities": [
+        {
+          "cap_id": "privacy_trust",
+          "name": "隐私模式与信任保障",
+          "nre": 107,
+          "nre_desc": "安全高级8月+嵌入式4月+认证4月+渗透测试+安全认证+SE芯片+样机",
+          "covers": ["安全与信任", "隐私保护"],
+          "tiers": {
+            "low": { "dCOGS": 180, "risk": 0.06, "sub_lift": 0.01, "load": 1 },
+            "mid": { "dCOGS": 350, "risk": 0.08, "sub_lift": 0.02, "load": 2 },
+            "high": { "dCOGS": 520, "risk": 0.1, "sub_lift": 0.03, "load": 3 }
+          }
+        },
+        {
+          "cap_id": "child_safety",
+          "name": "儿童安全",
+          "nre": 113,
+          "nre_desc": "硬件6月+结构4月+QA专项6月+认证6月+GB认证15万+跌落测试+材料检测+样机",
+          "covers": ["儿童安全"],
+          "tiers": {
+            "low": { "dCOGS": 250, "risk": 0.08, "sub_lift": 0.03, "load": 1 },
+            "mid": { "dCOGS": 450, "risk": 0.1, "sub_lift": 0.05, "load": 2 },
+            "high": { "dCOGS": 650, "risk": 0.12, "sub_lift": 0.06, "load": 3 }
+          }
+        },
+        {
+          "cap_id": "family_guardian",
+          "name": "家庭监护（告警/权限/记录）",
+          "nre": 201,
+          "nre_desc": "架构师8月+硬件8月+嵌入式6月+后端4月+QA8月+紧急通信认证+可靠性测试+融合套件+样机",
+          "covers": ["隐私保护", "儿童安全", "远程控制"],
+          "tiers": {
+            "low": {
+              "dCOGS": 420,
+              "risk": 0.14,
+              "sub_lift": 0.03,
+              "load": 2,
+              "requires": [
+                {
+                  "cap": "privacy_trust",
+                  "min_tier": "low",
+                  "type": "hard",
+                  "reason": "监护功能需要基础隐私/权限"
+                }
+              ]
+            },
+            "mid": {
+              "dCOGS": 750,
+              "risk": 0.24,
+              "sub_lift": 0.06,
+              "load": 4,
+              "requires": [
+                {
+                  "cap": "privacy_trust",
+                  "min_tier": "mid",
+                  "type": "hard",
+                  "reason": "中档监护涉及更严格信任要求"
+                }
+              ]
+            },
+            "high": {
+              "dCOGS": 1050,
+              "risk": 0.3,
+              "sub_lift": 0.08,
+              "load": 6,
+              "requires": [
+                {
+                  "cap": "privacy_trust",
+                  "min_tier": "high",
+                  "type": "hard",
+                  "reason": "高档监护与合规要求更高"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "group_id": "expand_connect",
+      "name": "可扩展与连接",
+      "min_select": 1,
+      "capabilities": [
+        {
+          "cap_id": "cloud_update",
+          "name": "云端智更新（灰度/回滚/遥测）",
+          "nre": 94,
+          "nre_desc": "后端6月+嵌入式6月+安全3月+QA4月+云服务器+灰度平台+安全芯片+样机",
+          "covers": ["OTA更新"],
+          "tiers": {
+            "low": { "dCOGS": 150, "risk": 0.08, "sub_lift": 0.03, "load": 2 },
+            "mid": { "dCOGS": 300, "risk": 0.1, "sub_lift": 0.06, "load": 3 },
+            "high": { "dCOGS": 480, "risk": 0.12, "sub_lift": 0.08, "load": 4 }
+          }
+        },
+        {
+          "cap_id": "api_iot",
+          "name": "API / IoT 联动",
+          "nre": 114,
+          "nre_desc": "IoT8月+后端6月+硬件RF4月+认证4月+协议认证18万+天线外包+网关开发板+样机",
+          "covers": ["智能家居", "家庭版"],
+          "tiers": {
+            "low": { "dCOGS": 250, "risk": 0.08, "sub_lift": 0.01, "load": 2 },
+            "mid": { "dCOGS": 450, "risk": 0.1, "sub_lift": 0.02, "load": 3 },
+            "high": {
+              "dCOGS": 680,
+              "risk": 0.12,
+              "sub_lift": 0.03,
+              "load": 4,
+              "requires": [
+                {
+                  "cap": "privacy_trust",
+                  "min_tier": "mid",
+                  "type": "hard",
+                  "reason": "IoT 联动需要权限与安全边界"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "cap_id": "edu_content",
+          "name": "教育内容",
+          "nre": 102,
+          "nre_desc": "前端6月+后端6月+内容运营8月+QA3月+内容授权12万+CMS平台+合规审查+用户测试",
+          "covers": ["教育内容", "家庭版"],
+          "tiers": {
+            "low": { "dCOGS": 200, "risk": 0.07, "sub_lift": 0.03, "load": 2 },
+            "mid": { "dCOGS": 380, "risk": 0.09, "sub_lift": 0.05, "load": 3 },
+            "high": { "dCOGS": 580, "risk": 0.12, "sub_lift": 0.07, "load": 4 }
+          }
+        }
+      ]
+    },
+    {
+      "group_id": "ops_maintenance",
+      "name": "可运营与可维护",
+      "min_select": 1,
+      "capabilities": [
+        {
+          "cap_id": "self_diag",
+          "name": "自诊断",
+          "nre": 42,
+          "nre_desc": "嵌入式6月+QA4月+诊断传感器+故障注入设备+样机",
+          "covers": ["OTA更新"],
+          "tiers": {
+            "low": { "dCOGS": 130, "risk": 0.06, "sub_lift": 0.01, "load": 1 },
+            "mid": { "dCOGS": 260, "risk": 0.07, "sub_lift": 0.02, "load": 2 },
+            "high": { "dCOGS": 400, "risk": 0.08, "sub_lift": 0.03, "load": 3 }
+          }
+        },
+        {
+          "cap_id": "remote_monitor",
+          "name": "远程监控",
+          "nre": 78,
+          "nre_desc": "后端8月+嵌入式4月+QA3月+认证2月+云平台+通信认证+样机",
+          "covers": ["OTA更新", "远程控制"],
+          "tiers": {
+            "low": { "dCOGS": 200, "risk": 0.06, "sub_lift": 0.01, "load": 1 },
+            "mid": { "dCOGS": 380, "risk": 0.07, "sub_lift": 0.02, "load": 2 },
+            "high": { "dCOGS": 580, "risk": 0.08, "sub_lift": 0.03, "load": 3 }
+          }
+        },
+        {
+          "cap_id": "predictive_maint",
+          "name": "预测性维护",
+          "nre": 172,
+          "nre_desc": "ML高级10月+嵌入式6月+数据工程6月+QA6月+GPU算力+长期测试15万+传感器+样机",
+          "covers": ["OTA更新"],
+          "tiers": {
+            "low": { "dCOGS": 350, "risk": 0.1, "sub_lift": 0.03, "load": 3 },
+            "mid": { "dCOGS": 650, "risk": 0.14, "sub_lift": 0.05, "load": 4 },
+            "high": { "dCOGS": 950, "risk": 0.18, "sub_lift": 0.07, "load": 5 }
+          }
+        }
+      ]
+    }
+  ]
+}

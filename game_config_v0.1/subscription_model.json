@@ -1,0 +1,78 @@
+{
+  "content_tier_effect": {
+    "LOW": {
+      "pen_lift_content": 0,
+      "ret_lift_content": 0
+    },
+    "MID": {
+      "pen_lift_content": 0.04,
+      "ret_lift_content": 0.03
+    },
+    "HIGH": {
+      "pen_lift_content": 0.08,
+      "ret_lift_content": 0.06
+    }
+  },
+  "content_invest_cost": {
+    "LOW": 0,
+    "MID": 120000,
+    "HIGH": 260000
+  },
+  "compliance_effect": {
+    "LOW": {
+      "pen_lift_compliance": 0,
+      "ret_lift_compliance": 0,
+      "penetration": 0,
+      "retention": 0
+    },
+    "MID": {
+      "pen_lift_compliance": 0.03,
+      "ret_lift_compliance": 0.03,
+      "penetration": 0.03,
+      "retention": 0.03
+    },
+    "HIGH": {
+      "pen_lift_compliance": 0.06,
+      "ret_lift_compliance": 0.06,
+      "penetration": 0.06,
+      "retention": 0.06
+    }
+  },
+  "risk_penalty_by_risk_level": {
+    "0": {
+      "risk_penalty_pen": 0,
+      "risk_penalty_ret": 0,
+      "penetration": 0,
+      "retention": 0
+    },
+    "1": {
+      "risk_penalty_pen": -0.01,
+      "risk_penalty_ret": -0.02,
+      "penetration": -0.01,
+      "retention": -0.02
+    },
+    "2": {
+      "risk_penalty_pen": -0.03,
+      "risk_penalty_ret": -0.05,
+      "penetration": -0.03,
+      "retention": -0.05
+    },
+    "3": {
+      "risk_penalty_pen": -0.06,
+      "risk_penalty_ret": -0.1,
+      "penetration": -0.06,
+      "retention": -0.1
+    }
+  },
+  "horizon_months": 24,
+  "penetration_lifts_by_content": {
+    "LOW": 0,
+    "MID": 0.04,
+    "HIGH": 0.08
+  },
+  "retention_lifts_by_content": {
+    "LOW": 0,
+    "MID": 0.03,
+    "HIGH": 0.06
+  }
+}

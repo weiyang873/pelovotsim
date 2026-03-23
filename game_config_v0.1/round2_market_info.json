@@ -1,0 +1,16 @@
+{
+  "market_info": {
+    "B2B_DIFF_ELDER": { "market_size_yi": 15, "hhi": 0.15, "hhi_label": "适中" },
+    "B2B_DIFF_ADULT": { "market_size_yi": 15, "hhi": 0.22, "hhi_label": "适中偏高" },
+    "B2B_DIFF_CHILD": { "market_size_yi": 16, "hhi": 0.20, "hhi_label": "适中偏高" },
+    "B2B_COST_ELDER": { "market_size_yi": 25, "hhi": 0.18, "hhi_label": "适中" },
+    "B2B_COST_ADULT": { "market_size_yi": 25, "hhi": 0.25, "hhi_label": "偏高" },
+    "B2B_COST_CHILD": { "market_size_yi": 27, "hhi": 0.22, "hhi_label": "适中偏高" },
+    "B2C_DIFF_ELDER": { "market_size_yi": 16, "hhi": 0.09, "hhi_label": "分散" },
+    "B2C_DIFF_ADULT": { "market_size_yi": 16, "hhi": 0.08, "hhi_label": "高度分散" },
+    "B2C_DIFF_CHILD": { "market_size_yi": 17, "hhi": 0.14, "hhi_label": "适中偏低" },
+    "B2C_COST_ELDER": { "market_size_yi": 23, "hhi": 0.16, "hhi_label": "适中" },
+    "B2C_COST_ADULT": { "market_size_yi": 23, "hhi": 0.12, "hhi_label": "适中偏低" },
+    "B2C_COST_CHILD": { "market_size_yi": 26, "hhi": 0.18, "hhi_label": "适中偏高" }
+  }
+}

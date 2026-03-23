@@ -1,0 +1,338 @@
+{
+  "B2C|差异化|体验": {
+    "tam": 12000,
+    "wtp_median_price": 6200,
+    "price_elasticity": 1.1,
+    "growth": "HIGH",
+    "crowding": "HIGH",
+    "channel_fee_rate": {
+      "DIRECT": 0.05,
+      "ECOM": 0.12,
+      "PARTNER": 0.18
+    },
+    "subscription_baseline": {
+      "p0": 0.2,
+      "r0": 0.88,
+      "arpu_tier": {
+        "LOW": 29,
+        "MID": 79,
+        "HIGH": 139
+      },
+      "penetration_base": 0.2,
+      "retention_base": 0.88
+    },
+    "channel_options": [
+      "DIRECT",
+      "ECOM",
+      "PARTNER"
+    ]
+  },
+  "B2C|差异化|混合": {
+    "tam": 15000,
+    "wtp_median_price": 5600,
+    "price_elasticity": 1.2,
+    "growth": "HIGH",
+    "crowding": "HIGH",
+    "channel_fee_rate": {
+      "DIRECT": 0.05,
+      "ECOM": 0.11,
+      "PARTNER": 0.17
+    },
+    "subscription_baseline": {
+      "p0": 0.22,
+      "r0": 0.87,
+      "arpu_tier": {
+        "LOW": 29,
+        "MID": 69,
+        "HIGH": 129
+      },
+      "penetration_base": 0.22,
+      "retention_base": 0.87
+    },
+    "channel_options": [
+      "DIRECT",
+      "ECOM",
+      "PARTNER"
+    ]
+  },
+  "B2C|差异化|功能": {
+    "tam": 10000,
+    "wtp_median_price": 4600,
+    "price_elasticity": 1.3,
+    "growth": "MEDIUM",
+    "crowding": "MEDIUM",
+    "channel_fee_rate": {
+      "DIRECT": 0.05,
+      "ECOM": 0.1,
+      "PARTNER": 0.16
+    },
+    "subscription_baseline": {
+      "p0": 0.16,
+      "r0": 0.86,
+      "arpu_tier": {
+        "LOW": 25,
+        "MID": 59,
+        "HIGH": 109
+      },
+      "penetration_base": 0.16,
+      "retention_base": 0.86
+    },
+    "channel_options": [
+      "DIRECT",
+      "ECOM",
+      "PARTNER"
+    ]
+  },
+  "B2C|成本领先|体验": {
+    "tam": 14000,
+    "wtp_median_price": 4200,
+    "price_elasticity": 1.45,
+    "growth": "MEDIUM",
+    "crowding": "MEDIUM",
+    "channel_fee_rate": {
+      "DIRECT": 0.05,
+      "ECOM": 0.1,
+      "PARTNER": 0.15
+    },
+    "subscription_baseline": {
+      "p0": 0.12,
+      "r0": 0.83,
+      "arpu_tier": {
+        "LOW": 19,
+        "MID": 49,
+        "HIGH": 89
+      },
+      "penetration_base": 0.12,
+      "retention_base": 0.83
+    },
+    "channel_options": [
+      "DIRECT",
+      "ECOM",
+      "PARTNER"
+    ]
+  },
+  "B2C|成本领先|混合": {
+    "tam": 19000,
+    "wtp_median_price": 3900,
+    "price_elasticity": 1.6,
+    "growth": "HIGH",
+    "crowding": "HIGH",
+    "channel_fee_rate": {
+      "DIRECT": 0.05,
+      "ECOM": 0.09,
+      "PARTNER": 0.14
+    },
+    "subscription_baseline": {
+      "p0": 0.14,
+      "r0": 0.82,
+      "arpu_tier": {
+        "LOW": 19,
+        "MID": 45,
+        "HIGH": 79
+      },
+      "penetration_base": 0.14,
+      "retention_base": 0.82
+    },
+    "channel_options": [
+      "DIRECT",
+      "ECOM",
+      "PARTNER"
+    ]
+  },
+  "B2C|成本领先|功能": {
+    "tam": 22000,
+    "wtp_median_price": 3400,
+    "price_elasticity": 1.8,
+    "growth": "HIGH",
+    "crowding": "HIGH",
+    "channel_fee_rate": {
+      "DIRECT": 0.05,
+      "ECOM": 0.08,
+      "PARTNER": 0.13
+    },
+    "subscription_baseline": {
+      "p0": 0.12,
+      "r0": 0.8,
+      "arpu_tier": {
+        "LOW": 15,
+        "MID": 39,
+        "HIGH": 69
+      },
+      "penetration_base": 0.12,
+      "retention_base": 0.8
+    },
+    "channel_options": [
+      "DIRECT",
+      "ECOM",
+      "PARTNER"
+    ]
+  },
+  "B2B|差异化|体验": {
+    "tam": 1800,
+    "wtp_median_price": 16800,
+    "price_elasticity": 0.85,
+    "growth": "LOW",
+    "crowding": "LOW",
+    "channel_fee_rate": {
+      "DIRECT": 0.03,
+      "PARTNER": 0.1,
+      "SI": 0.14
+    },
+    "subscription_baseline": {
+      "p0": 0.35,
+      "r0": 0.9,
+      "arpu_tier": {
+        "LOW": 99,
+        "MID": 249,
+        "HIGH": 499
+      },
+      "penetration_base": 0.35,
+      "retention_base": 0.9
+    },
+    "channel_options": [
+      "DIRECT",
+      "PARTNER",
+      "SI"
+    ]
+  },
+  "B2B|差异化|混合": {
+    "tam": 3200,
+    "wtp_median_price": 14500,
+    "price_elasticity": 0.8,
+    "growth": "MEDIUM",
+    "crowding": "MEDIUM",
+    "channel_fee_rate": {
+      "DIRECT": 0.03,
+      "PARTNER": 0.09,
+      "SI": 0.13
+    },
+    "subscription_baseline": {
+      "p0": 0.38,
+      "r0": 0.91,
+      "arpu_tier": {
+        "LOW": 99,
+        "MID": 219,
+        "HIGH": 429
+      },
+      "penetration_base": 0.38,
+      "retention_base": 0.91
+    },
+    "channel_options": [
+      "DIRECT",
+      "PARTNER",
+      "SI"
+    ]
+  },
+  "B2B|差异化|功能": {
+    "tam": 4300,
+    "wtp_median_price": 13200,
+    "price_elasticity": 0.75,
+    "growth": "HIGH",
+    "crowding": "MEDIUM",
+    "channel_fee_rate": {
+      "DIRECT": 0.03,
+      "PARTNER": 0.08,
+      "SI": 0.12
+    },
+    "subscription_baseline": {
+      "p0": 0.42,
+      "r0": 0.92,
+      "arpu_tier": {
+        "LOW": 109,
+        "MID": 239,
+        "HIGH": 459
+      },
+      "penetration_base": 0.42,
+      "retention_base": 0.92
+    },
+    "channel_options": [
+      "DIRECT",
+      "PARTNER",
+      "SI"
+    ]
+  },
+  "B2B|成本领先|体验": {
+    "tam": 1500,
+    "wtp_median_price": 9200,
+    "price_elasticity": 1,
+    "growth": "LOW",
+    "crowding": "LOW",
+    "channel_fee_rate": {
+      "DIRECT": 0.03,
+      "PARTNER": 0.08,
+      "SI": 0.11
+    },
+    "subscription_baseline": {
+      "p0": 0.2,
+      "r0": 0.85,
+      "arpu_tier": {
+        "LOW": 69,
+        "MID": 169,
+        "HIGH": 329
+      },
+      "penetration_base": 0.2,
+      "retention_base": 0.85
+    },
+    "channel_options": [
+      "DIRECT",
+      "PARTNER",
+      "SI"
+    ]
+  },
+  "B2B|成本领先|混合": {
+    "tam": 3500,
+    "wtp_median_price": 9800,
+    "price_elasticity": 0.95,
+    "growth": "MEDIUM",
+    "crowding": "MEDIUM",
+    "channel_fee_rate": {
+      "DIRECT": 0.03,
+      "PARTNER": 0.08,
+      "SI": 0.11
+    },
+    "subscription_baseline": {
+      "p0": 0.26,
+      "r0": 0.87,
+      "arpu_tier": {
+        "LOW": 79,
+        "MID": 179,
+        "HIGH": 349
+      },
+      "penetration_base": 0.26,
+      "retention_base": 0.87
+    },
+    "channel_options": [
+      "DIRECT",
+      "PARTNER",
+      "SI"
+    ]
+  },
+  "B2B|成本领先|功能": {
+    "tam": 5200,
+    "wtp_median_price": 10200,
+    "price_elasticity": 0.9,
+    "growth": "HIGH",
+    "crowding": "HIGH",
+    "channel_fee_rate": {
+      "DIRECT": 0.03,
+      "PARTNER": 0.07,
+      "SI": 0.1
+    },
+    "subscription_baseline": {
+      "p0": 0.3,
+      "r0": 0.88,
+      "arpu_tier": {
+        "LOW": 89,
+        "MID": 189,
+        "HIGH": 359
+      },
+      "penetration_base": 0.3,
+      "retention_base": 0.88
+    },
+    "channel_options": [
+      "DIRECT",
+      "PARTNER",
+      "SI"
+    ]
+  }
+}

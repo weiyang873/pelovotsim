@@ -1,0 +1,1073 @@
+{
+  "radar_dims": [
+    "感知与理解",
+    "运动与导航",
+    "交互与表达",
+    "安全与信任",
+    "可扩展与连接",
+    "可运营与可维护"
+  ],
+  "grids": [
+    {
+      "id": "B2B_Differentiation_Experience",
+      "axes": {
+        "segment": "B2B",
+        "strategy": "Differentiation",
+        "focus": "Experience"
+      },
+      "radar_weight_prior": {
+        "感知与理解": 0.21904761904761905,
+        "运动与导航": 0.12380952380952381,
+        "交互与表达": 0.2285714285714286,
+        "安全与信任": 0.1619047619047619,
+        "可扩展与连接": 0.15238095238095237,
+        "可运营与可维护": 0.11428571428571428
+      },
+      "recommended_core_tags": [
+        "个性化推荐",
+        "家庭版",
+        "自动充电",
+        "语音交互"
+      ],
+      "price_band_multiplier_prior": {
+        "low": 0.95,
+        "mid": 1.1,
+        "high": 1.3
+      },
+      "recommended_feature_cards": [
+        "cloud_premium",
+        "persona_dialog",
+        "lidar_nav",
+        "kids_content",
+        "family_guardian",
+        "adaptive_learning"
+      ],
+      "recommended_costdown_cards": [],
+      "recommended_feature_card_weights_v3": {
+        "cloud_premium": 0.2491,
+        "persona_dialog": 0.2736,
+        "lidar_nav": 0.1141,
+        "kids_content": 0.1141,
+        "family_guardian": 0.1141,
+        "adaptive_learning": 0.135
+      },
+      "recommended_costdown_card_weights_v3": {},
+      "v2_engine": {
+        "WTPmean": 18394,
+        "WTPmedian": 17120,
+        "WTPref": 18394,
+        "gamma": 3.99,
+        "SAM_billion": 215.21,
+        "by_age": {
+          "ELDER": {
+            "WTPmean": 19268,
+            "WTPmedian": 18091,
+            "WTPref": 19268,
+            "gamma": 4.56,
+            "SAM_billion": 293.92
+          },
+          "ADULT": {
+            "WTPmean": 18394,
+            "WTPmedian": 17120,
+            "WTPref": 18394,
+            "gamma": 3.99,
+            "SAM_billion": 215.21
+          },
+          "CHILD": {
+            "WTPmean": 18732,
+            "WTPmedian": 17496,
+            "WTPref": 18732,
+            "gamma": 4.2,
+            "SAM_billion": 355.91
+          }
+        }
+      }
+    },
+    {
+      "id": "B2B_Differentiation_Mixed",
+      "axes": {
+        "segment": "B2B",
+        "strategy": "Differentiation",
+        "focus": "Mixed"
+      },
+      "radar_weight_prior": {
+        "感知与理解": 0.18269230769230768,
+        "运动与导航": 0.11538461538461539,
+        "交互与表达": 0.15384615384615388,
+        "安全与信任": 0.17307692307692307,
+        "可扩展与连接": 0.18269230769230768,
+        "可运营与可维护": 0.1923076923076923
+      },
+      "recommended_core_tags": [
+        "个性化推荐",
+        "家庭版",
+        "自动充电",
+        "语音交互"
+      ],
+      "price_band_multiplier_prior": {
+        "low": 0.9,
+        "mid": 1.05,
+        "high": 1.25
+      },
+      "recommended_feature_cards": [
+        "cloud_premium",
+        "persona_dialog",
+        "adaptive_learning",
+        "lidar_nav",
+        "kids_content",
+        "family_guardian"
+      ],
+      "recommended_costdown_cards": [],
+      "recommended_feature_card_weights_v3": {
+        "cloud_premium": 0.2531,
+        "persona_dialog": 0.2449,
+        "adaptive_learning": 0.1286,
+        "lidar_nav": 0.1245,
+        "kids_content": 0.1245,
+        "family_guardian": 0.1245
+      },
+      "recommended_costdown_card_weights_v3": {},
+      "v2_engine": {
+        "WTPmean": 18394,
+        "WTPmedian": 17120,
+        "WTPref": 18394,
+        "gamma": 3.99,
+        "SAM_billion": 215.21,
+        "by_age": {
+          "ELDER": {
+            "WTPmean": 19268,
+            "WTPmedian": 18091,
+            "WTPref": 19268,
+            "gamma": 4.56,
+            "SAM_billion": 293.92
+          },
+          "ADULT": {
+            "WTPmean": 18394,
+            "WTPmedian": 17120,
+            "WTPref": 18394,
+            "gamma": 3.99,
+            "SAM_billion": 215.21
+          },
+          "CHILD": {
+            "WTPmean": 18732,
+            "WTPmedian": 17496,
+            "WTPref": 18732,
+            "gamma": 4.2,
+            "SAM_billion": 355.91
+          }
+        }
+      }
+    },
+    {
+      "id": "B2B_Differentiation_Function",
+      "axes": {
+        "segment": "B2B",
+        "strategy": "Differentiation",
+        "focus": "Function"
+      },
+      "radar_weight_prior": {
+        "感知与理解": 0.24038461538461536,
+        "运动与导航": 0.14423076923076922,
+        "交互与表达": 0.13461538461538464,
+        "安全与信任": 0.21153846153846154,
+        "可扩展与连接": 0.16346153846153846,
+        "可运营与可维护": 0.10576923076923075
+      },
+      "recommended_core_tags": [
+        "个性化推荐",
+        "家庭版",
+        "情绪识别",
+        "自动充电",
+        "语音交互"
+      ],
+      "price_band_multiplier_prior": {
+        "low": 0.93,
+        "mid": 1.08,
+        "high": 1.28
+      },
+      "recommended_feature_cards": [
+        "cloud_premium",
+        "persona_dialog",
+        "lidar_nav",
+        "kids_content",
+        "family_guardian",
+        "emotion_recognition"
+      ],
+      "recommended_costdown_cards": [],
+      "recommended_feature_card_weights_v3": {
+        "cloud_premium": 0.2591,
+        "persona_dialog": 0.2326,
+        "lidar_nav": 0.1246,
+        "kids_content": 0.1246,
+        "family_guardian": 0.1246,
+        "emotion_recognition": 0.1345
+      },
+      "recommended_costdown_card_weights_v3": {},
+      "v2_engine": {
+        "WTPmean": 18394,
+        "WTPmedian": 17120,
+        "WTPref": 18394,
+        "gamma": 3.99,
+        "SAM_billion": 215.21,
+        "by_age": {
+          "ELDER": {
+            "WTPmean": 19268,
+            "WTPmedian": 18091,
+            "WTPref": 19268,
+            "gamma": 4.56,
+            "SAM_billion": 293.92
+          },
+          "ADULT": {
+            "WTPmean": 18394,
+            "WTPmedian": 17120,
+            "WTPref": 18394,
+            "gamma": 3.99,
+            "SAM_billion": 215.21
+          },
+          "CHILD": {
+            "WTPmean": 18732,
+            "WTPmedian": 17496,
+            "WTPref": 18732,
+            "gamma": 4.2,
+            "SAM_billion": 355.91
+          }
+        }
+      }
+    },
+    {
+      "id": "B2B_Cost_Experience",
+      "axes": {
+        "segment": "B2B",
+        "strategy": "Cost",
+        "focus": "Experience"
+      },
+      "radar_weight_prior": {
+        "感知与理解": 0.15841584158415842,
+        "运动与导航": 0.10891089108910891,
+        "交互与表达": 0.15841584158415842,
+        "安全与信任": 0.22772277227722773,
+        "可扩展与连接": 0.12871287128712872,
+        "可运营与可维护": 0.21782178217821785
+      },
+      "recommended_core_tags": [
+        "家庭版",
+        "自动充电"
+      ],
+      "price_band_multiplier_prior": {
+        "low": 0.87,
+        "mid": 1.02,
+        "high": 1.22
+      },
+      "recommended_feature_cards": [
+        "lidar_nav",
+        "kids_content",
+        "family_guardian",
+        "cloud_premium"
+      ],
+      "recommended_costdown_cards": [
+        "no_screen_costdown",
+        "no_lidar_costdown"
+      ],
+      "recommended_feature_card_weights_v3": {
+        "lidar_nav": 0.25,
+        "kids_content": 0.25,
+        "family_guardian": 0.25,
+        "cloud_premium": 0.25
+      },
+      "recommended_costdown_card_weights_v3": {
+        "no_screen_costdown": 0.5,
+        "no_lidar_costdown": 0.5
+      },
+      "v2_engine": {
+        "WTPmean": 15445,
+        "WTPmedian": 10663,
+        "WTPref": 15445,
+        "gamma": 2.9,
+        "SAM_billion": 361.42,
+        "by_age": {
+          "ELDER": {
+            "WTPmean": 15964,
+            "WTPmedian": 11714,
+            "WTPref": 15964,
+            "gamma": 3.19,
+            "SAM_billion": 487.04
+          },
+          "ADULT": {
+            "WTPmean": 15445,
+            "WTPmedian": 10663,
+            "WTPref": 15445,
+            "gamma": 2.9,
+            "SAM_billion": 361.42
+          },
+          "CHILD": {
+            "WTPmean": 15964,
+            "WTPmedian": 11714,
+            "WTPref": 15964,
+            "gamma": 3.19,
+            "SAM_billion": 606.64
+          }
+        }
+      }
+    },
+    {
+      "id": "B2B_Cost_Mixed",
+      "axes": {
+        "segment": "B2B",
+        "strategy": "Cost",
+        "focus": "Mixed"
+      },
+      "radar_weight_prior": {
+        "感知与理解": 0.12000000000000001,
+        "运动与导航": 0.1,
+        "交互与表达": 0.08,
+        "安全与信任": 0.24,
+        "可扩展与连接": 0.16,
+        "可运营与可维护": 0.30000000000000004
+      },
+      "recommended_core_tags": [
+        "家庭版",
+        "自动充电"
+      ],
+      "price_band_multiplier_prior": {
+        "low": 0.82,
+        "mid": 0.97,
+        "high": 1.17
+      },
+      "recommended_feature_cards": [
+        "cloud_premium",
+        "lidar_nav",
+        "kids_content",
+        "family_guardian"
+      ],
+      "recommended_costdown_cards": [
+        "no_screen_costdown",
+        "no_lidar_costdown"
+      ],
+      "recommended_feature_card_weights_v3": {
+        "cloud_premium": 0.25,
+        "lidar_nav": 0.25,
+        "kids_content": 0.25,
+        "family_guardian": 0.25
+      },
+      "recommended_costdown_card_weights_v3": {
+        "no_screen_costdown": 0.5,
+        "no_lidar_costdown": 0.5
+      },
+      "v2_engine": {
+        "WTPmean": 15445,
+        "WTPmedian": 10663,
+        "WTPref": 15445,
+        "gamma": 2.9,
+        "SAM_billion": 361.42,
+        "by_age": {
+          "ELDER": {
+            "WTPmean": 15964,
+            "WTPmedian": 11714,
+            "WTPref": 15964,
+            "gamma": 3.19,
+            "SAM_billion": 487.04
+          },
+          "ADULT": {
+            "WTPmean": 15445,
+            "WTPmedian": 10663,
+            "WTPref": 15445,
+            "gamma": 2.9,
+            "SAM_billion": 361.42
+          },
+          "CHILD": {
+            "WTPmean": 15964,
+            "WTPmedian": 11714,
+            "WTPref": 15964,
+            "gamma": 3.19,
+            "SAM_billion": 606.64
+          }
+        }
+      }
+    },
+    {
+      "id": "B2B_Cost_Function",
+      "axes": {
+        "segment": "B2B",
+        "strategy": "Cost",
+        "focus": "Function"
+      },
+      "radar_weight_prior": {
+        "感知与理解": 0.18,
+        "运动与导航": 0.13,
+        "交互与表达": 0.060000000000000005,
+        "安全与信任": 0.28,
+        "可扩展与连接": 0.14,
+        "可运营与可维护": 0.21000000000000002
+      },
+      "recommended_core_tags": [
+        "家庭版",
+        "情绪识别",
+        "自动充电"
+      ],
+      "price_band_multiplier_prior": {
+        "low": 0.85,
+        "mid": 1,
+        "high": 1.2
+      },
+      "recommended_feature_cards": [
+        "lidar_nav",
+        "kids_content",
+        "family_guardian",
+        "cloud_premium",
+        "emotion_recognition"
+      ],
+      "recommended_costdown_cards": [
+        "no_screen_costdown",
+        "no_lidar_costdown"
+      ],
+      "recommended_feature_card_weights_v3": {
+        "lidar_nav": 0.209,
+        "kids_content": 0.209,
+        "family_guardian": 0.209,
+        "cloud_premium": 0.209,
+        "emotion_recognition": 0.1642
+      },
+      "recommended_costdown_card_weights_v3": {
+        "no_screen_costdown": 0.5,
+        "no_lidar_costdown": 0.5
+      },
+      "v2_engine": {
+        "WTPmean": 15445,
+        "WTPmedian": 10663,
+        "WTPref": 15445,
+        "gamma": 2.9,
+        "SAM_billion": 361.42,
+        "by_age": {
+          "ELDER": {
+            "WTPmean": 15964,
+            "WTPmedian": 11714,
+            "WTPref": 15964,
+            "gamma": 3.19,
+            "SAM_billion": 487.04
+          },
+          "ADULT": {
+            "WTPmean": 15445,
+            "WTPmedian": 10663,
+            "WTPref": 15445,
+            "gamma": 2.9,
+            "SAM_billion": 361.42
+          },
+          "CHILD": {
+            "WTPmean": 15964,
+            "WTPmedian": 11714,
+            "WTPref": 15964,
+            "gamma": 3.19,
+            "SAM_billion": 606.64
+          }
+        }
+      }
+    },
+    {
+      "id": "B2C_Differentiation_Experience",
+      "axes": {
+        "segment": "B2C",
+        "strategy": "Differentiation",
+        "focus": "Experience"
+      },
+      "radar_weight_prior": {
+        "感知与理解": 0.23809523809523814,
+        "运动与导航": 0.10476190476190478,
+        "交互与表达": 0.3428571428571429,
+        "安全与信任": 0.08571428571428574,
+        "可扩展与连接": 0.09523809523809526,
+        "可运营与可维护": 0.13333333333333333
+      },
+      "recommended_core_tags": [
+        "个性化推荐",
+        "情感陪伴",
+        "自动充电",
+        "语音交互"
+      ],
+      "price_band_multiplier_prior": {
+        "low": 0.9,
+        "mid": 1.05,
+        "high": 1.2
+      },
+      "recommended_feature_cards": [
+        "persona_dialog",
+        "adaptive_learning",
+        "voice_basic",
+        "touch_hug",
+        "oled_screen",
+        "emotion_recognition"
+      ],
+      "recommended_costdown_cards": [],
+      "recommended_feature_card_weights_v3": {
+        "persona_dialog": 0.2921,
+        "adaptive_learning": 0.1881,
+        "voice_basic": 0.2079,
+        "touch_hug": 0.104,
+        "oled_screen": 0.104,
+        "emotion_recognition": 0.104
+      },
+      "recommended_costdown_card_weights_v3": {},
+      "v2_engine": {
+        "WTPmean": 17120,
+        "WTPmedian": 17120,
+        "WTPref": 17120,
+        "gamma": 3.99,
+        "SAM_billion": 354.39,
+        "by_age": {
+          "ELDER": {
+            "WTPmean": 18091,
+            "WTPmedian": 18091,
+            "WTPref": 18091,
+            "gamma": 4.56,
+            "SAM_billion": 347.35
+          },
+          "ADULT": {
+            "WTPmean": 17120,
+            "WTPmedian": 17120,
+            "WTPref": 17120,
+            "gamma": 3.99,
+            "SAM_billion": 354.39
+          },
+          "CHILD": {
+            "WTPmean": 17496,
+            "WTPmedian": 17496,
+            "WTPref": 17496,
+            "gamma": 4.2,
+            "SAM_billion": 386.66
+          }
+        }
+      }
+    },
+    {
+      "id": "B2C_Differentiation_Mixed",
+      "axes": {
+        "segment": "B2C",
+        "strategy": "Differentiation",
+        "focus": "Mixed"
+      },
+      "radar_weight_prior": {
+        "感知与理解": 0.2019230769230769,
+        "运动与导航": 0.09615384615384616,
+        "交互与表达": 0.2692307692307692,
+        "安全与信任": 0.09615384615384617,
+        "可扩展与连接": 0.125,
+        "可运营与可维护": 0.2115384615384615
+      },
+      "recommended_core_tags": [
+        "个性化推荐",
+        "情感陪伴",
+        "自动充电",
+        "语音交互"
+      ],
+      "price_band_multiplier_prior": {
+        "low": 0.85,
+        "mid": 1,
+        "high": 1.15
+      },
+      "recommended_feature_cards": [
+        "persona_dialog",
+        "adaptive_learning",
+        "voice_basic",
+        "cloud_premium",
+        "touch_hug",
+        "oled_screen"
+      ],
+      "recommended_costdown_cards": [],
+      "recommended_feature_card_weights_v3": {
+        "persona_dialog": 0.2984,
+        "adaptive_learning": 0.1935,
+        "voice_basic": 0.2098,
+        "cloud_premium": 0.0886,
+        "touch_hug": 0.1049,
+        "oled_screen": 0.1049
+      },
+      "recommended_costdown_card_weights_v3": {},
+      "v2_engine": {
+        "WTPmean": 17120,
+        "WTPmedian": 17120,
+        "WTPref": 17120,
+        "gamma": 3.99,
+        "SAM_billion": 354.39,
+        "by_age": {
+          "ELDER": {
+            "WTPmean": 18091,
+            "WTPmedian": 18091,
+            "WTPref": 18091,
+            "gamma": 4.56,
+            "SAM_billion": 347.35
+          },
+          "ADULT": {
+            "WTPmean": 17120,
+            "WTPmedian": 17120,
+            "WTPref": 17120,
+            "gamma": 3.99,
+            "SAM_billion": 354.39
+          },
+          "CHILD": {
+            "WTPmean": 17496,
+            "WTPmedian": 17496,
+            "WTPref": 17496,
+            "gamma": 4.2,
+            "SAM_billion": 386.66
+          }
+        }
+      }
+    },
+    {
+      "id": "B2C_Differentiation_Function",
+      "axes": {
+        "segment": "B2C",
+        "strategy": "Differentiation",
+        "focus": "Function"
+      },
+      "radar_weight_prior": {
+        "感知与理解": 0.25961538461538464,
+        "运动与导航": 0.125,
+        "交互与表达": 0.25,
+        "安全与信任": 0.13461538461538464,
+        "可扩展与连接": 0.10576923076923077,
+        "可运营与可维护": 0.12499999999999997
+      },
+      "recommended_core_tags": [
+        "情感陪伴",
+        "情绪识别",
+        "自动充电",
+        "语音交互"
+      ],
+      "price_band_multiplier_prior": {
+        "low": 0.88,
+        "mid": 1.03,
+        "high": 1.18
+      },
+      "recommended_feature_cards": [
+        "emotion_recognition",
+        "persona_dialog",
+        "voice_basic",
+        "adaptive_learning",
+        "touch_hug",
+        "oled_screen"
+      ],
+      "recommended_costdown_cards": [],
+      "recommended_feature_card_weights_v3": {
+        "emotion_recognition": 0.2242,
+        "persona_dialog": 0.2217,
+        "voice_basic": 0.2217,
+        "adaptive_learning": 0.1108,
+        "touch_hug": 0.1108,
+        "oled_screen": 0.1108
+      },
+      "recommended_costdown_card_weights_v3": {},
+      "v2_engine": {
+        "WTPmean": 17120,
+        "WTPmedian": 17120,
+        "WTPref": 17120,
+        "gamma": 3.99,
+        "SAM_billion": 354.39,
+        "by_age": {
+          "ELDER": {
+            "WTPmean": 18091,
+            "WTPmedian": 18091,
+            "WTPref": 18091,
+            "gamma": 4.56,
+            "SAM_billion": 347.35
+          },
+          "ADULT": {
+            "WTPmean": 17120,
+            "WTPmedian": 17120,
+            "WTPref": 17120,
+            "gamma": 3.99,
+            "SAM_billion": 354.39
+          },
+          "CHILD": {
+            "WTPmean": 17496,
+            "WTPmedian": 17496,
+            "WTPref": 17496,
+            "gamma": 4.2,
+            "SAM_billion": 386.66
+          }
+        }
+      }
+    },
+    {
+      "id": "B2C_Cost_Experience",
+      "axes": {
+        "segment": "B2C",
+        "strategy": "Cost",
+        "focus": "Experience"
+      },
+      "radar_weight_prior": {
+        "感知与理解": 0.1782178217821782,
+        "运动与导航": 0.08910891089108912,
+        "交互与表达": 0.27722772277227725,
+        "安全与信任": 0.14851485148514854,
+        "可扩展与连接": 0.06930693069306931,
+        "可运营与可维护": 0.2376237623762376
+      },
+      "recommended_core_tags": [
+        "个性化推荐",
+        "情感陪伴",
+        "自动充电",
+        "语音交互"
+      ],
+      "price_band_multiplier_prior": {
+        "low": 0.82,
+        "mid": 0.97,
+        "high": 1.12
+      },
+      "recommended_feature_cards": [
+        "persona_dialog",
+        "voice_basic",
+        "adaptive_learning",
+        "touch_hug",
+        "oled_screen",
+        "emotion_recognition"
+      ],
+      "recommended_costdown_cards": [
+        "no_screen_costdown",
+        "no_lidar_costdown"
+      ],
+      "recommended_feature_card_weights_v3": {
+        "persona_dialog": 0.2906,
+        "voice_basic": 0.2094,
+        "adaptive_learning": 0.1859,
+        "touch_hug": 0.1047,
+        "oled_screen": 0.1047,
+        "emotion_recognition": 0.1047
+      },
+      "recommended_costdown_card_weights_v3": {
+        "no_screen_costdown": 0.5,
+        "no_lidar_costdown": 0.5
+      },
+      "v2_engine": {
+        "WTPmean": 12404,
+        "WTPmedian": 10663,
+        "WTPref": 10663,
+        "gamma": 2.9,
+        "SAM_billion": 441.44,
+        "by_age": {
+          "ELDER": {
+            "WTPmean": 13274,
+            "WTPmedian": 11714,
+            "WTPref": 11714,
+            "gamma": 3.19,
+            "SAM_billion": 449.82
+          },
+          "ADULT": {
+            "WTPmean": 12404,
+            "WTPmedian": 10663,
+            "WTPref": 10663,
+            "gamma": 2.9,
+            "SAM_billion": 441.44
+          },
+          "CHILD": {
+            "WTPmean": 13274,
+            "WTPmedian": 11714,
+            "WTPref": 11714,
+            "gamma": 3.19,
+            "SAM_billion": 517.77
+          }
+        }
+      }
+    },
+    {
+      "id": "B2C_Cost_Mixed",
+      "axes": {
+        "segment": "B2C",
+        "strategy": "Cost",
+        "focus": "Mixed"
+      },
+      "radar_weight_prior": {
+        "感知与理解": 0.13999999999999999,
+        "运动与导航": 0.08000000000000002,
+        "交互与表达": 0.2,
+        "安全与信任": 0.16,
+        "可扩展与连接": 0.1,
+        "可运营与可维护": 0.32
+      },
+      "recommended_core_tags": [
+        "个性化推荐",
+        "情感陪伴",
+        "自动充电",
+        "语音交互"
+      ],
+      "price_band_multiplier_prior": {
+        "low": 0.77,
+        "mid": 0.92,
+        "high": 1.07
+      },
+      "recommended_feature_cards": [
+        "persona_dialog",
+        "adaptive_learning",
+        "voice_basic",
+        "touch_hug",
+        "oled_screen",
+        "emotion_recognition"
+      ],
+      "recommended_costdown_cards": [
+        "no_screen_costdown",
+        "no_lidar_costdown"
+      ],
+      "recommended_feature_card_weights_v3": {
+        "persona_dialog": 0.2922,
+        "adaptive_learning": 0.1883,
+        "voice_basic": 0.2078,
+        "touch_hug": 0.1039,
+        "oled_screen": 0.1039,
+        "emotion_recognition": 0.1039
+      },
+      "recommended_costdown_card_weights_v3": {
+        "no_screen_costdown": 0.5,
+        "no_lidar_costdown": 0.5
+      },
+      "v2_engine": {
+        "WTPmean": 12404,
+        "WTPmedian": 10663,
+        "WTPref": 10663,
+        "gamma": 2.9,
+        "SAM_billion": 441.44,
+        "by_age": {
+          "ELDER": {
+            "WTPmean": 13274,
+            "WTPmedian": 11714,
+            "WTPref": 11714,
+            "gamma": 3.19,
+            "SAM_billion": 449.82
+          },
+          "ADULT": {
+            "WTPmean": 12404,
+            "WTPmedian": 10663,
+            "WTPref": 10663,
+            "gamma": 2.9,
+            "SAM_billion": 441.44
+          },
+          "CHILD": {
+            "WTPmean": 13274,
+            "WTPmedian": 11714,
+            "WTPref": 11714,
+            "gamma": 3.19,
+            "SAM_billion": 517.77
+          }
+        }
+      }
+    },
+    {
+      "id": "B2C_Cost_Function",
+      "axes": {
+        "segment": "B2C",
+        "strategy": "Cost",
+        "focus": "Function"
+      },
+      "radar_weight_prior": {
+        "感知与理解": 0.2,
+        "运动与导航": 0.11000000000000001,
+        "交互与表达": 0.18,
+        "安全与信任": 0.2,
+        "可扩展与连接": 0.08,
+        "可运营与可维护": 0.22999999999999998
+      },
+      "recommended_core_tags": [
+        "情感陪伴",
+        "情绪识别",
+        "自动充电",
+        "语音交互"
+      ],
+      "price_band_multiplier_prior": {
+        "low": 0.8,
+        "mid": 0.95,
+        "high": 1.1
+      },
+      "recommended_feature_cards": [
+        "emotion_recognition",
+        "voice_basic",
+        "persona_dialog",
+        "touch_hug",
+        "oled_screen",
+        "adaptive_learning"
+      ],
+      "recommended_costdown_cards": [
+        "no_screen_costdown",
+        "no_lidar_costdown"
+      ],
+      "recommended_feature_card_weights_v3": {
+        "emotion_recognition": 0.2278,
+        "voice_basic": 0.2206,
+        "persona_dialog": 0.2206,
+        "touch_hug": 0.1103,
+        "oled_screen": 0.1103,
+        "adaptive_learning": 0.1103
+      },
+      "recommended_costdown_card_weights_v3": {
+        "no_screen_costdown": 0.5,
+        "no_lidar_costdown": 0.5
+      },
+      "v2_engine": {
+        "WTPmean": 12404,
+        "WTPmedian": 10663,
+        "WTPref": 10663,
+        "gamma": 2.9,
+        "SAM_billion": 441.44,
+        "by_age": {
+          "ELDER": {
+            "WTPmean": 13274,
+            "WTPmedian": 11714,
+            "WTPref": 11714,
+            "gamma": 3.19,
+            "SAM_billion": 449.82
+          },
+          "ADULT": {
+            "WTPmean": 12404,
+            "WTPmedian": 10663,
+            "WTPref": 10663,
+            "gamma": 2.9,
+            "SAM_billion": 441.44
+          },
+          "CHILD": {
+            "WTPmean": 13274,
+            "WTPmedian": 11714,
+            "WTPref": 11714,
+            "gamma": 3.19,
+            "SAM_billion": 517.77
+          }
+        }
+      }
+    }
+  ],
+  "notes": {
+    "interpretation": "radar_weight_prior is the prior importance of each radar dimension for the grid; interview updates this via convex blend with evidence quality.",
+    "price_band_multiplier_prior": "Multipliers can be applied to a baseline Pmax for rough segment-based bands; optional."
+  },
+  "card_catalog": [
+    {
+      "id": "voice_basic",
+      "name": "语音基础",
+      "covers": [
+        "情感陪伴",
+        "语音交互"
+      ],
+      "covers_dims": [
+        "交互与表达"
+      ]
+    },
+    {
+      "id": "persona_dialog",
+      "name": "多轮对话个性化",
+      "covers": [
+        "个性化推荐",
+        "情感陪伴",
+        "语音交互"
+      ],
+      "covers_dims": [
+        "交互与表达",
+        "感知与理解"
+      ]
+    },
+    {
+      "id": "family_guardian",
+      "name": "家庭监护",
+      "covers": [
+        "家庭版"
+      ],
+      "covers_dims": [
+        "安全与信任"
+      ]
+    },
+    {
+      "id": "emotion_recognition",
+      "name": "情绪识别与表情捕捉",
+      "covers": [
+        "情感陪伴",
+        "情绪识别",
+        "拍照功能"
+      ],
+      "covers_dims": [
+        "交互与表达",
+        "感知与理解"
+      ]
+    },
+    {
+      "id": "lidar_nav",
+      "name": "室内导航与避障（LiDAR）",
+      "covers": [
+        "家庭版"
+      ],
+      "covers_dims": [
+        "安全与信任"
+      ]
+    },
+    {
+      "id": "touch_hug",
+      "name": "触摸/拥抱交互增强",
+      "covers": [
+        "情感陪伴"
+      ],
+      "covers_dims": [
+        "交互与表达"
+      ]
+    },
+    {
+      "id": "oled_screen",
+      "name": "屏幕表情/视觉陪伴（OLED）",
+      "covers": [
+        "情感陪伴"
+      ],
+      "covers_dims": [
+        "交互与表达"
+      ]
+    },
+    {
+      "id": "adaptive_learning",
+      "name": "自适应学习（习惯/作息/偏好）",
+      "covers": [
+        "个性化推荐",
+        "情感陪伴"
+      ],
+      "covers_dims": [
+        "交互与表达",
+        "感知与理解"
+      ]
+    },
+    {
+      "id": "kids_content",
+      "name": "儿童教育内容包（故事/陪练）",
+      "covers": [
+        "家庭版",
+        "音乐播放"
+      ],
+      "covers_dims": [
+        "交互与表达",
+        "安全与信任"
+      ]
+    },
+    {
+      "id": "cloud_premium",
+      "name": "云端智更新高级版",
+      "covers": [
+        "个性化推荐",
+        "家庭版"
+      ],
+      "covers_dims": [
+        "安全与信任",
+        "感知与理解"
+      ]
+    },
+    {
+      "id": "no_screen_costdown",
+      "name": "无屏降本（删 OLED）",
+      "covers": [],
+      "covers_dims": []
+    },
+    {
+      "id": "no_lidar_costdown",
+      "name": "轻量感知（删 LiDAR，改低配避障）",
+      "covers": [],
+      "covers_dims": []
+    }
+  ],
+  "weight_generation_v3": {
+    "method": "raw = alpha*count_norm + (1-alpha)*dim_sum_norm; normalize to sum=1",
+    "alpha": 0.4,
+    "notes": {
+      "count_norm": "count of overlap(core_tags) normalized by max count among recommended cards in the grid",
+      "dim_sum_norm": "sum of w_grid[dim(tag)] over overlap tags normalized by max among recommended cards in the grid"
+    }
+  }
+}

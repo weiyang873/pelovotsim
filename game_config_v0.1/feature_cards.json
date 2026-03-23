@@ -1,0 +1,244 @@
+{
+  "cards": [
+    {
+      "id": "f1",
+      "name": "语音基础",
+      "bom_delta": 120,
+      "risk_level": 1,
+      "pen_lift": 0.01,
+      "ret_lift": 0.01,
+      "value_vector": {
+        "emotion": 0.15,
+        "intelligence": 0.55,
+        "privacy": 0.05,
+        "fun": 0.1,
+        "value_for_money": 0.55,
+        "function": 0.4
+      },
+      "subscription_lift": {
+        "penetration": 0.01,
+        "retention": 0.01
+      }
+    },
+    {
+      "id": "f2",
+      "name": "多轮对话个性化",
+      "bom_delta": 260,
+      "risk_level": 2,
+      "pen_lift": 0.03,
+      "ret_lift": 0.04,
+      "value_vector": {
+        "emotion": 0.4,
+        "intelligence": 0.75,
+        "privacy": -0.05,
+        "fun": 0.3,
+        "value_for_money": 0.2,
+        "function": 0.35
+      },
+      "subscription_lift": {
+        "penetration": 0.03,
+        "retention": 0.04
+      }
+    },
+    {
+      "id": "f3",
+      "name": "家庭监护",
+      "bom_delta": 340,
+      "risk_level": 2,
+      "pen_lift": 0.03,
+      "ret_lift": 0.03,
+      "value_vector": {
+        "emotion": 0.1,
+        "intelligence": 0.35,
+        "privacy": -0.1,
+        "fun": 0.05,
+        "value_for_money": 0.25,
+        "function": 0.8
+      },
+      "subscription_lift": {
+        "penetration": 0.03,
+        "retention": 0.03
+      }
+    },
+    {
+      "id": "f4",
+      "name": "视频看护",
+      "bom_delta": 420,
+      "risk_level": 3,
+      "pen_lift": 0.02,
+      "ret_lift": 0.02,
+      "value_vector": {
+        "emotion": 0.05,
+        "intelligence": 0.3,
+        "privacy": -0.2,
+        "fun": 0.05,
+        "value_for_money": 0.1,
+        "function": 0.85
+      },
+      "subscription_lift": {
+        "penetration": 0.02,
+        "retention": 0.02
+      }
+    },
+    {
+      "id": "f5",
+      "name": "跌倒/异常检测",
+      "bom_delta": 310,
+      "risk_level": 2,
+      "pen_lift": 0.03,
+      "ret_lift": 0.04,
+      "value_vector": {
+        "emotion": 0,
+        "intelligence": 0.45,
+        "privacy": -0.05,
+        "fun": 0,
+        "value_for_money": 0.3,
+        "function": 0.95
+      },
+      "subscription_lift": {
+        "penetration": 0.03,
+        "retention": 0.04
+      }
+    },
+    {
+      "id": "f6",
+      "name": "静音运动升级",
+      "bom_delta": 180,
+      "risk_level": 1,
+      "pen_lift": 0.01,
+      "ret_lift": 0.01,
+      "value_vector": {
+        "emotion": 0.35,
+        "intelligence": 0.1,
+        "privacy": 0,
+        "fun": 0.45,
+        "value_for_money": 0.15,
+        "function": 0.2
+      },
+      "subscription_lift": {
+        "penetration": 0.01,
+        "retention": 0.01
+      }
+    },
+    {
+      "id": "f7",
+      "name": "四肢/自由度升级",
+      "bom_delta": 520,
+      "risk_level": 2,
+      "pen_lift": 0.02,
+      "ret_lift": 0.02,
+      "value_vector": {
+        "emotion": 0.55,
+        "intelligence": 0.1,
+        "privacy": 0,
+        "fun": 0.65,
+        "value_for_money": -0.2,
+        "function": 0.15
+      },
+      "subscription_lift": {
+        "penetration": 0.02,
+        "retention": 0.02
+      }
+    },
+    {
+      "id": "f8",
+      "name": "导航增强(LiDAR)",
+      "bom_delta": 460,
+      "risk_level": 2,
+      "pen_lift": 0.02,
+      "ret_lift": 0.02,
+      "value_vector": {
+        "emotion": 0.05,
+        "intelligence": 0.55,
+        "privacy": 0,
+        "fun": 0.1,
+        "value_for_money": 0.1,
+        "function": 0.85
+      },
+      "subscription_lift": {
+        "penetration": 0.02,
+        "retention": 0.02
+      }
+    },
+    {
+      "id": "f9",
+      "name": "表情OLED升级",
+      "bom_delta": 240,
+      "risk_level": 1,
+      "pen_lift": 0.02,
+      "ret_lift": 0.02,
+      "value_vector": {
+        "emotion": 0.7,
+        "intelligence": 0.05,
+        "privacy": 0,
+        "fun": 0.55,
+        "value_for_money": 0.05,
+        "function": 0.05
+      },
+      "subscription_lift": {
+        "penetration": 0.02,
+        "retention": 0.02
+      }
+    },
+    {
+      "id": "f10",
+      "name": "触觉/拥抱反馈",
+      "bom_delta": 280,
+      "risk_level": 1,
+      "pen_lift": 0.02,
+      "ret_lift": 0.03,
+      "value_vector": {
+        "emotion": 0.75,
+        "intelligence": 0,
+        "privacy": 0,
+        "fun": 0.6,
+        "value_for_money": 0.05,
+        "function": 0.1
+      },
+      "subscription_lift": {
+        "penetration": 0.02,
+        "retention": 0.03
+      }
+    },
+    {
+      "id": "f11",
+      "name": "隐私保护硬件/端侧推理",
+      "bom_delta": 360,
+      "risk_level": 0,
+      "pen_lift": 0.04,
+      "ret_lift": 0.06,
+      "value_vector": {
+        "emotion": 0.1,
+        "intelligence": 0.4,
+        "privacy": 0.95,
+        "fun": 0,
+        "value_for_money": 0.15,
+        "function": 0.4
+      },
+      "subscription_lift": {
+        "penetration": 0.04,
+        "retention": 0.06
+      }
+    },
+    {
+      "id": "f12",
+      "name": "内容/技能平台化",
+      "bom_delta": 430,
+      "risk_level": 2,
+      "pen_lift": 0.06,
+      "ret_lift": 0.08,
+      "value_vector": {
+        "emotion": 0.25,
+        "intelligence": 0.6,
+        "privacy": -0.05,
+        "fun": 0.35,
+        "value_for_money": 0.2,
+        "function": 0.35
+      },
+      "subscription_lift": {
+        "penetration": 0.06,
+        "retention": 0.08
+      }
+    }
+  ]
+}

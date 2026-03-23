@@ -1,0 +1,54 @@
+{
+  "_comment": "v2 - keys aligned to grid_priors format (B2B/B2C × Differentiation/Cost × Experience/Mixed/Function)",
+  "_design_note": "base_size encodes trade-off: high-GM grids (B2B+Diff) get small base, low-GM grids (B2C+Cost) get large base",
+
+  "g_e_tier": {
+    "Low": 0.9,
+    "Med": 1.0,
+    "High": 1.1
+  },
+  "h_crowding": {
+    "Low": 0.9,
+    "Med": 1.0,
+    "High": 1.1
+  },
+  "m_reach": {
+    "Low": 0.95,
+    "Med": 1.0,
+    "High": 1.05
+  },
+  "thresholds": {
+    "S_to_M": 0.88,
+    "M_to_L": 1.12
+  },
+
+  "base_size": {
+    "B2B_Differentiation_Experience": 0.70,
+    "B2B_Differentiation_Mixed":      0.78,
+    "B2B_Differentiation_Function":   0.82,
+    "B2B_Cost_Experience":            0.88,
+    "B2B_Cost_Mixed":                 0.92,
+    "B2B_Cost_Function":              0.96,
+    "B2C_Differentiation_Experience": 0.85,
+    "B2C_Differentiation_Mixed":      0.95,
+    "B2C_Differentiation_Function":   1.02,
+    "B2C_Cost_Experience":            1.08,
+    "B2C_Cost_Mixed":                 1.20,
+    "B2C_Cost_Function":              1.35
+  },
+
+  "elasticity_hint": {
+    "B2B_Differentiation_Experience": 0.8,
+    "B2B_Differentiation_Mixed":      0.9,
+    "B2B_Differentiation_Function":   1.0,
+    "B2B_Cost_Experience":            1.0,
+    "B2B_Cost_Mixed":                 1.1,
+    "B2B_Cost_Function":              1.2,
+    "B2C_Differentiation_Experience": 1.1,
+    "B2C_Differentiation_Mixed":      1.2,
+    "B2C_Differentiation_Function":   1.3,
+    "B2C_Cost_Experience":            1.4,
+    "B2C_Cost_Mixed":                 1.6,
+    "B2C_Cost_Function":              1.8
+  }
+}

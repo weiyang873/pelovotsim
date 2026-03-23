@@ -1,0 +1,203 @@
+{
+  "schema_version": "1.0",
+  "selection_constraints": {
+    "per_group_min": 1,
+    "total_min": 6
+  },
+  "hard_rules": [
+    {
+      "id": "H1_dialog_requires_cloud",
+      "if": {
+        "cap": "persona_dialog",
+        "tier_in": [
+          "mid",
+          "high"
+        ]
+      },
+      "then_requires": [
+        {
+          "cap": "cloud_update",
+          "min_tier": "mid"
+        }
+      ],
+      "reason": "多轮对话需要运维/更新保障一致性",
+      "enforced_at": "tier_level",
+      "notes": "已在 capability_groups.json 的 tier-level requires 中定义；此处保留作为规则索引"
+    },
+    {
+      "id": "H2_high_adaptive_requires_cloud_high",
+      "if": {
+        "cap": "adaptive_learning",
+        "tier_in": [
+          "high"
+        ]
+      },
+      "then_requires": [
+        {
+          "cap": "cloud_update",
+          "min_tier": "high"
+        }
+      ],
+      "reason": "高档自适应学习需要遥测/灰度/回滚",
+      "enforced_at": "tier_level",
+      "notes": "已在 capability_groups.json 的 tier-level requires 中定义；此处保留作为规则索引"
+    },
+    {
+      "id": "H3_high_emotion_requires_perception_high",
+      "if": {
+        "cap": "emotion_recognition",
+        "tier_in": [
+          "high"
+        ]
+      },
+      "then_requires": [
+        {
+          "cap": "perception_base",
+          "min_tier": "high"
+        },
+        {
+          "cap": "privacy_trust",
+          "min_tier": "mid"
+        }
+      ],
+      "reason": "高档情绪识别需要更强感知与隐私信任",
+      "enforced_at": "tier_level",
+      "notes": "已在 capability_groups.json 的 tier-level requires 中定义；此处保留作为规则索引"
+    },
+    {
+      "id": "H4_guardian_requires_privacy",
+      "if": {
+        "cap": "family_guardian",
+        "tier_in": [
+          "mid",
+          "high"
+        ]
+      },
+      "then_requires": [
+        {
+          "cap": "privacy_trust",
+          "min_tier": "mid"
+        }
+      ],
+      "reason": "家庭监护需要更严格权限与隐私保障",
+      "enforced_at": "tier_level",
+      "notes": "已在 capability_groups.json 的 tier-level requires 中定义；此处保留作为规则索引"
+    },
+    {
+      "id": "H5_skill_store_requires_trust",
+      "if": {
+        "cap": "skill_store",
+        "tier_in": [
+          "mid",
+          "high"
+        ]
+      },
+      "then_requires": [
+        {
+          "cap": "privacy_trust",
+          "min_tier": "mid"
+        }
+      ],
+      "reason": "第三方技能生态必须有权限/信任框架",
+      "enforced_at": "tier_level",
+      "notes": "已在 capability_groups.json 的 tier-level requires 中定义；此处保留作为规则索引"
+    },
+    {
+      "id": "H6_no_screen_excludes_visual",
+      "if": {
+        "cap": "no_screen_costdown",
+        "tier_in": [
+          "low",
+          "mid",
+          "high"
+        ]
+      },
+      "then_excludes": [
+        {
+          "cap": "visual_expression",
+          "tier_in": [
+            "mid",
+            "high"
+          ]
+        }
+      ],
+      "reason": "无屏降本与中高档视觉表达冲突",
+      "enforced_at": "tier_level",
+      "notes": "现已在 capability_groups.json 的 tier-level excludes 中双向定义"
+    },
+    {
+      "id": "H7_no_lidar_excludes_lidar",
+      "if": {
+        "cap": "no_lidar_costdown",
+        "tier_in": [
+          "low",
+          "mid",
+          "high"
+        ]
+      },
+      "then_excludes": [
+        {
+          "cap": "lidar_nav",
+          "tier_in": [
+            "low",
+            "mid",
+            "high"
+          ]
+        }
+      ],
+      "reason": "删LiDAR与LiDAR导航冲突",
+      "enforced_at": "tier_level",
+      "notes": "已在 capability_groups.json 的 tier-level excludes 中定义"
+    },
+    {
+      "id": "H8_high_guardian_requires_audit",
+      "if": {
+        "cap": "family_guardian",
+        "tier_in": [
+          "high"
+        ]
+      },
+      "then_requires": [
+        {
+          "cap": "audit_logging",
+          "min_tier": "mid"
+        }
+      ],
+      "reason": "高档监护需要审计追溯",
+      "enforced_at": "tier_level",
+      "notes": "已在 capability_groups.json 的 tier-level requires 中定义；此处保留作为规则索引"
+    }
+  ],
+  "soft_rules": [
+    {
+      "id": "S1_budget_soft",
+      "type": "budget",
+      "description": "超预算允许提交，但会增加 penalty（建议进入 z_penalty 或 complexity）",
+      "penalty_suggestion": {
+        "z_penalty": -0.4
+      },
+      "budget_definition": {
+        "base_multipliers": {
+          "Differentiation": 0.45,
+          "CostLeadership": 0.2,
+          "Focus": 0.35
+        },
+        "formula": "budget_cap = COGSbase × multiplier",
+        "trigger": "sum(max(0, dCOGS)) > budget_cap",
+        "penalty": {
+          "z_penalty": -0.4
+        }
+      }
+    },
+    {
+      "id": "S2_capacity_soft",
+      "type": "capacity",
+      "capacity_points": 24,
+      "description": "总负载超过Capacity允许提交，但会增加 penalty 或要求 Ops>=mid",
+      "penalty_suggestion": {
+        "risk_add": 0.08,
+        "z_penalty": -0.3
+      }
+    }
+  ]
+}

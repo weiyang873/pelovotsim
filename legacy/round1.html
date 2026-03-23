@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EMBA Simulation - Round 1</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    #panel-basic {
+      display: none;
+    }
+    #panel-round2,
+    #panel-final {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <h1>EMBA AI机器人生态 Simulation - Round 1</h1>
+    <p>本页专注 Round 1 决策。小组基础设置请在 <a href="index.html">主页</a> 完成。</p>
+    <p>
+      页面导航：
+      <a href="round1.html">Round 1 页面</a> |
+      <a href="round2.html">Round 2 页面</a> |
+      <a href="index.html">全流程页面</a>
+    </p>
+  </header>
+
+  <main class="layout">
+    <section class="panel" id="panel-basic">
+      <h2>基础设置</h2>
+      <div class="grid two">
+        <label>小组名称
+          <input id="team-name" type="text" value="第1组" />
+        </label>
+      </div>
+      <button id="start-team" class="btn">开始新小组</button>
+      <div id="active-team" class="hint"></div>
+    </section>
+
+    <section class="panel" id="panel-round1">
+      <h2>Round 1: 宏观 PMF + 商业模式假设</h2>
+      <div class="grid three">
+        <label>客户类型
+          <select id="customer-type"></select>
+        </label>
+        <label>竞争策略
+          <select id="strategy"></select>
+        </label>
+        <label>年龄段
+          <select id="age-group"></select>
+        </label>
+      </div>
+      <div class="grid two">
+        <label>架构标签
+          <select id="arch-tag"></select>
+        </label>
+        <label>价值主张文本系数 fit_text
+          <select id="fit-text"></select>
+        </label>
+      </div>
+      <div class="subpanel">
+        <h3>渠道策略（3选2）</h3>
+        <div class="grid two">
+          <label>渠道1
+            <select id="r1-channel-1"></select>
+          </label>
+          <label>渠道2
+            <select id="r1-channel-2"></select>
+          </label>
+          <label>渠道1占比（%）
+            <input id="r1-channel-share" type="range" min="0" max="100" step="1" value="60" />
+          </label>
+          <div id="r1-channel-share-label" class="hint"></div>
+        </div>
+        <div id="r1-channel-fee-preview" class="hint"></div>
+      </div>
+
+      <div class="subpanel">
+        <h3>毛利率KPI（Round 1）</h3>
+        <div class="actions">
+          <button id="run-round1" class="btn">计算 Round 1</button>
+        </div>
+        <div id="r1-target-gm-label" class="hint"></div>
+        <div id="r1-gm-error" class="hint" style="color:#8e2e21;"></div>
+        <div class="actions">
+          <button id="reset-round1" class="btn secondary">重新开始 Round 1</button>
+        </div>
+        <div id="llm-status" class="hint" aria-live="polite"></div>
+      </div>
+      <pre id="round1-output" class="output"></pre>
+      <!-- VP Canvas + AI Coach 区块，初始隐藏，计算完GM后解锁 -->
+      <div id="vp-section" class="subpanel" style="display:none; margin-top: 24px;">
+        <div id="vp-canvas-block">
+          <h3>Value Proposition Canvas</h3>
+          <p class="hint">请根据你们的策略，填写以下六个模块。</p>
+          <div class="grid two">
+            <div>
+              <h4>客户档案（Customer Profile）</h4>
+              <label>Customer Jobs（客户想完成什么）
+                <textarea id="vp-customerJobs" rows="3"></textarea>
+              </label>
+              <label>Pains（客户的痛点）
+                <textarea id="vp-pains" rows="3"></textarea>
+              </label>
+              <label>Gains（客户期望的收益）
+                <textarea id="vp-gains" rows="3"></textarea>
+              </label>
+            </div>
+            <div>
+              <h4>价值地图（Value Map）</h4>
+              <label>Products & Services（你提供什么）
+                <textarea id="vp-products" rows="3"></textarea>
+              </label>
+              <label>Pain Relievers（如何缓解痛点）
+                <textarea id="vp-painRelievers" rows="3"></textarea>
+              </label>
+              <label>Gain Creators（如何创造收益）
+                <textarea id="vp-gainCreators" rows="3"></textarea>
+              </label>
+            </div>
+          </div>
+          <div class="actions">
+            <button id="vp-submit-canvas-btn" class="btn">提交 VP -> 开始 AI 点评</button>
+          </div>
+        </div>
+
+        <div id="vp-chat-block" style="display:none; margin-top: 16px;">
+          <h3>AI 产品教练</h3>
+          <div id="vp-chat-messages" class="output" style="min-height:220px; max-height:500px; overflow-y:auto; background:#fafafa;"></div>
+          <div class="grid one" style="margin-top: 8px;">
+            <textarea id="vp-chat-input" rows="3" placeholder="和教练对话，完善你的VP..."></textarea>
+          </div>
+          <div class="actions">
+            <button id="vp-chat-send-btn" class="btn secondary">发送</button>
+            <button id="vp-chat-submit-btn" class="btn">查看评分</button>
+          </div>
+        </div>
+
+        <div id="vp-result-block" style="display:none; margin-top:16px;">
+          <h3>C/G/E 评分</h3>
+          <div id="vp-coach-feedback" class="output" style="margin-bottom:12px;"></div>
+          <div id="vp-pmf-details" class="output"></div>
+          <div id="vp-final-gm" class="hint" style="font-size:18px; font-weight:bold; margin-top:12px;"></div>
+          <pre id="vp-result-json" class="output" style="display:none; margin-top:12px; white-space:pre-wrap;"></pre>
+          <div class="actions" style="margin-top: 12px;">
+            <button id="vp-continue-btn" class="btn">继续修改</button>
+            <button id="vp-confirm-btn" class="btn" style="display:none;">确认提交</button>
+            <button id="vp-restart-btn" class="btn secondary">重新开始</button>
+            <button id="vp-download-btn" class="btn secondary">下载对话记录</button>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <section class="panel" id="panel-round2">
+      <h2>Round 2: IPD落地</h2>
+      <div id="frozen-gm-display" class="hint"></div>
+      <div class="grid two">
+        <label>订阅策略
+          <select id="subscription-tier"></select>
+        </label>
+        <label>合规投入档
+          <select id="compliance-tier"></select>
+        </label>
+        <label>内容投入档
+          <select id="content-tier"></select>
+        </label>
+        <label>渠道1
+          <select id="channel-1"></select>
+        </label>
+        <label>渠道2（可选）
+          <select id="channel-2"></select>
+        </label>
+      </div>
+
+      <div class="subpanel">
+        <h3>虚拟客户对话</h3>
+        <div class="grid two">
+          <label>问题类型
+            <select id="persona-question"></select>
+          </label>
+          <button id="ask-persona" class="btn secondary">向虚拟客户提问</button>
+        </div>
+        <div id="persona-answer" class="answer"></div>
+      </div>
+
+      <div class="subpanel">
+        <h3>12张功能卡（必须选择 6 张）</h3>
+        <div id="feature-cards" class="cards"></div>
+      </div>
+
+      <button id="run-round2" class="btn">计算 Round 2</button>
+      <pre id="round2-output" class="output"></pre>
+
+      <div class="subpanel">
+        <h3>两次改参（每次最多改 2 项）</h3>
+        <div class="grid two">
+          <label>改参项1
+            <select id="change-1"></select>
+          </label>
+          <label>改参项2
+            <select id="change-2"></select>
+          </label>
+          <label>新订阅策略（若改参涉及）
+            <select id="change-sub-tier"></select>
+          </label>
+          <label>新合规投入档（若改参涉及）
+            <select id="change-compliance-tier"></select>
+          </label>
+        </div>
+        <button id="apply-iteration" class="btn secondary">执行一次改参</button>
+        <div id="iteration-log" class="hint"></div>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-final">
+      <h2>最终结果与排名</h2>
+      <div class="actions">
+        <button id="freeze-team" class="btn">冻结当前小组成绩</button>
+        <button id="refresh-db" class="btn secondary">刷新数据库统计</button>
+        <button id="export-db" class="btn secondary">导出数据库JSON</button>
+        <button id="clear-all" class="btn danger">清空所有小组</button>
+      </div>
+      <div id="db-status" class="hint"></div>
+      <div id="team-summary" class="output"></div>
+      <table>
+        <thead>
+          <tr>
+            <th>排名</th>
+            <th>小组</th>
+            <th>总利润</th>
+            <th>硬件利润</th>
+            <th>订阅利润(24m)</th>
+            <th>价格</th>
+            <th>销量</th>
+            <th>风险标签</th>
+          </tr>
+        </thead>
+        <tbody id="ranking-body"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="settings.js"></script>
+  <script src="cards.js"></script>
+  <script src="macro-db.js"></script>
+  <script src="persona-db.js"></script>
+  <script src="/engine.js"></script>
+  <script src="student-db.js"></script>
+  <script src="api-client.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

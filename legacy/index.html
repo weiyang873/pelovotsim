@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EMBA AI机器人生态 Simulation v0.1</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    :root {
+      --mp-green: #1a6b4a;
+      --mp-bg: #f5f1eb;
+      --mp-card: #ffffff;
+      --mp-line: #e0dcd6;
+    }
+    body { background: var(--mp-bg); }
+    .mp-primary {
+      background: var(--mp-green) !important;
+      color: #fff !important;
+      border-radius: 8px !important;
+      border: none !important;
+    }
+    .mp-form-card {
+      background: var(--mp-card);
+      border: 1px solid var(--mp-line);
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+      padding: 12px;
+      margin-top: 8px;
+    }
+    .mp-form-card input,
+    .mp-form-card select {
+      border-radius: 10px;
+      border: 1px solid #d6d3d1;
+      background: #fff;
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <h1>EMBA AI机器人生态 Simulation</h1>
+    <p>请选择入口页面。</p>
+  </header>
+
+  <main class="layout">
+    <section class="panel">
+      <h2>基础设置</h2>
+      <div class="grid two">
+        <label>小组名称
+          <input id="home-team-name" type="text" value="第1组" />
+        </label>
+      </div>
+      <div class="actions">
+        <button id="home-start-team" class="btn">开始新小组</button>
+      </div>
+      <div id="home-active-team" class="hint"></div>
+    </section>
+
+    <section class="panel">
+      <h2>页面入口</h2>
+      <div class="actions">
+        <a class="btn" href="round1.html">进入 Round 1</a>
+        <a class="btn secondary" href="round2.html">进入 Round 2</a>
+        <a id="mp-open-create" class="btn mp-primary" href="/multiplayer">新建多人小组</a>
+        <button id="mp-open-join" class="btn mp-primary">加入小组</button>
+      </div>
+      <p class="hint">建议先在 Round 1 页面完成并冻结 target_gm，再进入 Round 2 页面继续。</p>
+      <div id="mp-create-panel" class="subpanel mp-form-card" style="display:none;">
+        <div class="grid two">
+          <label>小组名称
+            <input id="mp-team-name" type="text" placeholder="例如：测试组" />
+          </label>
+          <label>人数
+            <select id="mp-team-size">
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3" selected>3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+            </select>
+          </label>
+        </div>
+        <div class="actions">
+          <button id="mp-create-btn" class="btn mp-primary">确认建组</button>
+        </div>
+      </div>
+      <div id="mp-join-panel" class="subpanel mp-form-card" style="display:none;">
+        <div class="grid two">
+          <label>Team ID
+            <input id="mp-join-team-id" type="text" placeholder="输入 team ID" />
+          </label>
+          <label>你的姓名
+            <input id="mp-join-name" type="text" placeholder="例如：成员A" />
+          </label>
+        </div>
+        <div class="actions">
+          <button id="mp-join-btn" class="btn mp-primary">确认加入</button>
+        </div>
+      </div>
+      <div id="mp-output" class="output"></div>
+    </section>
+
+    <section class="panel" id="panel-final">
+      <h2>最终结果与排名</h2>
+      <div class="actions">
+        <button id="freeze-team" class="btn">冻结当前小组成绩</button>
+        <button id="refresh-db" class="btn secondary">刷新数据库统计</button>
+        <button id="export-db" class="btn secondary">导出数据库JSON</button>
+        <button id="clear-all" class="btn danger">清空所有小组</button>
+      </div>
+      <div id="db-status" class="hint"></div>
+      <div id="team-summary" class="output"></div>
+      <table>
+        <thead>
+          <tr>
+            <th>排名</th>
+            <th>小组</th>
+            <th>总利润</th>
+            <th>硬件利润</th>
+            <th>订阅利润(24m)</th>
+            <th>价格</th>
+            <th>销量</th>
+            <th>风险标签</th>
+          </tr>
+        </thead>
+        <tbody id="ranking-body"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="student-db.js"></script>
+  <script src="api-client.js"></script>
+  <script>
+    (function () {
+      const KEY = "emba_ai_sim_state_v1";
+      const nameInput = document.getElementById("home-team-name");
+      const startBtn = document.getElementById("home-start-team");
+      const activeText = document.getElementById("home-active-team");
+      const freezeBtn = document.getElementById("freeze-team");
+      const refreshDbBtn = document.getElementById("refresh-db");
+      const exportDbBtn = document.getElementById("export-db");
+      const clearAllBtn = document.getElementById("clear-all");
+      const mpOpenCreate = document.getElementById("mp-open-create");
+      const mpOpenJoin = document.getElementById("mp-open-join");
+      const mpCreatePanel = document.getElementById("mp-create-panel");
+      const mpJoinPanel = document.getElementById("mp-join-panel");
+      const mpTeamName = document.getElementById("mp-team-name");
+      const mpTeamSize = document.getElementById("mp-team-size");
+      const mpCreateBtn = document.getElementById("mp-create-btn");
+      const mpJoinTeamId = document.getElementById("mp-join-team-id");
+      const mpJoinName = document.getElementById("mp-join-name");
+      const mpJoinBtn = document.getElementById("mp-join-btn");
+      const mpOutput = document.getElementById("mp-output");
+      const dbStatus = document.getElementById("db-status");
+      const teamSummary = document.getElementById("team-summary");
+      const rankingBody = document.getElementById("ranking-body");
+      let persistenceMode = "local";
+
+      function readState() {
+        try {
+          return JSON.parse(localStorage.getItem(KEY) || "{}");
+        } catch (_) {
+          return {};
+        }
+      }
+
+      function writeState(state) {
+        localStorage.setItem(KEY, JSON.stringify(state));
+      }
+
+      function refresh() {
+        const st = readState();
+        const team = st.activeTeam;
+        if (team && team.name) {
+          activeText.textContent = `当前小组: ${team.name}`;
+          nameInput.value = team.name;
+        } else {
+          activeText.textContent = "当前小组: 未创建";
+        }
+      }
+
+      function fmt(n) {
+        return new Intl.NumberFormat("zh-CN", { maximumFractionDigits: 0 }).format(Math.round(Number(n || 0)));
+      }
+
+      function buildNarrative(team) {
+        if (!team?.round1 || !team?.round2) return "";
+        return [
+          `位置: ${team.round1.key || "-"}`,
+          `成本-功能-价值取舍: BOM ${fmt(team.round2.bomTotal)} 元，选卡[${(team.round2.cardNames || []).join("、")}]`,
+          `订阅LTV解释: 24个月订阅利润 ${fmt(team.round2.subProfit24)} 元。`,
+          `迭代点评: 共${Number(team.iterations || 0)}次改参。`
+        ].join("\n");
+      }
+
+      function renderRankingRows(rows) {
+        rankingBody.innerHTML = "";
+        rows.forEach((row, idx) => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${idx + 1}</td>
+            <td>${row.teamName}</td>
+            <td>${fmt(row.totalProfit)}</td>
+            <td>${fmt(row.hwProfit)}</td>
+            <td>${fmt(row.subProfit24)}</td>
+            <td>${fmt(row.price)}</td>
+            <td>${fmt(row.sales)}</td>
+            <td>${row.riskTag || "-"}</td>
+          `;
+          rankingBody.appendChild(tr);
+        });
+      }
+
+      function renderLocalRanking() {
+        const st = readState();
+        const ranked = [...(Array.isArray(st.teams) ? st.teams : [])]
+          .filter((t) => t?.round2)
+          .sort((a, b) => Number(b.round2?.totalProfit || 0) - Number(a.round2?.totalProfit || 0));
+        const rows = ranked.map((t) => ({
+          teamName: t.name,
+          totalProfit: t.round2.totalProfit,
+          hwProfit: t.round2.hwProfit,
+          subProfit24: t.round2.subProfit24,
+          price: t.round2.price,
+          sales: t.round2.sales,
+          riskTag: t.round2.riskTag
+        }));
+        renderRankingRows(rows);
+      }
+
+      async function refreshDbStatus() {
+        try {
+          if (persistenceMode === "server" && window.ApiClient) {
+            const s = await ApiClient.getDbStatus();
+            dbStatus.textContent = `数据库模式: SQLite服务器 | 冻结成绩 ${s.runCount} 条，迭代事件 ${s.iterCount} 条`;
+          } else {
+            const [runs, iterations] = await Promise.all([SimDB.listTeamRuns(), SimDB.listIterations()]);
+            dbStatus.textContent = `数据库模式: 本地IndexedDB | 冻结成绩 ${runs.length} 条，迭代事件 ${iterations.length} 条`;
+          }
+        } catch (err) {
+          dbStatus.textContent = `数据库读取失败: ${err.message || err}`;
+        }
+      }
+
+      async function refreshRanking() {
+        if (persistenceMode === "server" && window.ApiClient) {
+          try {
+            const out = await ApiClient.getRanking();
+            renderRankingRows(out.rows || []);
+            return;
+          } catch (_) {}
+        }
+        renderLocalRanking();
+      }
+
+      async function persistTeamRun(team) {
+        const payload = {
+          id: `${team.id}-freeze-${Date.now()}`,
+          teamId: team.id,
+          teamName: team.name,
+          setup: team.setup || {},
+          round1: team.round1,
+          round2: team.round2,
+          history: team.history || [],
+          createdAt: new Date().toISOString()
+        };
+        if (persistenceMode === "server" && window.ApiClient) {
+          await ApiClient.saveTeamRun(payload);
+        } else {
+          await SimDB.saveTeamRun(payload);
+        }
+      }
+
+      async function freezeCurrentTeam() {
+        const st = readState();
+        const team = st.activeTeam;
+        if (!team?.round2) {
+          alert("请先完成 Round 2 后再冻结成绩。");
+          return;
+        }
+        team.frozen = true;
+        st.teams = Array.isArray(st.teams) ? st.teams : [];
+        const idx = st.teams.findIndex((t) => t.id === team.id);
+        if (idx >= 0) st.teams[idx] = { ...team };
+        else st.teams.push({ ...team });
+        st.activeTeam = team;
+        writeState(st);
+        teamSummary.textContent = buildNarrative(team);
+        await persistTeamRun(team);
+        await refreshDbStatus();
+        await refreshRanking();
+      }
+
+      async function exportDbJson() {
+        try {
+          const snapshot =
+            persistenceMode === "server" && window.ApiClient ? await ApiClient.exportAll() : await SimDB.exportAll();
+          const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: "application/json" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `emba-sim-db-export-${Date.now()}.json`;
+          a.click();
+          URL.revokeObjectURL(url);
+        } catch (err) {
+          dbStatus.textContent = `导出失败: ${err.message || err}`;
+        }
+      }
+
+      async function bootstrapPersistence() {
+        if (window.ApiClient) {
+          try {
+            await ApiClient.health();
+            persistenceMode = "server";
+          } catch (_) {
+            persistenceMode = "local";
+          }
+        }
+      }
+
+      async function apiJson(url, options) {
+        const res = await fetch(url, options || {});
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || "请求失败");
+        return data;
+      }
+
+      function renderMemberLinks(teamId, links) {
+        const lines = [];
+        lines.push(`Team ID: ${teamId}`);
+        if (Array.isArray(links) && links.length) {
+          lines.push("成员入口：");
+          links.forEach((m) => {
+            lines.push(`- ${m.member_name || ("成员" + m.member_index)}: ${location.origin}${m.flow_url}`);
+          });
+        } else {
+          lines.push("成员尚未加入，等待 join。");
+        }
+        mpOutput.textContent = lines.join("\n");
+      }
+
+      async function createMultiplayerTeam() {
+        const teamName = (mpTeamName.value || "").trim();
+        const teamSize = Number(mpTeamSize.value || 3);
+        if (!teamName) {
+          alert("请填写小组名称");
+          return;
+        }
+        mpCreateBtn.disabled = true;
+        try {
+          const out = await apiJson("/api/team/create", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ teamName, teamSize })
+          });
+          const teamId = out.team?.id;
+          if (teamId) {
+            location.href = `/team/${encodeURIComponent(teamId)}/flow`;
+            return;
+          }
+          renderMemberLinks(teamId, out.member_links || []);
+        } catch (err) {
+          mpOutput.textContent = `建组失败: ${err.message || err}`;
+        } finally {
+          mpCreateBtn.disabled = false;
+        }
+      }
+
+      async function joinMultiplayerTeam() {
+        const teamId = (mpJoinTeamId.value || "").trim();
+        const memberName = (mpJoinName.value || "").trim();
+        if (!teamId || !memberName) {
+          alert("请输入 team ID 和姓名");
+          return;
+        }
+        mpJoinBtn.disabled = true;
+        try {
+          const out = await apiJson(`/api/team/${encodeURIComponent(teamId)}/join`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ memberName })
+          });
+          renderMemberLinks(teamId, out.member_links || []);
+          if (out.member?.id) {
+            location.href = `/multiplayer?teamId=${encodeURIComponent(teamId)}&memberId=${encodeURIComponent(out.member.id)}`;
+            return;
+          }
+        } catch (err) {
+          mpOutput.textContent = `加入失败: ${err.message || err}`;
+        } finally {
+          mpJoinBtn.disabled = false;
+        }
+      }
+
+      startBtn.addEventListener("click", function () {
+        const st = readState();
+        const teamName = (nameInput.value || "").trim() || "第1组";
+        st.activeTeam = {
+          id: `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+          name: teamName,
+          setup: {},
+          round1: null,
+          round2: null,
+          llmRound1: null,
+          iterations: 0,
+          history: [],
+          frozen: false
+        };
+        st.teams = Array.isArray(st.teams) ? st.teams : [];
+        writeState(st);
+        refresh();
+      });
+
+      freezeBtn.addEventListener("click", function () {
+        freezeCurrentTeam().catch((err) => alert(err.message || err));
+      });
+      refreshDbBtn.addEventListener("click", function () {
+        refreshDbStatus().catch((err) => alert(err.message || err));
+      });
+      exportDbBtn.addEventListener("click", function () {
+        exportDbJson().catch((err) => alert(err.message || err));
+      });
+      clearAllBtn.addEventListener("click", function () {
+        if (!confirm("确认清空所有小组结果？")) return;
+        const st = readState();
+        st.teams = [];
+        st.activeTeam = null;
+        writeState(st);
+        teamSummary.textContent = "";
+        rankingBody.innerHTML = "";
+        refresh();
+      });
+      mpOpenCreate.addEventListener("click", function () {
+        // React 多人模式入口由 /multiplayer 承载。
+      });
+      mpOpenJoin.addEventListener("click", function () {
+        mpJoinPanel.style.display = mpJoinPanel.style.display === "none" ? "block" : "none";
+      });
+      mpCreateBtn.addEventListener("click", function () {
+        createMultiplayerTeam().catch((err) => {
+          mpOutput.textContent = `建组失败: ${err.message || err}`;
+        });
+      });
+      mpJoinBtn.addEventListener("click", function () {
+        joinMultiplayerTeam().catch((err) => {
+          mpOutput.textContent = `加入失败: ${err.message || err}`;
+        });
+      });
+
+      bootstrapPersistence()
+        .then(refreshDbStatus)
+        .then(refreshRanking)
+        .catch(() => {});
+      refresh();
+    })();
+  </script>
+</body>
+</html>

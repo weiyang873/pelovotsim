@@ -1,0 +1,28 @@
+# secrets
+.env
+.env.*
+
+# node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# local db / artifacts
+*.db
+*.sqlite
+*.log
+artifacts/
+client/dist/
+data/llm_logs/
+data/persona_sim_logs/
+data/sim_logs/
+data/sim_test_report_*.json
+data/score_cache.json
+data/tag_cache.json
+data/llm_sessions.json
+data/vp_sessions.json
+data/marketing_sessions.json
+
+# OS
+.DS_Store

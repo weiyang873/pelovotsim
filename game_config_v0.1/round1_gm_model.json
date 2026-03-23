@@ -1,0 +1,95 @@
+{
+  "A_min": 0.2,
+  "sigmoid_a": 5.0,
+  "beta_arch": 0.2,
+  "GM_cap": 0.65,
+
+  "fee_direct": 0.1,
+  "fee_distributor": 0.28,
+  "fee_ecommerce": 0.16,
+
+  "COGS_base_ToC": 2200,
+  "COGS_base_ToB": 3500,
+
+  "m_age": {
+    "ELDER": 1.1,
+    "ADULT": 1.0,
+    "CHILD": 0.95
+  },
+
+  "m_arch": {
+    "Experience": 1.05,
+    "Hybrid": 1.0,
+    "Function": 0.95
+  },
+
+  "Fit_age": {
+    "Experience": {
+      "ELDER": 0.9,
+      "ADULT": 0.8,
+      "CHILD": 0.7
+    },
+    "Hybrid": {
+      "ELDER": 0.8,
+      "ADULT": 0.8,
+      "CHILD": 0.8
+    },
+    "Function": {
+      "ELDER": 0.75,
+      "ADULT": 0.8,
+      "CHILD": 0.85
+    }
+  },
+
+  "Fit_strategy": {
+    "Experience": {
+      "DIFF": 0.9,
+      "COST": 0.6
+    },
+    "Hybrid": {
+      "DIFF": 0.8,
+      "COST": 0.75
+    },
+    "Function": {
+      "DIFF": 0.7,
+      "COST": 0.9
+    }
+  },
+
+  "Fit_customer": {
+    "Experience": {
+      "ToC": 0.9,
+      "ToB": 0.7
+    },
+    "Hybrid": {
+      "ToC": 0.8,
+      "ToB": 0.8
+    },
+    "Function": {
+      "ToC": 0.7,
+      "ToB": 0.9
+    }
+  },
+
+  "w_age": 0.45,
+  "w_str": 0.35,
+  "w_cust": 0.2,
+
+  "target_gm_suggest_multiplier": 0.85,
+
+  "channel_fee_rate": {
+    "DIRECT": 0.1,
+    "ECOM": 0.16,
+    "DISTRIBUTOR": 0.28
+  },
+
+  "cogs_proxy_by_customer_type": {
+    "B2C": 2200,
+    "B2B": 3500
+  },
+
+  "gm_bounds": {
+    "min": 0.2,
+    "cap": 0.7
+  }
+}

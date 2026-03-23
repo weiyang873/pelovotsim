@@ -1,0 +1,7 @@
+{
+  "baseline_bom": 1800,
+  "yield_buffer": 0.1,
+  "warranty_buffer": 0.04,
+  "target_gross_margin": 0.42,
+  "target_gm_default": 0.42
+}

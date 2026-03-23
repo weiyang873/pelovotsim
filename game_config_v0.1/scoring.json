@@ -1,0 +1,14 @@
+{
+  "round1": {
+    "growth_map": {
+      "LOW": 0.90,
+      "MEDIUM": 1.00,
+      "HIGH": 1.10
+    },
+    "crowding_map": {
+      "LOW": 1.08,
+      "MEDIUM": 1.00,
+      "HIGH": 0.92
+    }
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "g_e_tier": {
+    "Low": 0.9,
+    "Med": 1.0,
+    "High": 1.1
+  },
+  "h_crowding": {
+    "Low": 0.9,
+    "Med": 1.0,
+    "High": 1.1
+  },
+  "m_reach": {
+    "Low": 0.95,
+    "Med": 1.0,
+    "High": 1.05
+  },
+  "thresholds": {
+    "S_to_M": 0.95,
+    "M_to_L": 1.15
+  },
+  "base_size": {
+    "ToC_Differentiation_Child": 0.92,
+    "ToC_Differentiation_Adult": 1.08,
+    "ToC_Differentiation_Elder": 1.0,
+    "ToC_CostLeadership_Child": 1.0,
+    "ToC_CostLeadership_Adult": 1.12,
+    "ToC_CostLeadership_Elder": 0.96,
+    "ToB_Differentiation_Child": 0.86,
+    "ToB_Differentiation_Adult": 1.0,
+    "ToB_Differentiation_Elder": 0.88,
+    "ToB_CostLeadership_Child": 0.9,
+    "ToB_CostLeadership_Adult": 0.98,
+    "ToB_CostLeadership_Elder": 0.84
+  },
+  "elasticity_hint": {
+    "ToC_Differentiation_Child": 1.4,
+    "ToC_Differentiation_Adult": 1.2,
+    "ToC_Differentiation_Elder": 1.1,
+    "ToC_CostLeadership_Child": 1.8,
+    "ToC_CostLeadership_Adult": 1.6,
+    "ToC_CostLeadership_Elder": 1.4,
+    "ToB_Differentiation_Child": 0.9,
+    "ToB_Differentiation_Adult": 1.0,
+    "ToB_Differentiation_Elder": 0.8,
+    "ToB_CostLeadership_Child": 1.1,
+    "ToB_CostLeadership_Adult": 1.2,
+    "ToB_CostLeadership_Elder": 1.0
+  }
+}

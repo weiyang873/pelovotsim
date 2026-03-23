@@ -1,0 +1,701 @@
+const crypto = require("node:crypto");
+const { runSql, sqlQuote } = require("../db/pgSql");
+const { chatCompletion } = require("../llm/deepseekClient");
+const { withLlmLogging } = require("../llm/llm_logger");
+const Round2 = require("./round2Routes");
+const PROMPT_CACHE_VERSION = "teacher_debrief_v2";
+
+function makeResponse(status, body) {
+  return { status, body };
+}
+
+function normalizeSessionId(value) {
+  const raw = String(value || "").trim();
+  return raw || "default";
+}
+
+function safeJsonParse(text, fallback) {
+  if (text == null || text === "") return fallback;
+  if (typeof text === "object") return text;
+  try {
+    return JSON.parse(text);
+  } catch (_) {
+    return fallback;
+  }
+}
+
+function normalizeTeacherCode(value) {
+  return String(value || "").trim();
+}
+
+function readTeacherCode({ headers, query, body }) {
+  const hdrs = headers || {};
+  const auth = String(hdrs.authorization || hdrs.Authorization || "").trim();
+  if (/^Bearer\s+/i.test(auth)) {
+    return normalizeTeacherCode(auth.replace(/^Bearer\s+/i, ""));
+  }
+  return normalizeTeacherCode(
+    body?.code ||
+    (typeof query?.get === "function" ? query.get("code") : query?.code) ||
+    hdrs["x-admin-code"] ||
+    hdrs["x-teacher-code"] ||
+    hdrs["x-access-code"]
+  );
+}
+
+function verifyTeacherAuth(ctx) {
+  const expected = normalizeTeacherCode(process.env.ADMIN_CODE);
+  if (!expected) return makeResponse(500, { ok: false, error: "ADMIN_CODE not configured" });
+  const actual = readTeacherCode(ctx);
+  if (!actual || actual !== expected) return makeResponse(403, { ok: false, error: "密码错误" });
+  return makeResponse(200, { ok: true });
+}
+
+async function ensureSchema() {
+  await Round2.ensureSchema();
+  await runSql(`
+    ALTER TABLE teams ADD COLUMN IF NOT EXISTS session_id TEXT DEFAULT 'default';
+    UPDATE teams SET session_id = 'default' WHERE session_id IS NULL;
+
+    CREATE TABLE IF NOT EXISTS debrief_cache (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      round INTEGER NOT NULL,
+      type TEXT NOT NULL,
+      content TEXT NOT NULL,
+      generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_debrief_cache_lookup
+      ON debrief_cache(session_id, round, type);
+  `);
+}
+
+function formatArchitectureLabel(arch) {
+  const raw = String(arch || "").trim().toLowerCase();
+  if (raw === "experience") return "体验●";
+  if (raw === "hybrid") return "混合▲";
+  if (raw === "function") return "功能■";
+  return String(arch || "");
+}
+
+function formatGridLabel(gridId) {
+  const raw = String(gridId || "").trim();
+  if (!raw) return "";
+  const parts = raw.split("_");
+  const channelMap = { B2B: "ToB", TOB: "ToB", B2C: "ToC", TOC: "ToC" };
+  const strategyMap = { DIFFERENTIATION: "差异化", DIFF: "差异化", COST: "成本" };
+  const focusMap = {
+    ELDER: "老人",
+    ADULT: "成人",
+    CHILD: "儿童",
+    EXPERIENCE: "体验",
+    HYBRID: "混合",
+    MIXED: "混合",
+    FUNCTION: "功能"
+  };
+  return [
+    channelMap[String(parts[0] || "").toUpperCase()] || parts[0] || "",
+    strategyMap[String(parts[1] || "").toUpperCase()] || parts[1] || "",
+    focusMap[String(parts[2] || "").toUpperCase()] || parts[2] || ""
+  ].filter(Boolean).join("·");
+}
+
+function extractVpField(text, key) {
+  const re = new RegExp(`${key}\\s*[：:]\\s*([^\\n]+)`);
+  const match = String(text || "").match(re);
+  return match ? match[1].trim() : "";
+}
+
+function normalizeRadar(radar) {
+  const src = radar && typeof radar === "object" ? radar : {};
+  return {
+    interaction: Number(src.interaction || 0),
+    perception: Number(src.perception || 0),
+    motion: Number(src.motion != null ? src.motion : src.mobility != null ? src.mobility : 0),
+    safety: Number(src.safety != null ? src.safety : src.safety_privacy != null ? src.safety_privacy : 0),
+    extend: Number(src.extend != null ? src.extend : src.integration != null ? src.integration : 0),
+    ops: Number(src.ops != null ? src.ops : src.operations != null ? src.operations : 0)
+  };
+}
+
+function computeCsvMetrics(team) {
+  const grid = String(team?.r1?.grid || "");
+  const price = Number(team?.r2?.price || 0);
+  const dCOGS = Number(team?.r2?.dCOGS || 0);
+  const units = Number(team?.r2?.units || 0);
+  const profit = Number(team?.r2?.profit || 0);
+  const f = grid.includes("B2B") ? 0.15 : 0.25;
+  const totalCost = 2000 + dCOGS;
+  const gm = price > 0 ? ((price * (1 - f) - totalCost) / price) * 100 : 0;
+  const roi = units > 0 && dCOGS > 0 ? (profit / (units * dCOGS)) * 100 : 0;
+  const consistent = String(team?.r1?.grid || "") === String(team?.r2?.bestGrid || "") ? "是" : "否";
+  return { gm, roi, consistent };
+}
+
+function csvEscape(value) {
+  const str = value == null ? "" : String(value);
+  return `"${str.replace(/"/g, "\"\"")}"`;
+}
+
+function generateCsv(teams) {
+  const headers = [
+    "组名", "格子", "架构", "VP", "C", "G", "E", "Eadj", "SAM", "WTPadj",
+    "定价", "dCOGS", "卡数", "风险", "产品力", "销量", "利润", "单台利润",
+    "毛利率", "研发ROI", "R2最匹配格子", "战略一致"
+  ];
+  const rows = (Array.isArray(teams) ? teams : []).map((team) => {
+    const metrics = computeCsvMetrics(team);
+    return [
+      team.name || "",
+      team.r1?.grid || "",
+      team.r1?.arch || "",
+      team.r1?.vp || "",
+      team.r1?.C ?? "",
+      team.r1?.G ?? "",
+      team.r1?.E ?? "",
+      team.r1?.Eadj ?? "",
+      team.r1?.sam ?? "",
+      team.r1?.wtpAdj ?? "",
+      team.r2?.price ?? "",
+      team.r2?.dCOGS ?? "",
+      team.r2?.cardCount ?? "",
+      team.r2?.riskTotal ?? "",
+      team.r2?.vscore ?? "",
+      team.r2?.units ?? "",
+      team.r2?.profit ?? "",
+      team.r2?.profitPerUnit ?? "",
+      Math.round(metrics.gm),
+      Math.round(metrics.roi),
+      team.r2?.bestGrid || "",
+      metrics.consistent
+    ].map(csvEscape).join(",");
+  });
+  return [headers.map(csvEscape).join(","), ...rows].join("\n");
+}
+
+async function getLatestActivityIso(sessionId) {
+  await ensureSchema();
+  const sid = normalizeSessionId(sessionId);
+  const rows = await runSql(`
+    SELECT MAX(ts) AS latest_ts
+    FROM (
+      SELECT MAX(t.created_at)::text AS ts
+      FROM teams t
+      WHERE COALESCE(t.session_id, 'default') = ${sqlQuote(sid)}
+
+      UNION ALL
+
+      SELECT MAX(vs.updated_at)::text AS ts
+      FROM vp_sessions vs
+      JOIN teams t ON t.id = vs.team_key
+      WHERE COALESCE(t.session_id, 'default') = ${sqlQuote(sid)}
+
+      UNION ALL
+
+      SELECT MAX(submitted_at)::text AS ts
+      FROM round2_submissions
+      WHERE session_id = ${sqlQuote(sid)}
+
+      UNION ALL
+
+      SELECT MAX(updated_at)::text AS ts
+      FROM fg_team_radar
+      WHERE session_id = ${sqlQuote(sid)}
+
+      UNION ALL
+
+      SELECT MAX(computed_at)::text AS ts
+      FROM round2_results
+      WHERE session_id = ${sqlQuote(sid)}
+    ) q;
+  `);
+  return String(rows[0]?.latest_ts || "");
+}
+
+async function getCache(sessionId, round, type) {
+  await ensureSchema();
+  const rows = await runSql(`
+    SELECT id, content, generated_at
+    FROM debrief_cache
+    WHERE session_id = ${sqlQuote(normalizeSessionId(sessionId))}
+      AND round = ${Number(round || 0)}
+      AND type = ${sqlQuote(type)}
+    LIMIT 1;
+  `);
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    id: row.id,
+    generated_at: row.generated_at,
+    content: safeJsonParse(row.content, null)
+  };
+}
+
+async function setCache(sessionId, round, type, content) {
+  await ensureSchema();
+  const sid = normalizeSessionId(sessionId);
+  const id = `${sid}:${round}:${type}`;
+  await runSql(`
+    INSERT INTO debrief_cache (id, session_id, round, type, content, generated_at)
+    VALUES (
+      ${sqlQuote(id)},
+      ${sqlQuote(sid)},
+      ${Number(round || 0)},
+      ${sqlQuote(type)},
+      ${sqlQuote(JSON.stringify(content || {}))},
+      NOW()
+    )
+    ON CONFLICT(id) DO UPDATE SET
+      content = EXCLUDED.content,
+      generated_at = EXCLUDED.generated_at;
+  `);
+}
+
+function cacheIsFresh(cache, latestActivityIso) {
+  if (!cache?.generated_at) return false;
+  if (cache?.content?.prompt_version !== PROMPT_CACHE_VERSION) return false;
+  if (!latestActivityIso) return true;
+  const cacheTime = new Date(cache.generated_at).getTime();
+  const latestTime = new Date(latestActivityIso).getTime();
+  if (!Number.isFinite(cacheTime) || !Number.isFinite(latestTime)) return false;
+  return cacheTime >= latestTime;
+}
+
+async function getTeamsForSession(sessionId) {
+  await ensureSchema();
+  const sid = normalizeSessionId(sessionId);
+  return runSql(`
+    SELECT
+      id,
+      team_name,
+      team_size,
+      created_at,
+      COALESCE(session_id, 'default') AS session_id,
+      final_grid_id,
+      final_architecture,
+      final_vp_text,
+      final_vp_c,
+      final_vp_g,
+      final_vp_e_raw,
+      final_vp_e_adj,
+      final_sam,
+      final_wtp_adj,
+      final_vp_scores
+    FROM teams
+    WHERE COALESCE(session_id, 'default') = ${sqlQuote(sid)}
+    ORDER BY created_at ASC, team_name ASC;
+  `);
+}
+
+async function getMarketMatchStrength(teamId) {
+  const rows = await runSql(`
+    SELECT effect_applied
+    FROM jinang_settlements
+    WHERE team_id = ${sqlQuote(teamId)} AND jinang_type = 'market';
+  `);
+  let best = 0;
+  rows.forEach((row) => {
+    const effect = safeJsonParse(row.effect_applied, {});
+    const strength = Number(effect.match_strength || effect.matchStrength || 0);
+    if (Number.isFinite(strength)) best = Math.max(best, strength);
+  });
+  return Number(best.toFixed(2));
+}
+
+async function buildTeamRecord(teamRow, sessionId) {
+  const rawScores = safeJsonParse(teamRow.final_vp_scores, {}) || {};
+  const r1 = {
+    grid: teamRow.final_grid_id || "",
+    gridLabel: formatGridLabel(teamRow.final_grid_id),
+    arch: formatArchitectureLabel(teamRow.final_architecture),
+    vp: String(teamRow.final_vp_text || "").replace(/\s+/g, " ").trim(),
+    who: extractVpField(teamRow.final_vp_text, "WHO"),
+    pain: extractVpField(teamRow.final_vp_text, "PAIN"),
+    how: extractVpField(teamRow.final_vp_text, "HOW"),
+    C: teamRow.final_vp_c != null ? Number(teamRow.final_vp_c) : Number(rawScores.C || 0),
+    G: teamRow.final_vp_g != null ? Number(teamRow.final_vp_g) : Number(rawScores.G || 0),
+    E: teamRow.final_vp_e_raw != null ? Number(teamRow.final_vp_e_raw) : Number(rawScores.E || 0),
+    Eadj: teamRow.final_vp_e_adj != null ? Number(teamRow.final_vp_e_adj) : Number(rawScores.E || 0),
+    sam: teamRow.final_sam != null ? Number(teamRow.final_sam) : null,
+    wtpAdj: teamRow.final_wtp_adj != null ? Number(teamRow.final_wtp_adj) : null,
+    jinangMatch: await getMarketMatchStrength(teamRow.id)
+  };
+
+  const snapshot = await Round2.getTeamResultSnapshot(teamRow.id, sessionId);
+  const result = snapshot?.result?.result || {};
+  const bestGrid = snapshot?.result?.best_grid || snapshot?.submission?.best_grid || r1.grid;
+  const cards = Array.isArray(snapshot?.submission?.cards)
+    ? snapshot.submission.cards.map((item) => item.label || `${item.name || item.id}·${item.tierLabel || item.tier || ""}`)
+    : [];
+
+  const r2 = {
+    price: snapshot?.submission?.price ?? null,
+    dCOGS: snapshot?.submission?.dcogs ?? null,
+    cardCount: snapshot?.submission?.card_count ?? 0,
+    riskTotal: snapshot?.submission?.risk_total ?? null,
+    vscore: snapshot?.result?.vscore ?? null,
+    radar: normalizeRadar(snapshot?.radar?.radar || {}),
+    bestGrid,
+    bestGridLabel: formatGridLabel(bestGrid),
+    units: snapshot?.result?.units ?? null,
+    profit: snapshot?.result?.profit ?? null,
+    profitPerUnit: snapshot?.result?.profit_per_unit ?? null,
+    submittedAt: snapshot?.submission?.submitted_at || null,
+    cards,
+    roi: result.roi == null ? null : Number(result.roi),
+    gm: result.actualGm == null ? null : Number(result.actualGm)
+  };
+
+  return {
+    id: teamRow.id,
+    name: teamRow.team_name || teamRow.id,
+    members: Number(teamRow.team_size || 0),
+    r1,
+    r2
+  };
+}
+
+async function buildDebriefData(sessionId) {
+  const sid = normalizeSessionId(sessionId);
+  const teamRows = await getTeamsForSession(sid);
+  const teams = [];
+  for (const row of teamRows) {
+    teams.push(await buildTeamRecord(row, sid));
+  }
+
+  const meta = {
+    totalStudents: teams.reduce((sum, team) => sum + Number(team.members || 0), 0),
+    totalTeams: teams.length,
+    teamsSubmittedR1: teams.filter((team) => team.r1?.grid).length,
+    teamsSubmittedR2: teams.filter((team) => team.r2?.price != null && team.r2?.profit != null).length
+  };
+
+  return { teams, meta };
+}
+
+function compactRound1PromptData(data) {
+  return (data.teams || []).map((team) => ({
+    组别: team.name,
+    定位: team.r1.gridLabel,
+    架构: team.r1.arch,
+    VP: team.r1.vp,
+    C: team.r1.C,
+    G: team.r1.G,
+    E: team.r1.E,
+    Eadj: team.r1.Eadj,
+    SAM: team.r1.sam,
+    WTPadj: team.r1.wtpAdj,
+    锦囊匹配: team.r1.jinangMatch
+  }));
+}
+
+function compactRound2PromptData(data) {
+  return (data.teams || [])
+    .filter((team) => Number.isFinite(Number(team.r2?.profit)))
+    .map((team) => ({
+      组别: team.name,
+      R1定位: team.r1.gridLabel,
+      定价: team.r2.price,
+      dCOGS: team.r2.dCOGS,
+      卡数: team.r2.cardCount,
+      风险: team.r2.riskTotal,
+      产品力: team.r2.vscore,
+      雷达: team.r2.radar,
+      匹配格子: team.r2.bestGridLabel,
+      销量: team.r2.units,
+      利润: team.r2.profit,
+      单台利润: team.r2.profitPerUnit,
+      毛利率: team.r2.gm,
+      提交时间: team.r2.submittedAt,
+      卡片: team.r2.cards
+    }));
+}
+
+function buildRound2PromptSummary(data) {
+  const validTeams = (data.teams || [])
+    .filter((team) => Number.isFinite(Number(team.r2?.profit)))
+    .map((team) => ({
+      组别: team.name,
+      R1定位: team.r1.gridLabel,
+      R2匹配格子: team.r2.bestGridLabel,
+      定价: Number(team.r2.price || 0),
+      dCOGS: Number(team.r2.dCOGS || 0),
+      产品力: Number(team.r2.vscore || 0),
+      销量: Number(team.r2.units || 0),
+      利润: Number(team.r2.profit || 0),
+      毛利率: team.r2.gm == null ? null : Number(team.r2.gm),
+      提交时间: team.r2.submittedAt || ""
+    }));
+
+  const byProfitDesc = validTeams.slice().sort((a, b) => b.利润 - a.利润);
+  const byProfitAsc = validTeams.slice().sort((a, b) => a.利润 - b.利润);
+  const byDcogsDesc = validTeams.slice().sort((a, b) => b.dCOGS - a.dCOGS);
+  const bySubmitDesc = validTeams
+    .slice()
+    .sort((a, b) => String(b.提交时间 || "").localeCompare(String(a.提交时间 || "")));
+
+  return {
+    总组数: Number(data?.meta?.totalTeams || 0),
+    R1已提交组数: Number(data?.meta?.teamsSubmittedR1 || 0),
+    R2已提交组数: Number(data?.meta?.teamsSubmittedR2 || 0),
+    有效R2样本数: validTeams.length,
+    利润冠军候选: byProfitDesc.slice(0, 3),
+    利润最低候选: byProfitAsc.slice(0, 3),
+    高dCOGS候选: byDcogsDesc.slice(0, 3),
+    最新提交候选: bySubmitDesc.slice(0, 3)
+  };
+}
+
+function buildGlobalPrompt(round, data) {
+  if (Number(round) === 1) {
+    return [
+      "你是一位EMBA商业模拟课程的教学助手。以下是本届学生在Round 1（市场定位）的决策数据。",
+      "请生成一份中文课堂复盘讲解稿，供教授在课堂上直接使用。",
+      "",
+      "## 数据",
+      JSON.stringify(compactRound1PromptData(data), null, 2),
+      "",
+      "## 输出格式",
+      "",
+      "严格按以下结构输出，使用 Markdown 格式：",
+      "",
+      "## 全局观察",
+      "2-3句话总结本届学生整体的选择倾向。包括：",
+      "- 哪些格子最热门/最冷门",
+      "- 差异化 vs 成本策略的比例",
+      "- 架构选择（体验/混合/功能）和策略的一致性",
+      "- 有没有集体盲点（所有人都忽略的市场）",
+      "",
+      "## 典型对比：第X组 vs 第Y组",
+      "自动选择对比度最大的一对组。优先比较同格子但VP质量差距大的组，其次比较相似策略但结果分化大的组。",
+      "用3-5句话解释两组差异，必须引用具体数据（SAM、WTPadj、C/G/E）。",
+      "",
+      "## 课堂讨论引导",
+      "生成2个问题，每个问题都以“请第X组”开头，不要给答案。",
+      "",
+      "## 注意事项",
+      "- 语言风格像经验丰富的教授课堂发言，不像书面报告",
+      "- 不要说“数据显示”",
+      "- 可以用反问句增加互动感",
+      "- 引用数据时用自然语言"
+    ].join("\n");
+  }
+
+  return [
+    "你是一位EMBA商业模拟课程的教学助手。以下是本届学生在Round 2（产品研发+定价）的完整决策和结果数据。",
+    "请生成一份中文课堂复盘讲解稿，供教授在课堂上直接使用。",
+    "",
+    "## 数据",
+    JSON.stringify({
+      汇总: buildRound2PromptSummary(data),
+      有效样本: compactRound2PromptData(data)
+    }, null, 2),
+    "",
+    "## 输出格式",
+    "",
+    "严格按以下结构输出，使用 Markdown 格式：",
+    "",
+    "## 全局观察",
+    "2-3句话总结结果分布。必须包括：",
+    "- 利润冠军是谁，赢在哪里",
+    "- 利润最低的已提交组，问题出在哪里",
+    "- 一个出乎意料的发现",
+    "",
+    "## 利润冠军分析：第X组（定位，Y万）",
+    "3-5句话深入分析冠军成功原因，必须包括赛道、选卡纪律、定价精准度，并引用具体数字。",
+    "",
+    "## 堆料教训：第X组（定位，Y万）",
+    "优先选择“已提交且亏损”或“dCOGS 最高且利润明显不佳”的组；如果有效样本只有2组，就直接选择亏损或表现更差的那一组。分析高成本如何被渠道费放大，以及如果降档会怎样。",
+    "",
+    "## 战略一致性",
+    "一句话总结多少组R1和R2保持一致；如果有跑偏的组，用2句话说明原因和结果。",
+    "",
+    "## 课堂讨论引导",
+    "生成3个问题，分别关于渠道费结构效应、ToB vs ToC利润差异、堆料 vs 精准选卡。",
+    "",
+    "## 强约束",
+    "- 只允许从“已提交且有有效利润结果”的组里选冠军组和最低利润组，严禁把未提交空白组写成最低利润组",
+    "- 如果有效样本数 <= 3，必须逐一提到全部有效样本，不能只讲冠军",
+    "- 如果存在亏损组，必须明确点名至少1个亏损组并解释亏损原因",
+    "- 如果存在最新提交的有效样本，优先把它纳入“出乎意料的发现”或“堆料教训”",
+    "- 可以提到未提交组，但只能放在“战略执行断层”语境里，不能把它们当成经营结果样本",
+    "",
+    "## 注意事项",
+    "- 语言风格同Round 1",
+    "- 毛利率公式：GM = (P×(1-f) - V - dCOGS) / P，其中 V=2000，ToB f=0.15，ToC f=0.25",
+    "- 研发ROI = 利润 ÷ (销量 × dCOGS)",
+    "- 不要暴露模型参数，只用自然语言描述因果",
+    "- 若样本少，要直接说“当前有效样本较少”，但仍要完成比较，不要说“无法分析”或“暂无典型组别”"
+  ].join("\n");
+}
+
+function extractJsonObject(text) {
+  const raw = String(text || "").replace(/```json|```/g, "").trim();
+  const start = raw.indexOf("{");
+  const end = raw.lastIndexOf("}");
+  if (start >= 0 && end > start) {
+    return safeJsonParse(raw.slice(start, end + 1), null);
+  }
+  return safeJsonParse(raw, null);
+}
+
+async function generateGlobalDebrief(round, sessionId) {
+  const sid = normalizeSessionId(sessionId);
+  const latestActivity = await getLatestActivityIso(sid);
+  const cache = await getCache(sid, round, "global");
+  if (cacheIsFresh(cache, latestActivity) && cache?.content?.text) {
+    return cache.content;
+  }
+
+  const data = await buildDebriefData(sid);
+  const prompt = buildGlobalPrompt(round, data);
+  const globalMessages = [
+    { role: "system", content: "你是EMBA课程的课堂复盘助手。请严格遵守用户给定结构输出中文 Markdown。" },
+    { role: "user", content: prompt }
+  ];
+  const text = await withLlmLogging({
+    caller: "teacherDebrief.generateGlobalDebrief",
+    teamId: null,
+    memberId: null,
+    messages: globalMessages
+  }, () => chatCompletion(globalMessages, { temperature: 0.4, max_tokens: 1400 }));
+
+  const payload = {
+    round: Number(round),
+    session_id: sid,
+    prompt_version: PROMPT_CACHE_VERSION,
+    text: String(text || "").trim()
+  };
+  await setCache(sid, round, "global", payload);
+  return payload;
+}
+
+async function generateTeamReview(teamId, sessionId) {
+  const sid = normalizeSessionId(sessionId);
+  const type = `team_${teamId}`;
+  const latestActivity = await getLatestActivityIso(sid);
+  const cache = await getCache(sid, 2, type);
+  if (cacheIsFresh(cache, latestActivity) && cache?.content?.insight && cache?.content?.review) {
+    return cache.content;
+  }
+
+  const data = await buildDebriefData(sid);
+  const team = (data.teams || []).find((item) => item.id === teamId);
+  if (!team) throw new Error("team not found");
+
+  const profits = data.teams.map((item) => Number(item.r2?.profit || 0)).filter((n) => Number.isFinite(n));
+  const dcogs = data.teams.map((item) => Number(item.r2?.dCOGS || 0)).filter((n) => Number.isFinite(n));
+  const prompt = [
+    "你是一位EMBA商业模拟课程的教学助手。以下是一个团队的完整决策数据（Round 1 + Round 2）。",
+    "请生成两段文字。",
+    "",
+    "## 数据",
+    JSON.stringify(team, null, 2),
+    `全班利润范围：${Math.min(...profits, 0)} - ${Math.max(...profits, 0)}`,
+    `全班dCOGS范围：${Math.min(...dcogs, 0)} - ${Math.max(...dcogs, 0)}`,
+    "",
+    "## 输出格式（严格JSON）",
+    "{",
+    '  "insight": "一句话（20-40字），概括这组做对了什么或做错了什么，像报纸标题一样精炼",',
+    '  "review": "3-5句话的详细分析（150-250字）。必须包含：(1)从R1到R2的战略一致性，(2)选卡亮点或问题，(3)定价和渠道的互动效果。引用具体数字。"',
+    "}",
+    "",
+    "## 注意事项",
+    "- 返回纯 JSON，不要 markdown 代码块",
+    "- insight 要有判断性，不要中性描述",
+    "- review 语气像教授点评学生作业，直接但不尖锐"
+  ].join("\n");
+
+  const teamMessages = [
+    { role: "system", content: "你是EMBA课堂点评助手。只输出 JSON。" },
+    { role: "user", content: prompt }
+  ];
+  const raw = await withLlmLogging({
+    caller: "teacherDebrief.generateTeamReview",
+    teamId,
+    memberId: null,
+    messages: teamMessages
+  }, () => chatCompletion(teamMessages, { temperature: 0.4, max_tokens: 700 }));
+  const parsed = extractJsonObject(raw);
+  if (!parsed?.insight || !parsed?.review) {
+    throw new Error("team review parse failed");
+  }
+  const payload = {
+    team_id: teamId,
+    session_id: sid,
+    prompt_version: PROMPT_CACHE_VERSION,
+    insight: String(parsed.insight).trim(),
+    review: String(parsed.review).trim()
+  };
+  await setCache(sid, 2, type, payload);
+  return payload;
+}
+
+async function debriefDataApi(query) {
+  try {
+    const data = await buildDebriefData(query?.session_id || query?.sessionId);
+    return makeResponse(200, { ok: true, ...data });
+  } catch (e) {
+    return makeResponse(500, { ok: false, error: e.message });
+  }
+}
+
+async function generateDebriefApi(body) {
+  try {
+    const round = Number(body?.round || 0);
+    if (round !== 1 && round !== 2) {
+      return makeResponse(400, { ok: false, error: "round must be 1 or 2" });
+    }
+    const out = await generateGlobalDebrief(round, body?.session_id || body?.sessionId);
+    return makeResponse(200, { ok: true, ...out });
+  } catch (e) {
+    return makeResponse(500, { ok: false, error: e.message });
+  }
+}
+
+async function generateTeamReviewApi(body) {
+  try {
+    const teamId = String(body?.team_id || body?.teamId || "").trim();
+    if (!teamId) return makeResponse(400, { ok: false, error: "team_id required" });
+    const out = await generateTeamReview(teamId, body?.session_id || body?.sessionId);
+    return makeResponse(200, { ok: true, ...out });
+  } catch (e) {
+    return makeResponse(500, { ok: false, error: e.message });
+  }
+}
+
+async function exportCsv(sessionId) {
+  const sid = normalizeSessionId(sessionId);
+  const data = await buildDebriefData(sid);
+  return {
+    filename: `teacher-debrief-${sid}.csv`,
+    csv: generateCsv(data.teams),
+    session_id: sid
+  };
+}
+
+async function exportPptApi() {
+  return makeResponse(501, { ok: false, error: "PPT 导出尚未实现" });
+}
+
+async function exportPdfApi() {
+  return makeResponse(501, { ok: false, error: "PDF 导出尚未实现" });
+}
+
+module.exports = {
+  ensureSchema,
+  verifyTeacherAuth,
+  debriefDataApi,
+  generateDebriefApi,
+  generateTeamReviewApi,
+  exportCsv,
+  exportPptApi,
+  exportPdfApi,
+  __test: {
+    formatGridLabel,
+    formatArchitectureLabel,
+    generateCsv,
+    computeCsvMetrics
+  }
+};

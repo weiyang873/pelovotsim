@@ -1,0 +1,1286 @@
+
+% !TEX TS-program = xelatex
+\documentclass[UTF8,12pt]{ctexart}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{booktabs,longtable,tabularx,array}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{microtype}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  urlcolor=blue,
+  citecolor=blue
+}
+
+\setlist[itemize]{noitemsep,topsep=4pt}
+\setlist[enumerate]{noitemsep,topsep=4pt}
+
+% Theorem environments
+\newtheorem{proposition}{命题}
+\newtheorem{corollary}{推论}
+\newtheorem{assumption}{假设}
+\newtheorem{definition}{定义}
+
+% Handy operators
+\DeclareMathOperator{\sigmoid}{sigmoid}
+\newcommand{\clip}{\operatorname{clip}}
+\newcommand{\E}{\mathbb{E}}
+
+\title{EMBA 仿真器 Round 1--Round 2（v7）\\统一世界观的经济学模型说明（含超详细附录）}
+\author{}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+本文档给出一个用于课堂战略仿真的两回合（Round 1 市场定位与结构约束、Round 2 用户访谈与研发实现）的统一经济学模型（v7）。
+核心统一点是：\emph{价格导致的采用率}与\emph{非价格竞争力导致的份额}在 Round 2 被显式分解为
+\[
+share = A(P)\cdot S,
+\]
+其中 $A(P)$ 复用 Round 1 的 adoption 曲线（由 WTP 与价格弹性刻画），$S$ 则由访谈信号与研发实现决定。
+附录提供：变量/参数全集、默认取值范围与校准方法、实现伪代码、边界条件与稳健性建议、以及若干命题/推论用于课堂解释与模型一致性检查。
+\end{abstract}
+
+\clearpage
+\setcounter{tocdepth}{2}
+\tableofcontents
+\clearpage
+
+\section{符号与高层结构}
+
+\subsection{两回合输入与输出}
+\textbf{Round 1}：学生在给定 12 格（或更一般的网格）市场单元 $g$ 中选择目标格子并配置渠道与架构标签，系统输出该格的结构约束：
+$(P^{\max}_g, GM^{\max}_g, COGS_{0,g}, f_g, TAM_g)$，并将其冻结进入 Round 2。
+
+\textbf{Round 2}：学生进行用户访谈获得需求雷达信号，并在研发卡牌空间中选择实现组合与（可选）定价 $P$。系统输出：
+份额 $share$、销量 $Units$、利润 $Profit$（硬件/一次性 + 订阅/服务）以及诊断项（超支、超载、依赖冲突、风险敞口等）。
+
+\subsection{关键统一分解}
+Round 2 的份额被写为：
+\begin{equation}
+share_g(P,\mathbf{x}) = A_g(P)\cdot S_g(\mathbf{x}),
+\end{equation}
+其中 $A_g(P)$ 仅依赖价格（与 Round 1 的 WTP 与弹性参数），$S_g(\mathbf{x})$ 仅依赖非价格因素 $\mathbf{x}$（访谈、研发、风险、复杂度等）。
+该分解使得模型口径在两个回合之间一致：Round 1 的 adoption 曲线不再“只用于推 Pmax”，而是成为 Round 2 需求曲线的价格部分。
+
+\section{Round 1：市场结构约束（定位、渠道、毛利上限）}
+
+\subsection{市场原语：WTP 与价格弹性}
+对每个市场单元 $g$，市场包提供：
+\begin{itemize}
+  \item $WTP_g$：支付意愿基准（可取中位/均值/标杆价位）。
+  \item $e_g>0$：价格弹性（越大表示越敏感）。
+  \item 其他可选：拥挤度/竞争强度 $\kappa_g$、增长/扩散速度等（v7 不要求）。
+\end{itemize}
+
+\subsection{采用率函数（adoption curve）}
+定义相对价格 $r=P/WTP_g$。采用率（对价格的可接受程度）设为：
+\begin{equation}
+A_g(P)=\left(\frac{1}{1+\exp\{a(r-1)\}}\right)^{e_g},
+\label{eq:adoption}
+\end{equation}
+其中 $a>0$ 为斜率（全局常数或按行业设定）。当 $P=WTP_g$ 时，括号内为 $1/2$，因此 $A_g$ 的水平由 $e_g$ 控制。
+
+\subsection{由最低可接受采用率反解价格上限 $P^{\max}$}
+给定阈值 $A_{\min}\in(0,1)$，定义 $P^{\max}_{g,\mathrm{base}}$ 满足：
+\begin{equation}
+A_g(P^{\max}_{g,\mathrm{base}})=A_{\min}.
+\end{equation}
+由式 \eqref{eq:adoption} 可得闭式：
+\begin{equation}
+P^{\max}_{g,\mathrm{base}}
+= WTP_g\left[1+\frac{1}{a}\ln\!\left(\frac{1}{A_{\min}^{1/e_g}}-1\right)\right].
+\label{eq:pmax_base}
+\end{equation}
+
+\subsection{架构匹配与文案系数对 $P^{\max}$ 的修正}
+学生在 Round 1 选择架构标签集合 $\mathcal{A}$，映射为匹配度 $Fit^{arch}_g\in[0,1]$（由标签与市场单元的兼容矩阵决定）。
+令
+\begin{equation}
+P^{\max}_{g,\mathrm{arch}} = P^{\max}_{g,\mathrm{base}}\cdot\left(1+\beta_{arch}(Fit^{arch}_g-0.5)\right),
+\end{equation}
+其中 $\beta_{arch}\in[0,1)$ 控制修正强度。
+
+价值主张文案（VP）经 LLM 评分得到离散系数 $fit^{text}_g\in\{0.95,1.00,1.05\}$（也可扩展为连续）。
+最终 Round 1 冻结的价格上限为：
+\begin{equation}
+P^{\max}_g = P^{\max}_{g,\mathrm{arch}}\cdot fit^{text}_g.
+\label{eq:pmax_final}
+\end{equation}
+
+\subsection{渠道费率 $f_g$ 的计算}
+学生选择渠道集合 $\mathcal{C}$ 及配比 $\{w_c\}_{c\in\mathcal{C}}$，满足 $\sum_c w_c=1$。
+渠道费率为加权平均：
+\begin{equation}
+f_g=\sum_{c\in\mathcal{C}} w_c f_c,
+\end{equation}
+其中 $f_c$ 是渠道 $c$ 的费率（佣金/获客成本占比/平台抽成等）。
+
+\subsection{成本锚：基准单位成本 $COGS_{0,g}$}
+Round 1 不对研发细项建模，而给出一个结构化成本锚：
+\begin{equation}
+COGS_{0,g} = C_0 \cdot m_{B2B/B2C}\cdot m_{age}\cdot m_{arch},
+\label{eq:cogs0}
+\end{equation}
+其中 $C_0$ 为全局基准（例如基础 BOM+装配+物流），三类乘子分别由市场类型、目标人群、架构复杂度决定。
+
+\subsection{毛利上限 $GM^{\max}$（结构可行性）}
+定义毛利率 $GM\in[0,1)$。单位售价扣除渠道费后为 $P(1-f_g)$，单位毛利为 $P(1-f_g)-COGS_{0,g}$。
+等价地，若写为
+\[
+P=\frac{COGS_{0,g}}{1-GM-f_g},
+\]
+结构可行性要求 $P\le P^{\max}_g$，因此毛利上限为：
+\begin{equation}
+GM^{\max}_g = 1 - f_g - \frac{COGS_{0,g}}{P^{\max}_g}.
+\label{eq:gmmax}
+\end{equation}
+当 $GM^{\max}_g<0$ 时表示 \emph{结构性亏损}：即便 $GM=0$ 也难以覆盖成本与渠道费。
+
+
+\subsubsection{目标毛利率 \texorpdfstring{$target\_GM$}{target\_GM} 的定义与用途（v7.1.2 补充）}
+Round 1 中允许学生（或教师）为每个市场单元设定一个\emph{目标毛利率} $target\_GM_g$，用于形成“战略意图/财务目标”的叙事锚点，并在后续回合对比实际表现。
+为保证可行性，目标毛利率需被结构上限截断：
+\begin{equation}
+target\_GM_g \;=\; \min\big(target\_GM^{input}_g,\; GM^{\max}_g\big).
+\label{eq:target_gm_def}
+\end{equation}
+其中 $target\_GM^{input}_g$ 为学生输入（或课程默认值）。\textbf{重要说明：}在 v7.1 的核心机制中，$target\_GM_g$ 仅作为\emph{展示与评价指标}进入 Round 2 的复盘面板（例如计算 $GM^{realized}_g-target\_GM_g$ 的差距），\textbf{不直接影响} Round 2 的需求、份额或利润计算，以避免引入额外的需求端假设。
+
+\subsection{Round 1 输出冻结项}
+冻结进入 Round 2 的最小集合建议为：
+\[
+\left\{WTP_g, e_g, P^{\max}_g, f_g, COGS_{0,g}, TAM_g, H_g, H^{vp}_g, H^{eff}_g, (C,G,E)_g,target\_GM_g\right\}.
+\]
+其中 $TAM_g$ 是潜在销量规模（单位为台/户/席位等），$H_g$ 是情景时间窗/扩散系数（将份额映射到实际销量）。
+
+\subsubsection{VP 评分与“可捕捉规模”在 Round 1 冻结中的体现（v7.1 修订）}
+为增强课堂激励并与 Round 2 的销量结构保持一致，我们将 VP 评分仅作用于\textbf{可捕捉规模}（effective market size），而不改变外生的市场总盘子 $TAM_g$。
+
+\paragraph{VP 三维评分与两个派生指标}
+令 Round 1 的价值主张（VP）评分为三维指标 $(C,G,E)\in[0,1]^3$，分别代表：
+\emph{Coverage}（覆盖面/目标人群可达）、\emph{Generalizability}（痛点可泛化）、\emph{Effectiveness}（解决方案对痛点的有效性）。
+定义两个派生得分（分别对应“规模潜力/溢价潜力”）：
+\begin{equation}
+S^{vol}_g = C\cdot G\cdot \phi(E),\qquad
+S^{wtp}_g = C\cdot G\cdot \psi(E),
+\label{eq:vp_scores}
+\end{equation}
+其中 $\phi(\cdot),\psi(\cdot)$ 为单调函数（可取分段线性或 sigmoid），用于把有效性 $E$ 映射为规模/溢价的非线性增益。
+
+\paragraph{VP 对可捕捉规模的影响：$H^{vp}$ 与 $H^{eff}$}
+将 VP 的派生得分映射为“可捕捉规模乘子”：
+\begin{equation}
+H^{vp}_g = \clip\!\left(\omega_{vol} S^{vol}_g + \omega_{wtp} S^{wtp}_g,\;H^{vp}_{min},\;H^{vp}_{max}\right),
+\label{eq:H_vp}
+\end{equation}
+其中 $\omega_{vol},\omega_{wtp}\ge 0$ 且可令 $\omega_{vol}+\omega_{wtp}=1$；$H^{vp}_{min},H^{vp}_{max}$ 为课堂口径下的合理上下界（例如 $[0.3,1.0]$）。
+定义进入 Round 2 的有效扩散系数：
+\begin{equation}
+H^{eff}_g = H_g\cdot H^{vp}_g.
+\label{eq:H_eff}
+\end{equation}
+
+\paragraph{冻结展示的市场规模口径（UI 口径）}
+Round 1 的冻结页面建议同时展示两种规模（避免“VP 改变世界市场规模”的误解）：
+\begin{align}
+\text{总盘子（外生）: } & TAM_g,\\
+\text{可捕捉规模（含 VP）: } & MarketSize^{display}_g = TAM_g\cdot H^{eff}_g.
+\end{align}
+后者将用于 Round 2 的销量计算（见后文 Units 的定义）。
+
+
+\section{Round 2（v7）：访谈 + 研发 + 定价的统一闭环}
+
+\subsection{访谈雷达与需求权重融合}
+设有 $D$ 个需求维度（标签）$d=1,\dots,D$。访谈输出 1--10 分雷达 $r_d$，归一化：
+\begin{equation}
+s_d = \frac{r_d-1}{9}\in[0,1].
+\end{equation}
+做幂变换以增强区分度：
+\begin{equation}
+w^{int}_d = \frac{s_d^{\rho}}{\sum_{j=1}^D s_j^{\rho}},\quad \rho\ge 1.
+\end{equation}
+市场单元先验权重 $w^{grid}_d$ 来自 Round 1（或市场包）。证据强度 $evi\in[0,1]$ 决定后验融合：
+\begin{equation}
+w^{\star}_d = (1-\lambda evi)\,w^{grid}_d + (\lambda evi)\,w^{int}_d,\quad \lambda\in[0,1].
+\end{equation}
+
+\subsection{核心/非核心需求与覆盖率}
+给定阈值 $\tau_{core}$，定义核心集合：
+\[
+\mathcal{D}_{core}=\{d:w^{\star}_d\ge\tau_{core}\},\quad
+\mathcal{D}_{nice}=\{1,\dots,D\}\setminus\mathcal{D}_{core}.
+\]
+研发卡牌集合 $\mathcal{K}$ 通过标签映射覆盖部分需求。令 $\mathbb{I}(d\in cover(\mathcal{K}))$ 表示需求 $d$ 被覆盖。
+则覆盖率定义为加权覆盖：
+\begin{align}
+Cover_{core} &= \sum_{d\in\mathcal{D}_{core}} w^{\star}_d\cdot \mathbb{I}(d\in cover(\mathcal{K})),\\
+Cover_{nice} &= \sum_{d\in\mathcal{D}_{nice}} w^{\star}_d\cdot \mathbb{I}(d\in cover(\mathcal{K})).
+\end{align}
+
+\subsection{研发卡牌聚合：成本、负载、风险、订阅增益}
+对每张卡 $k\in\mathcal{K}$，给定属性：
+\[
+\Delta c_k,\;\ell_k,\;q_k,\;u_k,
+\]
+分别代表单位成本增量（可为负，表示降本）、系统负载（工程复杂度/算力/供应链压力 proxy）、风险增量、订阅/服务增益（提升 attach 或 LTV）。
+
+聚合为：
+\begin{align}
+\Delta COGS &= \sum_{k\in\mathcal{K}} \Delta c_k,\\
+Load &= \sum_{k\in\mathcal{K}} \ell_k,\\
+Risk &= \max\left(0,\sum_{k\in\mathcal{K}} q_k\right),\\
+SubLift &= \sum_{k\in\mathcal{K}} u_k.
+\end{align}
+Round 2 单位成本：
+\begin{equation}
+COGS_g = COGS_{0,g} + \Delta COGS.
+\end{equation}
+
+
+\subsection{技术锦囊（Jinang Tech Cards）对研发卡牌属性的修正（v7.1.2 补充）}
+为支持“个人锦囊/技术积累”在 Round 2 中发挥作用，我们引入\emph{技术锦囊卡}集合 $\mathcal{J}$。
+每张锦囊 $j\in\mathcal{J}$ 不直接提供覆盖（cover），而是对\emph{匹配的}研发能力卡 $k\in\mathcal{K}$ 的属性进行折扣/加成（降本、降风险、提效）。
+
+\paragraph{匹配强度}
+定义锦囊与研发卡的匹配强度 $m_{jk}\in[0,1]$（由标签匹配或规则匹配得到；工程上可用 tag overlap / cosine similarity）。
+对每张研发卡 $k$，聚合其受到的锦囊影响强度：
+\begin{equation}
+m_k = \max_{j\in\mathcal{J}} m_{jk}.
+\label{eq:jinang_match}
+\end{equation}
+（可选）若允许多张锦囊叠加，可用 $m_k = 1-\prod_{j}(1-m_{jk})$ 表示“互补叠加”。
+
+\paragraph{对卡牌属性的修正}
+给定折扣/加成系数 $\delta_c,\delta_q,\delta_u\ge 0$，对每张研发卡 $k$ 定义有效属性：
+\begin{align}
+\Delta c_k^{eff} &= \Delta c_k\cdot \big(1-\delta_c\, m_k\big),\\
+q_k^{eff} &= q_k\cdot \big(1-\delta_q\, m_k\big),\\
+u_k^{eff} &= u_k\cdot \big(1+\delta_u\, m_k\big),
+\end{align}
+并用 $\{\Delta c_k^{eff},q_k^{eff},u_k^{eff}\}$ 替换原属性参与后续聚合（式(聚合)）。
+解释口径：锦囊使同样研发在组织内更“顺滑”（更低成本/更低风险/更高交付质量）。
+
+\textbf{默认建议：} $\delta_c,\delta_q\in[0.10,0.35]$，$\delta_u\in[0,0.20]$；并对 $(1-\delta_c m_k)$ 下限做截断（例如不低于 0.5）以防止“免费降本”极端。
+
+\subsection{价值指数与“可溢价”闭环（研发 $\rightarrow$ WTP'}
+为使“研发投入可提高愿付”在统一世界观中成立，定义价值指数 $V\in[0,1]$：
+\begin{equation}
+V = \clip\!\Big(
+\omega_1 Cover_{core} + \omega_2 Cover_{nice} + \omega_3 SubLift^{norm}
+- \omega_4 Risk^{norm} - \omega_5 \frac{\max(0,\Delta COGS)}{C_0},
+\;0,\;1\Big).
+\label{eq:value_index}
+\end{equation}
+其中
+\begin{align}
+SubLift^{norm} &= \clip\!\left(\frac{SubLift}{SubLift_{cap}},0,1\right),\\
+Risk^{norm} &= \clip\!\left(\frac{Risk}{Risk_{cap}},0,1\right),
+\end{align}
+
+\paragraph{关于成本项在 $V$ 与 $z$ 中的“重复出现”}
+注意 $\max(0,\Delta COGS)/C_0$ 同时出现在价值指数 $V$（式 \eqref{eq:value_index} 的 $\omega_5$ 项）与非价格份额指数 $z$（式 \eqref{eq:z_nonprice} 的 $\beta_6$ 项）中，但二者\textbf{含义不同}：
+(1) $\omega_5$ 用于刻画“过度堆料削弱\emph{价值实现}”，从而通过 $WTP',P^{\max\prime}$ 影响可溢价空间；
+(2) $\beta_6$ 用于刻画“过度堆料增加\emph{交付摩擦}”，从而直接压制非价格竞争力 $S$。
+若课堂希望更简化、避免双通道，可将 $\omega_5$ 设为 0（让成本只通过 $\beta_6$ 起作用），或反之。
+
+
+$SubLift_{cap}$ 与 $Risk_{cap}$ 为\textbf{设计上限}（由“允许的卡牌组合空间”给定），用于保证各分量量纲一致并避免单张卡牌数值尺度直接“顶满”$V$。
+其中 $C_0$ 与 Round 1 成本锚一致，用于量纲归一。
+
+将 $V$ 映射为有效支付意愿提升：
+\begin{equation}
+WTP'_g = WTP_g\cdot (1+\gamma V),\quad \gamma\ge 0.
+\label{eq:wtp_prime}
+\end{equation}
+并在 Round 2 中用 $WTP'_g$ 进入 adoption 曲线。同时，为避免“Round 1 冻结的价格上限压死研发溢价空间”的机制冲突，我们\textbf{强制}定义 Round 2 的有效价格上限为同尺度上移：
+\begin{equation}
+P^{\max\prime}_g = P^{\max}_g\cdot (1+\gamma V)=P^{\max}_g\cdot \frac{WTP'_g}{WTP_g}.
+\label{eq:pmax_prime}
+\end{equation}
+实现约束：任何用于\textbf{护栏（clamp）}、\textbf{惩罚（超价）}或\textbf{展示（UI 上限）}的价格上限，一律使用 $P^{\max\prime}_g$，不得继续使用冻结的 $P^{\max}_g$。
+
+\subsection{价格采用率部分：$A_g(P)$}
+将式 \eqref{eq:adoption} 中的 $WTP_g$ 替换为 $WTP'_g$：
+\begin{equation}
+A_g(P)=\left(\frac{1}{1+\exp\left\{a\left(\frac{P}{WTP'_g}-1\right)\right\}}\right)^{e_g}.
+\label{eq:adoption_round2}
+\end{equation}
+（可选护栏）若 $P>P^{\max}_g(1+\gamma V)$，可额外施加强惩罚以避免课堂出现“离谱高价仍有量”的极端。
+
+\subsection{非价格竞争力部分：$S_g(\mathbf{x})$}
+定义非价格竞争力的线性指数：
+\begin{equation}
+z = \alpha_0 + \beta_2 Cover_{core} + \beta_3 Cover_{nice}
++ \beta_4 SubLift^{norm} - \beta_5 Risk^{norm} - \beta_6 \,\mathrm{Complexity},
+\label{eq:z_nonprice}
+\end{equation}
+并用 sigmoid 映射为非价格份额：
+\begin{equation}
+S_g(\mathbf{x}) = \sigmoid(z) = \frac{1}{1+\exp(-z)}.
+\end{equation}
+
+其中 $\mathrm{Complexity}$ 为工程复杂度诊断项（见附录实现口径），用于刻画“堆料会带来集成与协调成本”。冲突/依赖（Conflict）改为\textbf{提交校验}机制：在小组提交阶段若触发依赖未满足或互斥冲突则\textbf{阻止提交}，不进入份额/利润计算。
+
+\subsection{份额、销量与利润}
+\paragraph{份额与销量}
+\begin{equation}
+share_g = A_g(P)\cdot S_g(\mathbf{x}),\qquad
+Units_g = TAM_g\cdot H^{eff}_g\cdot share_g.
+\end{equation}
+
+\paragraph{硬件（或一次性）利润}
+\begin{equation}
+\pi^{hw} = P(1-f_g)-COGS_g,\qquad
+Profit^{hw}_g = Units_g\cdot \pi^{hw}.
+\end{equation}
+
+\paragraph{订阅/服务利润}
+设 attach 率为：
+\begin{equation}
+attach = \clip(\theta_0+\theta_1 Cover_{core}+\theta_2 SubLift^{norm}-\theta_3 Risk^{norm},0,1),
+\end{equation}
+订阅 LTV（每单位）为 $LTV_{sub}$（可由价格/套餐或 SubLift 决定），则
+\begin{equation}
+Profit^{sub}_g = Units_g\cdot attach \cdot LTV_{sub}.
+\end{equation}
+
+\paragraph{组织/工程惩罚（以利润为主）}
+将超支/超载的后果主要体现在利润端（延期、返工、售后、质量损失）：
+\begin{equation}
+Penalty_g = \lambda_B\cdot \max(0,\Delta COGS - B_g) + \lambda_L\cdot \max(0,Load-L_g),
+\label{eq:penalty_profit}
+\end{equation}
+其中 $B_g$ 为预算上限、$L_g$ 为负载上限（可按市场或组织能力设定）。
+最终利润：
+\begin{equation}
+Profit_g = Profit^{hw}_g + Profit^{sub}_g - Penalty_g.
+\end{equation}
+
+\section{模型简化原则与一致性检查（v7 设计意图）}
+
+\subsection{最少参数的闭环}
+v7 的“最少新增参数”思路是：
+\begin{itemize}
+  \item 价格曲线复用 Round 1：$(WTP_g,e_g,a)$ 已在市场包中；
+  \item 研发可溢价仅引入 $\gamma$（式 \eqref{eq:wtp_prime}）；
+  \item 超支/超载的后果主要移至利润端（式 \eqref{eq:penalty_profit}），避免份额被“打成 0”导致直觉违背。
+\end{itemize}
+
+\subsection{为什么要分解 $share=A\cdot S$}
+该分解让“降价换量”与“提升产品竞争力换量”在同一框架下共存：
+\begin{itemize}
+  \item 学生提高价格：$A(P)$ 下降；
+  \item 学生提升研发与覆盖：$S$ 上升且 $WTP'$ 上升，抵消 $A$ 的下降；
+  \item 过度堆料：$S$ 可能上升但 $Penalty$ 吃掉利润，实现课堂上的 trade-off。
+\end{itemize}
+
+\appendix
+\clearpage
+\section{附录 A：变量与参数全集（含建议默认值与含义）}
+本附录尽量做到“拿去就能实现/校准”。
+
+\subsection{A.1 变量表（按回合）}
+\begin{longtable}{p{0.18\textwidth}p{0.18\textwidth}p{0.54\textwidth}}
+\toprule
+符号 & 维度/范围 & 含义 \\
+\midrule
+$g$ & 网格单元 & 12 格中的一个市场单元（或一般化网格）\\
+$WTP_g$ & $(0,\infty)$ & 支付意愿基准（市场包给定）\\
+$e_g$ & $(0,\infty)$ & 价格弹性（市场包给定）\\
+$a$ & $(0,\infty)$ & adoption 曲线斜率（全局）\\
+$A_{\min}$ & $(0,1)$ & 反解 $P^{\max}$ 的采用率阈值\\
+$P^{\max}_g$ & $(0,\infty)$ & Round 1 冻结价格上限（式 \eqref{eq:pmax_final}）\\
+$P^{\max\prime}_g$ & $(0,\infty)$ & Round 2 有效价格上限（式 \eqref{eq:pmax_prime}），用于护栏/惩罚/展示\\
+$f_g$ & $[0,1)$ & 渠道费率（加权平均）\\
+$COGS_{0,g}$ & $(0,\infty)$ & Round 1 基准单位成本（式 \eqref{eq:cogs0}）\\
+$GM^{\max}_g$ & $(-\infty,1)$ & 毛利上限（式 \eqref{eq:gmmax}）\\
+$TAM_g$ & $(0,\infty)$ & 潜在销量规模（单位：台/户/席位）\\
+$H_g$ & $(0,1]$ & 时间窗/扩散系数\\
+$\mathcal{K}$ & 集合 & Round 2 研发卡集合\\
+$\Delta COGS$ & 实数 & 成本增量（可负）\\
+$Load$ & $(0,\infty)$ & 负载聚合\\
+$Risk$ & $[0,\infty)$ & 风险聚合\\
+$SubLift$ & 实数 & 订阅/服务增益\\
+$V$ & $[0,1]$ & 价值指数（式 \eqref{eq:value_index}）\\
+$\gamma$ & $[0,\infty)$ & 溢价增益（WTP 提升强度）\\
+$WTP'_g$ & $(0,\infty)$ & 有效 WTP（式 \eqref{eq:wtp_prime}）\\
+$A_g(P)$ & $[0,1]$ & 价格采用率（式 \eqref{eq:adoption_round2}）\\
+$S_g$ & $[0,1]$ & 非价格份额（sigmoid）\\
+$share_g$ & $[0,1]$ & 总份额 $A\cdot S$\\
+$Units_g$ & $(0,\infty)$ & 销量\\
+$Profit_g$ & 实数 & 总利润\\
+\bottomrule
+\end{longtable}
+
+\subsection{A.2 参数表（建议默认值区间）}
+\begin{longtable}{p{0.20\textwidth}p{0.18\textwidth}p{0.16\textwidth}p{0.40\textwidth}}
+\toprule
+参数 & 建议默认 & 合理区间 & 作用与校准建议\\
+\midrule
+$a$ & 3.0 & [2,8] & adoption 曲线斜率。$a$ 越大，$P$ 偏离 $WTP$ 后采用率下降越快。建议用“$P=WTP$ 时采用率约为 $2^{-e}$”的直觉做课堂解释。\\
+$A_{\min}$ & 0.20 & [0.10,0.35] & 反解 $P^{\max}$ 的阈值：表示“到上限价仍有一小撮人愿意买”。若希望 $P^{\max}$ 不要太离谱，取 0.15--0.25。\\
+$\beta_{arch}$ & 0.20 & [0,0.40] & 架构匹配对 $P^{\max}$ 的修正强度。课堂上可解释为“同价位下更匹配的架构更容易说服用户”。\\
+$fit^{text}$ & \{0.95,1,1.05\} & 可扩展 & VP 文案影响 $P^{\max}$ 的轻量修正。为避免 LLM 过度主导，幅度建议不超过 $\pm 10\%$。\\
+$\rho$ & 2.0 & [1,4] & 访谈雷达幂变换。$\rho>1$ 会强化高分维度，使核心需求更集中。\\
+$\lambda$ & 0.7 & [0.3,0.9] & prior/posterior 融合强度：证据越强越相信访谈。\\
+$\tau_{core}$ & 0.08 & [0.05,0.12] & 核心需求阈值（在 $D=6\sim 12$ 时常用）。用于保证核心集合不为空且不过大。\\
+$\omega_1$ & 0.55 & [0.4,0.7] & 价值指数中核心覆盖权重（最重要）。\\
+$\omega_2$ & 0.15 & [0.05,0.25] & nice-to-have 覆盖权重。\\
+$\omega_3$ & 0.20 & [0.05,0.30] & 订阅/服务增益权重。\\
+$\omega_4$ & 0.35 & [0.2,0.6] & 风险惩罚权重。\\
+$\omega_5$ & 0.20 & [0.1,0.4] & 成本上升惩罚权重（避免“越贵越好”）。\\
+$\gamma$ & 0.15 & [0.05,0.30] & 溢价增益：$V=1$ 时 $WTP'$ 提升 $\gamma$。建议上限 30\%，否则容易出现“旗舰无脑最优”。\\
+$\alpha_0$ & -0.5 & [-2,1] & 非价格份额基准。通过让典型中配方案 $S\approx 0.1\sim 0.3$ 来校准。\\
+$\beta_2$ & 2.0 & [1,4] & 核心覆盖对 $z$ 的提升强度。\\
+$\beta_3$ & 1.0 & [0.5,2.5] & nice-to-have 覆盖对 $z$ 的提升强度。一般弱于 $\beta_2$。\\
+$\beta_4$ & 0.8 & [0.2,2.0] & 订阅/服务增益（$SubLift^{norm}$）对 $z$ 的提升强度。\\
+$\beta_6$ & 0.6 & [0.2,1.5] & 工程复杂度（$\mathrm{Complexity}=\max(0,\Delta COGS)/C0$）对 $z$ 的压制强度。用于刻画“过度堆料带来的交付摩擦”。\\
+$SubLift_{cap}$ & 1.0 & 由卡牌库推导 & 订阅/服务增益的设计上限，用于构造 $SubLift^{norm}=\mathrm{clip}(SubLift/SubLift_{cap},0,1)$，避免量纲漂移。\\
+$Risk_{cap}$ & 6.0 & 由卡牌库推导 & 风险总和的设计上限，用于构造 $Risk^{norm}$。可按“10 张卡高风险组合的典型上界”设定。\\
+$\omega_{vol}$ & 0.7 & [0.5,0.9] & VP 的规模维度权重（见式 \eqref{eq:H_vp}）。\\
+$\omega_{wtp}$ & 0.3 & [0.1,0.5] & VP 的溢价维度权重（见式 \eqref{eq:H_vp}），通常弱于 $\omega_{vol}$。\\
+$H^{vp}_{min},H^{vp}_{max}$ & [0.3,1.0] & 可调 & VP 乘子上下界。若希望 VP 对规模更敏感，可放宽到 [0.5,1.4]。\\
+$\beta_5$ & 1.2 & [0.6,2.0] & 风险对 $z$ 的压制强度。\\
+$\lambda_B$ & 1.0 & [0.5,2.5] & 超预算利润惩罚强度（每超 1 单位成本增量扣多少利润）。建议用“延期/返工成本”解释。\\
+$\lambda_L$ & 50 & [10,200] & 超负载利润惩罚强度（单位与 $Load$ 量纲一致）。\\
+$\delta_c$ & 0.25 & [0.10,0.35] & 锦囊对匹配卡牌的成本折扣强度（式 \eqref{eq:jinang_match} 之后的修正）。\\
+$\delta_q$ & 0.25 & [0.10,0.35] & 锦囊对匹配卡牌的风险折扣强度。\\
+$\delta_u$ & 0.10 & [0,0.20] & 锦囊对匹配卡牌的增益加成强度（提升 $SubLift$）。\\
+
+\bottomrule
+\end{longtable}
+
+\section{附录 B：命题与推论（用于课堂解释与一致性检查）}
+
+\begin{assumption}[常见约束]
+对给定市场单元 $g$，取 $a>0,e_g>0$，并假设 $S_g(\mathbf{x})\in(0,1)$ 与 $P$ 无关（即已做 price/non-price 分解）。
+\end{assumption}
+
+\begin{proposition}[价格采用率的单调性]
+在上述假设下，$A_g(P)$ 关于价格 $P$ 严格单调递减，并且 $A_g(P)\in(0,1)$。
+\end{proposition}
+\begin{proof}
+令 $r=P/WTP'_g$。括号项 $h(r)=\frac{1}{1+\exp(a(r-1))}$ 对 $r$ 严格递减且取值在 $(0,1)$。$A_g(P)=h(r)^{e_g}$，当 $e_g>0$ 时保持严格递减与取值范围。又 $r$ 对 $P$ 严格递增，因此 $A_g(P)$ 对 $P$ 严格递减。
+\end{proof}
+
+\begin{corollary}[份额对价格的单调性]
+若 $S_g(\mathbf{x})$ 固定，则总份额 $share_g(P,\mathbf{x})=A_g(P)S_g(\mathbf{x})$ 关于 $P$ 亦严格递减。
+\end{corollary}
+
+\begin{proposition}[溢价参数 $\gamma$ 的作用方向]
+对任意给定价格 $P$ 与非价格状态 $\mathbf{x}$，若 $V(\mathbf{x})>0$，则 $\gamma$ 增大将（弱）提高 $WTP'_g$ 并提高 $A_g(P)$，从而提高 $share_g$。
+\end{proposition}
+
+\begin{proposition}[利润的“非必然单调性”（trade-off）]
+即使研发提高 $S_g$ 与 $WTP'_g$，总利润 $Profit_g$ 也不必然随研发单调上升，因为 $COGS_g$ 上升及惩罚项 $Penalty_g$ 可能主导。
+\end{proposition}
+\begin{proof}[证明思路]
+$Profit_g$ 中既有正向通道（$Units$ 上升、订阅增益）也有负向通道（$\Delta COGS$ 降低单位毛利、惩罚项提高）。因此存在参数区间使得边际研发投入的利润为负。
+\end{proof}
+
+\section{附录 C：实现伪代码（端到端）}
+
+\subsection{C.1 Round 1 伪代码}
+\begin{verbatim}
+Input: grid g with WTP_g, e_g; global a, A_min; 
+       architecture tags -> Fitarch_g; beta_arch; fittext_g;
+       channels {c} with weights w_c and fees f_c;
+       cost base C0 and multipliers m_type, m_age, m_arch; 
+       TAM_g, H_g
+
+Compute:
+  Pmax_base = WTP_g * (1 + (1/a)*log(1/(A_min^(1/e_g)) - 1))
+  Pmax = Pmax_base * (1 + beta_arch*(Fitarch_g - 0.5)) * fittext_g
+  f_g = sum_c w_c * f_c
+  COGS0 = C0 * m_type * m_age * m_arch
+  GMmax = 1 - f_g - COGS0 / Pmax
+Freeze: {WTP_g, e_g, Pmax, f_g, COGS0, TAM_g, H_g, target_GM}
+\end{verbatim}
+
+\subsection{C.2 Round 2 伪代码（v7.1）}
+\begin{verbatim}
+Input: frozen {wtp, elasticity_e, pmax, channel_fee_f, cogs0,
+               tam_units, H_base, H_vp, H_eff};
+       interview radar r_d, prior weights w_grid_d, evidence evi;
+       R&D cards K with (dCOGS_k, load_k, risk_k, sub_k) and tag coverage;
+       student price P
+
+(Team submit only) Validate:
+  if any unmet dependency or conflict: BLOCK SUBMIT and return violations.
+  // Individual phase may skip this enforcement.
+
+Interview -> posterior weights (evi only used here):
+  s_d = (r_d - 1)/9
+  w_int_d = s_d^rho / sum_j s_j^rho
+  w*_d = (1 - lambda*evi)*w_grid_d + (lambda*evi)*w_int_d
+
+Core/Nice sets by tau_core; compute Cover_core, Cover_nice.
+
+Apply Jinang tech cards (optional):
+  for each card k:
+    m_k = max_j match_strength(j,k)
+    dCOGS_k = dCOGS_k * clip(1 - delta_c*m_k, 0.5, 1.0)
+    risk_k  = risk_k  * clip(1 - delta_q*m_k, 0.5, 1.0)
+    sub_k   = sub_k   * (1 + delta_u*m_k)
+
+Aggregate cards:
+  dCOGS  = sum_k dCOGS_k
+  Load   = sum_k load_k
+  Risk   = max(0, sum_k risk_k)
+  SubLift = sum_k sub_k
+  Complexity = max(0,dCOGS)/C0
+
+Normalize for stability (design caps):
+  SubLift_norm = clip(SubLift / sub_lift_cap, 0, 1)
+  Risk_norm    = clip(Risk / risk_cap, 0, 1)
+
+Value index:
+  V = clip( w1*Cover_core + w2*Cover_nice + w3*SubLift_norm
+            - w4*Risk_norm - w5*max(0,dCOGS)/C0 , 0, 1)
+
+Premium loop (MUST keep proportionality):
+  WTP_prime  = wtp  * (1 + gamma*V)
+  Pmax_prime = pmax * (1 + gamma*V)
+
+Clamp price guardrail:
+  P = min(P, Pmax_prime)
+
+Adoption A(P) = [ 1/(1+exp(a*(P/WTP_prime - 1))) ]^elasticity_e
+
+Non-price score (NO evi, NO conflict):
+  z = alpha0 + b2*Cover_core + b3*Cover_nice
+      + b4*SubLift_norm - b5*Risk_norm - b6*Complexity
+  S = sigmoid(z)
+
+share = A(P) * S
+Units = tam_units * H_eff * share
+
+COGS = cogs0 + dCOGS
+profit_hw = Units * ( P*(1 - channel_fee_f) - COGS )
+
+attach = clip(theta0 + theta1*Cover_core + theta2*SubLift_norm - theta3*Risk_norm, 0, 1)
+profit_sub = Units * attach * LTV_sub
+
+Penalty = lambda_B*max(0, dCOGS - BudgetCap) + lambda_L*max(0, Load - CapacityCap)
+Profit = profit_hw + profit_sub - Penalty
+Output: share, Units, Profit and diagnostics
+\end{verbatim}
+
+\section{附录 D：边界条件与稳健性建议（给课堂的“防爆”设置）}
+
+\subsection{D.1 防止 share 变成 0 的三条护栏}
+\begin{enumerate}
+  \item 将超支/超载主要放到利润惩罚（式 \eqref{eq:penalty_profit}），避免直接打 $S$。
+  \item 对 $z$ 的系数做尺度校准：让“中配合理方案”$S\in[0.10,0.30]$，而不是 $10^{-6}$。
+  \item 对 $P$ 设置可行域：$P\in[0.6WTP'_g,\;1.4WTP'_g]$ 或基于 $P^{\max}$ 的护栏，避免离谱高价。
+\end{enumerate}
+
+\subsection{D.2 参数校准的最小流程（4 个 anchor plan）}
+选 4 组代表性方案（低配/中配/高配/堆料过度），用以下目标校准：
+\begin{itemize}
+  \item 低配：$S$ 低但成本也低，利润可能为正；
+  \item 中配：利润最大或接近最大；
+  \item 高配：$S$ 高且 $WTP'$ 高，但成本上升使利润不一定更高；
+  \item 堆料：$S$ 可能更高但 $Penalty$ 使利润显著下降。
+\end{itemize}
+
+\subsection{D.3 量纲一致性检查}
+建议在实现中记录并可视化：$A(P)$、$S$、$share$、单位毛利、惩罚项，确保每项在合理范围内。
+
+\section{附录 E：v6 $\rightarrow$ v7 迁移要点（概念对照）}
+\begin{itemize}
+  \item 价格部分：从 v6 的 $price\_penalty=\max(0,P/Pmax-1)$（只惩罚超价）
+        迁移为直接使用 adoption 曲线 $A(P)$（价格越高采用率越低）。
+  \item 份额：从单一 $\sigmoid(z)$ 迁移为 $share=A\cdot S$（统一世界观）。
+  \item 超支/超载：从“直接打 $z$ 使 share 归零”迁移为“利润惩罚为主”，并保留少量对 $S$ 的影响（可选）。
+  \item 可溢价：引入 $WTP'=WTP(1+\gamma V)$（或等价提升 $P^{\max}$），使研发成本/价值/定价形成闭环。
+\end{itemize}
+
+
+\clearpage
+\section{附录 F：最优定价的存在性与直观（给“学生自己定价”的解释）}
+
+本节给出一个足够课堂使用的结论：在常见设定下，\emph{利润关于价格存在内部最优解}，因此“盲目提高价格”或“盲目降价”都可能降低利润。
+
+\begin{assumption}[简化定价环境]
+固定市场单元 $g$ 与非价格状态 $\mathbf{x}$，因此 $S=S_g(\mathbf{x})$ 为常数；
+忽略订阅项与惩罚项（或将其视为与 $P$ 无关的常数），令单位成本 $COGS_g=c$，渠道费率 $f_g=f$。
+\end{assumption}
+
+在该简化下，
+\[
+Units(P)=TAM_gH_g\cdot S\cdot A_g(P),
+\qquad
+Profit(P)=Units(P)\cdot \big(P(1-f)-c\big).
+\]
+
+\begin{proposition}[存在性：极端价格下利润为零或为负]
+当 $P\to 0$ 时，单位毛利 $P(1-f)-c\to -c<0$，因此 $Profit(P)\le 0$；
+当 $P\to \infty$ 时，$A_g(P)\to 0$，因此 $Profit(P)\to 0$。
+\end{proposition}
+
+\begin{corollary}[内部最优价（直观）]
+若存在某个价格区间使得 $P(1-f)-c>0$ 且 $A_g(P)$ 不过小，则利润曲线在该区间通常呈“先升后降”，从而存在内部最优价 $P^\star$。
+\end{corollary}
+
+\paragraph{课堂解释}
+\begin{itemize}
+  \item 提价会提高单位毛利，但降低采用率 $A(P)$；
+  \item 降价会提高采用率，但压缩单位毛利；
+  \item 最优价出现在两者边际效应相抵的位置。
+\end{itemize}
+
+\clearpage
+\section{附录 G：每个参数的“逐条解释 + 诊断信号 + 调参方向”}
+
+为方便你在课堂与调参时快速定位问题，本节按模块给出“参数 $\rightarrow$ 影响通道 $\rightarrow$ 诊断现象 $\rightarrow$ 调参建议”。
+
+\subsection{G.1 价格曲线模块（$a,e_g,A_{\min}$）}
+\begin{itemize}
+\item \textbf{$a$（斜率）}：$a$ 越大，$P/WTP'$ 偏离 1 时 adoption 下降越快。
+\emph{诊断}：学生轻微提价（例如 +10\%）就销量腰斩 $\Rightarrow a$ 或 $e_g$ 过大。
+\emph{调参}：降低 $a$，或将市场包中 $e_g$ 向下缩放（例如乘以 0.8）。
+\item \textbf{$e_g$（弹性）}：同一市场内，$e_g$ 控制对价格的敏感度异质性。
+\emph{诊断}：所有格子对价格反应都差不多 $\Rightarrow e_g$ 差异不够。
+\emph{调参}：扩大 $e_g$ 的跨格子方差（例如将其映射为 tier：低/中/高）。
+\item \textbf{$A_{\min}$（上限阈值）}：决定 $P^{\max}$ 的位置。
+\emph{诊断}：$P^{\max}$ 过高导致学生在 Round 1 认为“随便卖多贵都行”$\Rightarrow A_{\min}$ 取太小。
+\emph{调参}：提高 $A_{\min}$（例如从 0.15 提到 0.25）。
+\end{itemize}
+
+\subsection{G.2 溢价模块（$\gamma$ 与 $V$）}
+\begin{itemize}
+\item \textbf{$\gamma$（最大溢价幅度）}：控制研发最高能把 $WTP$ 抬升多少。
+\emph{诊断}：旗舰方案在任何市场都无脑最优 $\Rightarrow \gamma$ 过大或 $V$ 太容易到 1。
+\emph{调参}：降低 $\gamma$；或提高 $V$ 的惩罚项（$\omega_4,\omega_5$）。
+\item \textbf{$V$ 的权重 $\omega_1\sim\omega_5$}：
+\emph{诊断}：覆盖核心需求几乎不影响结果 $\Rightarrow \omega_1$ 太小或 $Cover_{core}$ 计算过“稀”。
+\emph{调参}：提高 $\omega_1$；调整 $\tau_{core}$ 让核心集合更合理；检查卡牌标签覆盖映射是否齐全。
+\end{itemize}
+
+\subsection{G.3 非价格份额模块（$\alpha_0,\beta$ 系数）}
+\begin{itemize}
+\item \textbf{$\alpha_0$（基准难度）}：越小表示“默认很难卖出去”。
+\emph{诊断}：绝大多数组合 $S\approx 0$，share 几乎全靠降价 $\Rightarrow \alpha_0$ 太小或负向项太强。
+\emph{调参}：上调 $\alpha_0$（向 0 靠近），或缩小负向项（$\beta_5,\beta_6,\beta_7$）。
+\item \textbf{$\beta_2,\beta_3$（覆盖）}：
+\emph{诊断}：覆盖提高了但 $S$ 不动 $\Rightarrow \beta_2,\beta_3$ 太小。
+\emph{调参}：提高 $\beta_2$（优先）再微调 $\beta_3$。
+\item \textbf{$\beta_5$（风险）}：
+\emph{诊断}：风险稍高就“卖不出去”$\Rightarrow \beta_5$ 太大或 Risk 量纲过大。
+\emph{调参}：降低 $\beta_5$ 或对 Risk 做归一化（除以风险上限）。
+\end{itemize}
+
+\subsection{G.4 惩罚模块（$B_g,L_g,\lambda_B,\lambda_L$）}
+\begin{itemize}
+\item \textbf{$B_g$（预算上限）}：
+\emph{诊断}：一加两张中配卡就触发惩罚 $\Rightarrow B_g$ 过小或 $\Delta c_k$ 量纲过大。
+\emph{调参}：提高 $B_g$（例如设为 $0.25\cdot COGS_{0,g}$ 而非 $0.13$），或整体缩放 $\Delta c_k$。
+\item \textbf{$L_g$（负载上限）}：
+\emph{诊断}：常规 8--10 张卡必超载 $\Rightarrow L_g$ 过小。
+\emph{调参}：让中配组合的 $Load$ 接近但不超过 $L_g$（作为校准目标）。
+\item \textbf{$\lambda_B,\lambda_L$（惩罚强度）}：
+\emph{诊断}：惩罚吃掉所有利润导致方案排序只看惩罚 $\Rightarrow \lambda$ 太大。
+\emph{调参}：降低 $\lambda$，让“过度堆料”利润下降 30--70\% 而不是直接为负无穷。
+\end{itemize}
+
+\clearpage
+\section{附录 H：数据结构与参数文件建议（便于工程落地）}
+
+\subsection{H.1 市场包（market\_knowledge.json）最小字段}
+建议每个格子 $g$ 存储：
+\begin{itemize}
+  \item \texttt{grid\_id}
+  \item \texttt{WTP}, \texttt{elasticity\_e}, \texttt{TAM\_units}, \texttt{H}
+  \item \texttt{prior\_weights}: $\{w^{grid}_d\}_{d=1}^D$
+  \item \texttt{difficulty\_tier}（可选）：用于默认 $\alpha_0$ 或 $B_g,L_g$
+\end{itemize}
+
+\subsection{H.2 研发卡牌（feature\_cards.json）字段}
+每张卡 $k$：
+\begin{itemize}
+  \item \texttt{id}, \texttt{name}, \texttt{group}（交互/表达/安全/成本等）
+  \item \texttt{dCOGS}（$\Delta c_k$）, \texttt{load}（$\ell_k$）, \texttt{risk}（$q_k$）, \texttt{subLift}（$u_k$）
+  \item \texttt{covers}: 需求标签列表（用于计算覆盖率）
+  \item \texttt{deps}: 依赖列表（用于 Conflict）
+  \item \texttt{conflicts}: 冲突列表（用于 Conflict）
+  \item \texttt{level}: 基础/标准/旗舰（若同卡不同档位）
+\end{itemize}
+
+\subsection{H.3 依赖/冲突的校验口径：阻止提交（v7.1 修订）}
+本版本将依赖/冲突从“连续惩罚项”改为\textbf{提交校验（hard validation）}，仅在\textbf{小组汇总/提交}阶段执行（individual phase 不做强制校验）。
+
+\paragraph{规则与处理}
+设小组选择的卡集合为 $\mathcal{K}$。每张卡 $k$ 可包含依赖集合 $\mathrm{deps}(k)$ 与互斥冲突集合 $\mathrm{conflicts}(k)$。
+\begin{itemize}
+  \item \textbf{依赖未满足（requires violation）：} 若存在 $k\in\mathcal{K}$ 使得某依赖项 $d\in \mathrm{deps}(k)$ 不被 $\mathcal{K}$ 覆盖，则判定为未满足依赖。
+  \item \textbf{互斥冲突（excludes violation）：} 若存在 $k,k'\in\mathcal{K}$ 满足 $k'\in \mathrm{conflicts}(k)$（或对称定义），则判定为触发冲突。
+\end{itemize}
+若存在任一 violation，则\textbf{阻止提交并返回修复提示}（列出违反规则的卡、缺失的依赖卡/可选替代方案、以及冲突对的二选一建议）。\emph{只有在 violation 归零后}才进入 Round 2 的份额/销量/利润计算。
+
+\paragraph{诊断计数（可选展示，不进入计算）}
+为便于课堂讨论，可保留一个\emph{诊断性}计数指标（仅用于 UI 提示）：
+\[
+\mathrm{ConflictCount}=\#(\text{未满足依赖})+\#(\text{触发冲突}),
+\]
+但该指标不再进入式 \eqref{eq:z_nonprice} 或任何利润公式；其作用是引导小组在系统集成层面做取舍与修复。
+\section{附录I：参数可识别性与校准思路（更论文化）}
+
+本附录在保持主文档「最少参数、可解释」原则下，给出一套可复现的\textbf{参数校准（calibration）}与\textbf{可识别性（identifiability）}讨论框架。目标不是追求统计意义上的一致估计，而是确保：\emph{(i) 课堂上可解释；(ii) 数值稳定；(iii) 不同策略产生可区分的结果；(iv) 参数变化对输出的方向性符合直觉。}
+
+\subsection{I.1 输出、观测与“弱识别”}
+模型输出可分为三类：
+\begin{itemize}
+  \item \textbf{市场结果类}：$share$，$Units$，$Revenue$，$Profit$，以及订阅附加利润。
+  \item \textbf{诊断信号类}：$BudgetOver$，$LoadOver$，$Conflict$，$Delay$（若实现），用于解释“为什么”。
+  \item \textbf{教学反馈类}：学生选择的（$P$，卡牌集合）与系统建议（如“建议降配/提价/改依赖”）。
+\end{itemize}
+
+在教学仿真中，通常没有真实世界的逐笔销量数据来估计参数，因此参数是\textbf{弱识别}的。我们建议把校准目标设为：在一组\emph{锚点策略}（anchor strategies）下满足若干不等式约束与相对排序，而非点估计。
+
+\subsection{I.2 锚点策略（Anchor Plans）与排序约束}
+定义四类锚点策略（每个12格可各选一个代表格）：
+\begin{enumerate}[label=(\alph*)]
+  \item \textbf{低配低价（LL）}：少量核心卡，$P$ 取 $0.6\sim0.8$ 的可承受上限。
+  \item \textbf{中配中价（MM）}：覆盖核心需求，$P$ 取 $0.85\sim0.95$ 上限。
+  \item \textbf{高配高价（HH）}：大量卡，覆盖更广需求，$P$ 接近上限。
+  \item \textbf{过度堆料（OE）}：超预算/超负载或高冲突，$P$ 任意（用于触发惩罚与诊断）。
+\end{enumerate}
+
+校准时，要求满足如下\textbf{排序约束}（示例）：
+\begin{align*}
+&share(\mathrm{MM}) \ge share(\mathrm{LL}) \quad\text{（更高完成度不应更难卖）}\\
+&Profit(\mathrm{MM}) \ge \max\{Profit(\mathrm{LL}),Profit(\mathrm{HH})\} \quad\text{（常见应出现“中间最优”）}\\
+&Profit(\mathrm{OE}) \le \min\{Profit(\mathrm{LL}),Profit(\mathrm{MM}),Profit(\mathrm{HH})\} \quad\text{（过度堆料应被惩罚）}.
+\end{align*}
+
+\subsection{I.3 局部灵敏度与“可解释”参数化}
+对任何参数$\theta$，定义局部灵敏度：
+\[
+\mathcal{S}_{y,\theta}=\frac{\partial \ln y}{\partial \theta},
+\]
+其中$y$可取$share,Units,Profit$等。课堂叙事需要：
+\begin{itemize}
+  \item 价格弹性参数上升应使$\partial share/\partial P$更负；
+  \item 价值增益参数上升应使研发带来的溢价空间更大（同一$P$下$share$更高）；
+  \item 惩罚参数上升应主要压利润，其次压份额（避免“卖不出去=0”）。
+\end{itemize}
+
+\section{附录J：校准损失函数、约束集与求解流程}
+\subsection{J.1 约束型校准（Constraint-based Calibration）}
+令$\mathcal{A}$为锚点策略集合，$\mathcal{C}$为约束集合（排序、不等式、边界）。定义可行集：
+\[
+\Theta^{feas}=\{\theta: c(\theta)\le 0, \forall c\in\mathcal{C}\}.
+\]
+在$\Theta^{feas}$上选择“最平滑、最稳健”的参数（例如最小化过度敏感）：
+\[
+\min_{\theta\in\Theta^{feas}} \;\; \sum_{y\in\mathcal{Y}}\sum_{\theta_j\in\theta} w_{y,j}\, \mathbb{E}_{a\in\mathcal{A}}\left[\mathcal{S}_{y,\theta_j}(a)^2\right].
+\]
+该目标鼓励模型在锚点附近不对单个参数过分敏感，从而减少“调参即崩”。
+
+\subsection{J.2 经验型校准（如果你有课堂数据）}
+若你在课堂上收集到（格子、定价、卡牌、最终销量/利润）的样本，可采用加权最小二乘或分位数损失。以利润为例：
+\[
+\min_{\theta}\sum_{i} w_i \cdot \rho_\tau\!\left( Profit_i^{obs}-Profit_i^{sim}(\theta)\right),
+\]
+其中$\rho_\tau$为分位数损失（对异常值更稳健），$w_i$可按组别规模或任务难度加权。
+
+\subsection{J.3 参数先验与“合理区间”}
+为避免不稳定，建议对关键参数设定先验区间（工程上就是 clamp）：
+\begin{itemize}
+  \item 价值增益 $\gamma\in[0,0.30]$（最多提升$30\%$可承受价格/支付意愿）
+  \item 价格弹性 $e_s\in[0.8,3.5]$（不同格子可不同）
+  \item 非价格竞争力斜率 $\beta_I\in[1,6]$（控制访谈信号的影响强度）
+  \item 惩罚强度 $\lambda_B,\lambda_L\in[0.05,0.50]$（主要压利润，避免份额归零）
+\end{itemize}
+
+\section{附录K：稳健性与敏感性分析（教学版）}
+\subsection{K.1 单参数敏感性（One-at-a-time, OAT）}
+对每个关键参数$\theta_j$，在其区间内取$K$个点，固定其他参数为基准，计算：
+\[
+\Delta Profit(\theta_j)=\max_{a\in\mathcal{A}} Profit(a;\theta_j)-\min_{a\in\mathcal{A}} Profit(a;\theta_j).
+\]
+若$\Delta Profit$极大，说明该参数需要收紧区间或改变函数形式（如从份额惩罚改为利润惩罚）。
+
+\subsection{K.2 结构敏感性（Functional-form Robustness）}
+建议至少比较三种形式并确保结论不翻转：
+\begin{enumerate}[label=(\arabic*)]
+  \item Adoption曲线使用logistic幂形式（主文档）；
+  \item Adoption曲线使用常弹性形式 $A(P)=(P/WTP)^{-\eta}$ 且截断在$[0,1]$；
+  \item 非价格竞争力使用sigmoid vs. capped-linear。
+\end{enumerate}
+
+\section{附录L：v6$\rightarrow$v7 迁移对照表（变量与公式）}
+本表用于工程实现迁移：哪些变量删除、哪些保留、哪些改名，以及公式替换建议。
+
+\begin{longtable}{p{0.18\linewidth}p{0.30\linewidth}p{0.44\linewidth}}
+\toprule
+\textbf{v6元素} & \textbf{v7状态} & \textbf{说明/替换} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{v6元素} & \textbf{v7状态} & \textbf{说明/替换} \\
+\midrule
+\endhead
+price\_penalty$=\max(0,P/Pmax-1)$ & \textbf{删除/降级为护栏} & 用 $share=A(P)\cdot S$ 取代；可保留 $P>Pmax'$ 时的硬惩罚或直接 clamp $P\le Pmax'$。\\
+share$=\sigma(z)$（含价格项） & \textbf{替换} & 改为 $share=A(P)\cdot S$，其中$A(P)$沿用Round1 adoption，$S=\sigma(z_{nonprice})$。\\
+z\_penalty（预算/负载）直接进$z$ & \textbf{弱化} & 主要进入利润惩罚 $\Pi_{pen}$；$z$端只保留轻微扣分，防止份额归零。\\
+COGS$=COGSbase+dCOGS$ & \textbf{保留} & 单位成本口径不变；如需“规模效应”，可在附录加入学习曲线。\\
+evi/prior融合权重 & \textbf{保留} & 权重融合仍用于core/nice权重与覆盖率。\\
+attach率与订阅LTV & \textbf{保留/可选} & 若课堂复杂度需降低，可把订阅模块作为扩展任务。\\
+\bottomrule
+\end{longtable}
+
+\section{附录M：命题、推论与证明思路（更论文味）}
+以下命题/推论用于说明模型的结构性质（存在性、单调性、边界条件），不追求最一般性，只覆盖课堂使用的参数区间。
+
+\begin{assumption}[参数区间与截断]\label{ass:param}
+(1) Adoption函数$A(P)\in(0,1]$且对$P$严格递减；(2) 非价格份额$S\in(0,1)$；(3) 惩罚项$\Pi_{pen}\ge 0$且对超支/超载/冲突非减；(4) $P$在区间$[P_{min},P_{max}']$内。
+\end{assumption}
+
+\begin{proposition}[份额分解的可解释性]\label{prop:decomp}
+在假设\ref{ass:param}下，$share=A(P)\cdot S$满足：对价格$P$的影响完全由$A(P)$承担，而对访谈信号/研发选择的影响完全由$S$承担。
+\end{proposition}
+\begin{proof}[证明思路]
+对任意非价格变量$x$（如覆盖率、风险等），有$\partial A(P)/\partial x=0$，因此
+$\partial share/\partial x=A(P)\cdot \partial S/\partial x$；
+对$P$有$\partial S/\partial P=0$，因此$\partial share/\partial P=S\cdot \partial A/\partial P<0$。
+\end{proof}
+
+\begin{proposition}[最优定价的存在性]\label{prop:exist}
+给定研发与访谈输入（从而$S$与$COGS$固定），若$A(P)$连续且严格递减，则在紧集$[P_{min},P_{max}']$上，利润函数
+\[
+Profit(P)=TAM\cdot H\cdot A(P)\cdot S\cdot (P(1-f)-COGS) + Profit_{sub}(P) - \Pi_{pen}
+\]
+至少存在一个全局最优解$P^\star$。
+\end{proposition}
+\begin{proof}[证明思路]
+$Profit(P)$为连续函数（$A(P)$连续，线性项连续，惩罚与订阅项取连续实现），紧集上连续函数取到最大值（Weierstrass定理）。
+\end{proof}
+
+\begin{corollary}[内点最优的直觉条件]\label{cor:interior}
+若(1) $A(P)$在区间内光滑且“不过于平坦”；(2) $P(1-f)-COGS$在低端为负、高端为正；则常出现内点最优：既非最低价也非最高价。
+\end{corollary}
+\begin{proof}[证明思路]
+在低价端单位利润低甚至为负，高价端采用率趋低导致销量趋零。连续性保证存在折中点使利润最大。
+\end{proof}
+
+\section{附录N：可识别性补充（哪些参数可以用课堂数据“抓住”）}
+\subsection{N.1 价格弹性与Adoption斜率}
+如果你收集到同一格子在不同定价下的销量（哪怕是模拟后多次试验），可用两点法近似识别弹性：
+\[
+\widehat{\eta}\approx -\frac{\ln(Units_2/Units_1)}{\ln(P_2/P_1)}.
+\]
+对logistic幂形式，可用数值拟合$a$与$e_s$的组合，但在课堂上通常不必分离二者，可固定$a$只让$e_s$随格子变化。
+
+\subsection{N.2 研发价值增益$\gamma$}
+通过“同一格子、相近定价、不同研发组合”下的成交差异（share变化）可校准$\gamma$，原则是让旗舰研发的溢价上限在$10\%-25\%$范围内出现可见变化，但不至于压倒价格弹性。
+
+\subsection{N.3 惩罚强度$\lambda_B,\lambda_L$}
+用“超支/超载被触发时，利润下降幅度”来校准。经验规则：触发一次轻度超载应让利润下降$10\%-30\%$而非归零；重度冲突可降$50\%$以上。
+
+\section{附录O：迁移实现伪代码与复杂度}
+\subsection{O.1 主流程伪代码（单个格子，v7.1）}
+\begin{verbatim}
+Input: Round1 frozen (wtp, elasticity_e, f, cogs0, tam_units, H_base, H_vp, H_eff, pmax),
+       Round2 signals (radar scores r_d, evidence evi),
+       R&D cards (dCOGS, load, risk, subLift, covers, deps, conflicts),
+       Student price P
+
+0) (Team submit only) validateSelections(cards):
+     if any unmet dependency or conflict: BLOCK SUBMIT and return violations.
+
+1) Build posterior weights w* from (grid prior, interview) using evi
+2) Determine core/nice tags; compute cover_core, cover_nice
+3) Aggregate cards -> dCOGS, load, risk, subLift; compute Complexity=max(0,dCOGS)/C0
+4) Normalize: subLift_norm=clip(subLift/sub_lift_cap,0,1); risk_norm=clip(risk/risk_cap,0,1)
+5) Compute value index V = clip(w1*cover_core + w2*cover_nice + w3*subLift_norm
+                               - w4*risk_norm - w5*max(0,dCOGS)/C0, 0, 1)
+6) Update WTP_prime = wtp*(1 + gamma*V); Pmax_prime = pmax*(1 + gamma*V)   // MUST
+7) Price guardrail: P = min(P, Pmax_prime)
+8) Adoption A = Adoption(P; WTP_prime, elasticity_e, a)   // price effect
+9) Non-price z = alpha0 + b2*cover_core + b3*cover_nice + b4*subLift_norm
+                 - b5*risk_norm - b6*complexity
+   S = sigmoid(z)
+10) share = clamp(A*S, 0, 1)
+11) Units = tam_units * H_eff * share
+12) COGS = cogs0 + dCOGS
+13) Profit_hw = Units*(P*(1-f) - COGS)
+14) Profit_sub = Units * LTV_sub(cover_core, cover_nice, subLift_norm, risk_norm)
+15) Penalty = lambda_B*max(0, dCOGS - BudgetCap) + lambda_L*max(0, load - CapacityCap)
+16) Profit = Profit_hw + Profit_sub - Penalty
+Output: share, Units, Profit and diagnostics
+\end{verbatim}
+
+\subsection{O.2 复杂度}
+对每个格子，计算是线性的：$O(|\text{tags}|+|\text{cards}|)$。若你在课堂上允许学生对多个$P$试算（扫描定价），额外乘以价格网格点数$G$，总复杂度$O(G\cdot (|\text{tags}|+|\text{cards}|))$，在浏览器/Node环境均可实时运行。
+
+
+
+\clearpage
+\appendix
+\section*{附录F：校准目标矩阵、示例数值与比较静态}
+\addcontentsline{toc}{section}{附录F：校准目标矩阵、示例数值与比较静态}
+
+本附录把“如何把参数调到课堂体验可用”的部分写得更接近可复现的经济学论文：给出(1)校准目标矩阵(即你希望模型在若干代表性格子与若干代表性策略下呈现的\emph{输出区间})，(2)一个可工作的示例参数集与计算流程，(3)关键参数的比较静态(方向性结论与可检验含义)。
+
+\subsection*{F.1 \ \ 校准的基本思路：从\textit{输出}反推\textit{参数}}
+我们将参数向量记为 $\theta$，包含(示例)：
+\[
+\theta=\{\;a,\ Amin,\ \beta_{\text{arch}},\ \eta,\ \gamma,\ k_I,\ k_{\text{sub}},\ k_{\text{risk}},\ k_{\text{cx}},\lambda_B,\lambda_L,\dots\;\}.
+\]
+校准不是为了“拟合历史真实数据”(课堂通常没有足够真实数据)，而是为了满足一组\emph{设计约束}：在代表性输入下，输出落在预设的可解释区间内(利润为正/负、最优价不离谱、过度堆料不至于把销量打成0等)。
+
+\subsection*{F.2 \ \ 校准目标矩阵：代表性格子 $\times$ 代表性策略}
+\paragraph{代表性格子（3个即可覆盖大多数课堂直觉）。}
+我们建议选取三类格子作为校准基准(可从你的12格里挑出最接近的三个)：
+\begin{enumerate}
+  \item \textbf{高WTP \& 低弹性（Premium/ToB）}：$WTP$高、$e_s$较低，客户对价格不那么敏感；
+  \item \textbf{中WTP \& 中弹性（Mass/ToC）}：课堂“主战场”；
+  \item \textbf{低WTP \& 高弹性（Budget/ToC）}：价格稍高就明显掉量。
+\end{enumerate}
+
+\paragraph{代表性策略（4个 anchor plans）。}
+用四类策略做锚点，保证学生不同风格都有“能说得通”的结果：
+\begin{enumerate}
+  \item \textbf{Baseline（保守）}：低研发、低风险、低负载，价格接近 $P^{\max}$ 的中下区间；
+  \item \textbf{Over-Engineering（堆料）}：高研发、负载/预算压力大，理论上价值提升但组织成本高；
+  \item \textbf{Focused（聚焦）}：针对core需求覆盖极高，但成本/负载可控；
+  \item \textbf{Undershoot（偷工减料）}：研发不足，成本低但覆盖不足。
+\end{enumerate}
+
+\paragraph{目标输出区间（建议）。}
+表~\ref{tab:targets} 给出一组\emph{可用}的目标区间；你可以把区间改成你课堂更想看到的效果，但建议保持相对关系不变。
+
+\begin{longtable}{p{0.14\linewidth}p{0.18\linewidth}p{0.16\linewidth}p{0.42\linewidth}}
+\caption{校准目标矩阵（输出区间示例）}\label{tab:targets}\\
+\toprule
+格子类型 & 策略 & 关键输出 & 目标区间（示例）\\
+\midrule
+\endfirsthead
+\toprule
+格子类型 & 策略 & 关键输出 & 目标区间（示例）\\
+\midrule
+\endhead
+Premium & Baseline & $share$，$Profit$，$P^\star/P^{\max}$ & $share\in[5\%,15\%]$；$Profit>0$；$P^\star\in[0.85,1.00]P^{\max}$\\
+Premium & Focused & $share$，$Profit$，订阅占比 & $share$较Baseline提升$\ge 30\%$；$Profit$显著提升；订阅利润占比$\in[10\%,40\%]$\\
+Mass & Baseline & $share$，$Profit$，$P^\star$ & $share\in[3\%,10\%]$；$Profit$可正可负(但不极端)；$P^\star\in[0.75,0.95]P^{\max}$\\
+Mass & Over-Eng. & $share$，$Profit$，惩罚项 & $share$不应接近0；$Profit$低于Focused；惩罚项可解释且主要体现在利润端\\
+Budget & Baseline & $share$，$P^\star$ & $share\in[2\%,8\%]$；$P^\star\in[0.60,0.85]P^{\max}$\\
+Budget & Undershoot & $share$，$Profit$ & $share$显著下降；$Profit$通常为负或接近0（能解释“卖不动/无复购”）\\
+\bottomrule
+\end{longtable}
+
+\subsection*{F.3 \ \ 损失函数与约束型校准（推荐实现）}
+用一个加权损失函数把“目标区间”转成可优化的标量目标：
+\[
+\mathcal{L}(\theta)=\sum_{g\in\mathcal{G}}\sum_{p\in\mathcal{P}} 
+\Big(
+w_1\cdot \ell_{share}+w_2\cdot \ell_{profit}+w_3\cdot \ell_{price}+w_4\cdot \ell_{diag}
+\Big),
+\]
+其中 $\ell_{share}$ 可用“区间铰链损失”(hinge)：
+\[
+\ell_{share}=
+\max(0,\ share-\overline{s})^2+\max(0,\ \underline{s}-share)^2,
+\]
+$\ell_{profit}$ 对应 $Profit$ 的符号/幅度约束，$\ell_{price}$ 约束最优价比例 $P^\star/P^{\max}$，$\ell_{diag}$ 约束诊断量(例如超载不应把 $share$ 打到近零，而应更多体现在利润惩罚)。
+
+\paragraph{约束（Hard constraints）。}
+建议在优化时施加硬约束，避免“参数跑飞”：
+\[
+0<Amin<0.5,\quad a>0,\quad 0\le \gamma \le 0.3,\quad 0.5\le \eta \le 4.
+\]
+并约束 $P^\star$ 的搜索区间，例如 $P\in[0.5P^{\max},\ 1.05P^{\max}]$。
+
+\subsection*{F.4 \ \ 一组可工作的示例参数（起点）}
+表~\ref{tab:theta} 给出一组可作为起点的参数值。\emph{注意：}这不是“唯一正确”，而是保证课堂直觉不崩的初始点；之后用上面的目标矩阵做局部微调即可。
+
+\begin{table}[h]
+\centering
+\caption{示例参数集（起点）}\label{tab:theta}
+\begin{tabular}{lcl}
+\toprule
+参数 & 建议值 & 含义/直觉\\
+\midrule
+$a$ & 7.0 & adoption曲线陡峭度（越大越像“过阈值才买”）\\
+$Amin$ & 0.12 & 定义 $P^{\max}$ 的最低采用率阈值\\
+$\beta_{\text{arch}}$ & 0.20 & 架构匹配对 $P^{\max}$ 的一阶修正\\
+$\eta$ & 1.6 & 等弹性需求的价格弹性（也可用你Round1的 $e_s$ 映射）\\
+$\gamma$ & 0.15 & 研发带来的可溢价上限（WTP或$P^{\max}$的上调幅度）\\
+$k_I$ & 2.0 & 访谈信号对非价格竞争力的权重\\
+$k_{\text{sub}}$ & 0.8 & 订阅增益对非价格竞争力的权重\\
+$k_{\text{risk}}$ & 1.2 & 风险对非价格竞争力的惩罚\\
+$k_{\text{cx}}$ & 0.6 & 复杂度对非价格竞争力的惩罚\\
+$\lambda_B$ & 0.25 & 超预算主要进入利润惩罚的强度\\
+$\lambda_L$ & 0.35 & 超负载主要进入利润惩罚的强度\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection*{F.5 \ \ 比较静态：方向性命题与可检验含义}
+下面给出几个对课堂讲解非常有用的比较静态结论。它们不要求你做严格的全局解析证明，但给出足够清晰的\emph{方向性}与\emph{边界条件}。
+
+\begin{proposition}[价格弹性与最优定价]\label{prop:eta}
+在其他条件不变时，价格弹性 $\eta$ 越大（用户对价格越敏感），利润最大化的最优定价 $P^\star$（相对 $P^{\max}$）越低，且最优销量 $Units^\star$ 越高（但单位毛利更低）。
+\end{proposition}
+\noindent\textit{证明思路（直观）。} 采用率/需求对 $P$ 的衰减更快时，提价带来的单位毛利增益更难抵消销量下降，因此最优点左移。课堂可用“同一研发组合下，$\eta$ 提高会把均衡从‘高价小量’推向‘低价走量’”解释。
+
+\begin{proposition}[可溢价系数与研发回报]\label{prop:gamma}
+在 $V$ 单调提高且 $0\le V\le 1$ 的设定下，$\gamma$ 越大，研发对 $WTP'$（或 $P^{\max\prime}$）的边际提升越大，从而提高在高研发策略下的最优利润；但当超负载/超预算惩罚足够强时，$\gamma$ 的正效应会被组织惩罚部分抵消。
+\end{proposition}
+
+\begin{proposition}[惩罚进入利润端的必要性]\label{prop:penalty}
+若超预算/超负载惩罚主要作用在\emph{份额}端（即直接把 $share$ 推向0），则在常见参数范围内会出现“高研发策略几乎必然销量为0”的角点解，削弱课堂对 trade-off 的学习效果。相反，将惩罚主要移入利润端可保持 $share$ 的连续性，使策略比较呈现平滑权衡。
+\end{proposition}
+
+\subsection*{F.6 \ \ 弹性参数在 v7 中的使用：基线方案与可选替代}
+\textbf{基线（推荐）：} v7 的主模型在 Round 2 继续沿用 Round 1 冻结的价格弹性参数 $e_s$，并直接进入 adoption 曲线：
+\[
+A(P)=\left(\frac{1}{1+\exp(a(P/WTP'-1))}\right)^{e_s}.
+\]
+因此工程接口（附录K 的冻结字段）只需传递 \texttt{elasticity\_e}（即 $e_s$），无需额外引入 $\eta$。
+
+\textbf{可选替代（仅当你改用常弹性 adoption）：} 若你希望把 adoption 近似成常弹性形式 $A(P)=(P/WTP')^{-\eta}$（并截断到 $[0,1]$），则可用一个单参数映射复用 Round 1 的相对敏感度：
+\[
+\eta=\eta_0\cdot e_s,
+\]
+其中 $\eta_0$ 为全局缩放（例如 $0.5\sim 1.2$）。\emph{注意：} 该替代仅用于“改 adoption 形式”的实现分支；在基线方案下请忽略 $\eta$，以避免工程歧义。
+
+
+\subsection*{F.7 \ \ 示例：一个格子上的四策略数值演示（可选写入课堂讲义）}
+为避免占用篇幅，这里给出一个推荐写法：你可以在实现侧跑一组代表格子与四策略的输出，然后把表格自动写入讲义（或教师面板）。
+建议输出字段：$P^\star,\ share,\ Units,\ Profit_{\text{hw}},\ Profit_{\text{sub}},\ Penalty_B,\ Penalty_L$。
+只要表~\ref{tab:targets} 的相对关系成立，课堂解释就会非常顺畅。
+
+
+
+% =========================
+% Additional Paper-style Appendix: Identifiability and Counterexamples
+% =========================
+\section{附录J：可识别性、不可识别反例与先验锁定（顶刊式补充）}\label{app:J}
+
+本附录进一步澄清：在教学仿真与缺乏外部真实数据的情形下，哪些参数在理论上\textbf{不可识别（non-identifiable）}，哪些参数可以在加入最小观测或最小先验后实现\textbf{弱识别（weak identification）}，以及我们应当如何通过\textbf{规范化（normalization）}与\textbf{先验锁定（prior fixing）}来保证模型可解释与可维护。
+
+\subsection{J.1 一个总原则：追求“行为可区分”，而非统计一致估计}
+令 $\theta$ 表示全体参数向量。对于教学仿真，我们关心的不是 $\hat{\theta}\to\theta^\star$ 的一致性，而是对任意两类策略 $\pi_1,\pi_2$（例如 LL vs.\ HH），模型输出在核心指标上产生稳定的、可解释的差异：
+\[
+\mathcal{D}(\pi_1,\pi_2;\theta) \equiv 
+\big(\Delta Profit,\ \Delta Units,\ \Delta share,\ \Delta Penalty\big),
+\]
+并且这些差异对小范围参数扰动是\textbf{结构稳定}的（见附录K 的敏感性分析框架）。
+
+\subsection{J.2 不可识别反例 I：规模缩放不变性（TAM--share 乘积）}
+在主模型中
+\[
+Units = TAM_{units}\cdot H \cdot share.
+\]
+若课堂数据仅能观测到 $Units$（或利润）而不能独立观测 $share$，则存在一个\textbf{无限族}的参数变换使得输出完全相同。
+
+\begin{proposition}[TAM--share 的缩放不可识别]\label{prop:tam_share}
+假设 $share$ 的生成机制不显式依赖 $TAM_{units}$。对任意常数 $c>0$，令
+\[
+TAM'_{units}=c\cdot TAM_{units},\qquad share'=\frac{1}{c}\cdot share,
+\]
+则 $Units$ 不变，从而若仅以 $Units$ 或由其线性生成的指标（如 $Revenue$）作为观测，$TAM_{units}$ 与份额水平无法被同时识别。
+\end{proposition}
+
+\textbf{解决：}（i）将 $TAM_{units}$ 视为外生“市场报告”输入并锁定；（ii）或在教师面板提供一个可解释的“份额区间”先验（例如同一格子的 $share\in[0.02,0.25]$），使缩放自由度被截断。
+
+\subsection{J.3 不可识别反例 II：Logit 指数项的平移/缩放（$\alpha_0$ 与 $\beta$ 的共线）}
+非价格竞争力份额常写为 $S=\sigma(z)$，其中
+\[
+z=\alpha_0+\sum_k \beta_k x_k.
+\]
+若只观测到 $S$ 的排序而非绝对水平，则 $(\alpha_0,\beta)$ 存在共线缩放自由度。
+
+\begin{proposition}[Logit 的缩放等价类]\label{prop:logit_scale}
+对任意 $a>0$，令
+\[
+z' = a\cdot z,\qquad (\alpha_0',\beta_k')=(a\alpha_0,a\beta_k),
+\]
+则 $S'=\sigma(z')$ 与 $S=\sigma(z)$ 的\emph{排序}完全一致，且当 $|z|$ 足够大时两者在数值上也高度接近。因此，若校准目标仅依赖排序约束，$\alpha_0$ 与 $\beta_k$ 的绝对尺度不可识别。
+\end{proposition}
+
+\textbf{解决：}固定一个\textbf{尺度规范}：例如令在“中性策略”（MM, 无惩罚）下的 $z$ 均值为 0、标准差为 1；或固定其中一个关键系数（如 $\beta_I=1$）并用其它系数相对刻度表达。
+
+\subsection{J.4 不可识别反例 III：研发溢价参数 $\gamma$ 与价格弹性 $\eta$ 的替代关系}
+在 v7 统一口径下，研发通过 $WTP'=WTP(1+\gamma V)$（或等价的 $P^{max}$ 抬升）进入 adoption，而价格弹性通过 $e_s$ 或 $\eta$ 控制 adoption 斜率。二者对“高配高价”策略的利润影响往往\textbf{可替代}：更高的 $\gamma$ 可被更低的 $\eta$（更不敏感的需求）部分抵消。
+
+\begin{proposition}[$\gamma$ 与 $\eta$ 的弱替代]\label{prop:gamma_eta}
+在 adoption 曲线单调下降且对 $r=P/WTP'$ 光滑的条件下，对任意小扰动 $\delta$，存在方向 $(\Delta\gamma,\Delta\eta)$ 使得在给定代表策略集合上的 $Units$ 近似保持不变。这意味着在缺乏外部数据约束时，$\gamma$ 与 $\eta$ 只能被\emph{弱识别}。
+\end{proposition}
+
+\textbf{解决：}（i）将 $\gamma$ 视为“技术/品牌溢价上限”的教学设定（例如 $10\%-25\%$）并锁定；（ii）将 $\eta$（或 $e_s$）作为“行业/格子差异”主要来源；（iii）用比较静态目标（高价策略应显著掉量）来约束 $\eta$ 的下界。
+
+\subsection{J.5 不可识别反例 IV：惩罚进入份额 vs.\ 进入利润}
+如果惩罚既可以通过降低 $share$ 实现，也可以通过利润端扣减实现，那么在仅观测利润的情况下，两种机制可能在数值上等价。
+
+\begin{proposition}[惩罚通道的等价性]\label{prop:penalty_channel}
+若 $Profit = Units\cdot m - \Pi$，其中 $Units$ 又由 $share$ 决定，则对给定 $m$，存在 $(\Delta share,\Delta \Pi)$ 使得 $Profit$ 保持不变。这意味着在缺少“销量 vs.\ 毛利结构”的额外观测时，惩罚通道不可识别。
+\end{proposition}
+
+\textbf{解决：}将惩罚通道当作\textbf{建模选择}而非“待估计参数”：v7 建议把组织惩罚主要放在利润端（保持份额连续），并在教师端输出 $Penalty_B,Penalty_L$ 以支持可解释性。
+
+\subsection{J.6 最小观测集合：如何用课堂数据实现弱识别}
+若你愿意在课堂或多期运行中记录最小数据集
+\[
+\mathcal{O}=\{(P,\ \text{card set},\ \text{grid},\ Units,\ Profit)\},
+\]
+则可以实现三类弱识别：
+\begin{itemize}
+  \item \textbf{价格弹性下界：}在同一格子上，观察不同小组的 $P$ 分布与对应 $Units$ 的系统输出，要求“提价 10\% 时 Units 下降”的比例不低于某阈值，可为 $\eta$ 给出下界。
+  \item \textbf{溢价上限：}在高研发组中，若 $P$ 接近 $P^{max}$ 仍能维持非零销量且利润上升，说明 $\gamma$ 不应过小；反之若普遍出现“高价必崩”，说明 $\gamma$ 或 WTP' 机制过强/过弱需要调整。
+  \item \textbf{惩罚强度：}统计 $LoadOver$ 与 $Profit$ 的边际关系，要求超载后利润显著下降但销量不至于归零，为惩罚强度提供校准方向。
+\end{itemize}
+
+\subsection{J.7 建议的先验锁定清单（可维护性优先）}
+为保证长期维护与跨行业插件化，建议锁定或窄区间化以下参数：
+\begin{enumerate}[label=(\\arabic*)]
+  \item \textbf{市场外生量：} $TAM_{units},WTP,e_s$（来自 market report）。
+  \item \textbf{结构规范：}采用率阈值 $A_{min}$ 与陡峭度 $a$（保证 Pmax 的可解释口径）。
+  \item \textbf{溢价上限：} $\gamma\in[0.10,0.25]$（课堂上“升级版最多贵 10–25\%”）。
+  \item \textbf{惩罚通道：}惩罚主要进利润端；份额端仅保留轻微连续惩罚（避免角点解）。
+  \item \textbf{尺度规范：}固定 $\beta_I=1$ 或固定 $z$ 的标准差为 1（避免 logit 缩放漂移）。
+\end{enumerate}
+
+\subsection{J.8 一个可写进主文的“方法学声明”（可选）}
+可以在主文档方法部分加入一句：\emph{“本模型的参数以课堂可解释性与数值稳定为首要目标，采用约束型校准与先验锁定；在缺乏外部真实数据时，我们强调策略比较的结构稳定性，而非参数点估计。”}
+
+
+\clearpage
+\section{附录 K：工程接口对齐（API/JSON Schema 与命名规范，v7.1）}
+本附录将“教学文档中的符号”与“工程实现中的字段名”做一一对应，目标是：\textbf{同一变量在 UI、后端计算、持久化存储中只出现一次且命名一致}。所有字段默认采用 \texttt{snake\_case}；数值类型为 \texttt{number}（JS/JSON），百分比用 $[0,1]$ 浮点表示。
+
+\subsection{K.1 命名与单位规范}
+\begin{itemize}
+  \item \textbf{价格/成本：}货币单位统一为“元/美元等绝对值”（同一轮中保持一致）；不在字段名中写币种。
+  \item \textbf{比例：}渠道费率、毛利率、份额等均用 $[0,1]$ 浮点（例如 15\% 写为 \texttt{0.15}）。
+  \item \textbf{上标撇号：}文档中的 $X'$ 在工程中统一后缀 \texttt{\_prime}；例如 $pmax'$ 对应 \texttt{pmax\_prime}。
+\end{itemize}
+
+\subsection{K.2 Round 1 冻结字段（传入 Round 2 的最小集合）}
+Round 1 结束后，系统对每个格子 $g$ 产出并冻结如下字段（UI 展示与 Round 2 计算均以此为准）：
+\begin{verbatim}
+{
+  "grid_id": "T01-30%",
+  "wtp": 4999.0,
+  "elasticity_e": 1.6,
+  "pmax": 6299.0,
+  "channel_fee_f": 0.18,
+  "cogs0": 2800.0,
+  "tam_units": 1200000,
+  "H_base": 0.65,
+
+  "vp_scores": { "C": 0.80, "G": 0.75, "E": 0.70 },
+  "phi_E": 1.50,
+  "psi_E": 1.25,
+  "svol": 0.90,
+  "swtp": 0.75,
+  "omega_vol": 0.70,
+  "omega_wtp": 0.30,
+  "H_vp_min": 0.30,
+  "H_vp_max": 1.00,
+  "H_vp": 0.855,
+  "H_eff": 0.556,
+
+  "target_GM": 0.42,
+
+  "market_size_display_units": 667200,
+
+  "fit_arch": 0.62,
+  "fit_text": 1.05,
+  "sub_lift_cap": 1.0,
+  "risk_cap": 6.0
+\end{verbatim}
+
+字段含义（对应正文公式）：
+\begin{itemize}
+
+\item \texttt{svol}, \texttt{swtp}: 按式 \eqref{eq:vp_scores} 由 $(C,G,E)$ 与 $\phi(E),\psi(E)$ 计算得到；
+\item \texttt{H\_vp}: 按式 \eqref{eq:H_vp} 由 \texttt{svol},\texttt{swtp} 与 $(\omega_{vol},\omega_{wtp})$ 加权并 clip 得到；\texttt{H\_eff}=\texttt{H\_base}*\texttt{H\_vp}（式 \eqref{eq:H_eff}）。
+
+
+  \item \texttt{wtp}：$WTP_g$；\texttt{elasticity\_e}：价格弹性 $e_g$（Round 1 市场包给定）。
+  \item \texttt{pmax}：$P^{\max}_g$（式 \eqref{eq:pmax_final}）。
+  \item \texttt{channel\_fee\_f}：$f_g$（渠道费率加权平均）。
+  \item \texttt{cogs0}：$COGS_{0,g}$（Round 1 基准单位成本）。
+  \item \texttt{tam\_units}：$TAM_g$（外生市场盘子，单位为销量/装机/付费用户数）。
+  \item \texttt{H\_base}：$H_g$（扩散/时窗/可达性基准，不含 VP）。
+  \item \texttt{vp\_scores}：VP 三维评分 $(C,G,E)_g$；\texttt{svol}, \texttt{swtp}：式 \eqref{eq:sv_swtp}。
+  \item \texttt{H\_vp}：$H^{vp}_g$；\texttt{H\_eff}：$H^{eff}_g$（式 \eqref{eq:H_eff}）。
+  \item \texttt{market\_size\_display\_units}：$TAM_g\cdot H^{eff}_g$（冻结页展示的“可捕捉规模”）。
+  \item \texttt{sub\_lift\_cap}、\texttt{risk\_cap}：$SubLift_{cap}$ 与 $Risk_{cap}$（价值指数与非价格项的归一化设计上限）。建议按“允许卡牌组合下的理论最大和”设定，并保持跨班次稳定以便可比。
+\end{itemize}
+
+
+\subsection{K.3 Round 2 运行时输入与输出（推荐字段）}
+Round 2 的输入由“冻结字段”叠加“访谈信号 + 研发选择 +（可选）学生定价”构成：
+\begin{verbatim}
+{
+  "grid_id": "T01-30%",
+  "frozen": { ... Round1 fields ... },
+
+  "interview": {
+    "evi": 0.85,
+    "radar_raw": { "tag_a": 7.5, "tag_b": 3.0, "...": 0.0 }
+  },
+
+  "rd_selection": {
+    "selected_card_ids": ["card_01","card_05","card_12"],
+    "tier_by_card": { "card_01": "flagship", "card_05": "standard" }
+  },
+
+  "pricing": { "P": 5999.0 }
+}
+\end{verbatim}
+
+Round 2 输出建议至少包含：
+\begin{verbatim}
+{
+  "grid_id": "T01-30%",
+  "pmax_prime": 7097.0,
+  "wtp_prime": 5648.0,
+  "value_index_V": 0.18,
+
+  "share": 0.084,
+  "units": 23133,
+  "profit_total": 1.22e8,
+  "profit_hw": 9.7e7,
+  "profit_sub": 2.5e7,
+
+  "diagnostics": {
+    "cover_core": 0.61,
+    "cover_nice": 0.34,
+    "risk": 0.12,
+    "load": 18,
+    "d_cogs": 260.0
+  }
+}
+\end{verbatim}
+
+其中 \texttt{pmax\_prime} 与 \texttt{wtp\_prime} 必须按同尺度上移计算（式 \eqref{eq:pmax_prime} 与 \eqref{eq:wtp_prime}），以保证研发溢价意图在 UI 护栏与计算中一致。
+
+\subsection{K.4 Conflict/Dependency 的工程处理（强制校验）}
+\textbf{Team merge / Team submit} 阶段：必须执行 \texttt{validate()}，若存在
+\texttt{missing\_dependency} 或 \texttt{exclusion\_conflict} 则\textbf{阻止提交}并返回修复提示；冲突计数仅作为诊断信息展示，不进入 $z$ 或利润计算。
+\begin{verbatim}
+{
+  "ok": false,
+  "violations": [
+    { "type": "missing_dependency", "card_id": "card_05", "requires": ["card_02"] },
+    { "type": "exclusion_conflict", "card_id": "card_07", "conflicts_with": ["card_11"] }
+  ]
+}
+\end{verbatim}
+
+\end{document}

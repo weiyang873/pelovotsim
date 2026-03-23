@@ -1,0 +1,9 @@
+{
+  "adoption_function": {
+    "type": "logistic",
+    "params": {
+      "a": 3.2
+    }
+  },
+  "fit_lambda": 0.22
+}

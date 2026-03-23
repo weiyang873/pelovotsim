@@ -1,0 +1,75 @@
+{
+  "_meta": {
+    "version": "v0.1-round1-age12",
+    "units": {
+      "wtp_median_price": "RMB"
+    },
+    "notes": [
+      "Classroom-grade starting assumptions (not claims about real market prices).",
+      "Tune after pilot runs to achieve desired dispersion of GM_max and rankings.",
+      "crowding: HIGH=red ocean, MED=moderate, LOW=white space / higher entry barriers."
+    ]
+  },
+  "segments": {
+    "ToC_DIFF_CHILD": {
+      "wtp_median_price": 6999,
+      "price_elasticity": 1.4,
+      "crowding": "HIGH"
+    },
+    "ToC_COST_CHILD": {
+      "wtp_median_price": 3999,
+      "price_elasticity": 1.8,
+      "crowding": "HIGH"
+    },
+    "ToC_DIFF_ADULT": {
+      "wtp_median_price": 8999,
+      "price_elasticity": 1.2,
+      "crowding": "HIGH"
+    },
+    "ToC_COST_ADULT": {
+      "wtp_median_price": 4999,
+      "price_elasticity": 1.6,
+      "crowding": "HIGH"
+    },
+    "ToC_DIFF_ELDER": {
+      "wtp_median_price": 9999,
+      "price_elasticity": 1.1,
+      "crowding": "MED"
+    },
+    "ToC_COST_ELDER": {
+      "wtp_median_price": 5999,
+      "price_elasticity": 1.4,
+      "crowding": "MED"
+    },
+    "ToB_DIFF_CHILD": {
+      "wtp_median_price": 18000,
+      "price_elasticity": 0.9,
+      "crowding": "MED"
+    },
+    "ToB_COST_CHILD": {
+      "wtp_median_price": 12000,
+      "price_elasticity": 1.1,
+      "crowding": "MED"
+    },
+    "ToB_DIFF_ADULT": {
+      "wtp_median_price": 15000,
+      "price_elasticity": 1.0,
+      "crowding": "MED"
+    },
+    "ToB_COST_ADULT": {
+      "wtp_median_price": 10000,
+      "price_elasticity": 1.2,
+      "crowding": "MED"
+    },
+    "ToB_DIFF_ELDER": {
+      "wtp_median_price": 25000,
+      "price_elasticity": 0.8,
+      "crowding": "LOW"
+    },
+    "ToB_COST_ELDER": {
+      "wtp_median_price": 18000,
+      "price_elasticity": 1.0,
+      "crowding": "LOW"
+    }
+  }
+}
