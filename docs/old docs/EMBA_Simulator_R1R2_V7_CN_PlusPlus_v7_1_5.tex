@@ -175,6 +175,21 @@ S^{wtp}_g = C\cdot G\cdot \psi(E),
 \end{equation}
 其中 $\phi(\cdot),\psi(\cdot)$ 为单调函数（可取分段线性或 sigmoid），用于把有效性 $E$ 映射为规模/溢价的非线性增益。
 
+\paragraph{Round 1 的 WTP 调整（v7.1.5 补充）}
+在当前实现中，市场锦囊只允许提升解法说服力维度，记调整后的分数为 $E^{adj}$。支付意愿修正不再只依赖 $(G,E^{adj})$，而是同时考虑客户定义是否足够清晰：
+\begin{equation}
+WTP^{adj}_g = WTP^{ref}_g \cdot \lambda(G)\cdot \lambda(E^{adj})\cdot \rho_{discount}(C),
+\label{eq:wtp_adj_round1}
+\end{equation}
+其中
+\begin{equation}
+\lambda(s)=0.60+0.10s,\qquad s\in[1,5],
+\end{equation}
+\begin{equation}
+\rho_{discount}(C)=0.75+0.05C,\qquad C\in[1,5].
+\end{equation}
+直观上，若目标客户仍然定义得过宽，则即便痛点与解法较强，市场也不会给予满额支付意愿溢价；只有当 $C$ 接近 5 时，$\rho_{discount}(C)$ 才接近 1，对溢价不做折扣。
+
 \paragraph{VP 对可捕捉规模的影响：$H^{vp}$ 与 $H^{eff}$}
 将 VP 的派生得分映射为“可捕捉规模乘子”：
 \begin{equation}
