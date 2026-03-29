@@ -240,8 +240,8 @@ class ApiClient {
     return this.get(`/api/team/${encodeURIComponent(teamId)}/phase4`);
   }
 
-  async freezeTeam(teamId) {
-    return this.post(`/api/team/${encodeURIComponent(teamId)}/freeze`, {});
+  async freezeTeam(teamId, payload = {}) {
+    return this.post(`/api/team/${encodeURIComponent(teamId)}/freeze`, payload);
   }
 
   async getRecap(teamId) {
@@ -304,6 +304,15 @@ class ApiClient {
 
   async getTeamResult(teamId, sessionId = "default") {
     return this.get(`/api/round2/team-result?teamId=${encodeURIComponent(teamId)}&sessionId=${encodeURIComponent(sessionId)}`);
+  }
+
+  async getComputationLog(teamId, stage = "") {
+    const query = stage ? `?stage=${encodeURIComponent(stage)}` : "";
+    return this.get(`/api/computation-log/${encodeURIComponent(teamId)}${query}`);
+  }
+
+  async getComputationChain(teamId) {
+    return this.get(`/api/computation-log/${encodeURIComponent(teamId)}/chain`);
   }
 }
 

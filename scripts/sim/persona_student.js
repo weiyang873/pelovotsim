@@ -26,6 +26,20 @@ const DIM_LABELS = {
   ops_maintenance: "可运营与可维护"
 };
 
+const INTERVIEW_DIMENSION_GUIDANCE = [
+  "你在做用户访谈，以下是 6 个可以探索的维度方向，不用每个都问到，",
+  "跟着对话自然走就好：",
+  "1. 感知与理解：能不能认出人、理解环境",
+  "2. 运动与导航：移动、跟随、避障",
+  "3. 交互与表达：语音、触摸、情感表达",
+  "4. 安全与信任：隐私、儿童安全、紧急情况",
+  "5. 可扩展与连接：智能家居、内容更新",
+  "6. 可运营与可维护：维修、升级、长期使用成本",
+  "",
+  "前 2-3 轮自由探索用户最关心的方向，",
+  "后面的轮次可以主动探索还没聊到的维度。"
+].join("\n");
+
 let lastDeepSeekAt = 0;
 
 function parseGrid(gridId) {
@@ -841,6 +855,9 @@ class PersonaStudent {
           "你在对 LOVOT 潜在用户进行焦点访谈。",
           `你的访谈风格：${this.student.interviewStyleFull || this.student.interviewStyle}`,
           `你负责的产品维度：${assignedDimsDesc || "综合探索"}`,
+          `当前轮次：第 ${turn + 1} 轮`,
+          "",
+          INTERVIEW_DIMENSION_GUIDANCE,
           `用户刚说：${JSON.stringify(String(personaMessage || ""))}`,
           "",
           "用你自然的访谈风格追问，1-2 句话。"
@@ -916,10 +933,13 @@ class PersonaStudent {
           "## 当前场景",
           "你需要为 LOVOT 定价。",
           `你的定价倾向：${this.student.pricingBias}`,
-          `可售价格区间：¥${min} - ¥${max}`,
-          `参考基础价：¥${base}`,
-          `硬件成本：¥${totalCOGS}`,
-          `渠道费率：${channelFee}%`,
+          "",
+          "已知信息：",
+          `- 硬件成本：¥${totalCOGS}`,
+          `- 渠道抽成：${channelFee}%（定价 ¥10000，实际到手 ¥${Math.round(10000 * (1 - channelFee / 100))}）`,
+          "- 定价越高单台赚越多但愿意买的人越少，定价越低买的人越多但可能亏本",
+          "",
+          `定价区间：¥${min} - ¥${max}`,
           "",
           "直接输出一个价格数字（整数），不要解释。"
         ].join("\n")

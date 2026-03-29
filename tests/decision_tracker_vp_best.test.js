@@ -1,6 +1,12 @@
 const assert = require("node:assert/strict");
 
-const { DecisionTracker } = require("../scripts/sim/decision_tracker");
+const { DecisionTracker, scoreProduct } = require("../scripts/sim/decision_tracker");
+
+function testScoreProductUsesVpScoreFormula() {
+  assert.equal(scoreProduct({ C: 5, G: 5, E: 5 }), 5);
+  assert.equal(scoreProduct({ C: 3, G: 5, E: 4 }), 3.7);
+  assert.equal(scoreProduct({ C: 4, G: 1, E: 1 }), 2);
+}
 
 function testUseBestIterationAsFinal() {
   const tracker = new DecisionTracker(0, 4);
@@ -24,13 +30,13 @@ function testUseBestIterationAsFinal() {
     scores: { C: 4, G: 4, E: 4 },
     used_best_iteration: true,
     best_iteration: "coach_round_1",
-    best_score: 64
+    best_score: 4
   });
-  tracker.setVpBestSelection(true, "coach_round_1", 64);
+  tracker.setVpBestSelection(true, "coach_round_1", 4);
 
-  assert.equal(tracker.team.vp_best_score, 64);
+  assert.equal(tracker.team.vp_best_score, 4);
   assert.equal(tracker.team.vp_best_iteration, "coach_round_1");
-  assert.equal(tracker.team.vp_final_score, 64);
+  assert.equal(tracker.team.vp_final_score, 4);
   assert.equal(tracker.team.vp_used_best, true);
 
   tracker.recordPhase4({
@@ -44,7 +50,7 @@ function testUseBestIterationAsFinal() {
   const last = tracker.team.vpIterations[tracker.team.vpIterations.length - 1];
   assert.equal(last.vp_text, "best version");
   assert.deepEqual(last.scores, { C: 4, G: 4, E: 4 });
-  assert.equal(tracker.team.vp_final_score, 64);
+  assert.equal(tracker.team.vp_final_score, 4);
 }
 
 function testConfirmWinsTieForBestIteration() {
@@ -69,11 +75,12 @@ function testConfirmWinsTieForBestIteration() {
     scores: { C: 4, G: 4, E: 4 }
   });
 
-  assert.equal(tracker.team.vp_best_score, 64);
+  assert.equal(tracker.team.vp_best_score, 4);
   assert.equal(tracker.team.vp_best_iteration, "confirm_submit");
 }
 
 function run() {
+  testScoreProductUsesVpScoreFormula();
   testUseBestIterationAsFinal();
   testConfirmWinsTieForBestIteration();
   console.log("decision_tracker_vp_best.test.js: all tests passed");

@@ -4,6 +4,7 @@ import Round2Flow from "./pages/Round2Flow";
 import EntryPage from "./pages/EntryPage";
 import AdminPanel from "./pages/AdminPanel";
 import TestRound2Entry from "./pages/TestRound2Entry";
+import LegalPage from "./pages/LegalPage";
 import { getTeamStatus } from "./api/teamApi";
 import { hasStoredStudentSession, markRound1ReviewIntent, readStudentSession } from "./utils/studentSession";
 
@@ -69,6 +70,11 @@ export default function App() {
     () => pathname === "/test-r2" || pathname === `${BASE_PREFIX}/test-r2`,
     [pathname]
   );
+  const isLegal = useMemo(
+    () => pathname === "/legal" || pathname === "/legal/",
+    [pathname]
+  );
+  const shouldShowEntryPage = isEntry && (!hasTeamContext() || shouldForceEntryPage());
 
   useEffect(() => {
     const onPopState = () => setPathname(getPathname());
@@ -77,7 +83,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (isRound2) return undefined;
+    if (isRound2 || isLegal) return undefined;
     const teamId = getCurrentTeamId();
     if (!teamId) {
       setIsFrozen(false);
@@ -100,22 +106,20 @@ export default function App() {
       canceled = true;
       clearInterval(timer);
     };
-  }, [isRound2, pathname]);
+  }, [isLegal, isRound2, pathname]);
 
-  if (isEntry && (!hasTeamContext() || shouldForceEntryPage())) {
-    return <EntryPage />;
-  }
+  let content = null;
 
-  if (isAdmin) {
-    return <AdminPanel />;
-  }
-
-  if (isTestR2) {
-    return <TestRound2Entry />;
-  }
-
-  if (isRound2) {
-    return (
+  if (isLegal) {
+    content = <LegalPage />;
+  } else if (shouldShowEntryPage) {
+    content = <EntryPage />;
+  } else if (isAdmin) {
+    content = <AdminPanel />;
+  } else if (isTestR2) {
+    content = <TestRound2Entry />;
+  } else if (isRound2) {
+    content = (
       <>
         <div style={{ maxWidth: 1060, margin: "12px auto 0", padding: "0 12px" }}>
           <button
@@ -141,34 +145,36 @@ export default function App() {
         <Round2Flow />
       </>
     );
+  } else {
+    content = (
+      <>
+        <MultiplayerFlow />
+        {isFrozen && (
+          <button
+            type="button"
+            onClick={() => goTo(ROUND2_PATH)}
+            style={{
+              position: "fixed",
+              right: 16,
+              bottom: 16,
+              zIndex: 999,
+              border: "none",
+              borderRadius: 999,
+              background: "#1a5c3a",
+              color: "#fff",
+              padding: "12px 18px",
+              fontWeight: 800,
+              fontSize: 13,
+              boxShadow: "0 8px 20px rgba(0,0,0,0.2)",
+              cursor: "pointer"
+            }}
+          >
+            进入 Round 2
+          </button>
+        )}
+      </>
+    );
   }
 
-  return (
-    <>
-      <MultiplayerFlow />
-      {isFrozen && (
-        <button
-          type="button"
-          onClick={() => goTo(ROUND2_PATH)}
-          style={{
-            position: "fixed",
-            right: 16,
-            bottom: 16,
-            zIndex: 999,
-            border: "none",
-            borderRadius: 999,
-            background: "#1a5c3a",
-            color: "#fff",
-            padding: "12px 18px",
-            fontWeight: 800,
-            fontSize: 13,
-            boxShadow: "0 8px 20px rgba(0,0,0,0.2)",
-            cursor: "pointer"
-          }}
-        >
-          进入 Round 2
-        </button>
-      )}
-    </>
-  );
+  return content;
 }

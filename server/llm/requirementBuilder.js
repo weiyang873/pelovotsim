@@ -30,7 +30,7 @@ function normalizeRequirementRow(row, idx) {
   };
 }
 
-function coerceRequirementsPayload(parsed, conversation) {
+function coerceRequirementsPayload(parsed) {
   if (Array.isArray(parsed)) {
     const rows = parsed
       .slice(0, 12)
@@ -55,31 +55,7 @@ function coerceRequirementsPayload(parsed, conversation) {
       hidden_insight: String(parsed?.hidden_insight || "关键阻力通常来自上手成本和持续使用理由不足。")
     };
   }
-
-  const fallbackLines = String(conversation || "")
-    .split(/\n+/)
-    .filter(Boolean)
-    .slice(-8)
-    .map((l) => l.replace(/^学生\(Marketing\)：|^客户\(.+?\)：/, "").trim())
-    .filter(Boolean);
-  const seed = fallbackLines.length ? fallbackLines : ["需要更稳定的陪伴交互", "希望上手简单且持续可用", "担心隐私与误触发"];
-  const fb = seed.slice(0, 6).map((s, i) =>
-    normalizeRequirementRow(
-      {
-        title: s.slice(0, 8),
-        description: s,
-        source_quote: s,
-        category: i % 3 === 0 ? "情感需求" : i % 3 === 1 ? "体验需求" : "功能需求",
-        benchmark_priority: i < 3 ? "must_have" : "nice_to_have"
-      },
-      i
-    )
-  );
-  return {
-    requirements: fb,
-    summary: "模型输出异常，已按访谈原话生成可继续筛选的初版需求。",
-    hidden_insight: "建议优先验证最影响留存和信任的三条需求。"
-  };
+  throw new Error("需求清单生成失败：模型输出不可解析");
 }
 
 function rebalancePriorities(rows) {
@@ -117,7 +93,7 @@ async function generateRequirements(session) {
       messages
     }, () => chatCompletion(messages, { temperature: 0.35, max_tokens: 1200 }));
     const parsed = parseJsonLoose(raw);
-    const coerced = coerceRequirementsPayload(parsed, conversation);
+    const coerced = coerceRequirementsPayload(parsed);
     const balanced = rebalancePriorities(coerced.requirements || []);
     return {
       requirements: balanced,
@@ -140,7 +116,7 @@ async function generateRequirements(session) {
         messages: retryMessages
       }, () => chatCompletion(retryMessages, { temperature: 0.2, max_tokens: 1200 }));
       const parsed2 = parseJsonLoose(raw2);
-      const coerced2 = coerceRequirementsPayload(parsed2, conversation);
+      const coerced2 = coerceRequirementsPayload(parsed2);
       const balanced2 = rebalancePriorities(coerced2.requirements || []);
       return {
         requirements: balanced2,
@@ -148,16 +124,7 @@ async function generateRequirements(session) {
         hidden_insight: coerced2.hidden_insight
       };
     } catch (_) {
-      const fallback = coerceRequirementsPayload([], conversation);
-      const balancedFallback = rebalancePriorities(fallback.requirements || []);
-      if (balancedFallback.length < 3) {
-        throw new Error(`需求清单生成失败，请重试（${firstErr.message || "unknown"}）`);
-      }
-      return {
-        requirements: balancedFallback,
-        summary: fallback.summary,
-        hidden_insight: fallback.hidden_insight
-      };
+      throw new Error(`AI 服务暂时不可用，请重试（${firstErr.message || "unknown"}）`);
     }
   }
 }

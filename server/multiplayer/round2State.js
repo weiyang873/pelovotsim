@@ -159,6 +159,7 @@ async function ensureSchema() {
 
 async function logTeacherAction({ action, teamId = null, memberId = null, details = null }) {
   await ensureSchema();
+  console.log(`[TEACHER] ${String(action || "").trim()}: team=${teamId || "-"} member=${memberId || "-"} at ${nowIso()}`);
   await runSql(`
     INSERT INTO teacher_actions (action, team_id, member_id, details)
     VALUES (
@@ -228,6 +229,7 @@ async function clearTeamRound2Artifacts(teamId, mode) {
       DELETE FROM round2_dimension_assignments WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM round2_interview_sessions WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM round2_member_selections WHERE team_id = ${sqlQuote(teamId)};
+      DELETE FROM round2_team_drafts WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM round2_submissions WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM fg_team_radar WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM round2_results WHERE team_id = ${sqlQuote(teamId)};
@@ -239,6 +241,7 @@ async function clearTeamRound2Artifacts(teamId, mode) {
     await runSql(`
       DELETE FROM round2_interview_sessions WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM round2_member_selections WHERE team_id = ${sqlQuote(teamId)};
+      DELETE FROM round2_team_drafts WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM round2_submissions WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM fg_team_radar WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM round2_results WHERE team_id = ${sqlQuote(teamId)};
@@ -249,8 +252,30 @@ async function clearTeamRound2Artifacts(teamId, mode) {
   if (target === "R2_INDIVIDUAL_CARDS") {
     await runSql(`
       DELETE FROM round2_member_selections WHERE team_id = ${sqlQuote(teamId)};
+      DELETE FROM round2_team_drafts WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM round2_submissions WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM fg_team_radar WHERE team_id = ${sqlQuote(teamId)};
+      DELETE FROM round2_results WHERE team_id = ${sqlQuote(teamId)};
+    `);
+    return;
+  }
+
+  if (target === "R2_TEAM_MERGE") {
+    await runSql(`
+      DELETE FROM round2_team_drafts WHERE team_id = ${sqlQuote(teamId)};
+      DELETE FROM round2_submissions WHERE team_id = ${sqlQuote(teamId)};
+      DELETE FROM fg_team_radar WHERE team_id = ${sqlQuote(teamId)};
+      DELETE FROM round2_results WHERE team_id = ${sqlQuote(teamId)};
+    `);
+    return;
+  }
+
+  if (target === "R2_TEAM_DISCUSSION") {
+    await runSql(`
+      UPDATE round2_team_drafts
+      SET price = NULL, updated_at = ${sqlQuote(nowIso())}
+      WHERE team_id = ${sqlQuote(teamId)};
+      DELETE FROM round2_submissions WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM round2_results WHERE team_id = ${sqlQuote(teamId)};
     `);
   }
@@ -268,6 +293,7 @@ async function clearMemberRound2Artifacts(teamId, memberId, resetTo) {
       DELETE FROM round2_member_selections
       WHERE team_id = ${sqlQuote(teamId)} AND member_id = ${sqlQuote(memberId)};
 
+      DELETE FROM round2_team_drafts WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM round2_submissions WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM fg_team_radar WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM round2_results WHERE team_id = ${sqlQuote(teamId)};
@@ -280,6 +306,7 @@ async function clearMemberRound2Artifacts(teamId, memberId, resetTo) {
       DELETE FROM round2_member_selections
       WHERE team_id = ${sqlQuote(teamId)} AND member_id = ${sqlQuote(memberId)};
 
+      DELETE FROM round2_team_drafts WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM round2_submissions WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM fg_team_radar WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM round2_results WHERE team_id = ${sqlQuote(teamId)};
@@ -376,6 +403,8 @@ async function loadRound2State(teamIds = null) {
       t.final_architecture,
       t.r2_status,
       t.r2_status_entered_at,
+      t.leader_member_id,
+      leader.member_name AS leader_name,
       tm.id AS member_id,
       tm.member_name,
       tm.member_index,
@@ -387,6 +416,7 @@ async function loadRound2State(teamIds = null) {
       tm.last_activity_at,
       tm.forced_by_teacher
     FROM teams t
+    LEFT JOIN team_members leader ON leader.id = t.leader_member_id
     LEFT JOIN team_members tm ON tm.team_id = t.id
     ${whereSql}
     ORDER BY t.created_at ASC, tm.member_index ASC;
@@ -406,6 +436,8 @@ async function loadRound2State(teamIds = null) {
         finalArchitecture: row.final_architecture,
         r2Status: row.r2_status,
         r2StatusEnteredAt: row.r2_status_entered_at,
+        leaderMemberId: row.leader_member_id,
+        leaderName: row.leader_name,
         members: []
       });
       allTeamIds.push(row.id);
@@ -582,6 +614,8 @@ async function loadRound2State(teamIds = null) {
       name: team.name,
       memberCount: members.length || team.memberCount,
       status: team.teamStatus,
+      leaderMemberId: team.leaderMemberId || null,
+      leaderName: team.leaderName || "",
       finalGridId: team.finalGridId,
       finalArchitecture: team.finalArchitecture,
       r1: {

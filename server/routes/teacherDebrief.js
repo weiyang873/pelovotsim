@@ -2,8 +2,20 @@ const crypto = require("node:crypto");
 const { runSql, sqlQuote } = require("../db/pgSql");
 const { chatCompletion } = require("../llm/deepseekClient");
 const { withLlmLogging } = require("../llm/llm_logger");
+const { getTeamSessions } = require("../llm/sessions");
+const { loadJinangConfig } = require("../multiplayer/jinangDealer");
+const { listTeamIterations } = require("../multiplayer/vpIterationStore");
 const Round2 = require("./round2Routes");
 const PROMPT_CACHE_VERSION = "teacher_debrief_v2";
+const TEAM_COLORS = [
+  "#E8634A", "#3B82C4", "#2FAB6E", "#D4A03C", "#8B5CF6",
+  "#EC4899", "#14B8A6", "#F97316", "#06B6D4", "#84CC16"
+];
+const ARCH_DISPLAY = {
+  Experience: { label: "体验●", color: "#8B5CF6", symbol: "●" },
+  Hybrid: { label: "混合▲", color: "#F59E0B", symbol: "▲" },
+  Function: { label: "功能■", color: "#3B82F6", symbol: "■" }
+};
 
 function makeResponse(status, body) {
   return { status, body };
@@ -22,6 +34,11 @@ function safeJsonParse(text, fallback) {
   } catch (_) {
     return fallback;
   }
+}
+
+function toFiniteNumber(value, fallback = null) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
 }
 
 function normalizeTeacherCode(value) {
@@ -79,6 +96,23 @@ function formatArchitectureLabel(arch) {
   return String(arch || "");
 }
 
+function normalizeArchitectureKey(arch) {
+  const raw = String(arch || "").trim().toLowerCase();
+  if (raw === "experience") return "Experience";
+  if (raw === "hybrid") return "Hybrid";
+  if (raw === "function") return "Function";
+  return String(arch || "").trim();
+}
+
+function getArchDisplay(arch) {
+  const key = normalizeArchitectureKey(arch);
+  return ARCH_DISPLAY[key] || {
+    label: formatArchitectureLabel(key),
+    color: "#64748b",
+    symbol: ""
+  };
+}
+
 function formatGridLabel(gridId) {
   const raw = String(gridId || "").trim();
   if (!raw) return "";
@@ -127,10 +161,57 @@ function computeCsvMetrics(team) {
   const profit = Number(team?.r2?.profit || 0);
   const f = grid.includes("B2B") ? 0.15 : 0.25;
   const totalCost = 2000 + dCOGS;
-  const gm = price > 0 ? ((price * (1 - f) - totalCost) / price) * 100 : 0;
+  const gmRatio = team?.r2?.actualGm != null
+    ? Number(team.r2.actualGm)
+    : (price > 0 ? ((price * (1 - f) - totalCost) / price) : 0);
+  const gm = gmRatio * 100;
   const roi = units > 0 && dCOGS > 0 ? (profit / (units * dCOGS)) * 100 : 0;
   const consistent = String(team?.r1?.grid || "") === String(team?.r2?.bestGrid || "") ? "是" : "否";
   return { gm, roi, consistent };
+}
+
+function computeVpCompositeScore(C, G, E) {
+  const c = Math.max(1, Math.min(5, Number(C || 0) || 3));
+  const g = Math.max(1, Math.min(5, Number(G || 0) || 3));
+  const e = Math.max(1, Math.min(5, Number(E || 0) || 3));
+  const avgGE = (g + e) / 2;
+  return Math.min(5, Math.round(Math.sqrt(c * avgGE) * 10) / 10);
+}
+
+function formatDisplayName(name, fallbackIndex) {
+  const raw = String(name || "").trim();
+  const canonical = `第${fallbackIndex + 1}组`;
+  if (!raw) return canonical;
+  const match = raw.match(/^第\s*(\d+)\s*组$/);
+  if (match) return `第${Number(match[1])}组`;
+  return canonical;
+}
+
+function roundNumber(value, digits = 1) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return null;
+  return Number(n.toFixed(digits));
+}
+
+function computeImprovementPct(initialScore, finalScore) {
+  const start = Number(initialScore);
+  const end = Number(finalScore);
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
+  if (start <= 0 && end > 0) return 100;
+  if (start <= 0) return 0;
+  return Math.round(((end - start) / start) * 100);
+}
+
+function buildIterationNote(scoreBefore, scoreAfter, options = {}) {
+  const before = Number(scoreBefore);
+  const after = Number(scoreAfter);
+  const delta = Number.isFinite(before) && Number.isFinite(after) ? after - before : 0;
+  if (options.usedBest) return "最终提交采用了历史最佳版本。";
+  if (delta >= 1) return "这一轮迭代让 VP 明显变清晰了。";
+  if (delta >= 0.3) return "这一轮有提升，主要是表述更聚焦。";
+  if (delta <= -0.8) return "这一轮回退明显，可能偏离了用户场景。";
+  if (delta <= -0.3) return "这一轮略有回退，需要重新收敛。";
+  return "这一轮主要是微调表达，分数变化有限。";
 }
 
 function csvEscape(value) {
@@ -207,6 +288,12 @@ async function getLatestActivityIso(sessionId) {
 
       SELECT MAX(computed_at)::text AS ts
       FROM round2_results
+      WHERE session_id = ${sqlQuote(sid)}
+
+      UNION ALL
+
+      SELECT MAX(timestamp)::text AS ts
+      FROM computation_log
       WHERE session_id = ${sqlQuote(sid)}
     ) q;
   `);
@@ -288,6 +375,104 @@ async function getTeamsForSession(sessionId) {
   `);
 }
 
+async function getMemberRows(teamId) {
+  return runSql(`
+    SELECT id, member_name, member_index, jinang_market_id, jinang_tech_id
+    FROM team_members
+    WHERE team_id = ${sqlQuote(teamId)}
+    ORDER BY member_index ASC;
+  `);
+}
+
+async function getSubmissionRows(teamId) {
+  return runSql(`
+    SELECT member_id, grid_id, architecture, vp_draft, submitted_at
+    FROM member_submissions
+    WHERE team_id = ${sqlQuote(teamId)}
+    ORDER BY submitted_at ASC NULLS LAST, member_id ASC;
+  `);
+}
+
+async function getLatestMemberInterviewRows(teamId) {
+  return runSql(`
+    SELECT DISTINCT ON (member_id)
+      member_id,
+      result_json,
+      updated_at
+    FROM round2_interview_sessions
+    WHERE team_id = ${sqlQuote(teamId)}
+      AND is_complete = TRUE
+    ORDER BY member_id ASC, updated_at DESC;
+  `);
+}
+
+async function getJinangSettlements(teamId) {
+  return runSql(`
+    SELECT member_id, jinang_type, matched, effect_applied
+    FROM jinang_settlements
+    WHERE team_id = ${sqlQuote(teamId)};
+  `);
+}
+
+function parseEffectStrength(row) {
+  const effect = safeJsonParse(row?.effect_applied, {});
+  const strength = Number(effect.match_strength ?? effect.matchStrength ?? 0);
+  return Number.isFinite(strength) ? Number(strength.toFixed(2)) : 0;
+}
+
+function mapJinangConfig() {
+  const cfg = loadJinangConfig();
+  return {
+    market: Object.fromEntries((cfg.market || []).map((item) => [item.id, item])),
+    tech: Object.fromEntries((cfg.tech || []).map((item) => [item.id, item]))
+  };
+}
+
+async function buildTeamMembers(teamId) {
+  const [memberRows, submissionRows, settlementRows, interviewRows] = await Promise.all([
+    getMemberRows(teamId),
+    getSubmissionRows(teamId),
+    getJinangSettlements(teamId),
+    getLatestMemberInterviewRows(teamId)
+  ]);
+  const submissionMap = Object.fromEntries(submissionRows.map((row) => [row.member_id, row]));
+  const interviewMap = Object.fromEntries(interviewRows.map((row) => [row.member_id, {
+    result: safeJsonParse(row.result_json, null),
+    updated_at: row.updated_at || null
+  }]));
+  const settlementMap = {};
+  settlementRows.forEach((row) => {
+    if (!settlementMap[row.member_id]) settlementMap[row.member_id] = {};
+    settlementMap[row.member_id][row.jinang_type] = row;
+  });
+  const jinangMap = mapJinangConfig();
+
+  return memberRows.map((member) => {
+    const submission = submissionMap[member.id] || null;
+    const interview = interviewMap[member.id] || null;
+    const marketSettlement = settlementMap[member.id]?.market || null;
+    const techSettlement = settlementMap[member.id]?.tech || null;
+    return {
+      id: member.id,
+      name: member.member_name || `成员${member.member_index || ""}`,
+      persona: "",
+      r1_personal: {
+        grid: submission?.grid_id || "",
+        gridLabel: formatGridLabel(submission?.grid_id),
+        arch: normalizeArchitectureKey(submission?.architecture),
+        who: extractVpField(submission?.vp_draft, "WHO"),
+        pain: extractVpField(submission?.vp_draft, "PAIN"),
+        how: extractVpField(submission?.vp_draft, "HOW")
+      },
+      r2_evi: toFiniteNumber(interview?.result?.evi, null),
+      jinang_market: jinangMap.market[member.jinang_market_id]?.name || member.jinang_market_id || "",
+      jinang_tech: jinangMap.tech[member.jinang_tech_id]?.name || member.jinang_tech_id || "",
+      jinang_market_match: parseEffectStrength(marketSettlement),
+      jinang_tech_match: parseEffectStrength(techSettlement)
+    };
+  });
+}
+
 async function getMarketMatchStrength(teamId) {
   const rows = await runSql(`
     SELECT effect_applied
@@ -303,12 +488,162 @@ async function getMarketMatchStrength(teamId) {
   return Number(best.toFixed(2));
 }
 
-async function buildTeamRecord(teamRow, sessionId) {
+async function getLatestRound2Logs(teamId, sessionId) {
+  const rows = await runSql(`
+    SELECT stage, params, timestamp, id
+    FROM computation_log
+    WHERE team_id = ${sqlQuote(teamId)}
+      AND session_id = ${sqlQuote(normalizeSessionId(sessionId))}
+      AND stage IN ('r2_profit', 'r2_volume')
+    ORDER BY timestamp DESC, id DESC;
+  `);
+  const picked = {
+    r2_profit: null,
+    r2_volume: null
+  };
+  rows.forEach((row) => {
+    if (!picked[row.stage]) {
+      picked[row.stage] = row.params && typeof row.params === "object"
+        ? row.params
+        : safeJsonParse(row.params, {});
+    }
+  });
+  return picked;
+}
+
+async function getRound1VpLogs(teamId, sessionId) {
+  const rows = await runSql(`
+    SELECT stage, params, timestamp, id
+    FROM computation_log
+    WHERE team_id = ${sqlQuote(teamId)}
+      AND session_id = ${sqlQuote(normalizeSessionId(sessionId))}
+      AND stage IN ('r1_vp_score', 'r1_vp_score_final')
+    ORDER BY timestamp ASC, id ASC;
+  `);
+  return rows.map((row) => ({
+    stage: row.stage,
+    timestamp: row.timestamp,
+    params: row.params && typeof row.params === "object" ? row.params : safeJsonParse(row.params, {})
+  }));
+}
+
+async function buildVpIterationData(teamId, sessionId, fallbackVpText) {
+  const storedIterations = await listTeamIterations(teamId);
+  if (storedIterations.length) {
+    const iterations = storedIterations.map((item) => ({
+      round: Number(item.iteration || 0),
+      speaker: String(item.speakerName || "").trim() || "团队成员",
+      persona: String(item.speakerPersona || "").trim(),
+      scoreBefore: roundNumber(item.scoreBefore, 1),
+      scoreAfter: roundNumber(item.scoreAfter, 1),
+      vpBefore: String(item.vpBefore || "").trim(),
+      vpAfter: String(item.vpAfter || "").trim(),
+      scoreC: roundNumber(item.scoreC, 1),
+      scoreG: roundNumber(item.scoreG, 1),
+      scoreE: roundNumber(item.scoreE, 1),
+      sourceIteration: item.sourceIteration || null,
+      usedBest: item.usedBestIteration === true,
+      note: buildIterationNote(item.scoreBefore, item.scoreAfter, { usedBest: item.usedBestIteration === true }),
+      timestamp: item.createdAt || null
+    }));
+    const validScores = iterations
+      .map((entry) => Number(entry.scoreAfter))
+      .filter((value) => Number.isFinite(value));
+    const initialScore = validScores.length ? validScores[0] : null;
+    const finalScore = validScores.length ? validScores[validScores.length - 1] : null;
+    const bestScore = validScores.length ? Math.max(...validScores) : finalScore;
+    const usedBest = iterations.some((entry) => entry.usedBest);
+    return {
+      iterations,
+      initialScore,
+      finalScore,
+      bestScore,
+      improvementPct: computeImprovementPct(initialScore, finalScore),
+      usedBest
+    };
+  }
+
+  const [scoreLogs, sessions] = await Promise.all([
+    getRound1VpLogs(teamId, sessionId),
+    getTeamSessions(teamId)
+  ]);
+  const session = Array.isArray(sessions) && sessions.length ? sessions[sessions.length - 1] : null;
+  const userMessages = Array.isArray(session?.messages)
+    ? session.messages.filter((item) => item?.role === "user")
+    : [];
+  const scoreEvents = scoreLogs.length
+    ? scoreLogs
+    : [{
+        stage: "r1_vp_score_final",
+        timestamp: null,
+        params: {
+          vp_text: String(fallbackVpText || "").trim()
+        }
+      }];
+
+  const iterations = [];
+  let previousScore = null;
+  let previousVpText = "";
+  scoreEvents.forEach((event, index) => {
+    const params = event.params || {};
+    const scoreAfter = roundNumber(
+      params.VPscore != null
+        ? params.VPscore
+        : computeVpCompositeScore(params.raw_C, params.raw_G, params.raw_E),
+      1
+    );
+    const vpText = String(params.vp_text || fallbackVpText || "").trim();
+    const speakerMessage = userMessages[index] || userMessages[userMessages.length - 1] || null;
+    const speaker = String(speakerMessage?.speaker || speakerMessage?.name || "").trim() || "团队成员";
+    const persona = String(speakerMessage?.persona || "").trim();
+    iterations.push({
+      round: index + 1,
+      speaker,
+      persona,
+      scoreBefore: previousScore,
+      scoreAfter,
+      vpBefore: previousVpText,
+      vpAfter: vpText,
+      scoreC: roundNumber(params.raw_C, 1),
+      scoreG: roundNumber(params.raw_G, 1),
+      scoreE: roundNumber(params.raw_E != null ? params.raw_E : params.Eadj, 1),
+      sourceIteration: String(params.source_iteration || "").trim() || null,
+      usedBest: params.used_best_iteration === true,
+      note: buildIterationNote(previousScore, scoreAfter, { usedBest: params.used_best_iteration === true }),
+      timestamp: event.timestamp || null
+    });
+    previousScore = scoreAfter;
+    previousVpText = vpText;
+  });
+
+  const validScores = iterations
+    .map((item) => Number(item.scoreAfter))
+    .filter((value) => Number.isFinite(value));
+  const initialScore = validScores.length ? validScores[0] : null;
+  const finalScore = validScores.length ? validScores[validScores.length - 1] : null;
+  const bestScore = validScores.length ? Math.max(...validScores) : finalScore;
+  const usedBest = iterations.some((item) => item.usedBest);
+
+  return {
+    iterations,
+    initialScore,
+    finalScore,
+    bestScore,
+    improvementPct: computeImprovementPct(initialScore, finalScore),
+    usedBest
+  };
+}
+
+async function buildTeamRecord(teamRow, sessionId, teamIndex) {
   const rawScores = safeJsonParse(teamRow.final_vp_scores, {}) || {};
+  const members = await buildTeamMembers(teamRow.id);
+  const vpJourney = await buildVpIterationData(teamRow.id, sessionId, teamRow.final_vp_text);
   const r1 = {
     grid: teamRow.final_grid_id || "",
     gridLabel: formatGridLabel(teamRow.final_grid_id),
-    arch: formatArchitectureLabel(teamRow.final_architecture),
+    arch: normalizeArchitectureKey(teamRow.final_architecture),
+    archLabel: formatArchitectureLabel(teamRow.final_architecture),
+    archMeta: getArchDisplay(teamRow.final_architecture),
     vp: String(teamRow.final_vp_text || "").replace(/\s+/g, " ").trim(),
     who: extractVpField(teamRow.final_vp_text, "WHO"),
     pain: extractVpField(teamRow.final_vp_text, "PAIN"),
@@ -317,42 +652,74 @@ async function buildTeamRecord(teamRow, sessionId) {
     G: teamRow.final_vp_g != null ? Number(teamRow.final_vp_g) : Number(rawScores.G || 0),
     E: teamRow.final_vp_e_raw != null ? Number(teamRow.final_vp_e_raw) : Number(rawScores.E || 0),
     Eadj: teamRow.final_vp_e_adj != null ? Number(teamRow.final_vp_e_adj) : Number(rawScores.E || 0),
+    VPscore: rawScores.VPscore != null ? Number(rawScores.VPscore) : null,
     sam: teamRow.final_sam != null ? Number(teamRow.final_sam) : null,
     wtpAdj: teamRow.final_wtp_adj != null ? Number(teamRow.final_wtp_adj) : null,
-    jinangMatch: await getMarketMatchStrength(teamRow.id)
+    jinangMatch: await getMarketMatchStrength(teamRow.id),
+    vpInitialScore: vpJourney.initialScore,
+    vpFinalScore: vpJourney.finalScore,
+    vpBestScore: vpJourney.bestScore,
+    vpImprovementPct: vpJourney.improvementPct,
+    vpIterations: vpJourney.iterations.length,
+    vpUsedBest: vpJourney.usedBest
   };
 
   const snapshot = await Round2.getTeamResultSnapshot(teamRow.id, sessionId);
+  const logs = await getLatestRound2Logs(teamRow.id, sessionId);
+  const profitLog = logs.r2_profit || {};
+  const volumeLog = logs.r2_volume || {};
   const result = snapshot?.result?.result || {};
   const bestGrid = snapshot?.result?.best_grid || snapshot?.submission?.best_grid || r1.grid;
   const cards = Array.isArray(snapshot?.submission?.cards)
     ? snapshot.submission.cards.map((item) => item.label || `${item.name || item.id}·${item.tierLabel || item.tier || ""}`)
     : [];
+  const units = toFiniteNumber(profitLog.Q, snapshot?.result?.units);
+  const totalProfit = toFiniteNumber(profitLog.total_profit, snapshot?.result?.profit);
+  const actualGm = toFiniteNumber(profitLog.actual_gm, result.actualGm);
+  const profitPerUnit = units > 0
+    ? Math.round(Number(totalProfit || 0) / units)
+    : (snapshot?.result?.profit_per_unit ?? null);
+  const vscore = toFiniteNumber(volumeLog.Vscore, snapshot?.result?.vscore);
+  const evi = toFiniteNumber(snapshot?.radar?.evi, result.evi);
 
   const r2 = {
-    price: snapshot?.submission?.price ?? null,
-    dCOGS: snapshot?.submission?.dcogs ?? null,
+    price: toFiniteNumber(profitLog.P, snapshot?.submission?.price),
+    dCOGS: toFiniteNumber(profitLog.dCOGS, snapshot?.submission?.dcogs),
     cardCount: snapshot?.submission?.card_count ?? 0,
-    riskTotal: snapshot?.submission?.risk_total ?? null,
-    vscore: snapshot?.result?.vscore ?? null,
+    riskTotal: snapshot?.submission?.risk_total ?? toFiniteNumber(result.risk, null),
+    vscore,
     radar: normalizeRadar(snapshot?.radar?.radar || {}),
     bestGrid,
     bestGridLabel: formatGridLabel(bestGrid),
-    units: snapshot?.result?.units ?? null,
-    profit: snapshot?.result?.profit ?? null,
-    profitPerUnit: snapshot?.result?.profit_per_unit ?? null,
+    units,
+    Q: units,
+    profit: totalProfit,
+    totalProfit,
+    profitHw: toFiniteNumber(profitLog.profit_hw, result.profitHW),
+    profitSub: toFiniteNumber(profitLog.profit_sub, result.profitSub),
+    profitPerUnit,
     submittedAt: snapshot?.submission?.submitted_at || null,
     cards,
     roi: result.roi == null ? null : Number(result.roi),
-    gm: result.actualGm == null ? null : Number(result.actualGm)
+    nre: toFiniteNumber(result.nre_total_wan, null),
+    coverCore: toFiniteNumber(result.coverCore, null),
+    coverNice: toFiniteNumber(result.coverNice, null),
+    evi,
+    gm: actualGm,
+    actualGm
   };
 
   return {
     id: teamRow.id,
     name: teamRow.team_name || teamRow.id,
-    members: Number(teamRow.team_size || 0),
+    displayName: formatDisplayName(teamRow.team_name, teamIndex),
+    color: TEAM_COLORS[teamIndex % TEAM_COLORS.length],
+    teamIndex,
+    members,
+    memberCount: Number(teamRow.team_size || members.length || 0),
     r1,
-    r2
+    r2,
+    vpTimeline: vpJourney.iterations
   };
 }
 
@@ -360,12 +727,12 @@ async function buildDebriefData(sessionId) {
   const sid = normalizeSessionId(sessionId);
   const teamRows = await getTeamsForSession(sid);
   const teams = [];
-  for (const row of teamRows) {
-    teams.push(await buildTeamRecord(row, sid));
+  for (let index = 0; index < teamRows.length; index += 1) {
+    teams.push(await buildTeamRecord(teamRows[index], sid, index));
   }
 
   const meta = {
-    totalStudents: teams.reduce((sum, team) => sum + Number(team.members || 0), 0),
+    totalStudents: teams.reduce((sum, team) => sum + Number(team.memberCount || 0), 0),
     totalTeams: teams.length,
     teamsSubmittedR1: teams.filter((team) => team.r1?.grid).length,
     teamsSubmittedR2: teams.filter((team) => team.r2?.price != null && team.r2?.profit != null).length
@@ -376,9 +743,9 @@ async function buildDebriefData(sessionId) {
 
 function compactRound1PromptData(data) {
   return (data.teams || []).map((team) => ({
-    组别: team.name,
+    组别: team.displayName || team.name,
     定位: team.r1.gridLabel,
-    架构: team.r1.arch,
+    架构: team.r1.archLabel || team.r1.arch,
     VP: team.r1.vp,
     C: team.r1.C,
     G: team.r1.G,
@@ -394,7 +761,7 @@ function compactRound2PromptData(data) {
   return (data.teams || [])
     .filter((team) => Number.isFinite(Number(team.r2?.profit)))
     .map((team) => ({
-      组别: team.name,
+      组别: team.displayName || team.name,
       R1定位: team.r1.gridLabel,
       定价: team.r2.price,
       dCOGS: team.r2.dCOGS,
@@ -404,7 +771,10 @@ function compactRound2PromptData(data) {
       雷达: team.r2.radar,
       匹配格子: team.r2.bestGridLabel,
       销量: team.r2.units,
+      硬件利润: team.r2.profitHw,
+      订阅利润: team.r2.profitSub,
       利润: team.r2.profit,
+      实际毛利率: team.r2.actualGm,
       单台利润: team.r2.profitPerUnit,
       毛利率: team.r2.gm,
       提交时间: team.r2.submittedAt,
@@ -416,15 +786,17 @@ function buildRound2PromptSummary(data) {
   const validTeams = (data.teams || [])
     .filter((team) => Number.isFinite(Number(team.r2?.profit)))
     .map((team) => ({
-      组别: team.name,
+      组别: team.displayName || team.name,
       R1定位: team.r1.gridLabel,
       R2匹配格子: team.r2.bestGridLabel,
       定价: Number(team.r2.price || 0),
       dCOGS: Number(team.r2.dCOGS || 0),
       产品力: Number(team.r2.vscore || 0),
       销量: Number(team.r2.units || 0),
+      硬件利润: Number(team.r2.profitHw || 0),
+      订阅利润: Number(team.r2.profitSub || 0),
       利润: Number(team.r2.profit || 0),
-      毛利率: team.r2.gm == null ? null : Number(team.r2.gm),
+      毛利率: team.r2.actualGm == null ? null : Number(team.r2.actualGm),
       提交时间: team.r2.submittedAt || ""
     }));
 
@@ -641,6 +1013,27 @@ async function debriefDataApi(query) {
   }
 }
 
+async function vpIterationsApi(query) {
+  try {
+    const teamId = String(
+      (typeof query?.get === "function" ? query.get("team_id") || query.get("teamId") : query?.team_id || query?.teamId) || ""
+    ).trim();
+    if (!teamId) return makeResponse(400, { ok: false, error: "team_id required" });
+    const sid = typeof query?.get === "function" ? query.get("session_id") || query.get("sessionId") : query?.session_id || query?.sessionId;
+    const data = await buildDebriefData(sid);
+    const team = (data.teams || []).find((item) => item.id === teamId);
+    if (!team) return makeResponse(404, { ok: false, error: "team not found" });
+    return makeResponse(200, {
+      ok: true,
+      team_id: teamId,
+      session_id: normalizeSessionId(sid),
+      iterations: team.vpTimeline || []
+    });
+  } catch (e) {
+    return makeResponse(500, { ok: false, error: e.message });
+  }
+}
+
 async function generateDebriefApi(body) {
   try {
     const round = Number(body?.round || 0);
@@ -687,6 +1080,7 @@ module.exports = {
   ensureSchema,
   verifyTeacherAuth,
   debriefDataApi,
+  vpIterationsApi,
   generateDebriefApi,
   generateTeamReviewApi,
   exportCsv,

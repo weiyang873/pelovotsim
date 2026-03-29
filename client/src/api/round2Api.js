@@ -2,7 +2,14 @@ const BASE = "/api";
 
 async function asJson(res) {
   const data = await res.json();
-  if (!data.ok) throw new Error(data.error || "请求失败");
+  if (!data.ok) {
+    const error = new Error(data.error || "请求失败");
+    error.code = data.error || "request_failed";
+    error.leaderName = data.leader_name || "";
+    error.leaderMemberId = data.leader_member_id || "";
+    error.payload = data;
+    throw error;
+  }
   return data;
 }
 
@@ -36,6 +43,15 @@ export async function submitRound2TeamDecision(payload) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
+  });
+  return asJson(res);
+}
+
+export async function saveRound2TeamDraft(payload) {
+  const res = await fetch(`${BASE}/round2/team-draft`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {})
   });
   return asJson(res);
 }
@@ -112,11 +128,12 @@ export async function mergeRound2Selections(payload) {
   return asJson(res);
 }
 
-export async function getRound2TeamMerge(teamId, COGSbase = "") {
+export async function getRound2TeamMerge(teamId, COGSbase = "", memberId = "") {
   const query = new URLSearchParams({
     teamId: String(teamId || "").trim()
   });
   if (COGSbase !== "" && COGSbase != null) query.set("COGSbase", String(COGSbase));
+  if (memberId) query.set("memberId", String(memberId || "").trim());
   const res = await fetch(`${BASE}/round2/team-merge?${query.toString()}`);
   return asJson(res);
 }

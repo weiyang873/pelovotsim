@@ -5,11 +5,14 @@ import {
   submitPersonalChoice,
   getTeamStatus,
   getSubmissions,
-  submitVPForCoach,
+  savePhase2Draft,
+  savePhase3Draft,
+  synthesizeTeamVP,
   chatWithCoach,
+  extractVpFields,
+  confirmAndScoreVp,
   finalizeDecision,
   getPhase3State,
-  getVpScores,
   getResults,
   freezeTeam
 } from "../api/teamApi";
@@ -349,49 +352,6 @@ function cardMatchesCell(card, cellKey) {
   return true;
 }
 
-function deriveMarketSpaceTier(samBillion) {
-  const n = Number(samBillion || 0);
-  if (!Number.isFinite(n) || n <= 0) return "M";
-  if (n < 260) return "S";
-  if (n <= 420) return "M";
-  return "L";
-}
-
-function marketNarrative(cell) {
-  const raw = String(cell || "").toUpperCase();
-  const isToB = raw.startsWith("TOB");
-  const isToC = raw.startsWith("TOC");
-  const isDiff = raw.includes("DIFF");
-  const isCost = raw.includes("COST");
-  if (isToB && isDiff) {
-    return "机构客户数量相对有限，但单笔采购规模更大。差异化方向有机会建立较高信任门槛。";
-  }
-  if (isToB && isCost) {
-    return "机构采购更重视预算和稳定交付，成本效率和可维护性会直接影响成交与续约。";
-  }
-  if (isToC && isDiff) {
-    return "消费者更看重体验和口碑，差异化方向更容易形成品牌记忆，但需要持续内容与服务支撑。";
-  }
-  return "消费者基数更大，但价格敏感度更高。规模化效率和传播效率将决定增长速度。";
-}
-
-function scoreFeedback(kind, score) {
-  const s = Number(score || 0);
-  if (kind === "C") {
-    if (s >= 4) return "目标人群定义较清晰，覆盖了主要决策者。";
-    if (s === 3) return "人群方向基本正确，但边界仍偏宽。";
-    return "建议进一步收窄并明确核心人群。";
-  }
-  if (kind === "G") {
-    if (s >= 4) return "痛点具有普遍性，且触发场景较明确。";
-    if (s === 3) return "痛点成立，但典型场景还可再具体。";
-    return "建议补充更高频的真实痛点场景。";
-  }
-  if (s >= 4) return "解法与痛点连接紧密，具备较强说服力。";
-  if (s === 3) return "解法方向正确，但与替代方案差异仍需强调。";
-  return "建议说明因果路径，增强可验证性。";
-}
-
 function toPercentChange(adj, ref) {
   const a = Number(adj || 0);
   const b = Number(ref || 0);
@@ -415,16 +375,65 @@ function normalizeApiScores(scores) {
   };
 }
 
-function normalizeVpDraftPayload(draft) {
-  const text = String(draft || "").trim();
-  return text || "";
-}
-
-const AUTO_VP_DRAFT_REQUEST = "请帮我们整理当前最新版本的价值主张，用一句完整的话，放在引号里。然后指出当前最需要提升的一个方向。";
-
 function formatScore(value) {
   const n = normalizeScoreValue(value);
   return n == null ? "—" : n.toFixed(1);
+}
+
+function emptyConfirmedFields() {
+  return {
+    who_raw: "",
+    pain_raw: "",
+    how_raw: "",
+    alternative_raw: "",
+    boundary_raw: ""
+  };
+}
+
+function normalizeEditableVpField(value) {
+  const text = String(value || "").trim();
+  return !text || text === "未明确" ? "" : text;
+}
+
+function normalizeEditableVpFields(fields) {
+  const src = fields && typeof fields === "object" ? fields : {};
+  return {
+    who_raw: normalizeEditableVpField(src.who_raw),
+    pain_raw: normalizeEditableVpField(src.pain_raw),
+    how_raw: normalizeEditableVpField(src.how_raw),
+    alternative_raw: normalizeEditableVpField(src.alternative_raw),
+    boundary_raw: normalizeEditableVpField(src.boundary_raw)
+  };
+}
+
+function buildConfirmPayloadFields(fields) {
+  const src = fields && typeof fields === "object" ? fields : {};
+  return {
+    who_raw: String(src.who_raw || "").trim(),
+    pain_raw: String(src.pain_raw || "").trim(),
+    how_raw: String(src.how_raw || "").trim(),
+    alternative_raw: String(src.alternative_raw || "").trim() || "未明确",
+    boundary_raw: String(src.boundary_raw || "").trim() || "未明确"
+  };
+}
+
+function buildVpResultFromConfirmedFields(fields) {
+  const src = buildConfirmPayloadFields(fields);
+  return {
+    target_customer: src.who_raw,
+    scenario_pain: src.pain_raw,
+    value_creation: src.how_raw,
+    boundary: src.boundary_raw
+  };
+}
+
+function buildLastCoachTurns(history) {
+  const list = Array.isArray(history) ? history : [];
+  const recent = list.slice(-10);
+  return recent.map((item) => {
+    const role = item?.role === "coach" ? "AI策略顾问" : "学生";
+    return `${role}：${String(item?.text || "").trim()}`;
+  }).filter(Boolean).join("\n");
 }
 
 function normalizeStepValue(value, fallback = 0) {
@@ -443,6 +452,18 @@ function stepFromTeamStatus(status, fallback = 0) {
 
 function coachDraftStorageKey(teamId) {
   return `multiplayer_phase3_draft:${String(teamId || "")}`;
+}
+
+function leaderBannerName(leaderName) {
+  return String(leaderName || "").trim() || "组长";
+}
+
+function formatLeaderLockMessage(error) {
+  const leader = leaderBannerName(error?.leaderName);
+  if (error?.code === "only_leader") {
+    return `当前只有组长 ${leader} 可以操作。`;
+  }
+  return error?.message || "操作失败";
 }
 
 // Card component
@@ -627,6 +648,26 @@ function ArchitecturePicker({ value, onChange }) {
   );
 }
 
+function StarRating({ score }) {
+  const safeScore = normalizeScoreValue(score);
+  const width = safeScore == null ? "0%" : `${Math.max(0, Math.min(100, (safeScore / 5) * 100))}%`;
+  return (
+    <div style={{ position: "relative", display: "inline-block", fontSize: 22, letterSpacing: 2, lineHeight: 1 }}>
+      <div style={{ color: "#d1d5db" }}>★★★★★</div>
+      <div style={{
+        position: "absolute",
+        inset: 0,
+        width,
+        overflow: "hidden",
+        color: "#f59e0b",
+        whiteSpace: "nowrap"
+      }}>
+        ★★★★★
+      </div>
+    </div>
+  );
+}
+
 // 12-grid strategy map
 function StrategyGrid({ selections, highlightCell, onCellClick }) {
   const customers = ["ToC", "ToB"];
@@ -733,36 +774,47 @@ export default function App() {
   const [jinangPair, setJinangPair] = useState({ market: null, tech: null });
   const [memberCardsMap, setMemberCardsMap] = useState({});
   const [submissions, setSubmissions] = useState([]);
-  const [coachScores, setCoachScores] = useState({ coverage: null, generalizability: null, effectiveness: null });
   const [coachReply, setCoachReply] = useState("");
   const [results, setResults] = useState(null);
   const [statusLine, setStatusLine] = useState("");
   const [teamStatus, setTeamStatus] = useState("forming");
   const [teamMembers, setTeamMembers] = useState([]);
+  const [leaderMemberId, setLeaderMemberId] = useState("");
+  const [leaderName, setLeaderName] = useState("");
+  const [isLeader, setIsLeader] = useState(false);
   const [memberLinks, setMemberLinks] = useState([]);
   const [vpDraft, setVpDraft] = useState("");
+  const [coachVpText, setCoachVpText] = useState("");
   const [arch, setArch] = useState(null);
   const [teamArch, setTeamArch] = useState(null);
   const [step1Done, setStep1Done] = useState(false);
   const [selfSubmitted, setSelfSubmitted] = useState(false);
   const [isSubmittingPersonal, setIsSubmittingPersonal] = useState(false);
   const [isSendingCoach, setIsSendingCoach] = useState(false);
-  const [isFinalizing, setIsFinalizing] = useState(false);
+  const [isSynthesizingVp, setIsSynthesizingVp] = useState(false);
+  const [isExtractingVp, setIsExtractingVp] = useState(false);
+  const [isConfirmingVp, setIsConfirmingVp] = useState(false);
   const [isFreezing, setIsFreezing] = useState(false);
   const [coachHistory, setCoachHistory] = useState([]);
   const [coachInput, setCoachInput] = useState("");
-  const [hasCoachScores, setHasCoachScores] = useState(false);
-  const [hasViewedScore, setHasViewedScore] = useState(false);
-  const [scorePreviewValid, setScorePreviewValid] = useState(false);
-  const [vpScoreDraft, setVpScoreDraft] = useState(null);
-  const [lastScoredUserMsgCount, setLastScoredUserMsgCount] = useState(0);
-  const [isCheckingScore, setIsCheckingScore] = useState(false);
   const [phase3StateLoaded, setPhase3StateLoaded] = useState(false);
+  const [vpPanelState, setVpPanelState] = useState("chatting");
+  const [vpConfirmedFields, setVpConfirmedFields] = useState(emptyConfirmedFields());
+  const [vpConfirmedScores, setVpConfirmedScores] = useState(null);
+  const [vpConfirmedAt, setVpConfirmedAt] = useState("");
+  const [vpFeedbackText, setVpFeedbackText] = useState("");
+  const [vpFeedbackError, setVpFeedbackError] = useState("");
+  const [vpFeedbackRequest, setVpFeedbackRequest] = useState(null);
+  const [isGeneratingVpFeedback, setIsGeneratingVpFeedback] = useState(false);
+  const [vpPanelError, setVpPanelError] = useState("");
   const coachBootstrappedRef = useRef(false);
   const coachScrollRef = useRef(null);
   const autoRound2RedirectRef = useRef(false);
   const allowRound1ReviewRef = useRef(false);
+  const round1StrategyDraftTouchedRef = useRef(false);
+  const round1VpDraftTouchedRef = useRef(false);
   const userCoachTurns = coachHistory.filter((m) => m.role === "user").length;
+  const assistantCoachTurns = coachHistory.filter((m) => m.role === "coach").length;
 
   function toUiCell(gridId) {
     const raw = String(gridId || "").trim();
@@ -847,60 +899,66 @@ export default function App() {
     setRevealedCards((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const applyScoreStateSnapshot = (state) => {
-    const valid = Boolean(state?.score_valid);
-    const nextScores = valid
-      ? normalizeApiScores(state?.scores)
-      : { coverage: null, generalizability: null, effectiveness: null };
-    const nextDraft = normalizeVpDraftPayload(state?.vp_draft);
-    setCoachScores(nextScores);
-    setHasCoachScores(valid && Object.values(nextScores).some((v) => v != null));
-    setScorePreviewValid(valid);
-    setVpScoreDraft(nextDraft);
-    setLastScoredUserMsgCount(Number(state?.scored_at_user_msg_count || 0));
-  };
-
   const applyPhase3StatePayload = (data, { preserveDraft = true } = {}) => {
     const restoredHistory = Array.isArray(data?.coach_history) ? data.coach_history : [];
-    const state = data?.score_state || {};
     const strategy = data?.strategy || {};
+    const confirmation = data?.vp_confirmation || null;
+    const sharedDraft = data?.team_draft || null;
+    const requesterIsLeader = Boolean(data?.is_leader);
     const savedDraft = preserveDraft && typeof window !== "undefined"
       ? window.sessionStorage.getItem(coachDraftStorageKey(teamId)) || ""
       : "";
-    const restoredTeamCell = strategyGridToUiCell(strategy.grid_id || "");
-    const restoredTeamArch = String(strategy.architecture || "").trim();
-    if (restoredTeamCell) {
+    const restoredTeamCell = strategyGridToUiCell(strategy.grid_id || sharedDraft?.grid_id || "");
+    const restoredTeamArch = String(strategy.architecture || sharedDraft?.architecture || "").trim();
+    const restoredVpText = String(confirmation?.vp_text || data?.score_state?.vp_draft || sharedDraft?.vp_text || "").trim();
+    setLeaderMemberId(String(data?.leader_member_id || ""));
+    setLeaderName(String(data?.leader_name || ""));
+    setIsLeader(requesterIsLeader);
+    if (restoredTeamCell && (!requesterIsLeader || !round1StrategyDraftTouchedRef.current)) {
       setTeamCell(restoredTeamCell);
       setSelectedCell((prev) => prev || restoredTeamCell);
     }
-    if (restoredTeamArch) {
+    if (restoredTeamArch && (!requesterIsLeader || !round1StrategyDraftTouchedRef.current)) {
       setTeamArch(restoredTeamArch);
       setArch((prev) => prev || restoredTeamArch);
     }
     setCoachHistory(restoredHistory);
     setCoachReply(restoredHistory.length ? String(restoredHistory[restoredHistory.length - 1]?.text || "") : "");
-    setHasViewedScore(Boolean(state.has_score_preview));
-    applyScoreStateSnapshot(state);
     if (preserveDraft) setCoachInput(savedDraft);
+    setCoachVpText((prev) => {
+      if (round1VpDraftTouchedRef.current && requesterIsLeader) return prev;
+      if (confirmation) return restoredVpText;
+      if (restoredVpText) return restoredVpText;
+      return prev;
+    });
+    if (confirmation?.fields) {
+      setVpConfirmedFields(normalizeEditableVpFields(confirmation.fields));
+      setVpConfirmedScores(confirmation.scores || null);
+      setVpConfirmedAt(String(confirmation.confirmed_at || ""));
+      setVpFeedbackText(String(confirmation.feedback || ""));
+      setVpFeedbackError("");
+      setVpFeedbackRequest(null);
+      setIsGeneratingVpFeedback(false);
+      setVpPanelState(confirmation.status === "confirming" ? "confirming" : "scored");
+    } else {
+      setVpConfirmedFields(emptyConfirmedFields());
+      setVpConfirmedScores(null);
+      setVpConfirmedAt("");
+      setVpFeedbackText("");
+      setVpFeedbackError("");
+      setVpFeedbackRequest(null);
+      setIsGeneratingVpFeedback(false);
+      setVpPanelState("chatting");
+    }
+    setVpPanelError("");
     coachBootstrappedRef.current = restoredHistory.length > 0;
     setPhase3StateLoaded(true);
   };
 
-  const applyDbScorePayload = (data) => {
-    applyScoreStateSnapshot(data);
-  };
-
   const reloadPhase3State = async (options = {}) => {
     if (!teamId) return null;
-    const data = await getPhase3State(teamId);
+    const data = await getPhase3State(teamId, memberId);
     applyPhase3StatePayload(data, options);
-    return data;
-  };
-
-  const reloadVpScores = async () => {
-    if (!teamId) return null;
-    const data = await getVpScores(teamId);
-    applyDbScorePayload(data);
     return data;
   };
 
@@ -970,6 +1028,9 @@ export default function App() {
         setTeamName(data.team.team_name || teamName);
         setTeamSize(Number(data.team.team_size || 1));
         setTeamMembers(Array.isArray(data.team.members) ? data.team.members : []);
+        setLeaderMemberId(String(data.team.leader_member_id || ""));
+        setLeaderName(String(data.team.leader_name || ""));
+        setIsLeader(Boolean(memberId && data.team.leader_member_id && data.team.leader_member_id === memberId));
         const matchedMember = Array.isArray(data.team.members)
           ? data.team.members.find((item) => item.id === memberId)
           : null;
@@ -995,9 +1056,21 @@ export default function App() {
     let previousR2Status = "";
     const syncStatus = async () => {
       try {
-        const status = await getTeamStatus(teamId);
+        const status = await getTeamStatus(teamId, memberId);
         setTeamStatus(status.status || "forming");
         setStatusLine(`已提交 ${status.submitted_count}/${status.member_count}`);
+        setLeaderMemberId(String(status.leader_member_id || ""));
+        setLeaderName(String(status.leader_name || ""));
+        setIsLeader(Boolean(status.is_leader));
+        if (status.team_draft && (!round1StrategyDraftTouchedRef.current || !status.is_leader)) {
+          if (status.team_draft.grid_id) {
+            const nextCell = toUiCell(status.team_draft.grid_id);
+            if (nextCell) setTeamCell(nextCell);
+          }
+          if (status.team_draft.architecture) {
+            setTeamArch(String(status.team_draft.architecture || ""));
+          }
+        }
         if (
           entryMode === "trial" &&
           status.status === "frozen" &&
@@ -1025,7 +1098,9 @@ export default function App() {
         const url = new URL(window.location.href);
         const requestedStep = normalizeStepValue(url.searchParams.get("step"), 0);
         const statusStep = stepFromTeamStatus(status.status, 0);
-        const nextStep = Math.max(requestedStep, statusStep);
+        const nextStep = step === 4 && statusStep === 5
+          ? Math.max(requestedStep, 4)
+          : Math.max(requestedStep, statusStep);
         if (nextStep !== step && nextStep > 0) setStep(nextStep);
       } catch (_) {}
     };
@@ -1033,7 +1108,7 @@ export default function App() {
     syncStatus();
     const timer = setInterval(syncStatus, 3000);
     return () => clearInterval(timer);
-  }, [entryMode, teamId, step]);
+  }, [entryMode, memberId, teamId, step]);
 
   useEffect(() => {
     if (step !== 1 || !teamId || !memberId) return;
@@ -1123,14 +1198,10 @@ export default function App() {
       return;
     }
     let cancelled = false;
-    Promise.all([
-      getPhase3State(teamId),
-      getVpScores(teamId).catch(() => null)
-    ])
-      .then(([stateData, scoreData]) => {
+    getPhase3State(teamId, memberId)
+      .then((stateData) => {
         if (cancelled) return;
         applyPhase3StatePayload(stateData, { preserveDraft: true });
-        if (scoreData) applyDbScorePayload(scoreData);
       })
       .catch(() => {
         if (cancelled) return;
@@ -1140,13 +1211,12 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [step, teamId]);
+  }, [memberId, step, teamId]);
 
   useEffect(() => {
     if (step !== 4 || !teamId) return;
     const sync = () => {
       reloadPhase3State({ preserveDraft: true }).catch(() => {});
-      reloadVpScores().catch(() => {});
     };
     const onVisibilityChange = () => {
       if (document.visibilityState === "visible") sync();
@@ -1160,9 +1230,18 @@ export default function App() {
   }, [step, teamId]);
 
   useEffect(() => {
+    if (step !== 4 || !teamId) return undefined;
+    const timer = window.setInterval(() => {
+      reloadPhase3State({ preserveDraft: true }).catch(() => {});
+    }, 3000);
+    return () => window.clearInterval(timer);
+  }, [memberId, step, teamId]);
+
+  useEffect(() => {
     if (step !== 4 || !teamId) return;
     if (!phase3StateLoaded) return;
     if (coachBootstrappedRef.current) return;
+    if (!isLeader) return;
     if (!submissions.length) return;
     const grouped = {};
     submissions.forEach((s) => {
@@ -1229,20 +1308,58 @@ export default function App() {
       .finally(() => {
         setIsSendingCoach(false);
       });
-  }, [step, teamId, submissions, selectedCell, demoSelections, arch, phase3StateLoaded]);
+  }, [step, teamId, submissions, selectedCell, demoSelections, arch, phase3StateLoaded, isLeader]);
 
   useEffect(() => {
     if (step === 4) return;
     coachBootstrappedRef.current = false;
-    setHasCoachScores(false);
-    setCoachScores({ coverage: null, generalizability: null, effectiveness: null });
-    setHasViewedScore(false);
-    setScorePreviewValid(false);
-    setVpScoreDraft(null);
-    setLastScoredUserMsgCount(0);
-    setIsCheckingScore(false);
+    round1VpDraftTouchedRef.current = false;
     setPhase3StateLoaded(false);
+    setCoachVpText("");
+    setVpPanelState("chatting");
+    setVpConfirmedFields(emptyConfirmedFields());
+    setVpConfirmedScores(null);
+    setVpConfirmedAt("");
+    setVpFeedbackText("");
+    setVpFeedbackError("");
+    setVpFeedbackRequest(null);
+    setIsGeneratingVpFeedback(false);
+    setVpPanelError("");
   }, [step, teamId]);
+
+  useEffect(() => {
+    if (step === 3) return;
+    round1StrategyDraftTouchedRef.current = false;
+  }, [step]);
+
+  useEffect(() => {
+    const reviewLocked = step < 5 && (["phase4", "frozen"].includes(teamStatus) || Boolean(results));
+    if (step !== 3 || !teamId || !memberId || !isLeader || !teamCell || !teamArch || reviewLocked) return undefined;
+    round1StrategyDraftTouchedRef.current = true;
+    const timer = window.setTimeout(() => {
+      savePhase2Draft(teamId, {
+        memberId,
+        grid_id: toGridId(teamCell),
+        architecture: teamArch
+      }).catch(() => {});
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [isLeader, memberId, results, step, teamArch, teamCell, teamId, teamStatus]);
+
+  useEffect(() => {
+    const reviewLocked = step < 5 && (["phase4", "frozen"].includes(teamStatus) || Boolean(results));
+    if (step !== 4 || !teamId || !memberId || !isLeader || reviewLocked) return undefined;
+    round1VpDraftTouchedRef.current = true;
+    const timer = window.setTimeout(() => {
+      savePhase3Draft(teamId, {
+        memberId,
+        grid_id: toGridId(teamCell || selectedCell),
+        architecture: teamArch || arch,
+        vp_text: coachVpText
+      }).catch(() => {});
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [arch, coachVpText, isLeader, memberId, results, selectedCell, step, teamArch, teamCell, teamId, teamStatus]);
 
   const handleCreateTeam = async () => {
     try {
@@ -1296,7 +1413,7 @@ export default function App() {
 
   const handleCoachSend = async () => {
     const message = String(coachInput || "").trim();
-    if (!teamId || !message || isSendingCoach || isCheckingScore || isFinalizing) return;
+    if (!teamId || !message || isSendingCoach || vpPanelState !== "chatting") return;
     try {
       setIsSendingCoach(true);
       setCoachHistory((prev) => [...prev, { type: "chat", role: "user", text: message, ts: Date.now() }]);
@@ -1304,7 +1421,8 @@ export default function App() {
       const out = await chatWithCoach(teamId, {
         message,
         grid_id: toGridId(teamCell || selectedCell),
-        architecture: teamArch || arch
+        architecture: teamArch || arch,
+        memberId
       });
       const reply = out.coach_reply || "";
       setCoachHistory((prev) => [...prev, { type: "chat", role: "coach", text: reply, ts: Date.now() }]);
@@ -1317,75 +1435,131 @@ export default function App() {
     }
   };
 
-  const handleCheckScore = async () => {
+  const handleSynthesizeVp = async () => {
     const finalCell = teamCell || selectedCell;
     const finalArch = teamArch || arch;
-    if (!teamId || !finalCell || !finalArch || isCheckingScore || userCoachTurns < 2) return;
+    if (!teamId || !finalCell || !finalArch || isSynthesizingVp || vpPanelState !== "chatting" || round1TeamControlsLocked) return;
     const grid = toGridId(finalCell);
     try {
-      setIsCheckingScore(true);
-      const out = await submitVPForCoach(teamId, {
-        mode: "score",
+      setIsSynthesizingVp(true);
+      setVpPanelError("");
+      const out = await synthesizeTeamVP(teamId, {
         grid_id: grid,
-        architecture: finalArch
+        architecture: finalArch,
+        memberId
       });
-      setCoachReply(String(out.coach_reply || ""));
-      setHasViewedScore(true);
-      applyScoreStateSnapshot({
-        score_valid: out?.score_valid,
-        scores: out?.scores,
-        vp_draft: out?.vp_draft,
-        scored_at_user_msg_count: out?.scored_at_user_msg_count
-      });
-      await reloadPhase3State({ preserveDraft: true }).catch(() => {});
+      const nextVp = String(out?.vp_text || "").trim();
+      const feedbackText = String(out?.feedback || "").trim();
+      setCoachVpText(nextVp);
+      if (!out?.cached && feedbackText) {
+        setCoachHistory((prev) => {
+          const last = prev[prev.length - 1];
+          if (last?.role === "coach" && String(last?.text || "").trim() === feedbackText) {
+            return prev;
+          }
+          return [...prev, { type: "chat", role: "coach", text: feedbackText, ts: Date.now() }];
+        });
+        setCoachReply(feedbackText);
+        await reloadPhase3State({ preserveDraft: true }).catch(() => {});
+      }
+      setStatusLine(out?.cached ? "当前对话没有新消息，返回了上次合成结果。" : "已根据当前对话合成 VP，可继续编辑。");
     } catch (e) {
-      setCoachReply(`整理草稿失败: ${e.message || e}`);
+      setVpPanelError(`合成失败：${formatLeaderLockMessage(e)}`);
     } finally {
-      setIsCheckingScore(false);
+      setIsSynthesizingVp(false);
     }
   };
 
-  const handleFinalize = async () => {
+  const handleSubmitVp = async () => {
+    const vpText = String(coachVpText || "").trim();
+    if (vpText.length < 10 || isExtractingVp || vpPanelState !== "chatting" || round1TeamControlsLocked) return;
+    try {
+      setIsExtractingVp(true);
+      setVpPanelError("");
+      const out = await extractVpFields(vpText, buildLastCoachTurns(coachHistory));
+      setVpConfirmedFields(normalizeEditableVpFields(out?.fields));
+      setVpConfirmedScores(null);
+      setVpConfirmedAt("");
+      setVpFeedbackText("");
+      setVpFeedbackError("");
+      setVpFeedbackRequest(null);
+      setIsGeneratingVpFeedback(false);
+      setVpPanelState("confirming");
+    } catch (e) {
+      setVpPanelError(`分析失败：${formatLeaderLockMessage(e)}`);
+    } finally {
+      setIsExtractingVp(false);
+    }
+  };
+
+  const handleReturnToEditing = () => {
+    if (vpPanelState !== "confirming") return;
+    setVpPanelState("chatting");
+    setVpFeedbackText("");
+    setVpFeedbackError("");
+    setVpFeedbackRequest(null);
+    setIsGeneratingVpFeedback(false);
+    setVpPanelError("");
+  };
+
+  const handleConfirmedFieldChange = (key, value) => {
+    setVpConfirmedFields((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleConfirmAndScore = async () => {
     const finalCell = teamCell || selectedCell;
     const finalArch = teamArch || arch;
-    if (!teamId || !finalCell || !finalArch || isFinalizing || !hasViewedScore) return;
+    const confirmedFields = buildConfirmPayloadFields(vpConfirmedFields);
+    if (!teamId || !finalCell || !finalArch || isConfirmingVp || vpPanelState !== "confirming" || round1TeamControlsLocked) return;
+    if (!confirmedFields.who_raw || !confirmedFields.pain_raw || !confirmedFields.how_raw) {
+      setVpPanelError("请先补全目标客户、痛点和解决方式。");
+      return;
+    }
+
     const grid = toGridId(finalCell);
     try {
-      setIsFinalizing(true);
-      const confirmOut = await submitVPForCoach(teamId, {
-        mode: "confirm",
+      setIsConfirmingVp(true);
+      setVpPanelError("");
+      const out = await confirmAndScoreVp({
+        teamId,
+        memberId,
+        vpText: String(coachVpText || "").trim(),
+        confirmedFields,
         grid_id: grid,
+        gridId: grid,
         architecture: finalArch
       });
-      const reply = String(confirmOut.coach_reply || "");
-      const confirmedValid = confirmOut?.score_valid !== false;
-      const confirmedScores = confirmedValid
-        ? normalizeApiScores(confirmOut.scores)
-        : { coverage: null, generalizability: null, effectiveness: null };
-      const finalHistory = reply
-        ? [...coachHistory, { type: "confirm", role: "coach", text: reply, ts: Date.now() }]
-        : coachHistory;
 
-      if (reply) {
-        setCoachHistory(finalHistory);
-        setCoachReply(reply);
-      }
-      setHasViewedScore(true);
+      setVpConfirmedFields(normalizeEditableVpFields(out?.fields || confirmedFields));
+      setVpConfirmedScores(out?.scores || null);
+      setVpConfirmedAt(String(out?.confirmedAt || ""));
+      setVpFeedbackText(String(out?.feedback || "").trim());
+      setVpFeedbackError("");
+      setVpFeedbackRequest(null);
+      setIsGeneratingVpFeedback(false);
+      setVpPanelState("scored");
 
       await finalizeDecision(teamId, {
         grid_id: grid,
         architecture: finalArch,
-        scores: confirmedScores,
-        conversation_history: finalHistory,
-        vp_result: confirmOut.vp_result || null,
-        vp_result_raw: confirmOut.vp_result_raw || null
+        memberId,
+        scores: normalizeApiScores({
+          coverage: out?.scores?.C,
+          generalizability: out?.scores?.G,
+          effectiveness: out?.scores?.E
+        }),
+        conversation_history: coachHistory,
+        vp_result: out?.vp_result || buildVpResultFromConfirmedFields(confirmedFields)
       });
-      await reloadVpScores().catch(() => {});
+      const latestResults = await getResults(teamId).catch(() => null);
+      if (latestResults) setResults(latestResults);
+      setTeamStatus("phase4");
+      setStatusLine("VP 已评分并锁定。可点击上方“结果”查看团队结果。");
       setStep(5);
     } catch (e) {
-      setCoachReply(`确认失败: ${e.message || e}`);
+      setVpPanelError(`评分失败：${formatLeaderLockMessage(e)}`);
     } finally {
-      setIsFinalizing(false);
+      setIsConfirmingVp(false);
     }
   };
 
@@ -1393,7 +1567,7 @@ export default function App() {
     if (!teamId || isFreezing) return;
     try {
       setIsFreezing(true);
-      await freezeTeam(teamId);
+      await freezeTeam(teamId, memberId);
       setTeamStatus("frozen");
       if (teamSize === 1 || entryMode === "trial") {
         setStatusLine("已冻结，正在进入 Round 2...");
@@ -1402,7 +1576,7 @@ export default function App() {
       }
       setStatusLine("已冻结。建议先回教室讨论，再进入 Round 2。");
     } catch (e) {
-      setStatusLine(`冻结失败: ${e.message || e}`);
+      setStatusLine(`冻结失败: ${formatLeaderLockMessage(e)}`);
     } finally {
       setIsFreezing(false);
     }
@@ -1468,52 +1642,43 @@ export default function App() {
   const canStep5 = ["phase4", "frozen"].includes(teamStatus) || Boolean(results);
   const maxUnlockedStep = canStep5 ? 5 : canStep4 ? 4 : canStep3 ? 3 : canStep2 ? 2 : canStep1 ? 1 : 0;
   const isReadOnlyReview = step < 5 && canStep5;
+  const hasLeaderLock = Boolean(leaderMemberId);
+  const isLeaderLockedViewer = hasLeaderLock && !isLeader && ["phase2", "phase3", "phase4", "frozen"].includes(teamStatus);
   const reviewBannerText = teamStatus === "frozen"
     ? "本轮结果已冻结。你们可以点击上方步骤回看前面的内容，但当前为只读模式。"
     : "本轮已经提交。你们可以点击上方步骤回看前面的内容，但当前为只读模式。";
   const coachFinalCell = teamCell || selectedCell;
   const coachFinalArch = teamArch || arch;
-  const canConfirmSubmit = Boolean(
-    !isReadOnlyReview &&
-    !isCheckingScore &&
+  const round1LeaderBanner = isLeaderLockedViewer
+    ? `当前由 ${leaderBannerName(leaderName)} 操作，请口头讨论你的建议`
+    : "";
+  const round1TeamControlsLocked = isReadOnlyReview || isLeaderLockedViewer;
+  const phase3EditLocked = round1TeamControlsLocked || vpPanelState !== "chatting";
+  const phase3ChatLocked = isReadOnlyReview || vpPanelState !== "chatting";
+  const canSynthesizeVp = Boolean(
+    !round1TeamControlsLocked &&
     !isSendingCoach &&
-    !isFinalizing &&
-    hasViewedScore &&
-    teamId &&
-    coachFinalCell &&
-    coachFinalArch
-  );
-  const hasVisibleVpScoreDraft = Boolean(String(vpScoreDraft || "").trim());
-  const isVpScoreDraftStale = hasVisibleVpScoreDraft && userCoachTurns > lastScoredUserMsgCount;
-  const checkScoreHint = (() => {
-    if (isReadOnlyReview) return "当前是回看模式，不能再次评分。";
-    if (isCheckingScore) return "正在生成评分，请稍候。";
-    if (isSendingCoach) return "请等待 AI策略顾问 回复完上一条消息。";
-    if (isFinalizing) return "正在确认提交，请稍候。";
-    if (!teamId || !coachFinalCell || !coachFinalArch) return "请先完成团队方向确认，再整理草稿并评分。";
-    if (userCoachTurns < 2) return `请先和 AI 策略顾问讨论几轮。当前 user 消息 ${userCoachTurns}/2。`;
-    if (hasViewedScore && hasVisibleVpScoreDraft && !isVpScoreDraftStale) return "对话未更新，无需重新评分。";
-    if (hasViewedScore && isVpScoreDraftStale) return "对话已更新，点击重新整理草稿并评分。";
-    return "点击“整理草稿并评分”查看当前草稿和分数。";
-  })();
-  const canCheckScore = Boolean(
-    !isReadOnlyReview &&
-    !isCheckingScore &&
-    !isSendingCoach &&
-    !isFinalizing &&
+    !isSynthesizingVp &&
+    !isExtractingVp &&
+    !isConfirmingVp &&
     teamId &&
     coachFinalCell &&
     coachFinalArch &&
-    userCoachTurns >= 2 &&
-    (!hasViewedScore || !hasVisibleVpScoreDraft || isVpScoreDraftStale)
+    assistantCoachTurns >= 2
+  );
+  const canSubmitVp = Boolean(
+    canSynthesizeVp &&
+    String(coachVpText || "").trim().length >= 10
   );
   const settleItems = Array.isArray(results?.settle?.settlements) ? results.settle.settlements : [];
   const r1 = results?.r1_result || {};
+  const resultVpScore = normalizeScoreValue(results?.vp_scores?.VPscore ?? r1?.VPscore);
+  const resultFeedbackText = String(results?.vp_feedback || vpFeedbackText || "").trim();
+  const resultMarketJinang = results?.jinang?.market_jinang || null;
   const vpSummary = results?.vp_summary || parseVpSummaryText(results?.team?.final_vp_text);
   const vpRecapSentence = buildVpRecapSentence(vpSummary, results?.team?.final_vp_text);
   const finalCell = results?.team?.final_grid_id ? toUiCell(results.team.final_grid_id) : (teamCell || selectedCell);
   const finalArch = results?.team?.final_architecture || teamArch || arch || "Experience";
-  const marketTier = deriveMarketSpaceTier(r1?.SAM_billion);
   const wtpBreakdown = results?.wtp_breakdown || {};
   const wtpPct = Number.isFinite(Number(wtpBreakdown?.final_pct))
     ? Number(wtpBreakdown.final_pct)
@@ -1524,7 +1689,13 @@ export default function App() {
   const wtpJinangDeltaPct = Number.isFinite(Number(wtpBreakdown?.jinang_delta_pct))
     ? Number(wtpBreakdown.jinang_delta_pct)
     : 0;
+  const rhoDiscountValue = Number.isFinite(Number(wtpBreakdown?.rho_discount))
+    ? Number(wtpBreakdown.rho_discount)
+    : null;
   const wtpHasJinangBoost = Math.abs(wtpJinangDeltaPct) > 0;
+  const resultMarketJinangBonusPct = Number.isFinite(Number(resultMarketJinang?.bonus))
+    ? Math.round(Number(resultMarketJinang.bonus) * 100)
+    : Math.round(Number(resultMarketJinang?.match_strength || 0) * 5);
   const matchedJinangCount = settleItems.filter((s) => Boolean(s?.matched)).length;
   const matchedMarketJinangCount = settleItems.filter((s) => Boolean(s?.matched) && s?.jinang_type === "market").length;
   const matchedTechJinangCount = settleItems.filter((s) => Boolean(s?.matched) && s?.jinang_type === "tech").length;
@@ -1534,15 +1705,20 @@ export default function App() {
     .map((s) => {
       const strength = Number(s?.match_strength || 0);
       if (strength < 0.3) return null;
-      const card = getCard(s?.jinang_id) || { icon: "🎴", title: s?.jinang_id || "锦囊" };
+      const rawJinangId = String(s?.jinang_id || "").trim();
+      const normalizedJinangId = rawJinangId.replace("-", "");
+      const card = getCard(rawJinangId) || getCard(normalizedJinangId) || { icon: "🎴", title: s?.name || rawJinangId || "锦囊" };
+      const bonusPct = Math.round(strength * 5);
       return {
         id: s?.id || `${s?.member_id}-${s?.jinang_id}`,
         card,
+        cardId: rawJinangId || card.id || "—",
+        cardTitle: s?.name || card.title || rawJinangId || "锦囊",
         label: strength >= 0.7 ? "高匹配" : "中匹配",
         type: s?.jinang_type,
         scope: s?.jinang_type === "market" ? "Round 1 支付意愿" : "Round 2 研发与成本",
         text: s?.jinang_type === "market"
-          ? "→ 提升了价值主张的可信度"
+          ? `→ 为支付意愿额外增加了 ${bonusPct}%`
           : "→ 只在第二轮生效：相关能力卡成本/风险更低"
       };
     })
@@ -1610,6 +1786,21 @@ export default function App() {
             lineHeight: 1.6,
           }}>
             {reviewBannerText}
+          </div>
+        )}
+        {round1LeaderBanner && !isReadOnlyReview && (
+          <div style={{
+            margin: "-10px auto 20px",
+            maxWidth: 760,
+            padding: "10px 14px",
+            borderRadius: 10,
+            background: "#fef3c7",
+            border: "1px solid #fcd34d",
+            color: "#92400e",
+            fontSize: 13,
+            lineHeight: 1.6,
+          }}>
+            {round1LeaderBanner}
           </div>
         )}
 
@@ -1687,6 +1878,7 @@ export default function App() {
                   member_name: MEMBER_NAMES[i] || `成员${i + 1}`
                 }))).map((member, i) => {
                   const isCurrent = member.id === memberId;
+                  const isTeamLeaderMember = member.id === leaderMemberId;
                   return (
                     <div key={member.id || i} style={{
                       display: "flex", alignItems: "center", gap: 8,
@@ -1704,6 +1896,7 @@ export default function App() {
                       }}>{String.fromCharCode(65 + i)}</div>
                       <span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>
                         {isCurrent ? `你（${member.member_name || "成员"}）` : (member.member_name || `成员${i + 1}`)}
+                        {isTeamLeaderMember ? " 👑" : ""}
                       </span>
                     </div>
                   );
@@ -2154,7 +2347,7 @@ export default function App() {
               <StrategyGrid
                 selections={teamCell ? [{ memberIdx: 99, cell: teamCell, architecture: teamArch || "Experience" }] : []}
                 highlightCell={teamCell}
-                onCellClick={isReadOnlyReview ? undefined : (cell) => setTeamCell(cell)}
+                onCellClick={round1TeamControlsLocked ? undefined : (cell) => setTeamCell(cell)}
               />
               <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginTop: 20, marginBottom: 10 }}>
                 团队产品定位方向
@@ -2170,7 +2363,7 @@ export default function App() {
                     <button
                       key={item.key}
                       onClick={() => {
-                        if (isReadOnlyReview) return;
+                        if (round1TeamControlsLocked) return;
                         setTeamArch(item.key);
                       }}
                       style={{
@@ -2178,8 +2371,8 @@ export default function App() {
                         border: selected ? `2.5px solid ${item.color}` : "1.5px solid #d1d5db",
                         background: selected ? `${item.color}10` : "#fff",
                         color: selected ? item.color : "#374151",
-                        fontSize: 14, fontWeight: 700, cursor: isReadOnlyReview ? "default" : "pointer",
-                        opacity: isReadOnlyReview ? 0.8 : 1,
+                        fontSize: 14, fontWeight: 700, cursor: round1TeamControlsLocked ? "default" : "pointer",
+                        opacity: round1TeamControlsLocked ? 0.8 : 1,
                       }}
                     >{item.label}</button>
                   );
@@ -2194,14 +2387,14 @@ export default function App() {
                 setArch(teamArch);
                 setStep(4);
               }}
-              disabled={isReadOnlyReview || !teamCell || !teamArch}
+              disabled={round1TeamControlsLocked || !teamCell || !teamArch}
               style={{
                 marginTop: 24, padding: "12px 32px", borderRadius: 10,
                 background: "#1a5c3a", color: "#fff", border: "none",
                 fontSize: 15, fontWeight: 700, cursor: "pointer",
-                opacity: !isReadOnlyReview && teamCell && teamArch ? 1 : 0.4,
+                opacity: !round1TeamControlsLocked && teamCell && teamArch ? 1 : 0.4,
               }}
-            >{isReadOnlyReview ? "回看模式：不可修改" : (teamCell && teamArch ? "进入价值主张讨论 →" : "请先确定团队的目标市场和产品定位")}</button>
+            >{round1TeamControlsLocked ? "当前为只读视图" : (teamCell && teamArch ? "进入价值主张讨论 →" : "请先确定团队的目标市场和产品定位")}</button>
           </div>
         )}
 
@@ -2222,7 +2415,7 @@ export default function App() {
               background: "#f9fafb", borderRadius: 8, lineHeight: 1.6,
             }}>
               价值主张需要回答三个问题：给谁（WHO）、解决什么痛点（PAIN）、怎么解决（HOW）。
-              对话阶段只给定性反馈；点击“整理草稿并评分”后会生成当前 VP 草稿，并基于该草稿显示 C/G/E 评分。
+              对话阶段只给定性反馈；确认提交后，系统会在结果页展示最终评分。
             </div>
 
             <div style={{
@@ -2250,6 +2443,8 @@ export default function App() {
             <div style={{
               border: "1.5px solid #e5e7eb", borderRadius: 12,
               overflow: "hidden", marginBottom: 20,
+              opacity: phase3EditLocked ? 0.72 : 1,
+              transition: "opacity 0.2s ease"
             }}>
               <div style={{
                 padding: "16px 18px", background: "#f9fafb",
@@ -2264,11 +2459,6 @@ export default function App() {
                       fontSize: 14,
                     }}>🤖</div>
                     <span style={{ fontSize: 13, fontWeight: 700, color: "#1a5c3a" }}>AI策略顾问</span>
-                    {hasViewedScore && (
-                      <span style={{ fontSize: 11, color: "#9ca3af" }}>
-                        已整理草稿
-                      </span>
-                    )}
                   </div>
                   <button
                     type="button"
@@ -2301,196 +2491,281 @@ export default function App() {
                     <div style={{ fontSize: 13, color: "#9ca3af" }}>正在初始化教练对话...</div>
                   )}
                   {coachHistory.map((m, idx) => (
-                    (() => {
-                      const isAutoDraftMessage = m.role === "user" && String(m.text || "").trim() === AUTO_VP_DRAFT_REQUEST;
-                      const isCoach = m.role === "coach";
-                      return (
-                        <div
-                          key={`${m.role}-${idx}`}
-                          style={{
-                            alignSelf: isCoach ? "flex-start" : "flex-end",
-                            maxWidth: isAutoDraftMessage ? "100%" : "82%",
-                            display: "flex",
-                            gap: 8,
-                            alignItems: "flex-start"
-                          }}
-                        >
-                          {isCoach && (
-                            <div style={{
-                              width: 22, height: 22, borderRadius: "50%",
-                              background: "#1a5c3a", color: "#fff",
-                              fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center",
-                              marginTop: 2
-                            }}>🤖</div>
-                          )}
-                          <div style={{
-                            background: isCoach ? "#ffffff" : (isAutoDraftMessage ? "#f3f4f6" : "#e8f5ee"),
-                            border: "1px solid #e5e7eb",
-                            borderRadius: 12,
-                            padding: "10px 12px",
-                            fontSize: 14,
-                            color: "#374151",
-                            lineHeight: 1.65,
-                            whiteSpace: "pre-wrap",
-                          }}>
-                            {isAutoDraftMessage && (
-                              <div style={{ fontSize: 11, fontWeight: 700, color: "#6b7280", marginBottom: 6 }}>
-                                系统自动发送
-                              </div>
-                            )}
-                            {isCoach ? renderCoachText(m.text) : m.text}
-                          </div>
-                        </div>
-                      );
-                    })()
+                    <div
+                      key={`${m.role}-${idx}`}
+                      style={{
+                        alignSelf: m.role === "coach" ? "flex-start" : "flex-end",
+                        maxWidth: "82%",
+                        display: "flex",
+                        gap: 8,
+                        alignItems: "flex-start"
+                      }}
+                    >
+                      {m.role === "coach" && (
+                        <div style={{
+                          width: 22, height: 22, borderRadius: "50%",
+                          background: "#1a5c3a", color: "#fff",
+                          fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center",
+                          marginTop: 2
+                        }}>🤖</div>
+                      )}
+                      <div style={{
+                        background: m.role === "coach" ? "#ffffff" : "#e8f5ee",
+                        border: "1px solid #e5e7eb",
+                        borderRadius: 12,
+                        padding: "10px 12px",
+                        fontSize: 14,
+                        color: "#374151",
+                        lineHeight: 1.65,
+                        whiteSpace: "pre-wrap",
+                      }}>
+                        {m.role === "coach" ? renderCoachText(m.text) : m.text}
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>
-            </div>
 
-            <div style={{ display: "flex", gap: 10, alignItems: "stretch" }}>
-              <input
-                value={coachInput}
-                onChange={(e) => setCoachInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleCoachSend();
-                  }
-                }}
-                placeholder={isReadOnlyReview
-                  ? "回看模式：不可继续发送消息"
-                  : "输入给 AI策略顾问 的消息..."}
-                style={{
-                  flex: 1, height: 46, borderRadius: 10,
-                  border: "1.5px solid #d1d5db", padding: "10px 14px",
-                  fontSize: 14, outline: "none",
-                  fontFamily: "inherit",
-                  background: isReadOnlyReview ? "#f9fafb" : "#fff",
-                }}
-                disabled={isReadOnlyReview || isSendingCoach || isCheckingScore || isFinalizing}
-              />
-              <button
-                style={{
-                  padding: "0 20px", borderRadius: 10,
-                  background: "#1a5c3a", color: "#fff", border: "none",
-                  fontSize: 14, fontWeight: 700, cursor: "pointer",
-                  whiteSpace: "nowrap", opacity: isSendingCoach ? 0.6 : 1,
-                }}
-                disabled={isReadOnlyReview || isSendingCoach || isCheckingScore || isFinalizing || !String(coachInput || "").trim()}
-                onClick={handleCoachSend}
-              >
-                发送
-              </button>
+              <div style={{ display: "flex", gap: 10, alignItems: "stretch", padding: "16px", background: "#fff" }}>
+                <input
+                  value={coachInput}
+                  onChange={(e) => setCoachInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleCoachSend();
+                    }
+                  }}
+                  placeholder={isReadOnlyReview
+                    ? "回看模式：不可继续发送消息"
+                    : vpPanelState === "scored"
+                    ? "已评分锁定，不能继续修改"
+                    : vpPanelState === "confirming"
+                    ? "确认切片中，请先完成确认或返回修改"
+                    : "输入给 AI策略顾问 的消息..."}
+                  style={{
+                    flex: 1, height: 46, borderRadius: 10,
+                    border: "1.5px solid #d1d5db", padding: "10px 14px",
+                    fontSize: 14, outline: "none",
+                    fontFamily: "inherit",
+                    background: phase3ChatLocked ? "#f9fafb" : "#fff",
+                  }}
+                  disabled={phase3ChatLocked || isSendingCoach}
+                />
+                <button
+                  style={{
+                    padding: "0 20px", borderRadius: 10,
+                    background: "#1a5c3a", color: "#fff", border: "none",
+                    fontSize: 14, fontWeight: 700, cursor: "pointer",
+                    whiteSpace: "nowrap", opacity: isSendingCoach ? 0.6 : 1,
+                  }}
+                  disabled={phase3ChatLocked || isSendingCoach || !String(coachInput || "").trim()}
+                  onClick={handleCoachSend}
+                >
+                  发送
+                </button>
+              </div>
             </div>
 
             <div style={{
-              marginTop: 14,
-              border: "1px solid #e5e7eb",
-              borderRadius: 10,
-              padding: "14px 16px",
-              background: "#f9fafb",
-              opacity: hasVisibleVpScoreDraft && isVpScoreDraftStale ? 0.62 : 1,
-              transition: "opacity 160ms ease"
+              border: "1.5px solid #e5e7eb",
+              borderRadius: 12,
+              padding: "18px 18px 16px",
+              background: phase3EditLocked ? "#f9fafb" : "#fff",
+              marginBottom: 18
             }}>
-              <div style={{ fontSize: 15, fontWeight: 800, color: "#111827", marginBottom: 10 }}>
-                📝 当前 VP 草稿
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#374151", marginBottom: 8 }}>
+                VP 文本框
               </div>
-              {hasVisibleVpScoreDraft ? (
-                <>
-                  <div style={{
-                    fontSize: 15,
-                    color: "#111827",
-                    lineHeight: 1.9,
-                    padding: "12px 14px",
-                    borderRadius: 10,
-                    background: "#ffffff",
-                    border: "1px solid #e5e7eb"
-                  }}>
-                    “{vpScoreDraft}”
-                  </div>
-                  <div style={{ marginTop: 10, fontSize: 12, color: isVpScoreDraftStale ? "#b45309" : "#6b7280" }}>
-                    {isVpScoreDraftStale
-                      ? "对话已更新，点击“重新整理草稿并评分”。"
-                      : "以下评分基于此草稿。继续对话后可重新整理。"}
-                  </div>
-                </>
-              ) : (
-                <div style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.7 }}>
-                  点击“整理草稿并评分”查看当前草稿和分数。
+              <p style={{ fontSize: 12, color: "#6b7280", margin: "0 0 10px", lineHeight: 1.6 }}>
+                先和顾问聊几轮，再点“合成VP”生成一句完整价值主张；你也可以继续手动修改。
+              </p>
+              {isLeaderLockedViewer && (
+                <div style={{ marginBottom: 10, fontSize: 12, color: "#92400e", lineHeight: 1.6 }}>
+                  组长 {leaderBannerName(leaderName)} 正在操作，你可以口头讨论。
                 </div>
               )}
+              <textarea
+                value={coachVpText}
+                onChange={(e) => setCoachVpText(e.target.value)}
+                readOnly={phase3EditLocked}
+                style={{
+                  width: "100%",
+                  minHeight: 112,
+                  borderRadius: 10,
+                  border: "1.5px solid #d1d5db",
+                  padding: "12px 14px",
+                  fontSize: 14,
+                  resize: "vertical",
+                  outline: "none",
+                  fontFamily: "inherit",
+                  boxSizing: "border-box",
+                  background: phase3EditLocked ? "#f3f4f6" : "#fff",
+                  color: "#374151",
+                  lineHeight: 1.7
+                }}
+              />
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
+                <button
+                  type="button"
+                  onClick={handleSynthesizeVp}
+                  disabled={!canSynthesizeVp}
+                  style={{
+                    padding: "11px 20px",
+                    borderRadius: 10,
+                    background: "#1a5c3a",
+                    color: "#fff",
+                    border: "none",
+                    fontSize: 14,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    opacity: canSynthesizeVp ? (isSynthesizingVp ? 0.7 : 1) : 0.4
+                  }}
+                >
+                  {isSynthesizingVp ? "正在合成..." : "合成VP"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSubmitVp}
+                  disabled={!canSubmitVp}
+                  style={{
+                    padding: "11px 20px",
+                    borderRadius: 10,
+                    background: canSubmitVp ? "#2FAB6E" : "#9ca3af",
+                    color: "#fff",
+                    border: "none",
+                    fontSize: 14,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    opacity: canSubmitVp ? (isExtractingVp ? 0.7 : 1) : 0.6
+                  }}
+                >
+                  {isExtractingVp ? "正在分析..." : "提交VP"}
+                </button>
+              </div>
             </div>
 
-            {hasViewedScore && scorePreviewValid && (
+            {vpPanelError && (
               <div style={{
-                marginTop: 14,
-                border: "1px solid #e5e7eb",
+                marginBottom: 16,
+                padding: "12px 14px",
                 borderRadius: 10,
-                padding: "10px 12px",
-                background: "#f9fafb"
+                background: "#fef2f2",
+                border: "1px solid #fecaca",
+                color: "#b91c1c",
+                fontSize: 13,
+                lineHeight: 1.6
               }}>
-                <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 8 }}>当前评分</div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  {[
-                    { k: "覆盖面 (C)", d: "WHO 的人群覆盖范围", v: coachScores.coverage, c: "#16a34a" },
-                    { k: "痛点泛化度 (G)", d: "PAIN 的普遍性", v: coachScores.generalizability, c: "#d97706" },
-                    { k: "解法有效性 (E)", d: "HOW 的因果说服力", v: coachScores.effectiveness, c: "#2563eb" }
-                  ].map((s) => {
-                    const n = normalizeScoreValue(s.v);
-                    const scored = hasCoachScores && n != null;
-                    const fill = scored ? `${((n / 5) * 100).toFixed(1)}%` : "0%";
-                    return (
-                      <div key={s.k} style={{
-                        minWidth: 72, borderRadius: 8, border: "1px solid #e5e7eb",
-                        padding: "8px 10px", background: "#fff", textAlign: "center", flex: 1,
-                      }}>
-                        <div style={{ fontSize: 11, color: "#6b7280" }}>{s.k}</div>
-                        <div style={{ fontSize: 18, fontWeight: 800, color: scored ? s.c : "#9ca3af" }}>
-                          {scored ? `${formatScore(n)}/5.0` : "— / 5.0"}
-                        </div>
-                        <div style={{ height: 8, background: "#e5e7eb", borderRadius: 999, overflow: "hidden", margin: "8px 0 6px" }}>
-                          <div style={{ width: fill, height: "100%", background: s.c }} />
-                        </div>
-                        <div style={{ fontSize: 10, color: "#9ca3af" }}>{s.d}</div>
-                      </div>
-                    );
-                  })}
-                </div>
+                {vpPanelError}
               </div>
             )}
-            <div style={{ marginTop: 16, fontSize: 12, color: "#6b7280" }}>
-              {checkScoreHint}
-            </div>
 
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 20 }}>
-              <button
-                onClick={handleCheckScore}
-                title={checkScoreHint}
-                disabled={!canCheckScore}
-                style={{
-                  padding: "12px 32px", borderRadius: 10,
-                  background: "#1a5c3a", color: "#fff", border: "none",
-                  fontSize: 15, fontWeight: 700, cursor: "pointer",
-                  opacity: canCheckScore ? 1 : 0.4,
-                }}
-              >
-                {isCheckingScore ? "整理中..." : "整理草稿并评分"}
-              </button>
+            {vpPanelState !== "chatting" && (
+              <div style={{
+                border: "1.5px solid #d1d5db",
+                borderRadius: 12,
+                padding: "18px 18px 16px",
+                background: "#fff",
+                marginBottom: 18
+              }}>
+                <div style={{ fontSize: 16, fontWeight: 800, color: "#111827", marginBottom: 6 }}>
+                  确认你的价值主张切片
+                </div>
+                <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 14, lineHeight: 1.6 }}>
+                  先检查 5 个字段。确认并评分后，这一版 VP 会锁定，不能再回退修改。
+                </div>
 
-              <button
-                onClick={handleFinalize}
-                disabled={!canConfirmSubmit}
-                style={{
-                  padding: "12px 32px", borderRadius: 10,
-                  background: "#1a5c3a", color: "#fff", border: "none",
-                  fontSize: 15, fontWeight: 700, cursor: "pointer",
-                  opacity: canConfirmSubmit ? (isFinalizing ? 0.6 : 1) : 0.4,
-                }}
-              >
-                {isFinalizing ? "提交中..." : "确认提交"}
-              </button>
-            </div>
+                {[
+                  { key: "who_raw", label: "目标客户", required: true, placeholder: "填写目标客户是谁" },
+                  { key: "pain_raw", label: "痛点", required: true, placeholder: "填写场景痛点" },
+                  { key: "how_raw", label: "解决方式", required: true, placeholder: "填写解决方式" },
+                  { key: "alternative_raw", label: "替代方案对比", required: false, placeholder: "如果有的话写在这里" },
+                  { key: "boundary_raw", label: "边界条件", required: false, placeholder: "如果有的话写在这里" }
+                ].map((item) => (
+                  <div key={item.key} style={{ marginBottom: 14 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#374151", marginBottom: 6 }}>
+                      {item.required && <span style={{ color: "#dc2626", marginRight: 4 }}>*</span>}
+                      {item.label}
+                      {!item.required && <span style={{ color: "#9ca3af", marginLeft: 6, fontWeight: 500 }}>可选</span>}
+                    </div>
+                    <textarea
+                      value={vpConfirmedFields[item.key]}
+                      onChange={(e) => handleConfirmedFieldChange(item.key, e.target.value)}
+                      disabled={vpPanelState === "scored" || round1TeamControlsLocked}
+                      placeholder={item.placeholder}
+                      style={{
+                        width: "100%",
+                        minHeight: 62,
+                        borderRadius: 10,
+                        border: "1.5px solid #d1d5db",
+                        padding: "10px 12px",
+                        fontSize: 14,
+                        resize: "vertical",
+                        outline: "none",
+                        fontFamily: "inherit",
+                        boxSizing: "border-box",
+                        background: vpPanelState === "scored" || round1TeamControlsLocked ? "#f3f4f6" : "#fff",
+                        color: "#374151",
+                        lineHeight: 1.6
+                      }}
+                    />
+                  </div>
+                ))}
+
+                {vpPanelState === "confirming" && (
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 6 }}>
+                    <button
+                      type="button"
+                      onClick={handleReturnToEditing}
+                      disabled={round1TeamControlsLocked}
+                      style={{
+                        padding: "11px 18px",
+                        borderRadius: 10,
+                        border: "1px solid #d1d5db",
+                        background: round1TeamControlsLocked ? "#f3f4f6" : "#fff",
+                        color: "#374151",
+                        fontSize: 14,
+                        fontWeight: 700,
+                        cursor: round1TeamControlsLocked ? "default" : "pointer"
+                      }}
+                    >
+                      返回修改
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleConfirmAndScore}
+                      disabled={isConfirmingVp || round1TeamControlsLocked}
+                      style={{
+                        padding: "11px 18px",
+                        borderRadius: 10,
+                        border: "none",
+                        background: "#1a5c3a",
+                        color: "#fff",
+                        fontSize: 14,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        opacity: isConfirmingVp || round1TeamControlsLocked ? 0.7 : 1
+                      }}
+                    >
+                      {isConfirmingVp ? "正在评分..." : "确认并评分"}
+                    </button>
+                  </div>
+                )}
+
+                {vpPanelState === "scored" && (
+                  <div style={{
+                    marginTop: 6,
+                    paddingTop: 12,
+                    borderTop: "1px dashed #d1d5db",
+                    fontSize: 12,
+                    color: "#6b7280"
+                  }}>
+                    已确认并锁定 {vpConfirmedAt ? `· ${new Date(vpConfirmedAt).toLocaleString()}` : ""}
+                  </div>
+                )}
+              </div>
+            )}
+
           </div>
         )}
 
@@ -2525,9 +2800,6 @@ export default function App() {
               <div style={{ fontSize: 12, opacity: 0.7, fontWeight: 600, marginBottom: 4 }}>你们的战略选择</div>
               <div style={{ fontSize: 22, fontWeight: 800 }}>
                 {formatUiCellCn(finalCell)} · {archToLabel(finalArch)}
-              </div>
-              <div style={{ fontSize: 13, opacity: 0.85, marginTop: 8, lineHeight: 1.6 }}>
-                价值主张：{results?.team?.final_vp_text || "—"}
               </div>
             </div>
 
@@ -2579,22 +2851,41 @@ export default function App() {
               border: "1.5px solid #e5e7eb",
               marginBottom: 16
             }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#374151", marginBottom: 12 }}>市场空间</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
-                {["S", "M", "L"].map((tier) => (
-                  <div key={tier} style={{
-                    flex: 1, padding: "12px", borderRadius: 10, textAlign: "center",
-                    background: tier === marketTier ? "#1a5c3a" : "#f3f4f6",
-                    color: tier === marketTier ? "#fff" : "#9ca3af",
-                    fontWeight: 700, fontSize: 16,
-                    border: tier === marketTier ? "none" : "1px solid #e5e7eb",
-                  }}>
-                    {tier === "S" ? "小" : tier === "M" ? "中" : "大"}
-                  </div>
-                ))}
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#374151", marginBottom: 14 }}>价值主张评分</div>
+              <div style={{
+                maxWidth: 340,
+                margin: "0 auto 18px",
+                padding: "18px 16px",
+                borderRadius: 12,
+                background: "#f9fafb",
+                border: "1px solid #e5e7eb",
+                textAlign: "center"
+              }}>
+                <div style={{ fontSize: 12, color: "#6b7280", fontWeight: 700, marginBottom: 8 }}>
+                  VP 综合评分
+                </div>
+                <div style={{ fontSize: 42, fontWeight: 800, color: "#111827", lineHeight: 1 }}>
+                  {formatScore(resultVpScore)}
+                </div>
+                <div style={{ marginTop: 10 }}>
+                  <StarRating score={resultVpScore} />
+                </div>
               </div>
-              <div style={{ fontSize: 13, color: "#666", lineHeight: 1.7 }}>
-                {marketNarrative(results?.team?.final_grid_id || "")}
+            </div>
+
+            <div style={{
+              padding: "20px", borderRadius: 12,
+              border: "1.5px solid #e5e7eb",
+              marginBottom: 16
+            }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#374151", marginBottom: 10 }}>评分评语</div>
+              <div style={{
+                fontSize: 14,
+                color: "#374151",
+                lineHeight: 1.9,
+                whiteSpace: "pre-wrap"
+              }}>
+                {resultFeedbackText}
               </div>
             </div>
 
@@ -2606,9 +2897,9 @@ export default function App() {
             }}>
               <div style={{ flex: "0 0 auto" }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 4 }}>用户支付意愿</div>
-                <div style={{ fontSize: 12, color: "#9ca3af" }}>相对于该细分市场平均水平（拆分显示 VP 与市场锦囊）</div>
+                <div style={{ fontSize: 12, color: "#9ca3af" }}>相对于该细分市场平均水平（拆分显示 VP 本身与市场锦囊）</div>
               </div>
-              <div style={{ minWidth: 180 }}>
+              <div style={{ minWidth: 220 }}>
                 <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 4 }}>最终结果（含市场锦囊）</div>
                 <div style={{ fontSize: 36, fontWeight: 800, color: wtpPct >= 0 ? "#2FAB6E" : "#dc2626" }}>
                   {wtpPct >= 0 ? `+${wtpPct}%` : `${wtpPct}%`}
@@ -2616,9 +2907,12 @@ export default function App() {
                 <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 8 }}>
                   仅看 VP 本身：{wtpBasePct >= 0 ? `+${wtpBasePct}%` : `${wtpBasePct}%`}
                 </div>
-                {wtpHasJinangBoost && (
-                  <div style={{ fontSize: 12, color: wtpJinangDeltaPct >= 0 ? "#2FAB6E" : "#dc2626", marginTop: 4 }}>
-                    市场锦囊额外影响：{wtpJinangDeltaPct >= 0 ? `+${wtpJinangDeltaPct}%` : `${wtpJinangDeltaPct}%`}
+                <div style={{ fontSize: 12, color: wtpJinangDeltaPct >= 0 ? "#2FAB6E" : "#dc2626", marginTop: 4 }}>
+                  市场锦囊额外影响：{wtpJinangDeltaPct >= 0 ? `+${wtpJinangDeltaPct}%` : `${wtpJinangDeltaPct}%`}
+                </div>
+                {rhoDiscountValue != null && (
+                  <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
+                    系统已将客户定义清晰度纳入支付意愿修正。
                   </div>
                 )}
                 {!wtpHasJinangBoost && matchedTechJinangCount > 0 && (
@@ -2627,41 +2921,11 @@ export default function App() {
                   </div>
                 )}
               </div>
-              <div style={{ fontSize: 13, color: "#666", lineHeight: 1.6, flex: "1 1 280px" }}>
+              <div style={{ fontSize: 13, color: "#666", lineHeight: 1.7, flex: "1 1 280px" }}>
                 {wtpPct >= 0
-                  ? "最终结果包含 VP 本身和市场锦囊共同作用后的支付意愿变化。"
-                  : "当前最终结果仍低于该细分市场平均水平，建议优先加强高频痛点或解法差异化。"}
+                  ? "支付意愿先根据价值主张本身计算，再叠加市场锦囊影响；如果客户定义还不够清晰，系统会适当压低最终溢价。"
+                  : "当前最终结果仍低于该细分市场平均水平，说明价值主张还需要继续加强。"}
               </div>
-            </div>
-
-            <div style={{
-              padding: "20px", borderRadius: 12,
-              border: "1.5px solid #e5e7eb",
-              marginBottom: 16
-            }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#374151", marginBottom: 14 }}>价值主张评分</div>
-              {[
-                { key: "C", label: "人群覆盖面 (C)", color: "#2FAB6E", score: normalizeScoreValue(results?.vp_scores?.C) },
-                { key: "G", label: "痛点普遍性 (G)", color: "#3B82C4", score: normalizeScoreValue(results?.vp_scores?.G) },
-                { key: "E", label: "解法说服力 (E)", color: "#8B5CF6", score: normalizeScoreValue(results?.vp_scores?.E) },
-              ].map((item) => (
-                <div key={item.key} style={{ marginBottom: 14 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>{item.label}</div>
-                    <div style={{ marginLeft: "auto", fontSize: 13, fontWeight: 800, color: item.color }}>
-                      {formatScore(item.score)} / 5.0
-                    </div>
-                  </div>
-                  <div style={{ height: 8, borderRadius: 999, background: "#e5e7eb", overflow: "hidden", marginBottom: 6 }}>
-                    <div style={{
-                      width: item.score == null ? "0%" : `${((item.score / 5) * 100).toFixed(1)}%`,
-                      height: "100%",
-                      background: item.color
-                    }} />
-                  </div>
-                  <div style={{ fontSize: 12, color: "#666" }}>{scoreFeedback(item.key, item.score || 0)}</div>
-                </div>
-              ))}
             </div>
 
             <div style={{
@@ -2674,6 +2938,24 @@ export default function App() {
                 团队共 {totalJinangCount} 张锦囊中，{matchedJinangCount} 张与当前定位匹配
                 {`（市场 ${matchedMarketJinangCount} 张，技术 ${matchedTechJinangCount} 张）`}
               </div>
+              {resultMarketJinang && (
+                <div style={{
+                  marginBottom: 10,
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  background: "#dcfce7",
+                  border: "1px solid #86efac",
+                  fontSize: 12,
+                  color: "#166534",
+                  lineHeight: 1.7
+                }}>
+                  市场锦囊最高匹配项：<strong>{resultMarketJinang.name}</strong>
+                  {`（契合度 ${Math.round(Number(resultMarketJinang.match_strength || 0) * 100)}%）`}
+                  {resultMarketJinangBonusPct > 0
+                    ? `，为支付意愿额外增加了 ${resultMarketJinangBonusPct}%。`
+                    : "，但本轮未形成额外市场端增益。"}
+                </div>
+              )}
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
                 {visibleMatches.map((item) => (
                   <div key={item.id} style={{
@@ -2683,7 +2965,10 @@ export default function App() {
                   }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                       <span style={{ fontSize: 18 }}>{item.card.icon}</span>
-                      <span style={{ fontWeight: 700, color: "#166534", fontSize: 13 }}>{item.card.title}</span>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                        <span style={{ fontWeight: 700, color: "#166534", fontSize: 13 }}>{item.cardTitle}</span>
+                        <span style={{ fontSize: 11, color: "#6b7280" }}>{item.cardId}</span>
+                      </div>
                       <span style={{
                         marginLeft: "auto", padding: "2px 8px", borderRadius: 4,
                         background: item.label === "高匹配" ? "#22c55e" : "#86efac",
@@ -2727,7 +3012,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={handleFreeze}
-                disabled={isReadOnlyReview || isFreezing}
+                disabled={round1TeamControlsLocked || isFreezing}
                 style={{
                   width: "100%",
                   padding: "12px 18px",
@@ -2737,13 +3022,13 @@ export default function App() {
                   color: "#fff",
                   fontSize: 14,
                   fontWeight: 800,
-                  cursor: isReadOnlyReview ? "default" : "pointer",
-                  opacity: isReadOnlyReview ? 0.5 : 1,
+                  cursor: round1TeamControlsLocked ? "default" : "pointer",
+                  opacity: round1TeamControlsLocked ? 0.5 : 1,
                   marginBottom: 14
                 }}
               >
-                {isReadOnlyReview
-                  ? "本轮结果已冻结"
+                {round1TeamControlsLocked
+                  ? (isReadOnlyReview ? "本轮结果已冻结" : `仅组长 ${leaderBannerName(leaderName)} 可冻结`)
                   : isFreezing
                     ? "处理中..."
                     : (teamSize === 1 || entryMode === "trial"

@@ -43,6 +43,7 @@ const TestRoutes = require("./server/routes/testRoutes");
 const AdminRoutes = require("./server/routes/adminRoutes");
 const TeacherDebrief = require("./server/routes/teacherDebrief");
 const TeacherConsole = require("./server/routes/teacherConsole");
+const ComputationLog = require("./server/multiplayer/computationLog");
 const { ensureSchema: ensureTeamSchema } = require("./server/multiplayer/teamManager");
 const EmbeddingService = require("./server/llm/embeddingService");
 
@@ -74,7 +75,8 @@ const MIME = {
   ".html": "text/html; charset=utf-8",
   ".js": "application/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8",
-  ".json": "application/json; charset=utf-8"
+  ".json": "application/json; charset=utf-8",
+  ".md": "text/markdown; charset=utf-8"
 };
 
 function parseDateTime(createdAt) {
@@ -592,67 +594,6 @@ function parseStudentReply(userMessage, bottleneckBundle, decisionState = {}) {
   };
 }
 
-function fallbackCoachOutput(mode, stage, rawText, personaBrief, redFlags) {
-  const msg = String(rawText || "").trim() || "模型返回非结构化内容，已使用兜底模板。";
-  if (mode === "generate") {
-    return {
-      vp_one_liner: `AI机器人在关键时刻提供可见价值：${msg.slice(0, 24)}`,
-      drivers: [
-        { driver: "让电商用户一眼看懂机器人动作", kpi: "详情页到加购转化率" },
-        { driver: "降低踩雷风险", kpi: "7天留存/退货率" },
-        { driver: "用证据建立信任", kpi: "UGC或对照指标数量" }
-      ],
-      objections: [
-        { objection: "怕买回去吃灰", mitigation: "短视频demo+试用保障" },
-        { objection: "觉得App也能做", mitigation: "强调物理在场互动与执行动作" }
-      ],
-      story_30s: "用户在关键时刻看到机器人动作价值，先信任再复用。",
-      parameter_card: {
-        target_segment: "B2C/ADULT",
-        archetype: "Experience",
-        channel_mix: "Direct+Ecommerce",
-        target_gm: "frozen",
-        success_metric: "7天留存+退货率"
-      },
-      weakest_link: msg.slice(0, 40),
-      notes: `fallback:${msg.slice(0, 80)}`
-    };
-  }
-
-  const fatalA = redFlags?.[0] || msg.slice(0, 40) || "用户看不懂机器人在做什么";
-  const fatalB = redFlags?.[1] || "用户看不到证据，不敢下单";
-  const personaLine = String(personaBrief || "").split("\n")[1] || "机器人要完成可见动作";
-  return {
-    stage: stage === "bootstrap" ? "bootstrap" : "iterate",
-    market_recap: "当前方向可行，但电商端差异化表达仍不足。",
-    pmf_risk: "看不懂或不信就不会下单。",
-    archetype_fit: "人群与场景匹配，但证据不足。",
-    robot_task: personaLine.replace(/^- 它干啥：/, ""),
-    use_moment: "下班后/独处等高频时刻",
-    why_robot_not_app: "机器人具备物理在场与即时互动，App难替代",
-    weakest_link: msg.slice(0, 50),
-    reframe: "先把看懂+敢买做出来，再扩张。",
-    fatal_gaps: [fatalA, fatalB],
-    repair_actions: ["补15秒名场面视频，5秒内看懂动作", "补试用保障或可验证指标降低风险"],
-    progress_since_last: [stage === "bootstrap" ? "先把关键风险说清了" : "你们已经推进到可执行层"],
-    remaining_gaps: [msg.slice(0, 50) || "还缺一条可验证证据"],
-    options: {
-      A: { name: "名场面机制", positioning: "视频一眼看懂机器人价值", core_move: "首屏短视频", tradeoff: "制作成本更高" },
-      B: { name: "保障机制", positioning: "先用后买降低踩雷", core_move: "试用保障", tradeoff: "短期毛利承压" },
-      C: { name: "证据机制", positioning: "体验翻译成指标", core_move: "对照指标/背书", tradeoff: "取证成本更高" }
-    },
-    readiness: "almost",
-    next_questions: [
-      "先选机制：1名场面 2保障 3证据",
-      "你们先打哪个场景？选1：睡前/通勤/压力爆发/无聊消遣",
-      "证据形式选1：短视频demo/UGC/试用保障/对照指标/第三方背书"
-    ],
-    ask_user_text:
-      "请回复三个选项：1)机制1/2/3 2)场景四选一 3)证据形式五选一。"
-  };
-}
-
-
 async function runCoachMode(session, mode, userMessage, stage, runtime = {}) {
   const isGenerate = mode === "generate";
   const model = process.env.DEEPSEEK_MODEL || "deepseek-chat";
@@ -693,14 +634,12 @@ async function runCoachMode(session, mode, userMessage, stage, runtime = {}) {
   });
   let parsed = normalizeCoachOutput(mode, ret.output);
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    parsed = fallbackCoachOutput(mode, stage, ret.output, personaBrief, redFlags);
+    throw httpError(502, "AI 服务暂时不可用，请重试");
   }
   try {
     validateAgainstSchema(parsed, schema);
   } catch (err) {
-    const repaired = fallbackCoachOutput(mode, stage, parsed, personaBrief, redFlags);
-    validateAgainstSchema(repaired, schema);
-    parsed = repaired;
+    throw httpError(502, "AI 服务暂时不可用，请重试");
   }
   const assistantMessage = renderCoachAssistantText(mode, parsed, stage, {
     personaBrief,
@@ -2033,6 +1972,15 @@ function handleApi(req, res) {
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher debrief data failed" }));
   }
 
+  if (req.method === "GET" && /^\/api\/teacher\/vp-iterations\/?$/.test(reqPath)) {
+    const url = new URL(reqUrl, `http://${req.headers.host || "127.0.0.1"}`);
+    const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: url.searchParams, body: null });
+    if (!auth?.body?.ok) return sendJson(res, auth.status, auth.body);
+    return TeacherDebrief.vpIterationsApi(url.searchParams)
+      .then((out) => sendJson(res, out.status, out.body))
+      .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher vp iterations failed" }));
+  }
+
   if (req.method === "GET" && /^\/api\/teacher\/session-status\/?$/.test(reqPath)) {
     const url = new URL(reqUrl, `http://${req.headers.host || "127.0.0.1"}`);
     const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: url.searchParams, body: null });
@@ -2112,6 +2060,17 @@ function handleApi(req, res) {
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher open round2 failed" }));
   }
 
+  if (req.method === "POST" && /^\/api\/teacher\/set-leader\/?$/.test(reqPath)) {
+    return readBody(req)
+      .then((payload) => {
+        const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: null, body: payload });
+        if (!auth?.body?.ok) return auth;
+        return TeacherConsole.setLeaderApi(payload);
+      })
+      .then((out) => sendJson(res, out.status, out.body))
+      .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher set leader failed" }));
+  }
+
   if (req.method === "POST" && /^\/api\/teacher\/force-end-interview\/?$/.test(reqPath)) {
     return readBody(req)
       .then((payload) => {
@@ -2189,6 +2148,17 @@ function handleApi(req, res) {
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher reset team failed" }));
   }
 
+  if (req.method === "POST" && /^\/api\/teacher\/reset-session\/?$/.test(reqPath)) {
+    return readBody(req)
+      .then((payload) => {
+        const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: null, body: payload });
+        if (!auth?.body?.ok) return auth;
+        return TeacherConsole.resetSessionApi(payload);
+      })
+      .then((out) => sendJson(res, out.status, out.body))
+      .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher reset session failed" }));
+  }
+
   if (req.method === "POST" && /^\/api\/team\/[^/]+\/phase1\/[^/]+\/submit$/.test(String(req.url || ""))) {
     const parts = String(req.url || "").split("/");
     const teamId = decodeURIComponent(parts[3] || "");
@@ -2208,12 +2178,16 @@ function handleApi(req, res) {
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "jinang fetch failed" }));
   }
 
-  if (req.method === "GET" && /^\/api\/team\/[^/]+\/status$/.test(String(req.url || ""))) {
-    const parts = String(req.url || "").split("/");
-    const teamId = decodeURIComponent(parts[3] || "");
-    return TeamRoutes.getTeamStatus(teamId)
-      .then((out) => sendJson(res, out.status, out.body))
-      .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "team status failed" }));
+  if (req.method === "GET" && /^\/api\/team\/[^/]+\/status(?:\?.*)?$/.test(String(req.url || ""))) {
+    try {
+      const url = new URL(String(req.url || ""), `http://${req.headers.host || "127.0.0.1"}`);
+      const teamId = decodeURIComponent(url.pathname.split("/")[3] || "");
+      return TeamRoutes.getTeamStatus(teamId, url.searchParams.get("memberId") || url.searchParams.get("member_id") || "")
+        .then((out) => sendJson(res, out.status, out.body))
+        .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "team status failed" }));
+    } catch (err) {
+      return sendJson(res, 400, { ok: false, error: err.message || "invalid team status request" });
+    }
   }
 
   if (req.method === "GET" && /^\/api\/team\/[^/]+\/submissions$/.test(String(req.url || ""))) {
@@ -2231,6 +2205,33 @@ function handleApi(req, res) {
       .then((p) => TeamRoutes.submitPhase3Vp(teamId, p))
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "phase3 submit-vp failed" }));
+  }
+
+  if (req.method === "POST" && /^\/api\/team\/[^/]+\/phase3\/synthesize-vp$/.test(String(req.url || ""))) {
+    const parts = String(req.url || "").split("/");
+    const teamId = decodeURIComponent(parts[3] || "");
+    return readBody(req)
+      .then((p) => TeamRoutes.synthesizePhase3Vp(teamId, p))
+      .then((out) => sendJson(res, out.status, out.body))
+      .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "phase3 synthesize-vp failed" }));
+  }
+
+  if (req.method === "POST" && /^\/api\/team\/[^/]+\/phase2\/draft$/.test(String(req.url || ""))) {
+    const parts = String(req.url || "").split("/");
+    const teamId = decodeURIComponent(parts[3] || "");
+    return readBody(req)
+      .then((p) => TeamRoutes.savePhase2Draft(teamId, p))
+      .then((out) => sendJson(res, out.status, out.body))
+      .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "phase2 draft save failed" }));
+  }
+
+  if (req.method === "POST" && /^\/api\/team\/[^/]+\/phase3\/draft$/.test(String(req.url || ""))) {
+    const parts = String(req.url || "").split("/");
+    const teamId = decodeURIComponent(parts[3] || "");
+    return readBody(req)
+      .then((p) => TeamRoutes.savePhase3Draft(teamId, p))
+      .then((out) => sendJson(res, out.status, out.body))
+      .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "phase3 draft save failed" }));
   }
 
   if (req.method === "POST" && /^\/api\/team\/[^/]+\/phase3\/chat$/.test(String(req.url || ""))) {
@@ -2251,12 +2252,46 @@ function handleApi(req, res) {
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "phase3 finalize failed" }));
   }
 
-  if (req.method === "GET" && /^\/api\/team\/[^/]+\/phase3\/state$/.test(String(req.url || ""))) {
+  if (req.method === "POST" && /^\/api\/team\/[^/]+\/phase3\/confirm-vp$/.test(String(req.url || ""))) {
     const parts = String(req.url || "").split("/");
     const teamId = decodeURIComponent(parts[3] || "");
-    return TeamRoutes.phase3State(teamId)
+    return readBody(req)
+      .then((p) => TeamRoutes.confirmAndScoreVp({ ...(p || {}), teamId }))
       .then((out) => sendJson(res, out.status, out.body))
-      .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "phase3 state failed" }));
+      .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "phase3 confirm-vp failed" }));
+  }
+
+  if (req.method === "GET" && /^\/api\/team\/[^/]+\/phase3\/state(?:\?.*)?$/.test(String(req.url || ""))) {
+    try {
+      const url = new URL(String(req.url || ""), `http://${req.headers.host || "127.0.0.1"}`);
+      const teamId = decodeURIComponent(url.pathname.split("/")[3] || "");
+      return TeamRoutes.phase3State(teamId, url.searchParams.get("memberId") || url.searchParams.get("member_id") || "")
+        .then((out) => sendJson(res, out.status, out.body))
+        .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "phase3 state failed" }));
+    } catch (err) {
+      return sendJson(res, 400, { ok: false, error: err.message || "invalid phase3 state request" });
+    }
+  }
+
+  if (req.method === "POST" && req.url === "/api/vp/extract-fields") {
+    return readBody(req)
+      .then((p) => TeamRoutes.extractVpFieldsApi(p))
+      .then((out) => sendJson(res, out.status, out.body))
+      .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "vp extract-fields failed" }));
+  }
+
+  if (req.method === "POST" && req.url === "/api/vp/confirm-and-score") {
+    return readBody(req)
+      .then((p) => TeamRoutes.confirmAndScoreVp(p))
+      .then((out) => sendJson(res, out.status, out.body))
+      .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "vp confirm-and-score failed" }));
+  }
+
+  if (req.method === "POST" && req.url === "/api/vp/generate-feedback") {
+    return readBody(req)
+      .then((p) => TeamRoutes.generateVpFeedbackApi(p))
+      .then((out) => sendJson(res, out.status, out.body))
+      .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "vp generate-feedback failed" }));
   }
 
   if (req.method === "GET" && /^\/api\/team\/[^/]+\/phase4$/.test(String(req.url || ""))) {
@@ -2271,7 +2306,7 @@ function handleApi(req, res) {
     const parts = String(req.url || "").split("/");
     const teamId = decodeURIComponent(parts[3] || "");
     return readBody(req)
-      .then(() => TeamRoutes.freezeTeam(teamId))
+      .then((p) => TeamRoutes.freezeTeam(teamId, p))
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "team freeze failed" }));
   }
@@ -2423,6 +2458,38 @@ function handleApi(req, res) {
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "rd preview-price failed" }));
   }
 
+  if (req.method === "POST" && req.url === "/api/computation-log") {
+    return readBody(req)
+      .then((p) => ComputationLog.createLogs(p))
+      .then((body) => sendJson(res, 200, body))
+      .catch((err) => sendJson(res, 400, { ok: false, error: err.message || "computation log create failed" }));
+  }
+
+  if (req.method === "GET" && /^\/api\/computation-log\/[^/]+\/chain(?:\?.*)?$/.test(String(req.url || ""))) {
+    try {
+      const url = new URL(String(req.url || ""), `http://${req.headers.host || "127.0.0.1"}`);
+      const teamId = decodeURIComponent(url.pathname.split("/")[3] || "");
+      return ComputationLog.getChain(teamId)
+        .then((body) => sendJson(res, 200, body))
+        .catch((err) => sendJson(res, 400, { ok: false, error: err.message || "computation log chain failed" }));
+    } catch (err) {
+      return sendJson(res, 400, { ok: false, error: err.message || "invalid computation log chain request" });
+    }
+  }
+
+  if (req.method === "GET" && /^\/api\/computation-log\/[^/?]+(?:\?.*)?$/.test(String(req.url || ""))) {
+    try {
+      const url = new URL(String(req.url || ""), `http://${req.headers.host || "127.0.0.1"}`);
+      const teamId = decodeURIComponent(url.pathname.split("/")[3] || "");
+      const stage = url.searchParams.get("stage") || "";
+      return ComputationLog.listLogs(teamId, stage)
+        .then((logs) => sendJson(res, 200, { ok: true, team_id: teamId, stage: stage || null, logs }))
+        .catch((err) => sendJson(res, 400, { ok: false, error: err.message || "computation log list failed" }));
+    } catch (err) {
+      return sendJson(res, 400, { ok: false, error: err.message || "invalid computation log request" });
+    }
+  }
+
   if (req.method === "GET" && String(req.url || "").startsWith("/api/round2/recap")) {
     try {
       const url = new URL(String(req.url || ""), `http://${req.headers.host || "127.0.0.1"}`);
@@ -2511,6 +2578,7 @@ function handleApi(req, res) {
       const url = new URL(String(req.url || ""), `http://${req.headers.host || "127.0.0.1"}`);
       return Round2.mergeApi({
         teamId: url.searchParams.get("teamId") || url.searchParams.get("team_id") || "",
+        memberId: url.searchParams.get("memberId") || url.searchParams.get("member_id") || "",
         COGSbase: url.searchParams.get("COGSbase") || url.searchParams.get("cogsbase") || ""
       })
         .then((out) => sendJson(res, out.status, out.body))
@@ -2525,6 +2593,13 @@ function handleApi(req, res) {
       .then((p) => Round2.teamSubmitApi(p))
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "round2 team submit failed" }));
+  }
+
+  if (req.method === "POST" && req.url === "/api/round2/team-draft") {
+    return readBody(req)
+      .then((p) => Round2.saveTeamDraftApi(p))
+      .then((out) => sendJson(res, out.status, out.body))
+      .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "round2 team draft failed" }));
   }
 
   if (req.method === "GET" && String(req.url || "").startsWith("/api/round2/team-result")) {
@@ -2827,6 +2902,31 @@ function serveStatic(req, res) {
   const parsedUrl = new URL(String(req.url || "/"), `http://${req.headers.host || "127.0.0.1"}`);
   const reqPath = parsedUrl.pathname === "/" ? "/index.html" : parsedUrl.pathname;
 
+  if (reqPath.startsWith("/docs/")) {
+    const publicDocsRoot = path.join(ROOT, "client", "public", "docs");
+    const rel = reqPath.replace(/^\/docs/, "") || "/";
+    const cleanRel = rel.startsWith("/") ? rel : `/${rel}`;
+    const filePath = path.join(publicDocsRoot, path.normalize(cleanRel).replace(/^\.+/, ""));
+
+    if (!filePath.startsWith(publicDocsRoot)) {
+      res.writeHead(403);
+      res.end("forbidden");
+      return;
+    }
+
+    fs.readFile(filePath, (err, data) => {
+      if (err) {
+        res.writeHead(404);
+        res.end("not found");
+        return;
+      }
+      const ext = path.extname(filePath);
+      res.writeHead(200, { "Content-Type": MIME[ext] || "application/octet-stream" });
+      res.end(data);
+    });
+    return;
+  }
+
   if (reqPath === "/multiplayer" || reqPath.startsWith("/multiplayer/")) {
     const distRoot = path.join(ROOT, "client", "dist");
     const rel = reqPath.replace(/^\/multiplayer/, "") || "/index.html";
@@ -2854,6 +2954,34 @@ function serveStatic(req, res) {
     };
 
     trySend(targetPath, true);
+    return;
+  }
+
+  if (reqPath === "/legal/terms_zh.md") {
+    const filePath = path.join(ROOT, "legal", "terms_zh.md");
+    fs.readFile(filePath, (err, data) => {
+      if (err) {
+        res.writeHead(404);
+        res.end("not found");
+        return;
+      }
+      res.writeHead(200, { "Content-Type": MIME[".md"] });
+      res.end(data);
+    });
+    return;
+  }
+
+  if (reqPath === "/legal" || reqPath === "/legal/") {
+    const filePath = path.join(ROOT, "client", "dist", "index.html");
+    fs.readFile(filePath, (err, data) => {
+      if (err) {
+        res.writeHead(404);
+        res.end("not found");
+        return;
+      }
+      res.writeHead(200, { "Content-Type": MIME[".html"] });
+      res.end(data);
+    });
     return;
   }
 

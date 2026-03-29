@@ -73,6 +73,107 @@ function buildRoster(allStudents) {
   }));
 }
 
+function jsonKeys(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+  return Object.keys(value);
+}
+
+async function fetchTeacherResource(baseUrl, adminCode, resourcePath) {
+  const res = await fetch(`${baseUrl}${resourcePath}`, {
+    headers: {
+      "x-teacher-code": adminCode
+    }
+  });
+  const contentType = String(res.headers.get("content-type") || "").toLowerCase();
+  const text = await res.text();
+  let body = null;
+  try {
+    body = text ? JSON.parse(text) : null;
+  } catch (_) {
+    body = null;
+  }
+  return {
+    status: res.status,
+    ok: res.ok && (!body || body.ok !== false),
+    contentType,
+    text,
+    body
+  };
+}
+
+async function captureTeacherArtifacts(baseUrl, logDir) {
+  const adminCode = String(process.env.ADMIN_CODE || "").trim();
+  if (!adminCode) {
+    return {
+      enabled: false,
+      error: "ADMIN_CODE not configured"
+    };
+  }
+
+  try {
+    const sessionStatus = await fetchTeacherResource(baseUrl, adminCode, "/api/teacher/session-status");
+    const debriefData = await fetchTeacherResource(baseUrl, adminCode, "/api/teacher/debrief-data?session_id=default");
+    const exportCsv = await fetchTeacherResource(baseUrl, adminCode, "/api/teacher/export-csv?session_id=default");
+
+    const sessionStatusPath = path.join(logDir, "teacher_session_status.json");
+    const debriefDataPath = path.join(logDir, "teacher_debrief_data.json");
+    const exportCsvPath = path.join(logDir, "teacher_export.csv");
+    const summaryPath = path.join(logDir, "teacher_capture_summary.json");
+
+    fs.writeFileSync(
+      sessionStatusPath,
+      JSON.stringify(sessionStatus.body || {
+        ok: sessionStatus.ok,
+        status: sessionStatus.status,
+        raw: sessionStatus.text
+      }, null, 2)
+    );
+    fs.writeFileSync(
+      debriefDataPath,
+      JSON.stringify(debriefData.body || {
+        ok: debriefData.ok,
+        status: debriefData.status,
+        raw: debriefData.text
+      }, null, 2)
+    );
+    fs.writeFileSync(exportCsvPath, exportCsv.text || "");
+
+    const summary = {
+      enabled: true,
+      session_status: {
+        status: sessionStatus.status,
+        ok: sessionStatus.ok,
+        keys: jsonKeys(sessionStatus.body),
+        meta: sessionStatus.body?.meta || null,
+        team_count: Array.isArray(sessionStatus.body?.teams) ? sessionStatus.body.teams.length : null,
+        file: sessionStatusPath
+      },
+      debrief_data: {
+        status: debriefData.status,
+        ok: debriefData.ok,
+        keys: jsonKeys(debriefData.body),
+        team_count: Array.isArray(debriefData.body?.teams) ? debriefData.body.teams.length : null,
+        file: debriefDataPath
+      },
+      export_csv: {
+        status: exportCsv.status,
+        ok: exportCsv.ok,
+        bytes: Buffer.byteLength(exportCsv.text || "", "utf8"),
+        line_count: (exportCsv.text || "").split(/\r?\n/).filter((line) => line.length > 0).length,
+        file: exportCsvPath
+      }
+    };
+
+    fs.writeFileSync(summaryPath, JSON.stringify(summary, null, 2));
+    return summary;
+  } catch (err) {
+    return {
+      enabled: true,
+      error: err.message || String(err)
+    };
+  }
+}
+
 async function main() {
   loadLocalEnvFile();
   const baseUrl = process.env.BASE_URL || "http://127.0.0.1:8787";
@@ -142,6 +243,31 @@ async function main() {
     await fetch(`${baseUrl}/api/admin/flush-llm-logs`, { method: "POST" });
   } catch (_) {}
 
+  const trackers = results
+    .filter((item) => item.status === "fulfilled" && item.value?.tracker)
+    .map((item) => item.value.tracker);
+  const exporter = new DataExporter(timestampDir, logDir, logger);
+  const exportSummary = await exporter.exportAll(trackers);
+  const computationChains = {};
+  await Promise.all(trackers.map(async (tracker) => {
+    const teamId = String(tracker?.teamId || "").trim();
+    if (!teamId) return;
+    try {
+      computationChains[teamId] = await healthApi.getComputationChain(teamId);
+    } catch (err) {
+      computationChains[teamId] = {
+        ok: false,
+        team_id: teamId,
+        error: err.message || String(err)
+      };
+    }
+  }));
+  fs.writeFileSync(
+    path.join(logDir, "computation_log.json"),
+    JSON.stringify(computationChains, null, 2)
+  );
+
+  const teacherSummary = await captureTeacherArtifacts(baseUrl, logDir);
   const reportPath = path.join(logDir, "report.json");
   generateReport(results, reportPath, {
     baseUrl,
@@ -151,24 +277,27 @@ async function main() {
     logLevel,
     strictDeepSeek,
     rosterPath,
-    logDir
+    logDir,
+    exportSummary,
+    teacher: teacherSummary
   });
-
-  const trackers = results
-    .filter((item) => item.status === "fulfilled" && item.value?.tracker)
-    .map((item) => item.value.tracker);
-  const exporter = new DataExporter(timestampDir, logDir, logger);
-  const exportSummary = await exporter.exportAll(trackers);
 
   console.log(`\n📊 输出目录: ${logDir}/`);
   console.log("   student_roster.json   60 人人设清单");
   console.log("   students_summary.csv  学生汇总导出");
   console.log("   teams_summary.csv     团队汇总导出");
   console.log("   vp_iterations.csv     VP 迭代导出");
+  console.log("   interview_log.csv     访谈逐轮对话导出");
+  console.log("   vp_chat_log.csv       VP Coach 对话导出");
   console.log("   jinang_effects.csv    锦囊效果导出");
+  console.log("   computation_log.json  每队完整 computation chain");
+  console.log("   teacher_session_status.json 教师端状态快照");
+  console.log("   teacher_debrief_data.json   教师端复盘数据");
+  console.log("   teacher_export.csv          教师端 CSV 导出");
+  console.log("   teacher_capture_summary.json 教师端抓取摘要");
   console.log("   by_team/              每队日志");
   console.log("   report.json           测试报告");
-  console.log(`   PG export             students=${exportSummary.studentsRows}, teams=${exportSummary.teamRows}, vp=${exportSummary.vpRows}, jinang=${exportSummary.jinangRows}`);
+  console.log(`   PG export             students=${exportSummary.studentsRows}, teams=${exportSummary.teamRows}, vp=${exportSummary.vpRows}, interview=${exportSummary.interviewRows}, vp_chat=${exportSummary.vpChatRows}, jinang=${exportSummary.jinangRows}`);
 
   process.exit(failed > 0 ? 1 : 0);
 }

@@ -5,6 +5,7 @@ const path = require("node:path");
 const { Pool } = require("pg");
 const CAP_GROUPS = require("../../data/capability_groups_v2.json");
 const { applyTechJinnang } = require("../../server/multiplayer/rdTeamAdapter");
+const { scoreProduct } = require("./decision_tracker");
 
 const CAPABILITY_MAP = new Map();
 for (const group of CAP_GROUPS.groups || []) {
@@ -47,7 +48,23 @@ const VP_CSV_COLUMNS = [
   "vp_text",
   "vp_who", "vp_pain", "vp_how",
   "score_C", "score_G", "score_E", "score_product",
-  "who_changed", "pain_changed", "how_changed", "coach_reply"
+  "who_changed", "pain_changed", "how_changed", "coach_reply", "speaker_reply"
+];
+
+const INTERVIEW_LOG_COLUMNS = [
+  "run_id", "team_index", "member_index", "member_name", "member_persona",
+  "interview_persona_id", "interview_persona_name",
+  "turn_number", "role", "message_text"
+];
+
+const VP_CHAT_LOG_COLUMNS = [
+  "run_id", "team_index", "round_number",
+  "coach_message",
+  "speaker_persona", "speaker_name", "speaker_reply",
+  "lead_writer_persona", "lead_writer_name",
+  "vp_before", "vp_after",
+  "score_product_before", "score_product_after",
+  "score_C", "score_G", "score_E"
 ];
 
 const JINANG_CSV_COLUMNS = [
@@ -267,6 +284,44 @@ class DataExporter {
         pain_changed BOOLEAN,
         how_changed BOOLEAN,
         coach_reply TEXT,
+        speaker_reply TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+      CREATE TABLE IF NOT EXISTS sim_interview_log (
+        id SERIAL PRIMARY KEY,
+        run_id TEXT NOT NULL,
+        team_id TEXT NOT NULL,
+        team_index INTEGER NOT NULL,
+        member_id TEXT NOT NULL,
+        member_index INTEGER NOT NULL,
+        member_name TEXT,
+        member_persona TEXT,
+        interview_persona_id TEXT,
+        interview_persona_name TEXT,
+        turn_number INTEGER NOT NULL,
+        role TEXT NOT NULL,
+        message_text TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+      CREATE TABLE IF NOT EXISTS sim_vp_chat_log (
+        id SERIAL PRIMARY KEY,
+        run_id TEXT NOT NULL,
+        team_id TEXT NOT NULL,
+        team_index INTEGER NOT NULL,
+        round_number INTEGER NOT NULL,
+        coach_message TEXT,
+        speaker_persona TEXT,
+        speaker_name TEXT,
+        speaker_reply TEXT,
+        lead_writer_persona TEXT,
+        lead_writer_name TEXT,
+        vp_before TEXT,
+        vp_after TEXT,
+        score_product_before REAL,
+        score_product_after REAL,
+        score_c REAL,
+        score_g REAL,
+        score_e REAL,
         created_at TIMESTAMP DEFAULT NOW()
       );
       CREATE TABLE IF NOT EXISTS sim_jinang_effects (
@@ -304,10 +359,13 @@ class DataExporter {
     await this.query("ALTER TABLE sim_teams ADD COLUMN IF NOT EXISTS r2_cover_core REAL");
     await this.query("ALTER TABLE sim_teams ADD COLUMN IF NOT EXISTS r2_cover_nice REAL");
     await this.query("ALTER TABLE sim_vp_iterations ADD COLUMN IF NOT EXISTS vp_text TEXT");
+    await this.query("ALTER TABLE sim_vp_iterations ADD COLUMN IF NOT EXISTS speaker_reply TEXT");
   }
 
   async clearRun() {
     await this.query("DELETE FROM sim_jinang_effects WHERE run_id = $1", [this.runId]);
+    await this.query("DELETE FROM sim_vp_chat_log WHERE run_id = $1", [this.runId]);
+    await this.query("DELETE FROM sim_interview_log WHERE run_id = $1", [this.runId]);
     await this.query("DELETE FROM sim_vp_iterations WHERE run_id = $1", [this.runId]);
     await this.query("DELETE FROM sim_students WHERE run_id = $1", [this.runId]);
     await this.query("DELETE FROM sim_teams WHERE run_id = $1", [this.runId]);
@@ -430,13 +488,8 @@ class DataExporter {
     }
     const csvRows = [];
     for (const tracker of trackers) {
-      const finalCalc = tracker.team.r2_finalCalcResult || {};
-      const r1WtpMultCompressed = Number.isFinite(Number(finalCalc.compressedWtpMult))
-        ? Number(finalCalc.compressedWtpMult)
-        : null;
-      const r1WtpAdj = Number.isFinite(Number(finalCalc.WTPref_adjusted))
-        ? Number(finalCalc.WTPref_adjusted)
-        : tracker.team.r1_wtp_adj;
+      const r1WtpMultCompressed = tracker.team.r1_wtp_mult_compressed;
+      const r1WtpAdj = tracker.team.r1_wtp_adj;
       const llmEntries = this.loggerEntriesForTeam(tracker.teamId).filter((entry) => entry.type === "student_llm");
       const totalDuration = llmEntries.reduce((sum, entry) => sum + Number(entry.durationMs || 0), 0);
       const totalTokens = sumTokens(llmEntries);
@@ -574,15 +627,13 @@ class DataExporter {
     for (const tracker of trackers) {
       for (const iteration of tracker.team.vpIterations) {
         const scores = iteration.scores || {};
-        const product = scores.C != null && scores.G != null && scores.E != null
-          ? Number((scores.C * scores.G * scores.E).toFixed(4))
-          : null;
+        const product = scoreProduct(scores);
         await this.query(`
           INSERT INTO sim_vp_iterations (
             run_id, team_id, team_index, iteration, trigger, speaker_member_id, speaker_persona, speaker_name,
-            vp_text, vp_who, vp_pain, vp_how, score_c, score_g, score_e, score_product, who_changed, pain_changed, how_changed, coach_reply
+            vp_text, vp_who, vp_pain, vp_how, score_c, score_g, score_e, score_product, who_changed, pain_changed, how_changed, coach_reply, speaker_reply
           ) VALUES (
-            $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20
+            $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21
           )
         `, [
           this.runId, tracker.teamId, tracker.teamIndex, iteration.iteration, iteration.trigger,
@@ -592,7 +643,7 @@ class DataExporter {
           extractVpField(iteration.vp_text, "PAIN") || null,
           extractVpField(iteration.vp_text, "HOW") || null,
           scores.C, scores.G, scores.E, product, iteration.changes?.who_changed ?? null,
-          iteration.changes?.pain_changed ?? null, iteration.changes?.how_changed ?? null, iteration.coach_reply
+          iteration.changes?.pain_changed ?? null, iteration.changes?.how_changed ?? null, iteration.coach_reply, iteration.speaker_reply
         ]);
         csvRows.push({
           run_id: this.runId,
@@ -612,11 +663,90 @@ class DataExporter {
           who_changed: iteration.changes?.who_changed ?? "",
           pain_changed: iteration.changes?.pain_changed ?? "",
           how_changed: iteration.changes?.how_changed ?? "",
-          coach_reply: iteration.coach_reply || ""
+          coach_reply: iteration.coach_reply || "",
+          speaker_reply: iteration.speaker_reply || ""
         });
       }
     }
     writeCsv(path.join(this.outDir, "vp_iterations.csv"), VP_CSV_COLUMNS, csvRows);
+    return csvRows;
+  }
+
+  async insertInterviewLogs(trackers) {
+    const csvRows = [];
+    for (const tracker of trackers) {
+      for (const member of Object.values(tracker.members || {})) {
+        for (const entry of member.interviewLog || []) {
+          await this.query(`
+            INSERT INTO sim_interview_log (
+              run_id, team_id, team_index, member_id, member_index, member_name, member_persona,
+              interview_persona_id, interview_persona_name, turn_number, role, message_text
+            ) VALUES (
+              $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12
+            )
+          `, [
+            this.runId, tracker.teamId, tracker.teamIndex, member.memberId, member.memberIndex, member.name, member.personaLabel,
+            entry.interview_persona_id || member.interview_persona_id || null,
+            entry.interview_persona_name || member.interview_persona_name || null,
+            entry.turn_number, entry.role, entry.message_text
+          ]);
+          csvRows.push({
+            run_id: this.runId,
+            team_index: tracker.teamIndex,
+            member_index: member.memberIndex,
+            member_name: member.name || "",
+            member_persona: member.personaLabel || "",
+            interview_persona_id: entry.interview_persona_id || member.interview_persona_id || "",
+            interview_persona_name: entry.interview_persona_name || member.interview_persona_name || "",
+            turn_number: entry.turn_number,
+            role: entry.role,
+            message_text: entry.message_text
+          });
+        }
+      }
+    }
+    writeCsv(path.join(this.outDir, "interview_log.csv"), INTERVIEW_LOG_COLUMNS, csvRows);
+    return csvRows;
+  }
+
+  async insertVpChatLogs(trackers) {
+    const csvRows = [];
+    for (const tracker of trackers) {
+      for (const entry of tracker.team.vpChatLogs || []) {
+        await this.query(`
+          INSERT INTO sim_vp_chat_log (
+            run_id, team_id, team_index, round_number, coach_message, speaker_persona, speaker_name, speaker_reply,
+            lead_writer_persona, lead_writer_name, vp_before, vp_after, score_product_before, score_product_after,
+            score_c, score_g, score_e
+          ) VALUES (
+            $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17
+          )
+        `, [
+          this.runId, tracker.teamId, tracker.teamIndex, entry.round_number, entry.coach_message, entry.speaker_persona,
+          entry.speaker_name, entry.speaker_reply, entry.lead_writer_persona, entry.lead_writer_name, entry.vp_before,
+          entry.vp_after, entry.score_product_before, entry.score_product_after, entry.score_C, entry.score_G, entry.score_E
+        ]);
+        csvRows.push({
+          run_id: this.runId,
+          team_index: tracker.teamIndex,
+          round_number: entry.round_number,
+          coach_message: entry.coach_message || "",
+          speaker_persona: entry.speaker_persona || "",
+          speaker_name: entry.speaker_name || "",
+          speaker_reply: entry.speaker_reply || "",
+          lead_writer_persona: entry.lead_writer_persona || "",
+          lead_writer_name: entry.lead_writer_name || "",
+          vp_before: entry.vp_before || "",
+          vp_after: entry.vp_after || "",
+          score_product_before: entry.score_product_before,
+          score_product_after: entry.score_product_after,
+          score_C: entry.score_C,
+          score_G: entry.score_G,
+          score_E: entry.score_E
+        });
+      }
+    }
+    writeCsv(path.join(this.outDir, "vp_chat_log.csv"), VP_CHAT_LOG_COLUMNS, csvRows);
     return csvRows;
   }
 
@@ -676,12 +806,16 @@ class DataExporter {
     const studentsRows = await this.insertStudents(effectiveTrackers, jinangRows);
     const teamRows = await this.insertTeams(effectiveTrackers, jinangRows);
     const vpRows = await this.insertVpIterations(effectiveTrackers);
+    const interviewRows = await this.insertInterviewLogs(effectiveTrackers);
+    const vpChatRows = await this.insertVpChatLogs(effectiveTrackers);
     const jinangCsvRows = await this.insertJinangEffects(jinangRows, effectiveTrackers);
     await this.pool.end();
     return {
       studentsRows: studentsRows.length,
       teamRows: teamRows.length,
       vpRows: vpRows.length,
+      interviewRows: interviewRows.length,
+      vpChatRows: vpChatRows.length,
       jinangRows: jinangCsvRows.length
     };
   }

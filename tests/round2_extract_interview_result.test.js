@@ -86,10 +86,53 @@ function testFocusedDimsFallbackToWeakEvidence() {
   );
 }
 
+function testGridPriorUsesArchitectureAwareId() {
+  const prior = __test.getPriorRadarByGrid("ToB_Differentiation_Adult", "Hybrid");
+  assert.ok(prior.perception > 5);
+  assert.ok(prior.extend > 5);
+  assert.ok(prior.ops > 5);
+}
+
+function testMissingEvidenceFallsBackToRealPriorInsteadOfFlatFour() {
+  const result = __test.mapEvidenceToResult({
+    gridId: "ToB_Differentiation_Adult",
+    architecture: "Hybrid",
+    memberDims: ["perception", "motion", "safety"],
+    extracted: {
+      dimension_evidence: {
+        perception: { mentioned: false, evidence: [], needs: [], scenarios: [], pain_points: [] },
+        motion: { mentioned: false, evidence: [], needs: [], scenarios: [], pain_points: [] },
+        safety: { mentioned: false, evidence: [], needs: [], scenarios: [], pain_points: [] }
+      },
+      other_dimensions: {},
+      tags: [],
+      interview_quality: {
+        specificity: "medium",
+        consistency: "medium",
+        actionability: "medium"
+      }
+    },
+    history: [
+      { role: "user", text: "你平时最忙的时候是什么时候？" },
+      { role: "assistant", speaker: "用户", text: "主要是工作忙，最近没顾上想太多产品细节。" }
+    ],
+    conversation: "学生：你平时最忙的时候是什么时候？\n用户：主要是工作忙，最近没顾上想太多产品细节。"
+  });
+
+  assert.ok(result.radar.perception > 5);
+  assert.ok(result.radar.mobility > 5);
+  assert.ok(result.radar.safety_privacy > 5);
+  assert.equal(result.scoreSource.perception, "grid_prior");
+  assert.equal(result.scoreSource.motion, "grid_prior");
+  assert.equal(result.scoreSource.safety, "grid_prior");
+}
+
 function main() {
   testPromptSchemaHasNoNumericAnchors();
   testPayloadCleanerRemovesReplacementChars();
   testFocusedDimsFallbackToWeakEvidence();
+  testGridPriorUsesArchitectureAwareId();
+  testMissingEvidenceFallsBackToRealPriorInsteadOfFlatFour();
   console.log("round2_extract_interview_result.test.js: all tests passed");
 }
 

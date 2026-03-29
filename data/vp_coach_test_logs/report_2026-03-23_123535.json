@@ -1,0 +1,60 @@
+{
+  "timestamp": "2026-03-23_123535",
+  "totalScenarios": 6,
+  "results": [
+    {
+      "scenario": "ToB成人混合-草根老板（灾难复现场景）",
+      "grid": "ToB·差异·成人",
+      "arch": "混合",
+      "persona": "lazy_boss",
+      "error": "getaddrinfo ENOTFOUND api.deepseek.com",
+      "checks": {}
+    },
+    {
+      "scenario": "ToC儿童体验-互联网PM",
+      "grid": "ToC·差异·儿童",
+      "arch": "体验",
+      "persona": "mba_pm",
+      "error": "getaddrinfo ENOTFOUND api.deepseek.com",
+      "checks": {}
+    },
+    {
+      "scenario": "ToB老人功能-体制转型者",
+      "grid": "ToB·成本·老人",
+      "arch": "功能",
+      "persona": "govt_转型",
+      "error": "getaddrinfo ENOTFOUND api.deepseek.com",
+      "checks": {}
+    },
+    {
+      "scenario": "ToC成人体验-销售铁军",
+      "grid": "ToC·差异·成人",
+      "arch": "体验",
+      "persona": "sales_dog",
+      "error": "getaddrinfo ENOTFOUND api.deepseek.com",
+      "checks": {}
+    },
+    {
+      "scenario": "ToB儿童混合-草根老板（好对话复现）",
+      "grid": "ToB·差异·儿童",
+      "arch": "混合",
+      "persona": "lazy_boss",
+      "error": "getaddrinfo ENOTFOUND api.deepseek.com",
+      "checks": {}
+    },
+    {
+      "scenario": "ToC成人功能-互联网PM",
+      "grid": "ToC·成本·成人",
+      "arch": "功能",
+      "persona": "mba_pm",
+      "error": "getaddrinfo ENOTFOUND api.deepseek.com",
+      "checks": {}
+    }
+  ],
+  "summary": {
+    "totalChecks": 0,
+    "totalPassed": 0,
+    "totalFailed": 0,
+    "failedChecks": []
+  }
+}

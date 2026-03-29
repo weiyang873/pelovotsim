@@ -29,7 +29,8 @@ function extractScores(scores) {
 function scoreProduct(scores) {
   const s = extractScores(scores);
   if (!s || s.C == null || s.G == null || s.E == null) return null;
-  return Number((s.C * s.G * s.E).toFixed(4));
+  const avgGE = (s.G + s.E) / 2;
+  return Math.min(5, Math.round(Math.sqrt(s.C * avgGE) * 10) / 10);
 }
 
 class DecisionTracker {
@@ -43,8 +44,10 @@ class DecisionTracker {
       finalGrid: null,
       finalArch: null,
       vpIterations: [],
+      vpChatLogs: [],
       r1_wtp_ref: null,
       r1_wtp_adj: null,
+      r1_wtp_mult_compressed: null,
       r1_sam_billion: null,
       r1_rho_c: null,
       r1_wtp_multiplier: null,
@@ -127,6 +130,9 @@ class DecisionTracker {
       r2_evidence_count: null,
       r2_strong_dim_count: null,
       r2_missing_dim_count: null,
+      interview_persona_id: null,
+      interview_persona_name: null,
+      interviewLog: [],
       r2_personal_selections: [],
       r2_high_tier_count: 0,
       jinang_tech_applied: []
@@ -173,6 +179,7 @@ class DecisionTracker {
       vp_text: cloneJson(entry?.vp_text, null),
       scores: extractScores(entry?.scores),
       coach_reply: entry?.coach_reply || null,
+      speaker_reply: entry?.speaker_reply || null,
       changes: cloneJson(entry?.changes, null),
       used_best_iteration: entry?.used_best_iteration === true,
       best_iteration: entry?.best_iteration || null,
@@ -208,6 +215,26 @@ class DecisionTracker {
     this.refreshVpStats();
   }
 
+  pushVpChatLog(entry) {
+    const item = {
+      round_number: safeNumber(entry?.round_number),
+      coach_message: String(entry?.coach_message || "").trim() || null,
+      speaker_persona: entry?.speaker_persona || null,
+      speaker_name: entry?.speaker_name || null,
+      speaker_reply: String(entry?.speaker_reply || "").trim() || null,
+      lead_writer_persona: entry?.lead_writer_persona || null,
+      lead_writer_name: entry?.lead_writer_name || null,
+      vp_before: String(entry?.vp_before || "").trim() || null,
+      vp_after: String(entry?.vp_after || "").trim() || null,
+      score_product_before: safeNumber(entry?.score_product_before),
+      score_product_after: safeNumber(entry?.score_product_after),
+      score_C: safeNumber(entry?.score_C),
+      score_G: safeNumber(entry?.score_G),
+      score_E: safeNumber(entry?.score_E)
+    };
+    this.team.vpChatLogs.push(item);
+  }
+
   refreshVpStats() {
     this.team.vp_total_iterations = this.team.vpIterations.length;
     const initial = this.team.vpIterations.length > 0 ? scoreProduct(this.team.vpIterations[0].scores) : null;
@@ -236,6 +263,7 @@ class DecisionTracker {
     this.team.finalArch = data?.team?.final_architecture || this.team.finalArch;
     this.team.r1_wtp_ref = safeNumber(result.WTPref);
     this.team.r1_wtp_adj = safeNumber(result.WTPadj);
+    this.team.r1_wtp_mult_compressed = safeNumber(result.wtp_mult_compressed);
     this.team.r1_sam_billion = safeNumber(result.SAM_billion);
     this.team.r1_rho_c = safeNumber(result.rho_C);
     this.team.r1_wtp_multiplier = safeNumber(result.wtp_multiplier);
@@ -283,7 +311,7 @@ class DecisionTracker {
     }
   }
 
-  recordInterview(memberId, history, endData) {
+  recordInterview(memberId, history, endData, meta = {}) {
     const member = this.getMember(memberId);
     if (!member) return;
     const radar = endData?.radar || {};
@@ -302,6 +330,15 @@ class DecisionTracker {
     member.r2_interview_summary = Array.isArray(endData?.tags)
       ? endData.tags.map((item) => typeof item === "string" ? item : item?.tag).filter(Boolean).join(" | ")
       : null;
+    member.interview_persona_id = String(meta?.interview_persona_id || meta?.persona_id || "").trim() || null;
+    member.interview_persona_name = String(meta?.interview_persona_name || meta?.persona_name || "").trim() || null;
+    member.interviewLog = (Array.isArray(history) ? history : []).map((item, index) => ({
+      turn_number: Math.floor(index / 2) + 1,
+      role: item?.role === "user" ? "student" : "interviewee",
+      message_text: String(item?.content || "").trim(),
+      interview_persona_id: member.interview_persona_id,
+      interview_persona_name: member.interview_persona_name
+    })).filter((item) => item.message_text);
     member.r2_radar_scores = {
       perception: readRadar("perception"),
       motion: readRadar("motion"),

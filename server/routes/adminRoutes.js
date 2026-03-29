@@ -1,6 +1,7 @@
 const { runSql, sqlQuote } = require("../db/pgSql");
 const { createTeam, getTeam } = require("../multiplayer/teamManager");
 const { flushAll, readLogEntries } = require("../llm/llm_logger");
+const TeacherDebrief = require("./teacherDebrief");
 
 function makeResponse(status, body) {
   return { status, body };
@@ -148,6 +149,8 @@ async function exportResults() {
     const students = await runSql("SELECT * FROM students ORDER BY group_label, student_id;");
     const submissions = await runSql("SELECT * FROM member_submissions ORDER BY team_id, submitted_at;");
     const settlements = await runSql("SELECT * FROM jinang_settlements ORDER BY team_id;");
+    const debriefOut = await TeacherDebrief.debriefDataApi({ session_id: "default" });
+    const debriefSnapshot = debriefOut?.body?.ok ? debriefOut.body : null;
 
     return makeResponse(200, {
       ok: true,
@@ -155,7 +158,8 @@ async function exportResults() {
       teams,
       students,
       submissions,
-      settlements
+      settlements,
+      debrief_snapshot: debriefSnapshot
     });
   } catch (e) {
     return makeResponse(500, { ok: false, error: e.message });

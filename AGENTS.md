@@ -25,9 +25,9 @@ node server.js
 
 当前仓库没有 ESLint/Prettier 配置，也没有 `package.json` 脚本。
 
-回归测试：
+Round 1 回归测试：
 ```bash
-node tests/round1_model_regression.test.js
+node tests/round1_wtp_decimal.test.js
 ```
 
 语法检查（作为轻量 lint 替代）：

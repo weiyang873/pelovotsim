@@ -1,4 +1,6 @@
-const { getTeam } = require("../multiplayer/teamManager");
+const { getTeam, setTeamLeader } = require("../multiplayer/teamManager");
+const { runSql } = require("../db/pgSql");
+const { ensureSchema: ensureVpIterationSchema } = require("../multiplayer/vpIterationStore");
 const { mergeTeamSelections } = require("../multiplayer/rdTeamAdapter");
 const {
   TEAM_STATUS_ORDER,
@@ -123,6 +125,12 @@ async function forceMergeTeam(teamId, source = "single") {
   }
 
   const merged = mergeTeamSelections(submittedSelections.map((item) => item.selections));
+  if (!String(teamState.leaderMemberId || "").trim()) {
+    const fallbackLeaderId = String(submittedSelections[0]?.member_id || teamState.members?.[0]?.id || "").trim();
+    if (fallbackLeaderId) {
+      await setTeamLeader(teamId, fallbackLeaderId);
+    }
+  }
   await updateTeamRound2Status(teamId, "R2_TEAM_DISCUSSION");
   await syncMembersToTeamStatus(teamId, "R2_TEAM_DISCUSSION", teamState.members);
 
@@ -142,6 +150,38 @@ async function forceMergeTeam(teamId, source = "single") {
     merged_card_count: merged.selections.length,
     merge_violations: merged.violations
   };
+}
+
+async function setLeaderApi(body) {
+  try {
+    const teamId = String(body?.team_id || body?.teamId || "").trim();
+    const memberId = String(body?.member_id || body?.memberId || "").trim();
+    if (!teamId || !memberId) return makeResponse(400, { ok: false, error: "team_id and member_id required" });
+
+    const team = await assertTeam(teamId);
+    const member = (team.members || []).find((item) => item.id === memberId);
+    if (!member) return makeResponse(400, { ok: false, error: "member not found in team" });
+
+    const updated = await setTeamLeader(teamId, memberId);
+    await logTeacherAction({
+      action: "set_leader",
+      teamId,
+      memberId,
+      details: {
+        leader_name: member.member_name || member.memberName || "",
+        team_name: updated?.team_name || team.team_name || ""
+      }
+    });
+
+    return makeResponse(200, {
+      ok: true,
+      team_id: teamId,
+      leader_member_id: updated?.leader_member_id || memberId,
+      leader_name: updated?.leader_name || member.member_name || ""
+    });
+  } catch (e) {
+    return makeResponse(400, { ok: false, error: e.message });
+  }
 }
 
 async function sessionStatusApi() {
@@ -190,10 +230,16 @@ async function forceEndInterviewApi(body) {
 
     await assertMember(teamId, memberId);
     const session = await getLatestInterviewSession(teamId, memberId);
-    const fallback = buildFallbackInterviewResult(session);
-    if (session?.sessionId) {
-      await completeInterviewSession(session.sessionId, session.result || fallback);
+    if (!session?.sessionId) {
+      const teamState = await getTeamRound2State(teamId);
+      const member = (teamState?.members || []).find((item) => item.id === memberId);
+      if (member?.interviewStatus === "completed") {
+        return makeResponse(200, { ok: true, message: "该成员访谈已完成" });
+      }
+      return makeResponse(400, { ok: false, error: "该成员没有进行中的访谈" });
     }
+    const fallback = buildFallbackInterviewResult(session);
+    await completeInterviewSession(session.sessionId, session.result || fallback);
 
     await updateMemberProgress(teamId, memberId, {
       interview_status: "completed",
@@ -241,6 +287,11 @@ async function forceSubmitCardsApi(body) {
 
     await assertMember(teamId, memberId);
     const row = await getMemberSelectionRow(teamId, memberId);
+    const teamState = await getTeamRound2State(teamId);
+    const targetMember = (teamState?.members || []).find((member) => member.id === memberId);
+    if (targetMember?.cardStatus === "submitted") {
+      return makeResponse(200, { ok: true, message: "该成员已提交选卡" });
+    }
     const count = Array.isArray(row?.selections) ? row.selections.length : 0;
     await updateMemberProgress(teamId, memberId, {
       card_status: "submitted",
@@ -250,12 +301,18 @@ async function forceSubmitCardsApi(body) {
       last_activity_at: nowIso()
     });
 
-    const teamState = await getTeamRound2State(teamId);
     const allSubmitted = (teamState?.members || []).every((member) => {
       if (member.id === memberId) return true;
       return member.cardStatus === "submitted";
     });
     await updateTeamRound2Status(teamId, allSubmitted ? "R2_TEAM_MERGE" : "R2_INDIVIDUAL_CARDS");
+    if (allSubmitted) {
+      try {
+        await forceMergeTeam(teamId, "auto");
+      } catch (err) {
+        return makeResponse(400, { ok: false, error: err.message || "自动合并失败" });
+      }
+    }
 
     await logTeacherAction({
       action: "force_submit_cards",
@@ -324,7 +381,13 @@ async function forceMergeAllApi() {
 async function forceAdvanceApi(body) {
   try {
     const teamId = String(body?.team_id || body?.teamId || "").trim();
-    const targetStatus = clampStatus(body?.target_status || body?.targetStatus);
+    const rawTarget = body?.target_status || body?.targetStatus || body?.target_step || body?.targetStep;
+    let targetStatus = clampStatus(rawTarget);
+    if (!targetStatus) {
+      const step = String(rawTarget || "").trim().toLowerCase();
+      if (step === "pricing") targetStatus = "R2_TEAM_DISCUSSION";
+      if (step === "submitted") targetStatus = "R2_SUBMITTED";
+    }
     if (!teamId) return makeResponse(400, { ok: false, error: "team_id required" });
     if (!TEAM_STATUS_ORDER.includes(targetStatus) || targetStatus === "R2_NOT_STARTED") {
       return makeResponse(400, { ok: false, error: "invalid target_status" });
@@ -363,8 +426,13 @@ async function resetMemberApi(body) {
   try {
     const teamId = String(body?.team_id || body?.teamId || "").trim();
     const memberId = String(body?.member_id || body?.memberId || "").trim();
-    const resetTo = String(body?.reset_to || body?.resetTo || "").trim();
+    const rawReset = String(body?.reset_to || body?.resetTo || "").trim();
+    const resetTo = rawReset === "interview" ? "interviewing" : rawReset === "cards" ? "selecting" : rawReset;
+    const confirmed = body?.confirm === true;
     if (!teamId || !memberId) return makeResponse(400, { ok: false, error: "team_id and member_id required" });
+    if (!confirmed) {
+      return makeResponse(400, { ok: false, needConfirm: true, message: "此操作将清除该成员在该阶段之后的所有数据" });
+    }
     if (resetTo !== "interviewing" && resetTo !== "selecting") {
       return makeResponse(400, { ok: false, error: "reset_to must be interviewing or selecting" });
     }
@@ -410,11 +478,21 @@ async function resetMemberApi(body) {
 async function resetTeamApi(body) {
   try {
     const teamId = String(body?.team_id || body?.teamId || "").trim();
-    const resetTo = clampStatus(body?.reset_to || body?.resetTo);
+    const rawReset = String(body?.reset_to || body?.resetTo || "").trim();
+    const mappedReset = rawReset === "interview"
+      ? "R2_INTERVIEWING"
+      : rawReset === "cards"
+        ? "R2_INDIVIDUAL_CARDS"
+        : rawReset === "merge"
+          ? "R2_TEAM_MERGE"
+          : rawReset === "pricing"
+            ? "R2_TEAM_DISCUSSION"
+            : rawReset;
+    const resetTo = clampStatus(mappedReset);
     const confirmed = body?.confirm === true;
     if (!teamId) return makeResponse(400, { ok: false, error: "team_id required" });
-    if (!confirmed) return makeResponse(400, { ok: false, error: "reset-team requires confirm: true" });
-    if (!["R2_REVIEW", "R2_INTERVIEWING", "R2_INDIVIDUAL_CARDS"].includes(resetTo)) {
+    if (!confirmed) return makeResponse(400, { ok: false, needConfirm: true, message: "此操作将清除该组在该阶段之后的所有数据" });
+    if (!["R2_REVIEW", "R2_INTERVIEWING", "R2_INDIVIDUAL_CARDS", "R2_TEAM_MERGE", "R2_TEAM_DISCUSSION"].includes(resetTo)) {
       return makeResponse(400, { ok: false, error: "invalid reset_to" });
     }
 
@@ -432,13 +510,26 @@ async function resetTeamApi(body) {
           current_step: "interviewing",
           last_activity_at: nowIso()
         });
-      } else {
+      } else if (resetTo === "R2_INDIVIDUAL_CARDS") {
         await updateMemberProgress(teamId, member.id, {
           interview_status: "completed",
           interview_rounds: 1,
           card_status: "not_started",
           cards_selected: 0,
           current_step: "selecting_cards",
+          forced_by_teacher: false,
+          last_activity_at: nowIso()
+        });
+      } else if (resetTo === "R2_TEAM_MERGE" || resetTo === "R2_TEAM_DISCUSSION") {
+        const isSubmitted = member.cardStatus === "submitted";
+        await updateMemberProgress(teamId, member.id, {
+          interview_status: member.interviewStatus === "completed" ? "completed" : "completed",
+          interview_rounds: Math.max(1, Number(member.interviewRounds || 1)),
+          card_status: isSubmitted ? "submitted" : (member.cardsSelected > 0 ? "selecting" : "not_started"),
+          cards_selected: Math.max(0, Number(member.cardsSelected || 0)),
+          current_step: resetTo === "R2_TEAM_DISCUSSION"
+            ? (isSubmitted ? "in_discussion" : "selecting_cards")
+            : (isSubmitted ? "waiting_merge" : "selecting_cards"),
           forced_by_teacher: false,
           last_activity_at: nowIso()
         });
@@ -463,15 +554,63 @@ async function resetTeamApi(body) {
   }
 }
 
+async function resetSessionApi(body) {
+  try {
+    const confirmed = body?.confirm === true;
+    if (!confirmed) {
+      return makeResponse(400, { ok: false, error: "reset-session requires confirm: true" });
+    }
+
+    await ensureSchema();
+    await ensureVpIterationSchema();
+    const teamRows = await runSql("SELECT COUNT(*)::int AS count FROM teams;");
+    const memberRows = await runSql("SELECT COUNT(*)::int AS count FROM team_members;");
+    const deletedTeams = Number(teamRows[0]?.count || 0);
+    const deletedMembers = Number(memberRows[0]?.count || 0);
+
+    // Current runtime tables that back the teacher console. "vp_iterations"/"action_log"
+    // map to today's persisted tables: vp_sessions and teacher_actions.
+    await runSql(`
+      DELETE FROM debrief_cache;
+      DELETE FROM teacher_actions;
+      DELETE FROM computation_log;
+      DELETE FROM vp_iterations;
+      DELETE FROM marketing_sessions;
+      DELETE FROM vp_sessions;
+      DELETE FROM fg_team_radar;
+      DELETE FROM round2_results;
+      DELETE FROM round2_submissions;
+      DELETE FROM round2_member_selections;
+      DELETE FROM round2_interview_sessions;
+      DELETE FROM round2_dimension_assignments;
+      DELETE FROM member_submissions;
+      DELETE FROM jinang_settlements;
+      DELETE FROM students;
+      DELETE FROM team_members;
+      DELETE FROM teams;
+    `);
+
+    return makeResponse(200, {
+      ok: true,
+      deleted_teams: deletedTeams,
+      deleted_members: deletedMembers
+    });
+  } catch (e) {
+    return makeResponse(500, { ok: false, error: e.message });
+  }
+}
+
 module.exports = {
   ensureSchema,
   sessionStatusApi,
   openRound2Api,
+  setLeaderApi,
   forceEndInterviewApi,
   forceSubmitCardsApi,
   forceMergeApi,
   forceMergeAllApi,
   forceAdvanceApi,
   resetMemberApi,
-  resetTeamApi
+  resetTeamApi,
+  resetSessionApi
 };

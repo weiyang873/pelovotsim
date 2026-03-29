@@ -25,6 +25,18 @@ async function start(body) {
   }
   const normalizedMemberId = String(memberId || "member-1").trim() || "member-1";
 
+  console.log("[marketing.start] generatePersona", {
+    teamKey,
+    memberId: normalizedMemberId,
+    who_raw: String(strategy?.who_raw || "").trim() || null,
+    gridLabel: String(strategy?.gridLabel || "").trim() || null,
+    isToB: strategy?.isToB === true,
+    previousPersonasCount: Array.isArray(strategy?.previousPersonas) ? strategy.previousPersonas.length : 0,
+    previousPersonas: (Array.isArray(strategy?.previousPersonas) ? strategy.previousPersonas : []).map((item) => ({
+      name: String(item?.name || "").trim() || null,
+      title: String(item?.title || item?.occupation || "").trim() || null
+    }))
+  });
   const persona = await generatePersona(vpCanvas, strategy);
   const personaCard = formatPersonaCard(persona);
   const sessionId = await createMarketingSession(teamKey, normalizedMemberId, strategy, vpCanvas, persona);

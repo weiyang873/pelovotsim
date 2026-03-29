@@ -232,6 +232,17 @@ async function main() {
       updated_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS computation_log (
+      id SERIAL PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      team_id TEXT NOT NULL,
+      member_id TEXT,
+      timestamp TIMESTAMPTZ DEFAULT NOW(),
+      stage TEXT NOT NULL,
+      params JSONB NOT NULL,
+      source TEXT DEFAULT 'web'
+    );
+
     CREATE INDEX IF NOT EXISTS idx_team_runs_team ON team_runs(team_id);
     CREATE INDEX IF NOT EXISTS idx_team_runs_created ON team_runs(created_at);
     CREATE INDEX IF NOT EXISTS idx_iter_team ON iteration_events(team_id);
@@ -240,6 +251,8 @@ async function main() {
     CREATE INDEX IF NOT EXISTS idx_llm_outputs_cache ON llm_wizard_outputs(cache_key);
     CREATE INDEX IF NOT EXISTS idx_llm_metrics_team_step ON llm_call_metrics(team_key, step);
     CREATE INDEX IF NOT EXISTS idx_llm_metrics_created ON llm_call_metrics(created_at);
+    CREATE INDEX IF NOT EXISTS idx_comp_log_team ON computation_log(team_id);
+    CREATE INDEX IF NOT EXISTS idx_comp_log_stage ON computation_log(stage);
   `);
 
   console.log("PostgreSQL schema initialized");

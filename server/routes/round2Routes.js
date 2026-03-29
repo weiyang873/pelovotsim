@@ -5,7 +5,10 @@ const Engine = require("../../engine");
 const TeamRoutes = require("./teamRoutes");
 const { chatCompletion } = require("../llm/deepseekClient");
 const { withLlmLogging } = require("../llm/llm_logger");
-const { getTeam } = require("../multiplayer/teamManager");
+const { generatePersona } = require("../llm/personaGenerator");
+const { getTeamSessions } = require("../llm/sessions");
+const { getTeam, setTeamLeader } = require("../multiplayer/teamManager");
+const { scheduleStages } = require("../multiplayer/computationLog");
 const {
   calculate,
   validateSelections,
@@ -27,6 +30,7 @@ const CONFIG_DIR = path.join(ROOT, "game_config_v0.1");
 const GRID_PRIOR_PATH = path.join(ROOT, "data", "grid_priors_v4_cap_weights.json");
 let cachedEngineConfig = null;
 let cachedGridPriors = null;
+const ROUND2_PERSONA_POOL_VERSION = 4;
 
 const DIM_KEYS_SHORT = ["interaction", "perception", "motion", "safety", "extend", "ops"];
 const DIM_SHORT_TO_GROUP = {
@@ -69,6 +73,16 @@ const ALLOWED_INTERVIEW_TAGS = [
   "个性化推荐", "跟随陪伴", "记忆回溯", "家庭版", "拍照功能", "碰撞保护", "情感陪伴", "情绪识别",
   "室内导航", "音乐播放", "隐私保护", "语音交互", "远程控制", "智能家居", "自动充电", "自主移动", "OTA更新"
 ];
+const ALLOWED_INTERVIEW_TAG_SET = new Set(ALLOWED_INTERVIEW_TAGS);
+const TAG_TO_DIM_SHORT = (() => {
+  const map = new Map();
+  Object.entries(DIM_TAGS).forEach(([dim, tags]) => {
+    (tags || []).forEach((tag) => {
+      map.set(tag, dim);
+    });
+  });
+  return map;
+})();
 const DIM_EVIDENCE_HINTS = {
   interaction: "任何关于回应、说话、聊天、提醒、陪伴、被听见、回应感的描述，都可以算 interaction 证据。",
   perception: "任何关于被理解、被看见、懂情绪、懂场景、懂分寸、感知环境变化的描述，都可以算 perception 证据。",
@@ -152,6 +166,25 @@ function makeResponse(status, body) {
   return { status, body };
 }
 
+function buildLeaderMeta(team, requesterMemberId = "") {
+  const leaderMemberId = String(team?.leader_member_id || team?.leaderMemberId || "").trim();
+  const leaderName = String(team?.leader_name || team?.leaderName || "").trim();
+  const memberId = String(requesterMemberId || "").trim();
+  return {
+    leader_member_id: leaderMemberId || null,
+    leader_name: leaderName || "",
+    is_leader: Boolean(memberId && leaderMemberId && memberId === leaderMemberId)
+  };
+}
+
+function makeOnlyLeaderResponse(team, requesterMemberId = "") {
+  return makeResponse(403, {
+    ok: false,
+    error: "only_leader",
+    ...buildLeaderMeta(team, requesterMemberId)
+  });
+}
+
 async function ensureSchema() {
   await runSql(`
     CREATE TABLE IF NOT EXISTS round2_dimension_assignments (
@@ -218,12 +251,87 @@ async function ensureSchema() {
       computed_at TIMESTAMPTZ NOT NULL,
       PRIMARY KEY (team_id, session_id)
     );
+
+    CREATE TABLE IF NOT EXISTS round2_team_drafts (
+      team_id TEXT PRIMARY KEY,
+      price DOUBLE PRECISION,
+      selections_json TEXT NOT NULL,
+      updated_by TEXT,
+      updated_at TIMESTAMPTZ NOT NULL
+    );
   `);
   await ensureRound2StateSchema();
 }
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+async function readRound2TeamDraft(teamId) {
+  await ensureSchema();
+  const rows = await runSql(`
+    SELECT team_id, price, selections_json, updated_by, updated_at
+    FROM round2_team_drafts
+    WHERE team_id = ${sqlQuote(teamId)}
+    LIMIT 1;
+  `);
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    team_id: row.team_id,
+    price: Number.isFinite(Number(row.price)) ? Number(row.price) : null,
+    selections: safeJsonParse(row.selections_json, []),
+    updated_by: row.updated_by || "",
+    updated_at: row.updated_at || null
+  };
+}
+
+async function saveRound2TeamDraft(teamId, memberId, draft = {}) {
+  await ensureSchema();
+  const existing = await readRound2TeamDraft(teamId);
+  const selections = Array.isArray(draft.selections)
+    ? draft.selections
+    : Array.isArray(existing?.selections)
+      ? existing.selections
+      : [];
+  const nextPrice = draft.price === undefined
+    ? existing?.price ?? null
+    : (Number.isFinite(Number(draft.price)) ? Number(draft.price) : null);
+
+  await runSql(`
+    INSERT INTO round2_team_drafts (
+      team_id, price, selections_json, updated_by, updated_at
+    ) VALUES (
+      ${sqlQuote(teamId)},
+      ${nextPrice == null ? "NULL" : Number(nextPrice)},
+      ${sqlQuote(JSON.stringify(selections || []))},
+      ${sqlQuote(String(memberId || "").trim() || null)},
+      ${sqlQuote(nowIso())}
+    )
+    ON CONFLICT (team_id) DO UPDATE SET
+      price = EXCLUDED.price,
+      selections_json = EXCLUDED.selections_json,
+      updated_by = EXCLUDED.updated_by,
+      updated_at = EXCLUDED.updated_at;
+  `);
+
+  return readRound2TeamDraft(teamId);
+}
+
+async function ensureRound2LeaderPermission(teamId, memberId) {
+  const team = await getTeam(teamId);
+  if (!team) return { ok: false, response: makeResponse(404, { ok: false, error: "team not found" }) };
+  const requesterId = String(memberId || "").trim();
+  if (!requesterId) return { ok: false, response: makeOnlyLeaderResponse(team, requesterId) };
+  const member = (team.members || []).find((item) => item.id === requesterId);
+  if (!member) return { ok: false, response: makeResponse(400, { ok: false, error: "member not found in team" }) };
+  if (!String(team.leader_member_id || "").trim()) {
+    const nextTeam = await setTeamLeader(teamId, requesterId);
+    return { ok: true, team: nextTeam, leaderMeta: buildLeaderMeta(nextTeam, requesterId) };
+  }
+  const leaderMeta = buildLeaderMeta(team, requesterId);
+  if (!leaderMeta.is_leader) return { ok: false, response: makeOnlyLeaderResponse(team, requesterId) };
+  return { ok: true, team, leaderMeta };
 }
 
 function normalizeTimestamp(value) {
@@ -259,13 +367,16 @@ function jitter(mean) {
   return Number(clamp(mean + delta, 1, 9).toFixed(1));
 }
 
-function getPriorRadarByGrid(gridId) {
+function getPriorRadarByGrid(gridId, architecture) {
   const priors = getGridPriors();
-  const grid = (priors.grids || []).find((g) => g.id === gridId) || {};
+  const normalizedGridId = /^B2[BC]_/.test(String(gridId || "").trim())
+    ? String(gridId || "").trim()
+    : toCalcGridId(gridId, architecture);
+  const grid = (priors.grids || []).find((g) => g.id === normalizedGridId) || {};
   const w = grid.radar_weight_prior || {};
   // 将先验权重映射到 1-9 的分值均值（中心在5附近）
   const toScore = (weight) => clamp(4 + Number(weight || 0) * 10, 1, 9);
-  return {
+  const priorRadar = {
     interaction: toScore(w["交互与表达"]),
     perception: toScore(w["感知与理解"]),
     motion: toScore(w["运动与导航"]),
@@ -273,6 +384,13 @@ function getPriorRadarByGrid(gridId) {
     extend: toScore(w["可扩展与连接"]),
     ops: toScore(w["可运营与可维护"])
   };
+  console.log("[Round2][PriorRadar]", JSON.stringify({
+    rawGridId: String(gridId || ""),
+    architecture: String(architecture || ""),
+    normalizedGridId,
+    priorRadar
+  }));
+  return priorRadar;
 }
 
 function dimToRadarKeys(dimScores) {
@@ -299,6 +417,25 @@ function radarToDimKeys(radar) {
 
 function roundTo(value, digits) {
   return Number(Number(value || 0).toFixed(digits));
+}
+
+function roundForLog(value, digits = 6) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return Number(n.toFixed(digits));
+}
+
+function buildComputationContext({ teamId, sessionId, memberId, source = "web" }) {
+  const team_id = String(teamId || "").trim();
+  const session_id = String(sessionId || "").trim();
+  if (!team_id || !session_id) return null;
+  const member_id = String(memberId || "").trim();
+  return {
+    team_id,
+    session_id,
+    member_id: member_id || null,
+    source
+  };
 }
 
 function uniqueStrings(list) {
@@ -398,6 +535,48 @@ function normalizeInterviewQuality(raw) {
   };
 }
 
+function summarizeTextList(list, maxItems = 2) {
+  return uniqueStrings(list).slice(0, maxItems).join("、");
+}
+
+function trimSummaryText(text, limit = 120) {
+  return String(text || "").replace(/\s+/g, " ").trim().slice(0, limit);
+}
+
+function buildDimensionInsight(dim, evidenceBlock) {
+  const label = DIM_LABEL[dim] || dim;
+  if (!evidenceBlock?.mentioned) {
+    return `该维度暂无明确访谈证据，当前评分主要来自 ${label} 的战略先验。`;
+  }
+
+  const scenarioText = summarizeTextList(evidenceBlock.scenarios, 2);
+  const painText = summarizeTextList(evidenceBlock.pain_points, 2);
+  const needText = summarizeTextList(evidenceBlock.needs, 2);
+  const quoteText = trimSummaryText(evidenceBlock.evidence?.[0]?.quote || "", 80);
+
+  const parts = [];
+  if (scenarioText) parts.push(`场景：${scenarioText}`);
+  if (painText) parts.push(`痛点：${painText}`);
+  if (needText) parts.push(`需求：${needText}`);
+  if (!parts.length && quoteText) parts.push(`原话：${quoteText}`);
+  if (!parts.length) {
+    return `${label} 有访谈提及，但证据较弱，当前评分基于有限访谈信号。`;
+  }
+  return parts.join("；");
+}
+
+function buildInterviewSummaryText(memberDims, insightsByDim) {
+  const lines = (Array.isArray(memberDims) ? memberDims : [])
+    .map((dim) => {
+      const insight = String(insightsByDim?.[dim] || "").trim();
+      if (!insight) return "";
+      return `${DIM_LABEL[dim] || dim}：${insight}`;
+    })
+    .filter(Boolean)
+    .slice(0, 3);
+  return lines.join(" ");
+}
+
 function buildFocusedDimensionHints(memberDims) {
   return (Array.isArray(memberDims) ? memberDims : [])
     .map((dim) => `- ${dim}: ${DIM_EVIDENCE_HINTS[dim] || ""}`)
@@ -466,6 +645,7 @@ function buildExtractInterviewMessages({ gridId, memberDims, conversation }) {
         allowedTagsText,
         "- tags 输出规则：",
         "  - tags 只能从上面的列表中选取，不要自创标签",
+        "  - 从对话中提取 4-8 个需求标签（不少于 4 个），覆盖尽量多的维度方向",
         "  - 每个标签必须有访谈证据支持",
         "  - 如果访谈内容无法匹配列表中的任何标签，该需求记录在 evidence 中但不输出 tag",
         "",
@@ -615,25 +795,89 @@ function computeEviFromEvidence({ extracted, focusedBlocks, history }) {
   return roundTo(clamp(evi, 0.3, 0.85), 2);
 }
 
-function normalizeExtractedTags(tags, memberDims) {
-  const normalized = normalizeTextList(tags).slice(0, 8);
-  if (normalized.length > 0) return normalized;
-  return (Array.isArray(memberDims) ? memberDims.flatMap((dim) => DIM_TAGS[dim] || []) : [])
-    .slice(0, 6);
+function buildTagCandidatesForDims(dims, currentTags) {
+  const used = new Set(currentTags);
+  const candidates = [];
+  (Array.isArray(dims) ? dims : []).forEach((dim) => {
+    (DIM_TAGS[dim] || []).forEach((tag) => {
+      if (!ALLOWED_INTERVIEW_TAG_SET.has(tag) || used.has(tag)) return;
+      used.add(tag);
+      candidates.push(tag);
+    });
+  });
+  return candidates;
 }
 
-function mapEvidenceToResult({ gridId, memberDims, extracted, history, conversation }) {
-  const prior = getPriorRadarByGrid(gridId);
+function normalizeExtractedTags(tags, memberDims, dimensionEvidence = {}) {
+  const normalized = normalizeTextList(tags)
+    .filter((tag) => ALLOWED_INTERVIEW_TAG_SET.has(tag))
+    .slice(0, 8);
+  const result = [];
+  const seen = new Set();
+  normalized.forEach((tag) => {
+    if (seen.has(tag)) return;
+    seen.add(tag);
+    result.push(tag);
+  });
+
+  const currentDimSet = new Set(result.map((tag) => TAG_TO_DIM_SHORT.get(tag)).filter(Boolean));
+  const ownedDims = Array.isArray(memberDims) ? uniqueStrings(memberDims) : [];
+  const mentionedDims = DIM_KEYS_SHORT.filter((dim) => dimensionEvidence?.[dim]?.mentioned);
+  const uncoveredMentionedDims = mentionedDims.filter((dim) => !currentDimSet.has(dim));
+  const uncoveredOwnedDims = ownedDims.filter((dim) => !currentDimSet.has(dim));
+  const remainingDims = DIM_KEYS_SHORT.filter((dim) => !currentDimSet.has(dim) && !mentionedDims.includes(dim) && !ownedDims.includes(dim));
+
+  const dimExpansionOrder = [
+    ...uncoveredMentionedDims,
+    ...uncoveredOwnedDims,
+    ...remainingDims
+  ];
+
+  if (currentDimSet.size < 3) {
+    buildTagCandidatesForDims(dimExpansionOrder, result).forEach((tag) => {
+      if (result.length >= 8 || currentDimSet.size >= 3) return;
+      result.push(tag);
+      const dim = TAG_TO_DIM_SHORT.get(tag);
+      if (dim) currentDimSet.add(dim);
+    });
+  }
+
+  if (result.length < 4) {
+    const fillOrder = [
+      ...mentionedDims,
+      ...ownedDims,
+      ...DIM_KEYS_SHORT
+    ];
+    buildTagCandidatesForDims(fillOrder, result).forEach((tag) => {
+      if (result.length >= 4 || result.length >= 8) return;
+      result.push(tag);
+      const dim = TAG_TO_DIM_SHORT.get(tag);
+      if (dim) currentDimSet.add(dim);
+    });
+  }
+
+  if (result.length > 0) return result.slice(0, 8);
+  return buildTagCandidatesForDims(ownedDims.length > 0 ? ownedDims : DIM_KEYS_SHORT, []).slice(0, 6);
+}
+
+function mapEvidenceToResult({ gridId, architecture, memberDims, extracted, history, conversation }) {
+  const prior = getPriorRadarByGrid(gridId, architecture);
   const responsible = new Set(Array.isArray(memberDims) ? memberDims : []);
   const dimScores = {};
   const confidence = {};
   const lowConfidenceDims = [];
   const focusedBlocks = [];
+  const insightsByDim = {};
+  const scoreSource = {};
+  const rawExtractedTags = normalizeTextList(extracted?.tags)
+    .filter((tag) => ALLOWED_INTERVIEW_TAG_SET.has(tag))
+    .slice(0, 8);
 
   DIM_KEYS_SHORT.forEach((dim) => {
     if (!responsible.has(dim)) {
       dimScores[dim] = jitter(prior[dim]);
       confidence[dim] = "low";
+      scoreSource[dim] = "not_owned";
       lowConfidenceDims.push(dim);
       return;
     }
@@ -653,7 +897,18 @@ function mapEvidenceToResult({ gridId, memberDims, extracted, history, conversat
     if (!finalEvidence.mentioned) {
       dimScores[dim] = roundTo(clamp(prior[dim], 1, 9), 1);
       confidence[dim] = "low";
+      scoreSource[dim] = "grid_prior";
+      insightsByDim[dim] = buildDimensionInsight(dim, finalEvidence);
       lowConfidenceDims.push(dim);
+      console.log("[Round2][DimensionScore]", JSON.stringify({
+        dim,
+        inputTags: rawExtractedTags,
+        priorScore: roundTo(clamp(prior[dim], 1, 9), 1),
+        finalScore: dimScores[dim],
+        scoreSource: scoreSource[dim],
+        confidence: confidence[dim],
+        evidence: finalEvidence
+      }));
       return;
     }
 
@@ -664,15 +919,62 @@ function mapEvidenceToResult({ gridId, memberDims, extracted, history, conversat
 
     dimScores[dim] = scoreInfo.score;
     confidence[dim] = scoreInfo.confidence;
+    scoreSource[dim] = "interview_evidence";
+    insightsByDim[dim] = buildDimensionInsight(dim, finalEvidence);
     if (scoreInfo.confidence !== "high") lowConfidenceDims.push(dim);
+    console.log("[Round2][DimensionScore]", JSON.stringify({
+      dim,
+      inputTags: rawExtractedTags,
+      priorScore: roundTo(clamp(prior[dim], 1, 9), 1),
+      finalScore: dimScores[dim],
+      scoreSource: scoreSource[dim],
+      confidence: confidence[dim],
+      evidence: finalEvidence
+    }));
   });
+
+  const evi = computeEviFromEvidence({ extracted, focusedBlocks, history });
+  const dimensionEvidence = {};
+  DIM_KEYS_SHORT.forEach((dim) => {
+    const evidenceBlock = normalizeDimensionEvidence(
+      extracted?.dimension_evidence?.[dim] || extracted?.other_dimensions?.[dim]
+    );
+    dimensionEvidence[dim] = evidenceBlock;
+  });
+  const extractedTags = normalizeExtractedTags(extracted?.tags, memberDims, dimensionEvidence)
+    .map((tag) => ({ tag, polarity: 1 }));
+  const ownedDims = Array.isArray(memberDims) ? memberDims : [];
+  const mentionedOwnedDims = ownedDims.filter((dim) => dimensionEvidence[dim]?.mentioned).length;
+  const interviewQuality = normalizeInterviewQuality(extracted?.interview_quality);
+  const summary = buildInterviewSummaryText(memberDims, insightsByDim);
+  console.log("[Round2][InterviewPipeline]", JSON.stringify({
+    rawGridId: String(gridId || ""),
+    architecture: String(architecture || ""),
+    inputTags: rawExtractedTags,
+    normalizedTags: extractedTags,
+    evi,
+    radar: dimToRadarKeys(dimScores),
+    confidence,
+    scoreSource
+  }));
 
   return {
     radar: dimToRadarKeys(dimScores),
-    tags: normalizeExtractedTags(extracted?.tags, memberDims).map((tag) => ({ tag, polarity: 1 })),
-    evi: computeEviFromEvidence({ extracted, focusedBlocks, history }),
+    tags: extractedTags,
+    evi,
     confidence,
-    lowConfidenceDims: uniqueStrings(lowConfidenceDims)
+    lowConfidenceDims: uniqueStrings(lowConfidenceDims),
+    insightsByDim,
+    scoreSource,
+    summary,
+    dimensionEvidence,
+    interviewQuality,
+    eviMeta: {
+      raw_evi: roundForLog(evi),
+      tag_count: extractedTags.length,
+      dim_coverage: ownedDims.length > 0 ? roundForLog(mentionedOwnedDims / ownedDims.length) : 0,
+      final_evi: roundForLog(evi)
+    }
   };
 }
 
@@ -683,15 +985,18 @@ function buildInterviewSystemPrompt({ persona, gridDesc, vpSummary, memberDims }
   const basePersona = persona || {};
   const personaName = String(basePersona.name || "访谈对象").trim();
   const personaAge = Number(basePersona.age || 0) > 0 ? `${Number(basePersona.age)}岁` : "";
-  const personaOccupation = String(basePersona.occupation || "普通用户").trim();
-  const personaLiving = String(basePersona.living_situation || "日常生活节奏稳定").trim();
+  const personaOccupation = String(basePersona.title || basePersona.occupation || "普通用户").trim();
+  const personaOrg = [String(basePersona.org_type || "").trim(), String(basePersona.org_scale || "").trim()].filter(Boolean).join("，");
+  const personaLiving = String(basePersona.living_situation || personaOrg || "日常生活节奏稳定").trim();
+  const personaTrigger = String(basePersona.trigger || "").trim();
 
   return [
     "你正在扮演一个真实的人，参加一场产品调研访谈。",
     "",
     `姓名：${personaName}${personaAge ? `，${personaAge}` : ""}`,
-    `职业：${personaOccupation}`,
-    `居住：${personaLiving}`,
+    `角色：${personaOccupation}`,
+    `${personaOrg ? `机构：${personaOrg}` : `背景：${personaLiving}`}`,
+    `${personaTrigger ? `最近触发事件：${personaTrigger}` : ""}`,
     "",
     "## 扮演规则",
     "1. 你不知道自己想要什么产品，只知道自己的生活和感受",
@@ -717,7 +1022,7 @@ function buildInterviewSystemPrompt({ persona, gridDesc, vpSummary, memberDims }
   ].join("\n");
 }
 
-async function extractInterviewResult({ gridId, memberDims, history }) {
+async function extractInterviewResult({ gridId, architecture, memberDims, history }) {
   const conversation = (history || [])
     .map((m) => `${m.role === "user" ? "学生" : m.speaker || "用户"}：${m.text || ""}`)
     .join("\n");
@@ -741,7 +1046,15 @@ async function extractInterviewResult({ gridId, memberDims, history }) {
     extracted = null;
   }
 
-  return mapEvidenceToResult({ gridId, memberDims, extracted, history, conversation });
+  console.log("[Round2][TagExtract]", JSON.stringify({
+    rawGridId: String(gridId || ""),
+    architecture: String(architecture || ""),
+    memberDims: Array.isArray(memberDims) ? memberDims : [],
+    tags: normalizeExtractedTags(extracted?.tags, memberDims),
+    missingDimensions: Array.isArray(extracted?.missing_dimensions) ? extracted.missing_dimensions : []
+  }));
+
+  return mapEvidenceToResult({ gridId, architecture, memberDims, extracted, history, conversation });
 }
 
 function parseGridId(gridId) {
@@ -802,6 +1115,7 @@ function listTeamMembers(team) {
 async function buildRound2Recap(teamId, phase4Body) {
   const team = await getTeam(teamId);
   if (!team) throw new Error("team not found");
+  console.log("[R2] 读取 WTPadj:", Number(team.final_wtp_adj || 0), "来源表:", "teams", "字段:", "final_wtp_adj");
 
   const parsed = parseGridId(team.final_grid_id);
   const ch = normalizeChannels(team.final_channel1, team.final_channel2, team.final_channel1_share);
@@ -842,24 +1156,38 @@ async function buildRound2Recap(teamId, phase4Body) {
 
   const vpScores = phase4Body?.vp_scores || {};
   const marketInfo = getRound2MarketInfo(team.final_grid_id);
+  const matchedMarketCount = settleItems.filter((x) => x?.matched && x?.jinang_type === "market").length;
+  const matchedTechCount = settleItems.filter((x) => x?.matched && x?.jinang_type === "tech").length;
+  const displayedWtpAdj = Number(phase4Body?.wtp_breakdown?.final_result?.WTPadj || team.final_wtp_adj || 0);
+  console.log("[R2 pricing] 显示给学生的 WTPadj:", displayedWtpAdj);
 
   return {
     final_grid_id: team.final_grid_id,
+    architecture: team.final_architecture || "",
     margin_headroom: phase4Body?.margin_headroom?.tier || "中等",
     market_space_tier: phase4Body?.market_space?.tier || "M",
     difficulty_tier: phase4Body?.market_space?.difficulty_tier || "中",
+    vp_score: Number(phase4Body?.vp_scores?.VPscore || phase4Body?.r1_result?.VPscore || 0),
+    vp_feedback: String(phase4Body?.vp_feedback || "").trim() || null,
     vp_scores: {
       C: Number(vpScores.C || 3),
       G: Number(vpScores.G || 3),
       E: Number(vpScores.E || 3)
     },
-    vp_summary: String(team.final_vp_text || "").split("\n").filter(Boolean).slice(0, 2).join("；") || "暂无 VP 摘要",
+    vp_summary: String(phase4Body?.team?.final_vp_text || team.final_vp_text || "").trim() || "暂无 VP 摘要",
+    wtp_breakdown: phase4Body?.wtp_breakdown || null,
     jinang_tech: tech
       ? { card_id: tech.jinang_id, match_strength: Number(tech.match_strength || 0), name: tech.name || tech.jinang_id }
       : null,
     jinang_market: market
       ? { card_id: market.jinang_id, match_strength: Number(market.match_strength || 0), name: market.name || market.jinang_id }
       : null,
+    jinang_summary: {
+      total_count: settleItems.length,
+      matched_count: settleItems.filter((x) => Boolean(x?.matched)).length,
+      matched_market_count: matchedMarketCount,
+      matched_tech_count: matchedTechCount
+    },
     P: Number(base.P || 12800),
     Pmax,
     WTP,
@@ -889,7 +1217,45 @@ function getPersonaGroup(gridId, personaAge = 0) {
   return Number(personaAge || 0) >= 60 ? "ELDER" : "ADULT";
 }
 
-function createPersonaPool(memberName, gridId) {
+function getLatestPhase3SessionRecord(sessions) {
+  return (Array.isArray(sessions) ? sessions : [])
+    .filter((item) => item && item.sessionId)
+    .sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")))[0] || null;
+}
+
+function formatRound1ArchitectureLabel(architecture) {
+  const raw = String(architecture || "").trim().toLowerCase();
+  if (raw === "function" || raw === "功能" || raw === "功能型") return "功能型";
+  if (raw === "experience" || raw === "体验" || raw === "体验型") return "体验型";
+  return "混合型";
+}
+
+async function buildRound1PersonaContext(team) {
+  if (!team?.id) return null;
+  const sessions = await getTeamSessions(team.id).catch(() => []);
+  const latestSession = getLatestPhase3SessionRecord(sessions);
+  const confirmedFields = latestSession?.pmfScore?._confirmed_fields && typeof latestSession.pmfScore._confirmed_fields === "object"
+    ? latestSession.pmfScore._confirmed_fields
+    : null;
+  const whoRaw = String(confirmedFields?.who_raw || "").trim();
+  if (!whoRaw) return null;
+  console.log("[R2 init] 读取数据库:", "PostgreSQL", team.id, "who_raw:", whoRaw);
+
+  const gridId = String(team.final_grid_id || "").trim();
+  const architecture = String(team.final_architecture || "").trim();
+  const parsed = parseGridId(gridId);
+  return {
+    teamId: team.id,
+    who_raw: whoRaw,
+    gridId,
+    gridLabel: inferBestGridLabel(gridId),
+    architecture,
+    architectureLabel: formatRound1ArchitectureLabel(architecture),
+    isToB: parsed.customerType === "ToB"
+  };
+}
+
+function createLegacyPersonaPool(memberName, gridId) {
   const group = getPersonaGroup(gridId);
   const seeds = PERSONA_SEEDS_BY_GROUP[group] || PERSONA_SEEDS_BY_GROUP.ADULT;
   const start = Math.abs(String(memberName || "").split("").reduce((a, c) => a + c.charCodeAt(0), 0)) % seeds.length;
@@ -900,19 +1266,172 @@ function createPersonaPool(memberName, gridId) {
   return pool;
 }
 
-function buildAssignments(team, memberCount) {
+async function generatePersonaVariant(round1Context, previousPersonas) {
+  console.log("[round2Routes] generatePersonaVariant", {
+    teamId: round1Context?.teamId || null,
+    who_raw: String(round1Context?.who_raw || "").trim() || null,
+    gridLabel: String(round1Context?.gridLabel || "").trim() || null,
+    isToB: round1Context?.isToB === true,
+    previousPersonasCount: Array.isArray(previousPersonas) ? previousPersonas.length : 0,
+    previousPersonas: (Array.isArray(previousPersonas) ? previousPersonas : []).map((item) => ({
+      name: String(item?.name || "").trim() || null,
+      title: String(item?.title || item?.occupation || "").trim() || null
+    }))
+  });
+  if (!round1Context?.who_raw) return null;
+  return generatePersona(null, {
+    teamId: round1Context.teamId,
+    gridLabel: round1Context.gridLabel,
+    who_raw: round1Context.who_raw,
+    architectureLabel: round1Context.architectureLabel,
+    isToB: round1Context.isToB,
+    previousPersonas
+  });
+}
+
+function isDecisionMakerTitle(title) {
+  const src = String(title || "").trim();
+  return /院长|总监|负责人|主任|经理|行长|副总|总经理|采购|运营|主管/.test(src);
+}
+
+function isPersonaConsistentWithRound1Context(persona, round1Context) {
+  if (!persona || !round1Context) return false;
+  const constraintWho = String(persona?.constraints?.who_raw || "").trim();
+  const constraintGrid = String(persona?.constraints?.gridLabel || "").trim();
+  if (constraintWho && constraintWho !== round1Context.who_raw) return false;
+  if (constraintGrid && constraintGrid !== round1Context.gridLabel) return false;
+
+  const title = String(persona?.title || persona?.occupation || "").trim();
+  const orgType = String(persona?.org_type || "").trim();
+  const budget = String(persona?.budget || "").trim();
+  const pressures = Array.isArray(persona?.pressures) ? persona.pressures.filter(Boolean) : [];
+  const family = String(persona?.family || "").trim();
+  const spending = String(persona?.spending || "").trim();
+  const dailyScenes = Array.isArray(persona?.daily_scenes) ? persona.daily_scenes.filter(Boolean) : [];
+
+  if (round1Context.isToB) {
+    const hasInstitutionSignal = Boolean(orgType) || Boolean(budget) || pressures.length > 0 || isDecisionMakerTitle(title);
+    const hasConsumerSignal = Boolean(family) || Boolean(spending) || dailyScenes.length > 0;
+    return hasInstitutionSignal && !hasConsumerSignal;
+  }
+
+  return !orgType && !budget && pressures.length === 0;
+}
+
+function isPersonaPoolConsistent(personaPool, round1Context) {
+  const list = Array.isArray(personaPool) ? personaPool : [];
+  if (!list.length) return false;
+  return list.every((item) => isPersonaConsistentWithRound1Context(item, round1Context));
+}
+
+async function repairStaleInterviewSessions(team, memberId, sessions, personaPool) {
+  const round1Context = await buildRound1PersonaContext(team);
+  if (!round1Context) return Array.isArray(sessions) ? sessions : [];
+
+  const nextSessions = Array.isArray(sessions) ? sessions.slice() : [];
+  const completedIds = new Set(
+    nextSessions
+      .filter((item) => item?.is_complete)
+      .map((item) => enrichPersonas(item.personas)[0]?.id)
+      .filter(Boolean)
+  );
+
+  for (let index = 0; index < nextSessions.length; index += 1) {
+    const session = nextSessions[index];
+    if (!session || session.is_complete || session.member_id !== memberId) continue;
+
+    const persona = enrichPersonas(session.personas)[0] || null;
+    if (isPersonaConsistentWithRound1Context(persona, round1Context)) continue;
+
+    const userTurns = (Array.isArray(session.history) ? session.history : []).filter((item) => item?.role === "user").length;
+    if (userTurns > 0) continue;
+
+    const replacement = (Array.isArray(personaPool) ? personaPool : []).find((item) => {
+      if (!isPersonaConsistentWithRound1Context(item, round1Context)) return false;
+      return !completedIds.has(item.id);
+    });
+    if (!replacement) continue;
+
+    const updated = {
+      ...session,
+      personas: [replacement],
+      updated_at: nowIso()
+    };
+    await saveInterviewSession(updated);
+    nextSessions[index] = updated;
+  }
+
+  return nextSessions;
+}
+
+async function ensureAssignmentPersonaPool({ assignments, assignmentIndex, team, minCount = 1 }) {
+  const nextAssignments = Array.isArray(assignments) ? assignments.slice() : [];
+  const row = nextAssignments[assignmentIndex];
+  if (!row) return { assignments: nextAssignments, personaPool: [] };
+
+  const targetCount = Math.max(0, Math.min(MAX_INTERVIEWS_PER_MEMBER, Number(minCount || 0)));
+  const round1Context = await buildRound1PersonaContext(team);
+  const existingVersion = Number(row.personaVersion || 0);
+  const existingPool = existingVersion >= ROUND2_PERSONA_POOL_VERSION && Array.isArray(row.personaPool)
+    ? row.personaPool.slice()
+    : [];
+  const existingPoolValid = round1Context
+    ? isPersonaPoolConsistent(existingPool, round1Context)
+    : existingPool.length > 0;
+  const seedPool = existingPoolValid ? existingPool.slice() : [];
+  if (seedPool.length >= targetCount) {
+    return { assignments: nextAssignments, personaPool: seedPool };
+  }
+  if (existingPool.length && !existingPoolValid) {
+    nextAssignments[assignmentIndex] = {
+      ...row,
+      personaPool: [],
+      personaVersion: 0
+    };
+  }
+  if (!round1Context) {
+    const fallbackPool = createLegacyPersonaPool(row.memberName || row.memberId, team?.final_grid_id).slice(0, Math.max(targetCount, 1));
+    nextAssignments[assignmentIndex] = { ...row, personaPool: fallbackPool, personaVersion: ROUND2_PERSONA_POOL_VERSION };
+    return { assignments: nextAssignments, personaPool: fallbackPool };
+  }
+
+  const personaPool = seedPool.slice();
+  while (personaPool.length < targetCount) {
+    let nextPersona = null;
+    try {
+      nextPersona = await generatePersonaVariant(round1Context, personaPool);
+    } catch (_) {
+      nextPersona = null;
+    }
+    if (!nextPersona) break;
+    const nextId = String(nextPersona.id || "").trim();
+    if (nextId && personaPool.some((item) => String(item?.id || "").trim() === nextId)) break;
+    personaPool.push(nextPersona);
+  }
+
+  if (personaPool.length === 0) {
+    const fallbackPool = createLegacyPersonaPool(row.memberName || row.memberId, team?.final_grid_id).slice(0, Math.max(targetCount, 1));
+    nextAssignments[assignmentIndex] = { ...row, personaPool: fallbackPool, personaVersion: ROUND2_PERSONA_POOL_VERSION };
+    return { assignments: nextAssignments, personaPool: fallbackPool };
+  }
+
+  nextAssignments[assignmentIndex] = { ...row, personaPool, personaVersion: ROUND2_PERSONA_POOL_VERSION };
+  return { assignments: nextAssignments, personaPool };
+}
+
+async function buildAssignments(team, memberCount) {
   const members = listTeamMembers(team);
   const raw = assignDimensions(memberCount);
   return members.map((m, idx) => {
     const dims = mapAssignmentDims(raw[idx] || []);
     const peerNames = members.filter((x) => x.id !== m.id).map((x) => x.member_name).slice(0, 2).join("，");
-    const personaPool = createPersonaPool(m.member_name, team?.final_grid_id);
     return {
       memberId: m.id,
       memberName: m.member_name,
       dims,
       personas: peerNames || "访谈对象",
-      personaPool
+      personaPool: [],
+      personaVersion: ROUND2_PERSONA_POOL_VERSION
     };
   });
 }
@@ -943,6 +1462,35 @@ async function getAssignments(teamId) {
   } catch (_) {
     return null;
   }
+}
+
+async function ensureAssignments(team) {
+  const existing = await getAssignments(team?.id);
+  if (Array.isArray(existing) && existing.length) return existing;
+  const created = await buildAssignments(team, listTeamMembers(team).length || Number(team?.team_size || 0) || 4);
+  await saveAssignments(team.id, created);
+  return created;
+}
+
+async function ensureMemberPersonaPool(team, memberId, minCount = 1) {
+  let assignments = await ensureAssignments(team);
+  const assignmentIndex = assignments.findIndex((item) => item.memberId === memberId);
+  if (assignmentIndex < 0) {
+    return { assignments, personaPool: createLegacyPersonaPool(memberId, team?.final_grid_id).slice(0, Math.max(minCount, 1)) };
+  }
+
+  const ensured = await ensureAssignmentPersonaPool({
+    assignments,
+    assignmentIndex,
+    team,
+    minCount
+  });
+  assignments = ensured.assignments;
+  await saveAssignments(team.id, assignments);
+  return {
+    assignments,
+    personaPool: Array.isArray(ensured.personaPool) ? ensured.personaPool : []
+  };
 }
 
 async function saveMemberSelections(teamId, memberId, selections) {
@@ -1004,6 +1552,8 @@ async function saveInterviewSession(row) {
       ${sqlQuote(updatedAt)}
     )
     ON CONFLICT(session_id) DO UPDATE SET
+      member_dims_json = excluded.member_dims_json,
+      personas_json = excluded.personas_json,
       history_json = excluded.history_json,
       result_json = excluded.result_json,
       round_no = excluded.round_no,
@@ -1125,7 +1675,9 @@ function aggregateInterviewByOwner({ assignments, memberMap, interviewByMember }
         memberId,
         memberName: memberMap[memberId] || memberId,
         score,
-        confidence
+        confidence,
+        scoreSource: item.result?.scoreSource?.[dim] || "unknown",
+        insight: String(item.result?.insightsByDim?.[dim] || "").trim()
       };
       fallbackCandidates.push(row);
       if (confidence === "high") highCandidates.push(row);
@@ -1156,23 +1708,29 @@ function aggregateInterviewByOwner({ assignments, memberMap, interviewByMember }
   const evi = eviList.length > 0
     ? Number((eviList.reduce((a, b) => a + b, 0) / eviList.length).toFixed(2))
     : 0.7;
-
-  return {
+  const merged = {
     radar,
     tags,
     evi,
     sourceByDim
   };
+  console.log("[Round2][MergeResponseBody]", JSON.stringify(merged));
+  return merged;
 }
 
 function pickPersonaNames(memberName, gridId) {
-  return createPersonaPool(memberName, gridId);
+  return createLegacyPersonaPool(memberName, gridId);
 }
 
 function enrichPersona(persona) {
   const raw = persona && typeof persona === "object" ? persona : {};
   const allSeeds = Object.values(PERSONA_SEEDS_BY_GROUP).flat();
   const seed = allSeeds.find((item) => item.id === raw.id || item.name === raw.name) || null;
+  const title = String(raw.title || raw.occupation || seed?.title || seed?.occupation || "").trim();
+  const orgType = String(raw.org_type || "").trim();
+  const orgScale = String(raw.org_scale || "").trim();
+  const livingSituation = String(raw.living_situation || seed?.living_situation || [orgType, orgScale].filter(Boolean).join("，")).trim();
+  const desc = String(raw.desc || seed?.desc || [title, orgType, raw.personality].filter(Boolean).join("，")).trim();
   return {
     ...(seed || {}),
     ...raw,
@@ -1180,9 +1738,20 @@ function enrichPersona(persona) {
     group: String(raw.group || seed?.group || "").trim(),
     name: String(raw.name || seed?.name || "访谈对象").trim(),
     age: Number(raw.age || seed?.age || 0),
-    occupation: String(raw.occupation || seed?.occupation || "").trim(),
-    living_situation: String(raw.living_situation || seed?.living_situation || "").trim(),
-    desc: String(raw.desc || seed?.desc || "").trim()
+    title,
+    occupation: title,
+    org_type: orgType,
+    org_scale: orgScale,
+    living_situation: livingSituation,
+    pressures: Array.isArray(raw.pressures) ? raw.pressures.filter(Boolean).map(String) : [],
+    budget: String(raw.budget || "").trim(),
+    trigger: String(raw.trigger || "").trim(),
+    family: String(raw.family || "").trim(),
+    daily_scenes: Array.isArray(raw.daily_scenes) ? raw.daily_scenes.filter(Boolean).map(String) : [],
+    spending: String(raw.spending || "").trim(),
+    background: String(raw.background || "").trim(),
+    personality: String(raw.personality || "").trim(),
+    desc
   };
 }
 
@@ -1207,8 +1776,15 @@ function hasStudentIntroducedProduct(history, latestMessage = "") {
 
 function buildLifeAnchoredReply(persona) {
   const safePersona = enrichPersona(persona);
-  const occupation = safePersona.occupation || "普通上班族";
-  const living = safePersona.living_situation || "平时主要在家和工作两头跑";
+  const occupation = safePersona.title || safePersona.occupation || "普通上班族";
+  const org = [safePersona.org_type, safePersona.org_scale].filter(Boolean).join("，");
+  const living = safePersona.living_situation || org || "平时主要在家和工作两头跑";
+  const pressures = Array.isArray(safePersona.pressures) ? safePersona.pressures.filter(Boolean) : [];
+
+  if (safePersona.org_type || safePersona.title) {
+    const pressureText = pressures[0] ? `最近最头疼的是${pressures[0]}。` : "最近手上的运营压力一直在堆。";
+    return `我现在负责${occupation}，所在机构是${living}。${pressureText} 比起先谈产品，我更愿意先把真实场景和决策压力说清楚。`;
+  }
 
   if (occupation.includes("护工")) {
     return `我平时做${occupation}，${living}。白天经常要在几个照护对象之间来回跑，最怕临时有状况撞在一起。对我来说，先把日常照看里的麻烦和压力聊清楚会更有意义。`;
@@ -1342,16 +1918,19 @@ async function syncMemberInterviewState(teamId, memberId) {
   const team = await getTeam(teamId);
   const member = listTeamMembers(team).find((item) => item.id === memberId);
   const sessions = await listInterviewSessionsForMember(teamId, memberId);
-  const personaPool = createPersonaPool(member?.member_name || memberId, team?.final_grid_id);
-  const progress = buildMemberInterviewProgress(sessions, personaPool);
-  const activeSession = sessions.find((item) => !item.is_complete) || null;
-  const latestSession = sessions[sessions.length - 1] || null;
+  const completedSessions = sessions.filter((item) => item.is_complete);
+  const desiredPersonaCount = Math.min(MAX_INTERVIEWS_PER_MEMBER, completedSessions.length + 1);
+  const { personaPool } = await ensureMemberPersonaPool(team, member?.id || memberId, desiredPersonaCount);
+  const repairedSessions = await repairStaleInterviewSessions(team, member?.id || memberId, sessions, personaPool);
+  const activeSession = repairedSessions.find((item) => !item.is_complete) || null;
+  const progress = buildMemberInterviewProgress(repairedSessions, personaPool);
+  const latestSession = repairedSessions[repairedSessions.length - 1] || null;
   const interviewStatus = progress.completedCount >= MIN_INTERVIEWS_REQUIRED
     ? "completed"
-    : (activeSession || progress.completedCount > 0 ? "in_progress" : "not_started");
+    : (repairedSessions.find((item) => !item.is_complete) || progress.completedCount > 0 ? "in_progress" : "not_started");
   const currentStep = progress.completedCount >= MIN_INTERVIEWS_REQUIRED
     ? "interview_done"
-    : (activeSession || progress.completedCount > 0 ? "interviewing" : "idle");
+    : (repairedSessions.find((item) => !item.is_complete) || progress.completedCount > 0 ? "interviewing" : "idle");
   const roundCount = activeSession?.round_no || latestSession?.round_no || 0;
 
   await updateMemberProgress(teamId, memberId, {
@@ -1657,8 +2236,20 @@ async function computeStoredTeamResult(teamId, sessionId, submissionInput, radar
   const recapData = recapRes.body;
   const team = await getTeam(teamId);
   const calcGridId = toCalcGridId(recapData.final_grid_id, team?.final_architecture || "");
+  console.log("[R2 calc] 传给利润计算的 WTP 相关参数:", {
+    recap_WTP: Number(recapData.WTP || 0),
+    team_final_wtp_adj: Number(team?.final_wtp_adj || 0),
+    team_final_wtp_ref: Number(team?.final_wtp_ref || 0),
+    team_final_wtp_multiplier: Number(team?.final_wtp_multiplier || 1)
+  });
   const calcResult = await calculate({
     gridId: calcGridId,
+    round1GridId: String(team?.final_grid_id || "").trim(),
+    round1Context: team?.final_grid_id
+      ? {
+          gridId: String(team.final_grid_id || "").trim()
+        }
+      : undefined,
     selections: submission.selections,
     radar: radar.radar,
     tags: Array.isArray(radar.tags) ? radar.tags : [],
@@ -1670,7 +2261,11 @@ async function computeStoredTeamResult(teamId, sessionId, submissionInput, radar
     COGSbase: Number(recapData.COGSbase || 2000),
     TAM: Number(recapData.TAM || 50000),
     H: Number(recapData.H || 0.3),
-    wtp_multiplier: Number(team?.final_wtp_multiplier || 1)
+    wtp_multiplier: Number(team?.final_wtp_multiplier || 1),
+    WTPref_override: Number(team?.final_wtp_ref || 0) || undefined,
+    teamId,
+    sessionId,
+    source: "web"
   });
 
   const profitPerUnit = Number(calcResult.units || 0) > 0
@@ -1766,7 +2361,7 @@ async function assignDimensionsApi(body) {
     if (!team) return makeResponse(404, { ok: false, error: "team not found" });
 
     const memberCount = Number(body?.memberCount || listTeamMembers(team).length || 4);
-    const assignments = buildAssignments(team, memberCount);
+    const assignments = await buildAssignments(team, memberCount);
     await saveAssignments(teamId, assignments);
 
     return makeResponse(200, { ok: true, assignments });
@@ -1781,18 +2376,22 @@ async function interviewAuto(body) {
     const memberId = String(body?.memberId || "").trim();
     if (!teamId || !memberId) return makeResponse(400, { ok: false, error: "teamId/memberId required" });
 
-    const assignments = await getAssignments(teamId) || [];
-    const row = assignments.find((x) => x.memberId === memberId);
-    const memberDims = Array.isArray(body?.memberDims) && body.memberDims.length ? body.memberDims : (row?.dims || ["interaction", "safety"]);
-
     const team = await getTeam(teamId);
     const member = listTeamMembers(team).find((m) => m.id === memberId);
-    const personaPool = pickPersonaNames(member?.member_name || "成员", team?.final_grid_id);
+    const assignments = await ensureAssignments(team);
+    const row = assignments.find((x) => x.memberId === memberId);
+    const memberDims = Array.isArray(body?.memberDims) && body.memberDims.length ? body.memberDims : (row?.dims || ["interaction", "safety"]);
+    const { personaPool } = await ensureMemberPersonaPool(team, member?.id || memberId, 1);
     const personas = [personaPool[0] || null].filter(Boolean);
     const history = generateAutoHistory(personas, memberDims);
     const recapRes = await recap({ teamId });
     const gridId = recapRes?.body?.final_grid_id || "B2B_Differentiation_Experience";
-    const result = await extractInterviewResult({ gridId, memberDims, history });
+    const result = await extractInterviewResult({
+      gridId,
+      architecture: String(recapRes?.body?.architecture || ""),
+      memberDims,
+      history
+    });
 
     const sessionId = `auto_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
     await saveInterviewSession({
@@ -1838,12 +2437,16 @@ async function interviewStart(body) {
     const memberId = String(body?.memberId || "").trim();
     if (!teamId || !memberId) return makeResponse(400, { ok: false, error: "teamId/memberId required" });
 
-    const memberDims = Array.isArray(body?.memberDims) && body.memberDims.length ? body.memberDims : ["interaction", "safety"];
     const team = await getTeam(teamId);
     const member = listTeamMembers(team).find((m) => m.id === memberId);
+    const assignments = await ensureAssignments(team);
+    const row = assignments.find((x) => x.memberId === memberId);
+    const memberDims = Array.isArray(body?.memberDims) && body.memberDims.length ? body.memberDims : (row?.dims || ["interaction", "safety"]);
     const forceNew = body?.forceNew === true;
-    const personaPool = pickPersonaNames(member?.member_name || "成员", team?.final_grid_id);
-    const sessions = await listInterviewSessionsForMember(teamId, memberId);
+    let sessions = await listInterviewSessionsForMember(teamId, memberId);
+    const completedSessions = sessions.filter((item) => item.is_complete);
+    const { personaPool } = await ensureMemberPersonaPool(team, member?.id || memberId, Math.min(MAX_INTERVIEWS_PER_MEMBER, completedSessions.length + 1));
+    sessions = await repairStaleInterviewSessions(team, member?.id || memberId, sessions, personaPool);
     const progress = buildMemberInterviewProgress(sessions, personaPool);
     const activeSession = sessions.find((item) => !item.is_complete) || null;
 
@@ -1981,6 +2584,7 @@ async function interviewReply(body) {
     const result = isComplete
       ? await extractInterviewResult({
           gridId: String(recapData.final_grid_id || "B2B_Differentiation_Experience"),
+          architecture: String(recapData.architecture || ""),
           memberDims: session.member_dims,
           history
         })
@@ -2010,6 +2614,9 @@ async function interviewReply(body) {
       evi: result?.evi,
       confidence: result?.confidence,
       lowConfidenceDims: result?.lowConfidenceDims,
+      insightsByDim: result?.insightsByDim,
+      scoreSource: result?.scoreSource,
+      summary: result?.summary,
       progress: syncResult.progress,
       completedInterview: isComplete ? syncResult.progress.latestCompletedInterview : null
     });
@@ -2029,7 +2636,9 @@ async function interviewEnd(body) {
       const sessions = await listInterviewSessionsForMember(session.team_id, session.member_id);
       const team = await getTeam(session.team_id);
       const member = listTeamMembers(team).find((item) => item.id === session.member_id);
-      const progress = buildMemberInterviewProgress(sessions, createPersonaPool(member?.member_name || session.member_id, team?.final_grid_id));
+      const completedSessions = sessions.filter((item) => item.is_complete);
+      const { personaPool } = await ensureMemberPersonaPool(team, member?.id || session.member_id, Math.min(MAX_INTERVIEWS_PER_MEMBER, completedSessions.length + 1));
+      const progress = buildMemberInterviewProgress(sessions, personaPool);
       return makeResponse(200, {
         ok: true,
         alreadyComplete: true,
@@ -2054,9 +2663,40 @@ async function interviewEnd(body) {
     const recapData = recapRes?.body?.ok ? recapRes.body : {};
     const result = await extractInterviewResult({
       gridId: String(recapData.final_grid_id || "B2B_Differentiation_Experience"),
+      architecture: String(recapData.architecture || ""),
       memberDims: session.member_dims,
       history
     });
+    const computationContext = buildComputationContext({
+      teamId: session.team_id,
+      sessionId,
+      memberId: session.member_id
+    });
+    if (computationContext) {
+      scheduleStages(computationContext, [
+        {
+          stage: "r2_interview_extract",
+          params: {
+            member_id: session.member_id,
+            persona_count: personas.length,
+            total_turns: round,
+            dimension_evidence: result?.dimensionEvidence || {},
+            tags: Array.isArray(result?.tags) ? result.tags.map((item) => item?.tag || item).filter(Boolean) : [],
+            interview_quality: result?.interviewQuality || {}
+          }
+        },
+        {
+          stage: "r2_evi",
+          params: {
+            member_id: session.member_id,
+            raw_evi: roundForLog(result?.eviMeta?.raw_evi ?? result?.evi),
+            tag_count: Number(result?.eviMeta?.tag_count || 0),
+            dim_coverage: roundForLog(result?.eviMeta?.dim_coverage || 0),
+            final_evi: roundForLog(result?.eviMeta?.final_evi ?? result?.evi)
+          }
+        }
+      ]);
+    }
 
     await saveInterviewSession({
       ...session,
@@ -2069,7 +2709,7 @@ async function interviewEnd(body) {
     });
 
     const syncResult = await syncMemberInterviewState(session.team_id, session.member_id);
-    return makeResponse(200, {
+    const responseBody = {
       ok: true,
       round,
       isComplete: true,
@@ -2079,9 +2719,14 @@ async function interviewEnd(body) {
       evi: result?.evi,
       confidence: result?.confidence,
       lowConfidenceDims: result?.lowConfidenceDims,
+      insightsByDim: result?.insightsByDim,
+      scoreSource: result?.scoreSource,
+      summary: result?.summary,
       progress: syncResult.progress,
       completedInterview: syncResult.progress.latestCompletedInterview
-    });
+    };
+    console.log("[Round2][InterviewEndResponseBody]", JSON.stringify(responseBody));
+    return makeResponse(200, responseBody);
   } catch (e) {
     return makeResponse(400, { ok: false, error: e.message });
   }
@@ -2097,8 +2742,10 @@ async function interviewSessionApi(query) {
 
     const team = await getTeam(teamId);
     const member = listTeamMembers(team).find((item) => item.id === memberId);
-    const sessions = await listInterviewSessionsForMember(teamId, memberId);
-    const personaPool = createPersonaPool(member?.member_name || memberId, team?.final_grid_id);
+    let sessions = await listInterviewSessionsForMember(teamId, memberId);
+    const completedSessions = sessions.filter((item) => item.is_complete);
+    const { personaPool } = await ensureMemberPersonaPool(team, member?.id || memberId, Math.min(MAX_INTERVIEWS_PER_MEMBER, completedSessions.length + 1));
+    sessions = await repairStaleInterviewSessions(team, member?.id || memberId, sessions, personaPool);
     const progress = buildMemberInterviewProgress(sessions, personaPool);
     const activeSession = sessions.find((item) => !item.is_complete) || null;
     const latestSession = sessions[sessions.length - 1] || null;
@@ -2158,14 +2805,18 @@ async function saveMemberSelectionApi(body) {
 async function mergeApi(body) {
   try {
     const teamId = String(body?.teamId || "").trim();
+    const memberId = String(body?.memberId || body?.member_id || "").trim();
     if (!teamId) return makeResponse(400, { ok: false, error: "teamId required" });
-    const team = await getTeam(teamId);
+    let team = await getTeam(teamId);
     if (!team) return makeResponse(404, { ok: false, error: "team not found" });
+    if (!String(team.leader_member_id || "").trim() && memberId) {
+      team = await setTeamLeader(teamId, memberId);
+    }
 
     const rows = await getMemberSelections(teamId);
     const members = listTeamMembers(team);
     const memberMap = Object.fromEntries(members.map((m) => [m.id, m.member_name]));
-    const assignments = await getAssignments(teamId) || buildAssignments(team, members.length);
+    const assignments = await ensureAssignments(team);
 
     const merged = mergeTeamSelections(rows.map((r) => r.selections));
 
@@ -2203,7 +2854,14 @@ async function mergeApi(body) {
       });
     }
 
-    return makeResponse(200, {
+    let draft = await readRound2TeamDraft(teamId);
+    if (!draft) {
+      draft = await saveRound2TeamDraft(teamId, memberId || team?.leader_member_id || members[0]?.id || "", {
+        selections: teamSelections
+      });
+    }
+
+    const responseBody = {
       ok: true,
       teamSelections,
       card_count: teamSelections.length,
@@ -2213,7 +2871,53 @@ async function mergeApi(body) {
       violations: validation.violations,
       hardViolationCount: validation.hardViolationCount,
       softPenalties,
-      mergedInterview
+      mergedInterview,
+      team_draft: draft,
+      ...buildLeaderMeta(team, memberId)
+    };
+    console.log("[Round2][TeamMergeResponseBody]", JSON.stringify(responseBody));
+    return makeResponse(200, responseBody);
+  } catch (e) {
+    return makeResponse(400, { ok: false, error: e.message });
+  }
+}
+
+async function saveTeamDraftApi(body) {
+  try {
+    const teamId = String(body?.teamId || body?.team_id || "").trim();
+    const memberId = String(body?.memberId || body?.member_id || "").trim();
+    if (!teamId || !memberId) return makeResponse(400, { ok: false, error: "teamId/memberId required" });
+
+    const permission = await ensureRound2LeaderPermission(teamId, memberId);
+    if (!permission.ok) return permission.response;
+
+    const patch = {};
+    if (body?.price !== undefined) {
+      const price = Number(body.price);
+      if (!Number.isFinite(price) || price <= 0) {
+        return makeResponse(400, { ok: false, error: "valid price required" });
+      }
+      patch.price = price;
+    }
+    if (body?.selections !== undefined) {
+      patch.selections = normalizeSelectionsPayload(body.selections);
+    }
+
+    const draft = await saveRound2TeamDraft(teamId, memberId, patch);
+    await updateTeamRound2Status(teamId, "R2_TEAM_DISCUSSION");
+    const teamState = await getTeamRound2State(teamId);
+    for (const member of teamState?.members || []) {
+      await updateMemberProgress(teamId, member.id, {
+        current_step: "in_discussion",
+        last_activity_at: nowIso()
+      });
+    }
+
+    return makeResponse(200, {
+      ok: true,
+      team_id: teamId,
+      team_draft: draft,
+      ...buildLeaderMeta(permission.team, memberId)
     });
   } catch (e) {
     return makeResponse(400, { ok: false, error: e.message });
@@ -2223,11 +2927,13 @@ async function mergeApi(body) {
 async function teamSubmitApi(body) {
   try {
     const teamId = String(body?.teamId || body?.team_id || "").trim();
+    const memberId = String(body?.memberId || body?.member_id || "").trim();
     const sessionId = normalizeSessionId(body?.sessionId || body?.session_id);
     if (!teamId) return makeResponse(400, { ok: false, error: "teamId required" });
 
-    const team = await getTeam(teamId);
-    if (!team) return makeResponse(404, { ok: false, error: "team not found" });
+    const permission = await ensureRound2LeaderPermission(teamId, memberId);
+    if (!permission.ok) return permission.response;
+    const team = permission.team;
     if (!team.final_grid_id) {
       return makeResponse(400, { ok: false, error: "team must finish Round 1 before Round 2 submit" });
     }
@@ -2290,7 +2996,8 @@ async function teamSubmitApi(body) {
       session_id: sessionId,
       submission: snapshot.submission,
       radar: snapshot.radar,
-      result: snapshot.result
+      result: snapshot.result,
+      ...buildLeaderMeta(team, memberId)
     });
   } catch (e) {
     return makeResponse(400, { ok: false, error: e.message });
@@ -2325,14 +3032,11 @@ async function teamStatusApi(query) {
 
     const team = await getTeam(teamId);
     if (!team) return makeResponse(404, { ok: false, error: "team not found" });
-    const existingAssignments = await getAssignments(teamId);
-    if (!Array.isArray(existingAssignments) || existingAssignments.length === 0) {
-      const assignments = buildAssignments(team, listTeamMembers(team).length || Number(team.team_size || 0) || 4);
-      await saveAssignments(teamId, assignments);
-    }
+    await ensureAssignments(team);
 
     const teamState = await getTeamRound2State(teamId);
     if (!teamState) return makeResponse(404, { ok: false, error: "team not found" });
+    const teamDraft = await readRound2TeamDraft(teamId);
     const round1Context = team
       ? {
           grid_id: team.final_grid_id || "",
@@ -2356,6 +3060,8 @@ async function teamStatusApi(query) {
       team_status_label: teamState.r2.statusLabel,
       entered_at: teamState.r2.enteredAt,
       duration_minutes: teamState.r2.durationMinutes,
+      ...buildLeaderMeta(teamState, memberId),
+      team_draft: teamDraft,
       round1_context: round1Context,
       member: member
         ? {
@@ -2368,7 +3074,8 @@ async function teamStatusApi(query) {
             card_status: member.cardStatus,
             cards_selected: member.cardsSelected,
             current_step: member.currentStep,
-            forced_by_teacher: member.forcedByTeacher
+            forced_by_teacher: member.forcedByTeacher,
+            is_leader: Boolean(memberId && member.id === teamState.leaderMemberId)
           }
         : null,
       members: teamState.members.map((item) => ({
@@ -2433,6 +3140,7 @@ module.exports = {
   normalizeSelectionsPayload,
   buildCardSummary,
   toCalcGridId,
+  saveTeamDraftApi,
   teamSubmitApi,
   teamResultApi,
   teamStatusApi,
@@ -2449,9 +3157,12 @@ module.exports = {
   reflectionApi,
   __test: {
     getRound2ChannelFeeByGrid,
+    getPriorRadarByGrid,
+    buildAssignments,
     buildExtractInterviewMessages,
     cleanExtractedPayload,
     inferWeakEvidenceFromConversation,
-    mapEvidenceToResult
+    mapEvidenceToResult,
+    isPersonaConsistentWithRound1Context
   }
 };

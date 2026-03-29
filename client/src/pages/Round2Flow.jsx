@@ -8,6 +8,7 @@ import {
   getRound2TeamResult,
   replyRound2Interview,
   saveRound2MemberSelection,
+  saveRound2TeamDraft,
   startRound2Interview,
   submitRound2TeamDecision
 } from "../api/round2Api";
@@ -16,12 +17,12 @@ import { downloadTxtFile, formatExportTime } from "../utils/txtExport";
 
 // ── Constants ──
 const DIMS = [
-  { id:"interaction", l:"交互与表达", icon:"💬", c:"#D97706", desc:"AI机器人怎么和用户沟通" },
-  { id:"perception", l:"感知与理解", icon:"👁", c:"#7C3AED", desc:"AI机器人怎么理解用户" },
-  { id:"motion", l:"运动与导航", icon:"🦿", c:"#0891B2", desc:"AI机器人怎么移动" },
-  { id:"safety", l:"安全与信任", icon:"🛡", c:"#DC2626", desc:"数据隐私与安全保障" },
-  { id:"extend", l:"可扩展与连接", icon:"🔌", c:"#059669", desc:"与外部设备和服务的连接" },
-  { id:"ops", l:"可运营与可维护", icon:"🔧", c:"#4F46E5", desc:"长期维护与运营支撑" },
+  { id:"interaction", l:"交互与表达", icon:"💬", c:"#D97706", desc:"语音对话、触摸互动、情感表达等能力" },
+  { id:"perception", l:"感知与理解", icon:"👁", c:"#7C3AED", desc:"识别人脸、情绪、环境的感知能力" },
+  { id:"motion", l:"运动与导航", icon:"🦿", c:"#0891B2", desc:"自主移动、跟随、避障的运动能力" },
+  { id:"safety", l:"安全与信任", icon:"🛡", c:"#DC2626", desc:"隐私保护、儿童安全、数据合规" },
+  { id:"extend", l:"可扩展与连接", icon:"🔌", c:"#059669", desc:"云端更新、IoT 联动、内容生态" },
+  { id:"ops", l:"可运营与可维护", icon:"🔧", c:"#4F46E5", desc:"远程监控、故障诊断、日常维护" },
 ];
 const DEFAULT_MEMBER_DIMS = ["interaction", "safety"];
 const IMP = { interaction:"高", perception:"高", motion:"中", safety:"中", extend:"低", ops:"中" };
@@ -43,6 +44,16 @@ const STARTER_QUESTIONS = {
     "您平时会用什么智能设备吗？感觉怎么样？"
   ]
 };
+const STARTER_QUESTIONS_TOB = [
+  "{name}您好！能聊聊您目前运营上最头疼的问题吗？",
+  "{name}您好！您现在这类业务场景一般是怎么做的？过程中最容易卡在哪？",
+  "您在这块有考虑过引入新的方案吗？通常会先看预算、审批流程，还是落地风险？"
+];
+const STARTER_QUESTIONS_TOC = [
+  "{name}您好！能聊聊您平时下班回家之后一般怎么度过的吗？",
+  "您觉得现在的生活里，有什么让您觉得特别麻烦或者不满意的吗？",
+  "您平时会用什么智能设备吗？感觉怎么样？"
+];
 const INTERVIEW_DIMENSION_GUIDE = {
   perception: {
     label: "感知与理解",
@@ -287,6 +298,17 @@ function readTeamContextFromUrl() {
   };
 }
 
+function leaderDisplayName(name) {
+  return String(name || "").trim() || "组长";
+}
+
+function round2LeaderErrorMessage(err) {
+  if (err?.code === "only_leader") {
+    return `当前只有组长 ${leaderDisplayName(err?.leaderName)} 可以操作。`;
+  }
+  return err?.message || "操作失败";
+}
+
 function mapTeamStatusToStep(teamStatus) {
   if (teamStatus === "R2_INTERVIEWING") return 1;
   if (teamStatus === "R2_INDIVIDUAL_CARDS") return 2;
@@ -303,6 +325,15 @@ function teamStatusNotice(teamStatus) {
   if (teamStatus === "R2_TEAM_DISCUSSION") return "系统已推进到团队讨论阶段";
   if (teamStatus === "R2_SUBMITTED") return "系统已同步到提交完成状态";
   return "系统已同步到最新阶段";
+}
+
+function teamStatusLabel(teamStatus) {
+  if (teamStatus === "R2_INTERVIEWING") return "访谈阶段";
+  if (teamStatus === "R2_INDIVIDUAL_CARDS") return "个人选卡阶段";
+  if (teamStatus === "R2_TEAM_MERGE") return "团队合并阶段";
+  if (teamStatus === "R2_TEAM_DISCUSSION") return "定价讨论阶段";
+  if (teamStatus === "R2_SUBMITTED") return "提交完成阶段";
+  return "当前阶段";
 }
 
 function selectionsToMap(selections) {
@@ -365,6 +396,8 @@ function selectionsMapToArray(sels) {
 
 function buildInterviewSummary(result, memberDims) {
   if (!result) return "";
+  const explicitSummary = String(result.summary || "").trim();
+  if (explicitSummary) return explicitSummary;
   const scores = radarToInterviewScores(result.radar);
   const topDims = (Array.isArray(memberDims) ? memberDims : [])
     .map((dimId) => ({
@@ -430,21 +463,101 @@ function summarizeVpText(text) {
     .join("；");
 }
 
+function parseVpSummaryText(text) {
+  const src = String(text || "");
+  const pick = (label) => {
+    const m = src.match(new RegExp(`${label}\\s*[：:]\\s*([^\\n]+)`));
+    return m ? m[1].trim() : "";
+  };
+  return {
+    who: pick("WHO"),
+    pain: pick("PAIN"),
+    how: pick("HOW"),
+    boundary: pick("BOUNDARY")
+  };
+}
+
+function buildVpRecapSentence(summary, fallbackText) {
+  const src = summary && typeof summary === "object" ? summary : {};
+  const who = String(src.who || "").trim();
+  const pain = String(src.pain || "").trim();
+  const how = String(src.how || "").trim();
+  const boundary = String(src.boundary || "").trim();
+
+  if (who && pain && how) {
+    let sentence = `为${who}，在${pain}的场景下，LOVOT通过${how}创造更好的结果。`;
+    if (boundary && boundary !== "未明确") {
+      sentence += ` 适用边界：${boundary}。`;
+    }
+    return sentence;
+  }
+
+  const raw = String(fallbackText || "").trim();
+  if (!raw) return "未生成最终价值主张。";
+  return raw.replace(/\s+/g, " ").trim();
+}
+
+function normalizeScoreValue(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(5, Math.round(n * 10) / 10));
+}
+
+function formatSignedPercent(value) {
+  const n = Number(value || 0);
+  return n >= 0 ? `+${n}%` : `${n}%`;
+}
+
+function Round1StarRating({ score }) {
+  const normalized = normalizeScoreValue(score);
+  const fullStars = Math.max(0, Math.min(5, Math.round(normalized)));
+  return (
+    <div style={{ display: "flex", justifyContent: "center", gap: 4 }}>
+      {[0, 1, 2, 3, 4].map((index) => (
+        <span
+          key={index}
+          style={{
+            fontSize: 28,
+            lineHeight: 1,
+            color: index < fullStars ? "#f59e0b" : "#d1d5db"
+          }}
+        >
+          ★
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function buildPersonaIntro(persona) {
   const name = String(persona?.name || "访谈对象").trim();
   const age = Number(persona?.age || 0);
-  const occupation = String(persona?.occupation || "").trim();
+  const title = String(persona?.title || persona?.occupation || "").trim();
+  const orgType = String(persona?.org_type || "").trim();
+  const orgScale = String(persona?.org_scale || "").trim();
   const living = String(persona?.living_situation || "").trim();
+  const trigger = String(persona?.trigger || "").trim();
   const desc = String(persona?.desc || "").trim();
+  const isToBPersona = Boolean(title && (orgType || orgScale));
 
   let basics = "";
-  if (age > 0 && occupation) basics = `${age}岁，${occupation}。`;
+  if (age > 0 && title) basics = `${age}岁，${title}。`;
   else if (age > 0) basics = `${age}岁。`;
-  else if (occupation) basics = `${occupation}。`;
+  else if (title) basics = `${title}。`;
   else if (desc) basics = `${desc}。`;
 
-  let livingText = living ? `${living}。` : "";
-  if (!livingText && desc && desc !== occupation) {
+  let livingText = "";
+  if (isToBPersona) {
+    livingText = [orgType, orgScale].filter(Boolean).join("，");
+    if (trigger) {
+      livingText = `${livingText ? `${livingText}。` : ""}最近触发事件：${trigger}。`;
+    } else if (livingText) {
+      livingText = `${livingText}。`;
+    }
+  } else {
+    livingText = living ? `${living}。` : "";
+  }
+  if (!livingText && desc && desc !== title) {
     livingText = `${desc}。`;
   }
 
@@ -463,10 +576,21 @@ function getGridAgeGroup(gridId, personaAge) {
   return Number(personaAge || 0) >= 60 ? "ELDER" : "ADULT";
 }
 
-function buildStarterQuestions({ personaName, personaAge, gridId }) {
-  const name = String(personaName || "您好").trim();
-  const group = getGridAgeGroup(gridId, personaAge);
-  return (STARTER_QUESTIONS[group] || STARTER_QUESTIONS.ADULT)
+function buildStarterGridLabel(gridId) {
+  const raw = String(gridId || "").trim().toUpperCase();
+  if (raw.startsWith("TOB") || raw.startsWith("B2B")) return "ToB";
+  if (raw.startsWith("TOC") || raw.startsWith("B2C")) return "ToC";
+  return "";
+}
+
+function buildStarterQuestions({ persona, gridLabel }) {
+  const name = String(persona?.name || "您好").trim();
+  if (String(gridLabel || "").startsWith("ToB")) {
+    return STARTER_QUESTIONS_TOB
+      .map((question) => question.replace("{name}", name))
+      .slice(0, 3);
+  }
+  return STARTER_QUESTIONS_TOC
     .map((question) => question.replace("{name}", name))
     .slice(0, 3);
 }
@@ -539,6 +663,9 @@ export default function App() {
   const [isSubmittingFinal, setIsSubmittingFinal] = useState(false);
   const [teamStatus, setTeamStatus] = useState("");
   const [memberState, setMemberState] = useState(null);
+  const [leaderMemberId, setLeaderMemberId] = useState("");
+  const [leaderName, setLeaderName] = useState("");
+  const [isLeader, setIsLeader] = useState(false);
   const [systemNotice, setSystemNotice] = useState("");
   const [interviewSessionId, setInterviewSessionId] = useState("");
   const [interviewPersonas, setInterviewPersonas] = useState([]);
@@ -561,6 +688,9 @@ export default function App() {
   const [teamDraftSelections, setTeamDraftSelections] = useState({});
   const [teamResultSnapshot, setTeamResultSnapshot] = useState(null);
   const interviewInputRef = useRef(null);
+  const round2DraftTouchedRef = useRef(false);
+  const previousStatusRef = useRef("");
+  const previousStepRef = useRef(0);
 
   const isTeamMode = Boolean(teamId);
 
@@ -596,6 +726,16 @@ export default function App() {
         setTeamRecap(recapRes || null);
         setMemberState(stateRes?.member || null);
         setTeamStatus(String(stateRes?.team_status || ""));
+        setLeaderMemberId(String(stateRes?.leader_member_id || ""));
+        setLeaderName(String(stateRes?.leader_name || ""));
+        setIsLeader(Boolean(stateRes?.is_leader));
+        if (stateRes?.team_draft && !snapshotRes?.submission) {
+          const mappedDraft = selectionsToMap(stateRes.team_draft.selections);
+          setTeamDraftSelections(mappedDraft);
+          if (Number.isFinite(Number(stateRes.team_draft.price))) {
+            setTeamPrice(Number(stateRes.team_draft.price));
+          }
+        }
 
         if (snapshotRes?.submission) {
           const mappedSelections = selectionsToMap(snapshotRes.submission.selections);
@@ -651,7 +791,6 @@ export default function App() {
     if (!teamId) return undefined;
 
     let canceled = false;
-    let previousStatus = "";
     const tick = async () => {
       try {
         const data = await getRound2State(teamId, memberId);
@@ -659,22 +798,53 @@ export default function App() {
 
         const nextStatus = String(data?.team_status || "");
         setMemberState(data?.member || null);
+        setLeaderMemberId(String(data?.leader_member_id || ""));
+        setLeaderName(String(data?.leader_name || ""));
+        setIsLeader(Boolean(data?.is_leader));
+        if (data?.team_draft && !submitted) {
+          const mappedDraft = selectionsToMap(data.team_draft.selections);
+          if (!round2DraftTouchedRef.current || !data?.is_leader) {
+            setTeamDraftSelections(mappedDraft);
+            if (Number.isFinite(Number(data.team_draft.price))) {
+              setTeamPrice(Number(data.team_draft.price));
+            }
+          }
+        }
         if (!nextStatus) return;
 
         setTeamStatus(nextStatus);
+        const nextStep = mapTeamStatusToStep(nextStatus);
+        const prevStatus = previousStatusRef.current;
+        const prevStep = previousStepRef.current;
+
         setSubmitted(nextStatus === "R2_SUBMITTED");
+        if (nextStatus !== "R2_SUBMITTED") {
+          setTeamResultSnapshot(null);
+          setServerSelections(null);
+        }
+
         setStep((prev) => {
           if (nextStatus === "R2_SUBMITTED") return 5;
-          return Math.max(prev, mapTeamStatusToStep(nextStatus));
+          if (nextStep > 0 && nextStep < prev) return nextStep;
+          return Math.max(prev, nextStep);
         });
 
-        if (previousStatus && previousStatus !== nextStatus) {
-          setSystemNotice(teamStatusNotice(nextStatus));
+        if (prevStatus && prevStatus !== nextStatus) {
+          if (nextStep > 0 && nextStep < prevStep) {
+            setSel({});
+            setTeamDraftSelections({});
+            setMergeData(null);
+            round2DraftTouchedRef.current = false;
+            setSystemNotice(`系统已重置你的进度到${teamStatusLabel(nextStatus)}，请重新操作`);
+          } else {
+            setSystemNotice(teamStatusNotice(nextStatus));
+          }
           window.setTimeout(() => {
             setSystemNotice("");
           }, 3000);
         }
-        previousStatus = nextStatus;
+        previousStatusRef.current = nextStatus;
+        previousStepRef.current = nextStep;
       } catch (_) {}
     };
 
@@ -687,6 +857,9 @@ export default function App() {
   }, [teamId, memberId]);
 
   const toggleSelection = useCallback((id, mode = "individual") => {
+    if (mode === "team") {
+      round2DraftTouchedRef.current = true;
+    }
     const setter = mode === "team" ? setTeamDraftSelections : setSel;
     setter((prev) => {
       const next = { ...prev };
@@ -696,6 +869,9 @@ export default function App() {
     });
   }, []);
   const setSelectionTier = useCallback((id, t, mode = "individual") => {
+    if (mode === "team") {
+      round2DraftTouchedRef.current = true;
+    }
     const setter = mode === "team" ? setTeamDraftSelections : setSel;
     setter((prev) => ({ ...prev, [id]: t }));
   }, []);
@@ -721,8 +897,29 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
   const previewBreakevenQ = previewUnitMargin > 0 ? Math.ceil(teamFixedCost / previewUnitMargin) : null;
   const submittedCalc = teamResultSnapshot?.result || null;
   const positionLabel = `${formatGridLabel(teamInfo?.final_grid_id || teamRecap?.final_grid_id)} · ${formatArchitectureLabel(teamInfo?.final_architecture)}`;
-  const vpSummaryText = summarizeVpText(teamInfo?.final_vp_text || teamRecap?.vp_summary || "");
-  const vpScores = teamRecap?.vp_scores || { C: 4, G: 4, E: 4 };
+  const vpRawText = teamInfo?.final_vp_text || teamRecap?.vp_summary || "";
+  const vpSummary = parseVpSummaryText(vpRawText);
+  const vpRecapText = buildVpRecapSentence(vpSummary, summarizeVpText(vpRawText));
+  const resultVpScore = normalizeScoreValue(teamRecap?.vp_score);
+  const resultFeedbackText = String(teamRecap?.vp_feedback || "").trim();
+  const wtpFinalPct = Number.isFinite(Number(teamRecap?.wtp_breakdown?.final_pct))
+    ? Number(teamRecap.wtp_breakdown.final_pct)
+    : 0;
+  const wtpBasePct = Number.isFinite(Number(teamRecap?.wtp_breakdown?.base_pct))
+    ? Number(teamRecap.wtp_breakdown.base_pct)
+    : 0;
+  const wtpJinangDeltaPct = Number.isFinite(Number(teamRecap?.wtp_breakdown?.jinang_delta_pct))
+    ? Number(teamRecap.wtp_breakdown.jinang_delta_pct)
+    : 0;
+  const matchedJinangCount = Number(teamRecap?.jinang_summary?.matched_count || 0);
+  const matchedMarketJinangCount = Number(teamRecap?.jinang_summary?.matched_market_count || 0);
+  const matchedTechJinangCount = Number(teamRecap?.jinang_summary?.matched_tech_count || 0);
+  const totalJinangCount = Number(teamRecap?.jinang_summary?.total_count || 0);
+  const resultMarketJinang = teamRecap?.jinang_market || null;
+  const resultTechJinang = teamRecap?.jinang_tech || null;
+  const resultMarketJinangBonusPct = Number.isFinite(Number(resultMarketJinang?.bonus))
+    ? Math.round(Number(resultMarketJinang.bonus) * 100)
+    : Math.round(Number(resultMarketJinang?.match_strength || 0) * 5);
   const marketSizeYi = Number.isFinite(Number(submittedCalc?.market_size_yi))
     ? Number(submittedCalc.market_size_yi)
     : Number.isFinite(Number(teamRecap?.market_size_yi))
@@ -737,6 +934,11 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
   const hasMarketReference = Number.isFinite(marketSizeYi) && Number.isFinite(marketHhi);
   const teamTitle = teamInfo?.team_name || "当前团队";
   const memberName = memberState?.name || (isTeamMode ? "当前成员" : "当前学生");
+  const hasLeaderLock = Boolean(leaderMemberId);
+  const round2TeamControlsLocked = Boolean(isTeamMode && hasLeaderLock && !isLeader && step >= 3 && !submitted);
+  const round2LeaderBanner = round2TeamControlsLocked
+    ? `当前由 ${leaderDisplayName(leaderName)} 操作，请口头讨论你的建议`
+    : "";
   const memberDims = Array.isArray(memberState?.dims) && memberState.dims.length ? memberState.dims : DEFAULT_MEMBER_DIMS;
   const completedInterviewCount = Number(interviewProgress.completedCount || memberState?.completed_interviews || 0);
   const interviewDimensionGuide = useMemo(
@@ -759,13 +961,13 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     teamRecap?.final_grid_id ||
     ""
   ).trim();
+  const interviewGridLabel = buildStarterGridLabel(interviewGridId);
   const starterQuestions = useMemo(
     () => buildStarterQuestions({
-      personaName: activeInterviewPersona?.name,
-      personaAge: activeInterviewPersona?.age,
-      gridId: interviewGridId
+      persona: activeInterviewPersona,
+      gridLabel: interviewGridLabel
     }),
-    [activeInterviewPersona, interviewGridId]
+    [activeInterviewPersona, interviewGridLabel]
   );
   const showStarterChips = Boolean(
     activeInterviewPersona &&
@@ -790,6 +992,34 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
   const interviewProgressLabel = interviewTransition
     ? `已完成 ${completedInterviewCount}/${Math.max(MIN_INTERVIEWS_REQUIRED, Number(interviewProgress.maxInterviews || 3))} 次访谈`
     : (showInterviewComposer ? `进行中 ${interviewRound}/${INTERVIEW_MAX_TURNS}` : (canEnterCards ? "访谈要求已满足" : "等待开始"));
+  const pendingSubmission = useMemo(() => {
+    if (isSubmittingFinal) {
+      return {
+        title: "正在提交团队最终方案...",
+        detail: "系统正在保存你们的产品方案并计算最终结果，请不要重复点击。"
+      };
+    }
+    if (isSubmittingIndividual) {
+      return {
+        title: "正在提交个人选卡...",
+        detail: "系统正在保存你的个人选择，完成后会自动进入团队合并阶段。"
+      };
+    }
+    if (isSendingInterview) {
+      return {
+        title: "正在提交访谈问题...",
+        detail: "系统正在生成受访者回复，请稍候，不需要重复点击发送。"
+      };
+    }
+    if (isStartingInterview) {
+      return {
+        title: "正在创建访谈...",
+        detail: "系统正在准备新的访谈对象和会话，请稍候。"
+      };
+    }
+    return null;
+  }, [isSendingInterview, isStartingInterview, isSubmittingFinal, isSubmittingIndividual]);
+  const isSubmissionBusy = Boolean(pendingSubmission);
 
   const BS = {marginTop:12,width:"100%",padding:"12px",borderRadius:10,background:"#1a5c3a",color:"#fff",border:"none",fontSize:14,fontWeight:700,cursor:"pointer"};
   const renderMarketReferenceCard = () => {
@@ -987,7 +1217,10 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
         tags: out.tags || [],
         evi: out.evi,
         confidence: out.confidence || {},
-        lowConfidenceDims: out.lowConfidenceDims || []
+        lowConfidenceDims: out.lowConfidenceDims || [],
+        insightsByDim: out.insightsByDim || {},
+        scoreSource: out.scoreSource || {},
+        summary: out.summary || ""
       });
       setInterviewSessionId("");
       setInterviewPersonas([]);
@@ -1095,22 +1328,42 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     const loadMerge = async () => {
       try {
         setMergeError("");
-        const out = await getRound2TeamMerge(teamId, baseCost);
+        const out = await getRound2TeamMerge(teamId, baseCost, memberId);
         if (canceled) return;
         setMergeData(out);
-        const mapped = selectionsToMap(out.teamSelections);
+        setLeaderMemberId(String(out?.leader_member_id || leaderMemberId));
+        setLeaderName(String(out?.leader_name || leaderName));
+        setIsLeader(Boolean(out?.is_leader));
+        const mapped = selectionsToMap(out?.team_draft?.selections?.length ? out.team_draft.selections : out.teamSelections);
         if (!serverSelections) {
           setTeamDraftSelections(mapped);
         }
+        if (Number.isFinite(Number(out?.team_draft?.price))) {
+          setTeamPrice(Number(out.team_draft.price));
+        }
       } catch (err) {
-        if (!canceled) setMergeError(err.message || "团队合并加载失败");
+        if (!canceled) setMergeError(round2LeaderErrorMessage(err));
       }
     };
     loadMerge();
     return () => {
       canceled = true;
     };
-  }, [step, teamId, submitted, baseCost, serverSelections]);
+  }, [step, teamId, memberId, submitted, baseCost, serverSelections]);
+
+  useEffect(() => {
+    if (!isTeamMode || !teamId || !memberId || submitted || !isLeader || !round2DraftTouchedRef.current) return undefined;
+    if (step < 3) return undefined;
+    const timer = window.setTimeout(() => {
+      saveRound2TeamDraft({
+        team_id: teamId,
+        member_id: memberId,
+        price: teamPrice,
+        selections: toSubmitSelectionsMap(teamDraftSelections)
+      }).catch(() => {});
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [isLeader, isTeamMode, memberId, step, submitted, teamDraftSelections, teamId, teamPrice]);
 
   const handleInterviewSend = useCallback(async () => {
     const message = String(interviewInput || "").trim();
@@ -1135,7 +1388,10 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
           tags: out.tags || [],
           evi: out.evi,
           confidence: out.confidence || {},
-          lowConfidenceDims: out.lowConfidenceDims || []
+          lowConfidenceDims: out.lowConfidenceDims || [],
+          insightsByDim: out.insightsByDim || {},
+          scoreSource: out.scoreSource || {},
+          summary: out.summary || ""
         };
         setInterviewResult(nextResult);
         setInterviewSessionId("");
@@ -1181,7 +1437,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
       setSubmitted(true);
       return;
     }
-    if (!teamId || isSubmittingFinal) return;
+    if (!teamId || isSubmittingFinal || round2TeamControlsLocked) return;
 
     try {
       setIsSubmittingFinal(true);
@@ -1190,6 +1446,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
       const submitSelections = toSubmitSelectionsMap(teamSel);
       const out = await submitRound2TeamDecision({
         team_id: teamId,
+        member_id: memberId,
         session_id: sessionId,
         price: teamPrice,
         selections: submitSelections,
@@ -1202,11 +1459,11 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
       setTeamResultSnapshot(out?.result || null);
       setSubmitted(true);
     } catch (err) {
-      setSubmitError(err.message || "提交失败");
+      setSubmitError(round2LeaderErrorMessage(err));
     } finally {
       setIsSubmittingFinal(false);
     }
-  }, [isTeamMode, isSubmittingFinal, mergeData?.mergedInterview, sessionId, teamId, teamPrice, teamSel]);
+  }, [isTeamMode, isSubmittingFinal, memberId, mergeData?.mergedInterview, round2TeamControlsLocked, sessionId, teamId, teamPrice, teamSel]);
 
   // ── Render card (individual mode: no cost numbers) ──
   const renderCard = (card, dim, sels, showCost, mode) => {
@@ -1225,7 +1482,13 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
 
         {/* Header */}
         <div style={{display:"flex",gap:8,marginBottom:6,paddingRight:card.tag?50:0}}>
-          <input type="checkbox" checked={isOn} onChange={()=>!hasConflict&&toggleSelection(card.id, mode)} disabled={hasConflict&&!isOn} style={{width:16,height:16,marginTop:2,cursor:hasConflict?"not-allowed":"pointer"}}/>
+          <input
+            type="checkbox"
+            checked={isOn}
+            onChange={() => !hasConflict && !(mode === "team" && round2TeamControlsLocked) && toggleSelection(card.id, mode)}
+            disabled={(hasConflict && !isOn) || (mode === "team" && round2TeamControlsLocked)}
+            style={{width:16,height:16,marginTop:2,cursor:hasConflict || (mode === "team" && round2TeamControlsLocked) ? "not-allowed" : "pointer"}}
+          />
           <div>
             <div style={{fontSize:14,fontWeight:700,lineHeight:1.3}}>{card.n}</div>
             <div style={{fontSize:12,color:"#666",marginTop:2,lineHeight:1.5}}>{card.what}</div>
@@ -1248,9 +1511,9 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
             const dcogsTone = getHintTone(dcogsLabel);
             const nreTone = getHintTone(nreLabel);
             return (
-              <div key={t} onClick={()=>isOn&&setSelectionTier(card.id, t, mode)} style={{
+              <div key={t} onClick={()=>isOn && !(mode === "team" && round2TeamControlsLocked) && setSelectionTier(card.id, t, mode)} style={{
                 display:"flex",alignItems:"flex-start",gap:8,padding:"8px 10px",borderRadius:6,
-                cursor:isOn?"pointer":"default",
+                cursor:isOn && !(mode === "team" && round2TeamControlsLocked) ? "pointer" : "default",
                 border:active?`2px solid ${ac}`:"1px solid #e5e7eb",
                 background:active?ac+"08":"#fafafa", opacity:isOn?1:0.4, transition:"all 0.2s",
               }}>
@@ -1405,9 +1668,25 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
           {systemNotice}
         </div>
       )}
+      {round2LeaderBanner && (
+        <div style={{padding:"10px 14px",borderRadius:8,background:"#fef3c7",border:"1px solid #fcd34d",fontSize:12,color:"#92400e",marginBottom:12}}>
+          {round2LeaderBanner}
+        </div>
+      )}
+      {pendingSubmission && (
+        <div
+          role="status"
+          aria-live="polite"
+          style={{padding:"12px 14px",borderRadius:10,background:"#fffbeb",border:"1px solid #fde68a",fontSize:12,color:"#92400e",marginBottom:12,boxShadow:"0 1px 2px rgba(0,0,0,0.04)"}}
+        >
+          <div style={{fontSize:13,fontWeight:800,marginBottom:4}}>{pendingSubmission.title}</div>
+          <div style={{lineHeight:1.7}}>{pendingSubmission.detail}</div>
+        </div>
+      )}
       {teamStatus && (
         <div style={{fontSize:12,color:"#6b7280",marginBottom:10}}>
           当前团队状态：<strong style={{color:"#1a5c3a"}}>{teamStatus}</strong>
+          {leaderMemberId ? ` · 组长：👑 ${leaderDisplayName(leaderName)}` : ""}
         </div>
       )}
 
@@ -1416,7 +1695,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
         {STEPS.map((s,i) => (
           <div key={i} style={{display:"flex",alignItems:"center",flex:i<STEPS.length-1?1:"none"}}>
             <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
-              <div onClick={()=>i<=step&&setStep(i)} style={{width:28,height:28,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,cursor:i<=step?"pointer":"default",background:i<step?"#2FAB6E":i===step?"#1a5c3a":"#e5e7eb",color:i<=step?"#fff":"#aaa",boxShadow:i===step?"0 0 0 3px #1a5c3a33":"none"}}>{i<step?"✓":i+1}</div>
+              <div onClick={()=>!isSubmissionBusy&&i<=step&&setStep(i)} style={{width:28,height:28,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,cursor:!isSubmissionBusy&&i<=step?"pointer":"default",background:i<step?"#2FAB6E":i===step?"#1a5c3a":"#e5e7eb",color:i<=step?"#fff":"#aaa",boxShadow:i===step?"0 0 0 3px #1a5c3a33":"none",opacity:isSubmissionBusy?0.55:1}}>{i<step?"✓":i+1}</div>
               <span style={{fontSize:9,color:i===step?"#1a5c3a":i<step?"#2FAB6E":"#aaa",fontWeight:i===step?700:400,whiteSpace:"nowrap"}}>{s}</span>
             </div>
             {i<STEPS.length-1 && <div style={{flex:1,height:2,margin:"0 2px",marginBottom:18,background:i<step?"#2FAB6E":"#e5e7eb"}}/>}
@@ -1447,31 +1726,70 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
           </div>
 
           <div style={{padding:"16px 18px",borderRadius:10,border:"1px solid #e5e7eb",marginBottom:12,lineHeight:1.8}}>
-            <div style={{fontSize:14,fontWeight:700,color:"#374151",marginBottom:8}}>价值主张</div>
+            <div style={{fontSize:14,fontWeight:700,color:"#374151",marginBottom:8}}>价值主张复盘</div>
             <div style={{fontSize:14,color:"#555"}}>
-              {vpSummaryText || "Round 1 价值主张将在这里显示。"}
+              {vpRecapText || "Round 1 价值主张将在这里显示。"}
             </div>
           </div>
 
-          <div style={{padding:"16px 18px",borderRadius:10,border:"1px solid #e5e7eb",marginBottom:20}}>
-            <div style={{fontSize:14,fontWeight:700,color:"#374151",marginBottom:8}}>价值主张评分</div>
-            <div style={{display:"flex",gap:20,flexWrap:"wrap"}}>
-              {[
-                {l:"人群覆盖面",k:"C",s:Number(vpScores.C || 4),fb:"目标人群是否够明确、够可进入"},
-                {l:"痛点普遍性",k:"G",s:Number(vpScores.G || 4),fb:"用户痛点是否高频、足够广泛"},
-                {l:"解法说服力",k:"E",s:Number(vpScores.E || 4),fb:"你的方案是否能说服客户为它买单"},
-              ].map(item => (
-                <div key={item.k} style={{flex:"1 1 180px"}}>
-                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
-                    <span style={{fontSize:13,fontWeight:600,color:"#374151"}}>{item.l}</span>
-                    <span style={{fontSize:12,fontWeight:700,color:"#7c3aed",marginLeft:"auto"}}>{item.s}/5</span>
-                  </div>
-                  <div style={{display:"flex",gap:2,marginBottom:4}}>
-                    {[1,2,3,4,5].map(n=><div key={n} style={{flex:1,height:6,borderRadius:2,background:n<=item.s?"#7c3aed":"#e5e7eb"}}/>)}
-                  </div>
-                  <div style={{fontSize:11,color:"#888"}}>{item.fb}</div>
+          <div style={{padding:"16px 18px",borderRadius:10,border:"1px solid #e5e7eb",marginBottom:12}}>
+            <div style={{fontSize:14,fontWeight:700,color:"#374151",marginBottom:12}}>价值主张评分</div>
+            <div style={{maxWidth:340,margin:"0 auto",padding:"18px 16px",borderRadius:12,background:"#f9fafb",border:"1px solid #e5e7eb",textAlign:"center"}}>
+              <div style={{fontSize:12,color:"#6b7280",fontWeight:700,marginBottom:8}}>VP 综合评分</div>
+              <div style={{fontSize:42,fontWeight:800,color:"#111827",lineHeight:1}}>{resultVpScore.toFixed(1)}</div>
+              <div style={{marginTop:10}}>
+                <Round1StarRating score={resultVpScore} />
+              </div>
+            </div>
+          </div>
+
+          <div style={{padding:"16px 18px",borderRadius:10,border:"1px solid #e5e7eb",marginBottom:12}}>
+            <div style={{fontSize:14,fontWeight:700,color:"#374151",marginBottom:8}}>评分评语</div>
+            <div style={{fontSize:14,color:"#555",lineHeight:1.8,whiteSpace:"pre-wrap"}}>
+              {resultFeedbackText}
+            </div>
+          </div>
+
+          <div style={{padding:"16px 18px",borderRadius:10,border:"1px solid #e5e7eb",marginBottom:12,display:"flex",gap:16,flexWrap:"wrap",alignItems:"flex-start"}}>
+            <div style={{minWidth:220}}>
+              <div style={{fontSize:14,fontWeight:700,color:"#374151",marginBottom:8}}>用户支付意愿</div>
+              <div style={{fontSize:34,fontWeight:800,color:wtpFinalPct >= 0 ? "#2FAB6E" : "#dc2626",lineHeight:1}}>
+                {formatSignedPercent(wtpFinalPct)}
+              </div>
+              <div style={{fontSize:12,color:"#9ca3af",marginTop:8}}>仅看 VP 本身：{formatSignedPercent(wtpBasePct)}</div>
+              <div style={{fontSize:12,color:wtpJinangDeltaPct >= 0 ? "#2FAB6E" : "#dc2626",marginTop:4}}>
+                市场锦囊额外影响：{formatSignedPercent(wtpJinangDeltaPct)}
+              </div>
+            </div>
+            <div style={{fontSize:13,color:"#666",lineHeight:1.7,flex:"1 1 260px"}}>
+              第一轮的支付意愿结果会直接影响你们对第二轮产品和定价空间的判断，因此这里继续沿用 Round 1 的最终结论，不再展示分项评分。
+            </div>
+          </div>
+
+          <div style={{padding:"16px 18px",borderRadius:10,background:"#f0fdf4",border:"1px solid #bbf7d0",marginBottom:20}}>
+            <div style={{fontSize:14,fontWeight:700,color:"#166534",marginBottom:8}}>锦囊匹配结果</div>
+            <div style={{fontSize:13,color:"#15803d",lineHeight:1.7,marginBottom:10}}>
+              团队共 {totalJinangCount} 张锦囊中，{matchedJinangCount} 张与当前定位匹配
+              {`（市场 ${matchedMarketJinangCount} 张，技术 ${matchedTechJinangCount} 张）`}
+            </div>
+            <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+              {resultMarketJinang && (
+                <div style={{flex:"1 1 260px",padding:"10px 12px",borderRadius:10,background:"#fff",border:"1px solid #bbf7d0",fontSize:12,lineHeight:1.7,color:"#166534"}}>
+                  <div style={{fontWeight:700,marginBottom:4}}>{resultMarketJinang.name}</div>
+                  <div style={{color:"#6b7280"}}>{resultMarketJinang.card_id || resultMarketJinang.id || "市场锦囊"}</div>
+                  <div style={{marginTop:6}}>生效范围：Round 1 支付意愿</div>
+                  {resultMarketJinangBonusPct > 0 && (
+                    <div style={{marginTop:4}}>为支付意愿额外增加了 {resultMarketJinangBonusPct}%</div>
+                  )}
                 </div>
-              ))}
+              )}
+              {resultTechJinang && (
+                <div style={{flex:"1 1 260px",padding:"10px 12px",borderRadius:10,background:"#fff",border:"1px solid #bbf7d0",fontSize:12,lineHeight:1.7,color:"#166534"}}>
+                  <div style={{fontWeight:700,marginBottom:4}}>{resultTechJinang.name}</div>
+                  <div style={{color:"#6b7280"}}>{resultTechJinang.card_id || resultTechJinang.id || "技术锦囊"}</div>
+                  <div style={{marginTop:6}}>生效范围：Round 2 研发与成本</div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1772,6 +2090,11 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
               <button onClick={()=>canEnterCards&&setStep(2)} style={{...BS,opacity:canEnterCards?1:0.5,cursor:canEnterCards?"pointer":"not-allowed"}}>
                 {canEnterCards ? "访谈要求已满足，进入个人选卡 →" : "至少完成 2 次访谈后继续"}
               </button>
+              {isSendingInterview && (
+                <div style={{marginTop:10,fontSize:12,color:"#92400e",lineHeight:1.7}}>
+                  正在提交本轮问题并等待受访者回复，请稍候。
+                </div>
+              )}
             </div>
 
             <div style={{flex:"0 1 320px",minWidth:260}}>
@@ -1826,10 +2149,15 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
               已选 <strong>{indCalc.cnt}</strong> 张
             </div>
             <div style={{flex:1}}/>
-            <button onClick={handleIndividualSubmit} disabled={indCalc.cnt < 1 || isSubmittingIndividual} style={{padding:"6px 20px",borderRadius:8,background:indCalc.cnt>=1?"#1a5c3a":"#d1d5db",color:"#fff",border:"none",fontSize:13,fontWeight:700,cursor:indCalc.cnt>=1?"pointer":"not-allowed",opacity:isSubmittingIndividual?0.7:1}}>
+            <button onClick={handleIndividualSubmit} disabled={indCalc.cnt < 1 || isSubmittingIndividual} style={{padding:"6px 20px",borderRadius:8,background:indCalc.cnt>=1?"#1a5c3a":"#d1d5db",color:"#fff",border:"none",fontSize:13,fontWeight:700,cursor:isSubmittingIndividual?"wait":(indCalc.cnt>=1?"pointer":"not-allowed"),opacity:isSubmittingIndividual?0.7:1}}>
               {isSubmittingIndividual ? "提交中..." : "提交个人选卡 →"}
             </button>
           </div>
+          {isSubmittingIndividual && (
+            <div style={{margin:"0 0 12px",padding:"10px 14px",borderRadius:8,background:"#fffbeb",border:"1px solid #fde68a",fontSize:12,color:"#92400e",lineHeight:1.7}}>
+              正在提交个人选卡，请稍候。提交成功后会自动进入团队合并。
+            </div>
+          )}
 
           {/* Interview summary for reference while selecting cards */}
           <div style={{padding:"14px 18px",borderRadius:10,background:"#f0fdf4",border:"1.5px solid #bbf7d0",marginBottom:8}}>
@@ -1875,13 +2203,25 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
 
           {/* Radar chart */}
           <div style={{marginBottom:20,textAlign:"center"}}>
-            <div style={{fontSize:14,fontWeight:700,color:"#374151",marginBottom:8}}>团队能力雷达图</div>
+            <div style={{fontSize:14,fontWeight:700,color:"#374151",marginBottom:8}}>当前产品性能雷达图</div>
             <RadarChart sels={teamSel}/>
             <div style={{display:"flex",justifyContent:"center",gap:12,marginTop:8,flexWrap:"wrap"}}>
               {DIMS.map(dim => {
                 const cards = CC[dim.id]||[];
                 const cnt = cards.filter(c=>!!teamSel[c.id]).length;
-                return <span key={dim.id} style={{fontSize:11,color:dim.c,fontWeight:600}}>{dim.icon} {dim.l}: {cnt}张</span>;
+                return (
+                  <div key={dim.id} style={{minWidth:160,maxWidth:200,padding:"8px 10px",borderRadius:10,background:"#fff",border:`1px solid ${dim.c}22`,textAlign:"left"}}>
+                    <div style={{fontSize:11,color:dim.c,fontWeight:700,marginBottom:4}}>
+                      {dim.icon} {dim.l}
+                    </div>
+                    <div style={{fontSize:10,color:"#6b7280",lineHeight:1.5,marginBottom:6}}>
+                      {dim.desc}
+                    </div>
+                    <div style={{fontSize:11,color:"#374151",fontWeight:600}}>
+                      已选卡数：{cnt > 0 ? `${cnt} 张` : "未选"}
+                    </div>
+                  </div>
+                );
               })}
             </div>
           </div>
@@ -1907,9 +2247,24 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                       用户需求：{scoreToImportance(score)}
                     </span>
                   </div>
+                  <div style={{fontSize:11,color:"#6b7280",marginBottom:4}}>
+                    {dim.desc}
+                  </div>
                   <div style={{fontSize:12,color:"#555",lineHeight:1.7}}>
                     {owners.length
-                      ? `来自 ${owners.map((item) => item.memberName).join("、")} 的访谈结论，当前合并评分 ${score.toFixed(1)} / 9。`
+                      ? owners
+                        .map((item) => {
+                          const sourceName = item.scoreSource === "interview_evidence"
+                            ? "真实访谈"
+                            : item.scoreSource === "grid_prior"
+                              ? "战略先验"
+                              : "当前输入";
+                          const insight = String(item.insight || "").trim();
+                          return insight
+                            ? `${item.memberName}（${sourceName}）：${insight}`
+                            : `${item.memberName}（${sourceName}）：当前合并评分 ${score.toFixed(1)} / 9。`;
+                        })
+                        .join("；")
                       : "当前还没有足够的真实访谈结果支撑该维度。"}
                   </div>
                 </div>
@@ -2024,7 +2379,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                 </div>
                 {/* VP */}
                 <div style={{padding:"10px 14px",borderRadius:8,border:"1px solid #e5e7eb",marginBottom:10,fontSize:13,lineHeight:1.7}}>
-                  <strong>价值主张：</strong>{vpSummaryText || "暂无 VP 摘要"}
+                  <strong>价值主张复盘：</strong>{vpRecapText || "暂无 VP 摘要"}
                 </div>
                 {/* Interview insights by dimension (condensed) */}
                 <div style={{marginBottom:10}}>
@@ -2116,8 +2471,8 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
               </div>
               <div style={{padding:"12px 14px",borderRadius:10,background:"#faf5ff",border:"1.5px solid #e9d5ff"}}>
                 <div style={{fontSize:11,color:"#6b7280"}}>价值主张对支付意愿的影响</div>
-                <div style={{fontSize:22,fontWeight:800,color:"#7c3aed",marginTop:4}}>C{Number(vpScores.C || 0).toFixed(1)} / G{Number(vpScores.G || 0).toFixed(1)} / E{Number(vpScores.E || 0).toFixed(1)}</div>
-                <div style={{fontSize:10,color:"#888"}}>Round 1 VP 评分</div>
+                <div style={{fontSize:22,fontWeight:800,color:"#7c3aed",marginTop:4}}>{formatSignedPercent(wtpFinalPct)}</div>
+                <div style={{fontSize:10,color:"#888"}}>仅看 VP 本身 {formatSignedPercent(wtpBasePct)}，市场锦囊额外影响 {formatSignedPercent(wtpJinangDeltaPct)}</div>
               </div>
             </div>
             <div style={{fontSize:12,color:"#555",lineHeight:1.7,padding:"10px 14px",borderRadius:8,background:"#f9fafb",border:"1px solid #e5e7eb"}}>
@@ -2149,8 +2504,19 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
             <div style={{padding:"20px",borderRadius:12,background:"#f0fdf4",border:"1.5px solid #bbf7d0",marginBottom:16}}>
               <div style={{fontSize:14,fontWeight:700,color:"#374151",marginBottom:12}}>产品售价</div>
               <div style={{fontSize:36,fontWeight:800,color:"#1a5c3a",marginBottom:8}}>¥{teamPrice.toLocaleString()}</div>
-              <input type="range" min={5000} max={20000} step={100} value={teamPrice} onChange={e=>setTeamPrice(+e.target.value)}
-                style={{width:"100%",height:8,borderRadius:4,cursor:"pointer"}}/>
+              <input
+                type="range"
+                min={5000}
+                max={20000}
+                step={100}
+                value={teamPrice}
+                onChange={e => {
+                  round2DraftTouchedRef.current = true;
+                  setTeamPrice(+e.target.value);
+                }}
+                disabled={round2TeamControlsLocked}
+                style={{width:"100%",height:8,borderRadius:4,cursor:round2TeamControlsLocked ? "not-allowed" : "pointer"}}
+              />
               <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#999",marginTop:4}}>
                 <span>¥5,000（低价走量）</span>
                 <span>¥20,000（高端定位）</span>
@@ -2194,8 +2560,18 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
             </div>
 
             {renderMarketReferenceCard()}
-            <button onClick={()=>(teamCalc.cnt>=MIN_TEAM_CARDS&&gmOk)&&setStep(5)} style={{...BS,background:(teamCalc.cnt>=MIN_TEAM_CARDS&&gmOk)?"#1a5c3a":"#d1d5db",cursor:(teamCalc.cnt>=MIN_TEAM_CARDS&&gmOk)?"pointer":"not-allowed"}}>
-              {!gmOk?"预期毛利过低，请先调整选卡":teamCalc.cnt<MIN_TEAM_CARDS?`还需选 ${MIN_TEAM_CARDS-teamCalc.cnt} 张能力卡`:"确认产品方案与定价，查看结果 \u2192"}
+            <button
+              onClick={() => (teamCalc.cnt >= MIN_TEAM_CARDS && gmOk && !round2TeamControlsLocked) && setStep(5)}
+              disabled={round2TeamControlsLocked || teamCalc.cnt < MIN_TEAM_CARDS || !gmOk}
+              style={{...BS,background:(teamCalc.cnt>=MIN_TEAM_CARDS&&gmOk&&!round2TeamControlsLocked)?"#1a5c3a":"#d1d5db",cursor:(teamCalc.cnt>=MIN_TEAM_CARDS&&gmOk&&!round2TeamControlsLocked)?"pointer":"not-allowed"}}
+            >
+              {round2TeamControlsLocked
+                ? `仅组长 ${leaderDisplayName(leaderName)} 可继续`
+                : !gmOk
+                  ? "预期毛利过低，请先调整选卡"
+                  : teamCalc.cnt < MIN_TEAM_CARDS
+                    ? `还需选 ${MIN_TEAM_CARDS-teamCalc.cnt} 张能力卡`
+                    : "确认产品方案与定价，查看结果 →"}
             </button>
           </div>
         </div>
@@ -2211,7 +2587,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
           <div style={{padding:"16px 20px",borderRadius:12,background:"linear-gradient(135deg,#065f46,#14532d)",color:"#fff",marginBottom:16}}>
             <div style={{fontSize:12,opacity:0.7}}>战略定位</div>
             <div style={{fontSize:18,fontWeight:800,marginTop:4}}>{positionLabel}</div>
-            <div style={{fontSize:13,opacity:0.85,marginTop:6,lineHeight:1.6}}>价值主张：{vpSummaryText || "暂无 VP 摘要"}</div>
+            <div style={{fontSize:13,opacity:0.85,marginTop:6,lineHeight:1.6}}>价值主张复盘：{vpRecapText || "暂无 VP 摘要"}</div>
           </div>
 
           {/* Radar */}
@@ -2278,13 +2654,22 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
           </div>
 
           <div style={{display:"flex",gap:10}}>
-            <button onClick={()=>setStep(4)} style={{...BS,background:"#f9fafb",color:"#374151",border:"1px solid #e5e7eb",flex:1}}>
+            <button
+              onClick={()=>!round2TeamControlsLocked&&setStep(4)}
+              disabled={round2TeamControlsLocked}
+              style={{...BS,background:"#f9fafb",color:"#374151",border:"1px solid #e5e7eb",flex:1,opacity:round2TeamControlsLocked?0.6:1,cursor:round2TeamControlsLocked?"not-allowed":"pointer"}}
+            >
               ← 返回修改
             </button>
-            <button onClick={handleFinalSubmit} disabled={isSubmittingFinal} style={{...BS,flex:1,opacity:isSubmittingFinal?0.7:1,cursor:isSubmittingFinal?"wait":"pointer"}}>
-              {isSubmittingFinal ? "提交中..." : "确认提交 ✓"}
+            <button onClick={handleFinalSubmit} disabled={isSubmittingFinal || round2TeamControlsLocked} style={{...BS,flex:1,opacity:isSubmittingFinal||round2TeamControlsLocked?0.7:1,cursor:isSubmittingFinal?"wait":(round2TeamControlsLocked?"not-allowed":"pointer")}}>
+              {round2TeamControlsLocked ? `仅组长 ${leaderDisplayName(leaderName)} 可提交` : (isSubmittingFinal ? "提交中..." : "确认提交 ✓")}
             </button>
           </div>
+          {isSubmittingFinal && (
+            <div style={{marginTop:12,padding:"10px 14px",borderRadius:8,background:"#fffbeb",border:"1px solid #fde68a",fontSize:12,color:"#92400e",lineHeight:1.7}}>
+              正在提交最终方案并计算结果，请不要重复点击，完成后会自动显示结果页。
+            </div>
+          )}
         </div>
       )}
 

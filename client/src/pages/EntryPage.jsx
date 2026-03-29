@@ -33,6 +33,7 @@ export default function EntryPage() {
   const [error, setError] = useState("");
   const [found, setFound] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
   const [resumeLoading, setResumeLoading] = useState(false);
   const [resumeError, setResumeError] = useState("");
 
@@ -46,6 +47,10 @@ export default function EntryPage() {
   const [adminError, setAdminError] = useState("");
 
   const handleLookup = async () => {
+    if (!hasAcceptedTerms) {
+      setError("请先阅读并同意服务与隐私条款");
+      return;
+    }
     const sid = studentId.trim();
     if (!sid) {
       setError("请输入学号");
@@ -71,7 +76,7 @@ export default function EntryPage() {
   };
 
   const handleEnter = async () => {
-    if (!found?.team_id || !found?.member_id) return;
+    if (!hasAcceptedTerms || !found?.team_id || !found?.member_id) return;
     writeStudentSession({
       studentId: found.student_id,
       studentName: found.student_name,
@@ -105,6 +110,10 @@ export default function EntryPage() {
   };
 
   const handleTrial = async () => {
+    if (!hasAcceptedTerms) {
+      setTrialError("请先阅读并同意服务与隐私条款");
+      return;
+    }
     const code = trialCode.trim();
     if (!code) {
       setTrialError("请输入试玩密码");
@@ -183,7 +192,7 @@ export default function EntryPage() {
       >
         <div style={{ textAlign: "center", marginBottom: 32 }}>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: "#fff", margin: 0 }}>LOVOT 战略模拟</h1>
-          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", marginTop: 6 }}>EMBA-AI-SIM</div>
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", marginTop: 6 }}>高管教育创新战略AI模拟练习</div>
         </div>
 
         {storedSession && (
@@ -257,6 +266,7 @@ export default function EntryPage() {
           }}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
+              if (!hasAcceptedTerms) return;
               if (found) handleEnter();
               else handleLookup();
             }
@@ -296,22 +306,64 @@ export default function EntryPage() {
           </div>
         )}
 
+        <label
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 10,
+            marginTop: 14,
+            color: "rgba(255,255,255,0.54)",
+            fontSize: 11,
+            lineHeight: 1.7,
+            cursor: "pointer"
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={hasAcceptedTerms}
+            onChange={(e) => {
+              setHasAcceptedTerms(e.target.checked);
+              setError("");
+              setTrialError("");
+            }}
+            style={{ marginTop: 3, accentColor: "#10b981" }}
+          />
+          <span>
+            我已阅读并同意
+            <a
+              href="/legal"
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                color: "#93c5fd",
+                textDecoration: "underline",
+                margin: "0 2px"
+              }}
+            >
+              《服务与隐私条款》
+            </a>
+            ，并知晓本平台仅为课堂模拟，不构成真实投资与战略建议。
+          </span>
+        </label>
+
         <button
           onClick={found ? handleEnter : handleLookup}
-          disabled={loading}
+          disabled={loading || !hasAcceptedTerms}
           style={{
             width: "100%",
             padding: "14px 0",
             marginTop: 16,
             borderRadius: 12,
             border: "none",
-            background: found
-              ? "linear-gradient(135deg, #065f46, #10b981)"
-              : "linear-gradient(135deg, #1e40af, #3b82f6)",
-            color: "#fff",
+            background: !hasAcceptedTerms
+              ? "rgba(148,163,184,0.36)"
+              : found
+                ? "linear-gradient(135deg, #065f46, #10b981)"
+                : "linear-gradient(135deg, #1e40af, #3b82f6)",
+            color: !hasAcceptedTerms ? "rgba(255,255,255,0.6)" : "#fff",
             fontSize: 15,
             fontWeight: 700,
-            cursor: loading ? "wait" : "pointer"
+            cursor: !hasAcceptedTerms ? "not-allowed" : (loading ? "wait" : "pointer")
           }}
         >
           {loading ? "查找中..." : found ? "进入模拟" : "查找"}
@@ -335,16 +387,17 @@ export default function EntryPage() {
         {!showTrialInput ? (
           <button
             onClick={() => setShowTrialInput(true)}
+            disabled={!hasAcceptedTerms}
             style={{
               width: "100%",
               padding: "12px 0",
               borderRadius: 12,
-              background: "rgba(255,255,255,0.04)",
+              background: !hasAcceptedTerms ? "rgba(148,163,184,0.14)" : "rgba(255,255,255,0.04)",
               border: "1px solid rgba(255,255,255,0.1)",
-              color: "rgba(255,255,255,0.5)",
+              color: !hasAcceptedTerms ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.5)",
               fontSize: 14,
               fontWeight: 600,
-              cursor: "pointer"
+              cursor: !hasAcceptedTerms ? "not-allowed" : "pointer"
             }}
           >
             试玩模式
@@ -366,7 +419,7 @@ export default function EntryPage() {
                 setTrialError("");
               }}
               onKeyDown={(e) => {
-                if (e.key === "Enter") handleTrial();
+                if (e.key === "Enter" && hasAcceptedTerms) handleTrial();
               }}
               type="password"
               placeholder="试玩密码"
@@ -385,18 +438,20 @@ export default function EntryPage() {
             {trialError && <div style={{ fontSize: 12, color: "#f87171", marginTop: 4 }}>{trialError}</div>}
             <button
               onClick={handleTrial}
-              disabled={trialLoading}
+              disabled={trialLoading || !hasAcceptedTerms}
               style={{
                 width: "100%",
                 padding: "10px 0",
                 marginTop: 8,
                 borderRadius: 8,
                 border: "none",
-                background: "linear-gradient(135deg, #7c3aed, #a78bfa)",
-                color: "#fff",
+                background: !hasAcceptedTerms
+                  ? "rgba(148,163,184,0.36)"
+                  : "linear-gradient(135deg, #7c3aed, #a78bfa)",
+                color: !hasAcceptedTerms ? "rgba(255,255,255,0.6)" : "#fff",
                 fontSize: 13,
                 fontWeight: 700,
-                cursor: trialLoading ? "wait" : "pointer"
+                cursor: !hasAcceptedTerms ? "not-allowed" : (trialLoading ? "wait" : "pointer")
               }}
             >
               {trialLoading ? "创建中..." : "开始试玩"}

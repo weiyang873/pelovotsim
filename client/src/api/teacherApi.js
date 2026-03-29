@@ -40,6 +40,16 @@ export async function getTeacherDebriefData(code, sessionId = "default") {
   return asJson(res);
 }
 
+export async function getTeacherVpIterations(code, teamId, sessionId = "default") {
+  const res = await fetch(
+    `${BASE}/teacher/vp-iterations?team_id=${encodeURIComponent(teamId)}&session_id=${encodeURIComponent(sessionId)}`,
+    {
+      headers: { "x-teacher-code": String(code || "").trim() }
+    }
+  );
+  return asJson(res);
+}
+
 export async function generateTeacherDebrief(code, round, sessionId = "default") {
   const res = await fetch(`${BASE}/teacher/generate-debrief`, {
     method: "POST",
@@ -124,6 +134,15 @@ export async function teacherForceMerge(code, payload) {
   return asJson(res);
 }
 
+export async function teacherSetLeader(code, payload) {
+  const res = await fetch(`${BASE}/teacher/set-leader`, {
+    method: "POST",
+    headers: teacherHeaders(code),
+    body: JSON.stringify(payload)
+  });
+  return asJson(res);
+}
+
 export async function teacherForceAdvance(code, payload) {
   const res = await fetch(`${BASE}/teacher/force-advance`, {
     method: "POST",
@@ -144,6 +163,15 @@ export async function teacherResetMember(code, payload) {
 
 export async function teacherResetTeam(code, payload) {
   const res = await fetch(`${BASE}/teacher/reset-team`, {
+    method: "POST",
+    headers: teacherHeaders(code),
+    body: JSON.stringify(payload)
+  });
+  return asJson(res);
+}
+
+export async function teacherResetSession(code, payload) {
+  const res = await fetch(`${BASE}/teacher/reset-session`, {
     method: "POST",
     headers: teacherHeaders(code),
     body: JSON.stringify(payload)

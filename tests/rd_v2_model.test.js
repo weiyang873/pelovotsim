@@ -80,8 +80,10 @@ function testCompressWtpMult() {
 
 async function testCalculateWtpMultiplier() {
   const gridId = "B2C_Differentiation_Experience";
+  const round1GridId = "ToC_Differentiation_Adult";
   const payload = {
     gridId,
+    round1GridId,
     selections: [{ cap_id: "voice_basic", tier: "mid" }],
     radarScores: {
       perception: 6,
@@ -108,8 +110,119 @@ async function testCalculateWtpMultiplier() {
   assert.equal(baseline.compressedWtpMult, 1);
   assert.equal(baseline.WTPref_adjusted, baseline.WTPref);
   assert.equal(Math.abs(adjusted.compressedWtpMult - 1.15) < 1e-9, true, `compressed=${adjusted.compressedWtpMult}`);
-  assert.equal(Math.abs(adjusted.WTPref_adjusted - (computeWTPParams(gridId).WTPref * 1.15)) < 1e-6, true, `adjusted WTPref=${adjusted.WTPref_adjusted}`);
+  assert.equal(Math.abs(adjusted.WTPref_adjusted - (computeWTPParams(round1GridId).WTPref * 1.15)) < 1e-6, true, `adjusted WTPref=${adjusted.WTPref_adjusted}`);
   assert.equal(adjusted.WTPref > baseline.WTPref, true, `adjusted=${adjusted.WTPref}, baseline=${baseline.WTPref}`);
+}
+
+async function testCoreTagFallbackWhenLayeringIsEmpty() {
+  const result = await calculate({
+    gridId: "B2B_Cost_Mixed",
+    round1GridId: "ToB_Cost_Adult",
+    selections: [
+      { cap_id: "voice_basic", tier: "mid" },
+      { cap_id: "follow_mode", tier: "mid" },
+      { cap_id: "perception_base", tier: "mid" }
+    ],
+    radarScores: {
+      perception: 6,
+      mobility: 5,
+      interaction: 6,
+      safety_privacy: 5,
+      integration: 5,
+      operations: 5
+    },
+    tags: ["情感陪伴", "语音交互", "场景感知", "自主移动"],
+    evi: 0.82,
+    P: 12800,
+    Pmax: 15445,
+    WTP: 15445,
+    COGSbase: 2000
+  });
+
+  const coreTags = result.tagBreakdown.filter((item) => item.tier === "core").map((item) => item.tag);
+  const coreDims = new Set(result.tagBreakdown.filter((item) => item.tier === "core").map((item) => item.dimKey));
+
+  assert.equal(coreTags.length > 0, true, `coreTags=${JSON.stringify(coreTags)}`);
+  assert.equal(coreDims.size, 2, `coreDims=${JSON.stringify(Array.from(coreDims))}`);
+  assert.equal(coreTags.includes("场景感知"), true, `coreTags=${JSON.stringify(coreTags)}`);
+  assert.equal(result.coverCore > 0, true, `coverCore=${result.coverCore}`);
+}
+
+async function testRound2GammaUsesRound1Age() {
+  const elderDiff = await calculate({
+    gridId: "B2B_Differentiation_Experience",
+    round1GridId: "ToB_Differentiation_Elder",
+    selections: [{ cap_id: "voice_basic", tier: "mid" }],
+    radarScores: {
+      perception: 6,
+      mobility: 5,
+      interaction: 7,
+      safety_privacy: 6,
+      integration: 5,
+      operations: 5
+    },
+    tags: [{ tag: "语音交互", polarity: 1 }],
+    evi: 0.7,
+    P: 12000,
+    Pmax: 15000,
+    WTP: 14000,
+    e: 1.2,
+    COGSbase: 2000,
+    TAM: 50000,
+    H: 0.3
+  });
+  const childCost = await calculate({
+    gridId: "B2C_Cost_Function",
+    round1GridId: "ToC_Cost_Child",
+    selections: [{ cap_id: "voice_basic", tier: "mid" }],
+    radarScores: {
+      perception: 6,
+      mobility: 5,
+      interaction: 7,
+      safety_privacy: 6,
+      integration: 5,
+      operations: 5
+    },
+    tags: [{ tag: "语音交互", polarity: 1 }],
+    evi: 0.7,
+    P: 12000,
+    Pmax: 15000,
+    WTP: 14000,
+    e: 1.2,
+    COGSbase: 2000,
+    TAM: 50000,
+    H: 0.3
+  });
+
+  assert.equal(Math.abs(elderDiff.gammaRaw - 4.559327) < 0.001, true, `elder diff gammaRaw=${elderDiff.gammaRaw}`);
+  assert.equal(Math.abs(childCost.gammaRaw - 3.191538) < 0.001, true, `child cost gammaRaw=${childCost.gammaRaw}`);
+}
+
+async function testRound2GammaRequiresRound1Age() {
+  await assert.rejects(
+    () => calculate({
+      gridId: "B2C_Differentiation_Experience",
+      selections: [{ cap_id: "voice_basic", tier: "mid" }],
+      radarScores: {
+        perception: 6,
+        mobility: 5,
+        interaction: 7,
+        safety_privacy: 6,
+        integration: 5,
+        operations: 5
+      },
+      tags: [{ tag: "语音交互", polarity: 1 }],
+      evi: 0.7,
+      P: 12000,
+      Pmax: 15000,
+      WTP: 14000,
+      e: 1.2,
+      COGSbase: 2000,
+      TAM: 50000,
+      H: 0.3
+    }),
+    /Round 2 WTP context missing Round 1 age/
+  );
 }
 
 async function run() {
@@ -121,6 +234,9 @@ async function run() {
   testProfitDirection();
   testCompressWtpMult();
   await testCalculateWtpMultiplier();
+  await testCoreTagFallbackWhenLayeringIsEmpty();
+  await testRound2GammaUsesRound1Age();
+  await testRound2GammaRequiresRound1Age();
   console.log("rd_v2_model.test.js: all tests passed");
 }
 

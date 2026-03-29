@@ -5,7 +5,7 @@ const { validateSelections } = require("../../server/llm/rdCalculator");
 const { toCalcGridId } = require("../../server/routes/round2Routes");
 const { ApiError } = require("./api_client");
 const { DeepSeekStudent } = require("./deepseek_student");
-const { DecisionTracker } = require("./decision_tracker");
+const { DecisionTracker, scoreProduct } = require("./decision_tracker");
 const { PersonaStudent } = require("./persona_student");
 const { getStudentGridChoice } = require("./persona_pool");
 const {
@@ -136,6 +136,31 @@ function getSpeakerMeta(options, members, memberIndex) {
   };
 }
 
+function round2ChannelFeePercent(gridId) {
+  const raw = String(gridId || "").toUpperCase();
+  return raw.includes("TOB") || raw.includes("B2B") ? 15 : 25;
+}
+
+function readTeamPricingBase(recap, tracker) {
+  const candidates = [
+    tracker?.team?.r1_wtp_adj,
+    recap?.wtp_breakdown?.final_result?.WTPadj,
+    recap?.wtp_breakdown?.final_result?.WTPref_adjusted,
+    recap?.WTPadj,
+    recap?.WTP,
+    recap?.Pmax,
+    recap?.P,
+    12000
+  ];
+  for (const value of candidates) {
+    const numeric = Number(value);
+    if (Number.isFinite(numeric) && numeric > 0) {
+      return numeric;
+    }
+  }
+  return 12000;
+}
+
 function normalizeVpDraftText(candidate, fallback = "") {
   if (candidate == null) return String(fallback || "").trim();
   if (typeof candidate === "string") {
@@ -167,6 +192,21 @@ function buildVpResultFromText(vpText, fallback = null) {
   };
 }
 
+function buildConfirmedFieldsFromVp(vpResult, vpText = "") {
+  const result = vpResult && typeof vpResult === "object" ? vpResult : {};
+  return {
+    who_raw: String(result.target_customer || result.who || extractVpField(vpText, "WHO") || "").trim(),
+    pain_raw: String(result.scenario_pain || result.pain || extractVpField(vpText, "PAIN") || "").trim(),
+    how_raw: String(result.value_creation || result.how || extractVpField(vpText, "HOW") || "").trim(),
+    alternative_raw: String(result.alternative || "").trim(),
+    boundary_raw: String(result.boundary || "").trim()
+  };
+}
+
+function buildFallbackCoachReply(gridId, architecture) {
+  return `继续围绕 ${String(gridId || "").trim() || "当前定位"} / ${String(architecture || "").trim() || "当前架构"} 打磨价值主张：把目标用户写得更具体，把触发场景和核心痛点说清楚，再明确为什么你的方案比现有替代方案更有效。`;
+}
+
 function buildTeamJinangContext(tracker) {
   const members = Object.values(tracker.members || {});
   return {
@@ -175,19 +215,233 @@ function buildTeamJinangContext(tracker) {
   };
 }
 
-async function scoreVPDraft(api, teamId, majority, vpDraft) {
-  const data = await stepApi(api, "R1.5_vp_score").submitVP(teamId, {
-    mode: "score",
-    grid_id: majority.grid_id,
-    architecture: majority.architecture,
-    vp_text: vpDraft
-  });
-  assert(data.ok === true, "submitVP score returned ok=false");
-  assert(data.score_valid === true, "submitVP score returned score_valid=false");
-  assert(Number.isFinite(Number(data.scores?.coverage)), "coverage missing from submitVP score");
-  assert(Number.isFinite(Number(data.scores?.generalizability)), "generalizability missing from submitVP score");
-  assert(Number.isFinite(Number(data.scores?.effectiveness)), "effectiveness missing from submitVP score");
-  return data;
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function resolveLeaderMemberId(...candidates) {
+  for (const candidate of candidates) {
+    const value = String(candidate || "").trim();
+    if (value) return value;
+  }
+  return "";
+}
+
+function hasValidVpScores(data) {
+  return data &&
+    data.ok === true &&
+    data.score_valid === true &&
+    Number.isFinite(Number(data.scores?.coverage)) &&
+    Number.isFinite(Number(data.scores?.generalizability)) &&
+    Number.isFinite(Number(data.scores?.effectiveness));
+}
+
+function hasVpResultPayload(data) {
+  return data && data.ok === true && data.vp_result && typeof data.vp_result === "object";
+}
+
+async function scoreVPDraft(api, teamId, majority, vpDraft, options = {}) {
+  const retries = Math.max(0, Number(options.retries || 0));
+  const retryDelayMs = Math.max(0, Number(options.retryDelayMs || 800));
+  const fallbackData = hasValidVpScores(options.fallbackData) ? options.fallbackData : null;
+  let lastData = null;
+  let lastError = null;
+
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      const data = await stepApi(api, "R1.5_vp_score").submitVP(teamId, {
+        mode: "score",
+        grid_id: majority.grid_id,
+        architecture: majority.architecture,
+        vp_text: vpDraft
+      });
+      lastData = data;
+      if (hasValidVpScores(data)) return data;
+      if (attempt < retries) {
+        if (typeof options.onWarn === "function") {
+          options.onWarn(`VP score invalid, retry ${attempt + 1}/${retries}`, {
+            step: "r1_vp_score",
+            attempt: attempt + 1,
+            score_valid: data?.score_valid,
+            scores: data?.scores || null
+          });
+        }
+        await sleep(retryDelayMs);
+        continue;
+      }
+    } catch (err) {
+      lastError = err;
+      if (attempt < retries) {
+        if (typeof options.onWarn === "function") {
+          options.onWarn(`VP score request failed, retry ${attempt + 1}/${retries}`, {
+            step: "r1_vp_score",
+            attempt: attempt + 1,
+            error: err.message || String(err)
+          });
+        }
+        await sleep(retryDelayMs);
+        continue;
+      }
+    }
+  }
+
+  if (fallbackData) {
+    if (typeof options.onWarn === "function") {
+      options.onWarn("VP score recovery used last valid scores", {
+        step: "r1_vp_score",
+        error: lastError?.message || null,
+        score_valid: lastData?.score_valid,
+        fallback_scores: fallbackData.scores || null
+      });
+    }
+    return {
+      ...fallbackData,
+      recovered_from_previous_valid_score: true,
+      recovered_for_vp_text: vpDraft,
+      raw_score_payload: lastData || null
+    };
+  }
+
+  if (lastError) throw lastError;
+  assert(lastData?.ok === true, "submitVP score returned ok=false");
+  assert(lastData?.score_valid === true, "submitVP score returned score_valid=false");
+  assert(Number.isFinite(Number(lastData?.scores?.coverage)), "coverage missing from submitVP score");
+  assert(Number.isFinite(Number(lastData?.scores?.generalizability)), "generalizability missing from submitVP score");
+  assert(Number.isFinite(Number(lastData?.scores?.effectiveness)), "effectiveness missing from submitVP score");
+  return lastData;
+}
+
+async function confirmVPDraft(api, teamId, majority, vpDraft, jinangContext, options = {}) {
+  const retries = Math.max(0, Number(options.retries || 0));
+  const retryDelayMs = Math.max(0, Number(options.retryDelayMs || 800));
+  const fallbackScores = options.fallbackScores && typeof options.fallbackScores === "object"
+    ? options.fallbackScores
+    : null;
+  const fallbackVpResult = options.fallbackVpResult && typeof options.fallbackVpResult === "object"
+    ? options.fallbackVpResult
+    : null;
+  let lastData = null;
+  let lastError = null;
+
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      const data = await stepApi(api, "R1.5_vp_confirm").submitVP(teamId, {
+        mode: "confirm",
+        grid_id: majority.grid_id,
+        architecture: majority.architecture,
+        vp_text: vpDraft,
+        jinang: jinangContext
+      });
+      lastData = data;
+      if (hasVpResultPayload(data)) return data;
+      if (attempt < retries) {
+        if (typeof options.onWarn === "function") {
+          options.onWarn(`VP confirm missing vp_result, retry ${attempt + 1}/${retries}`, {
+            step: "r1_vp_confirm",
+            attempt: attempt + 1
+          });
+        }
+        await sleep(retryDelayMs);
+        continue;
+      }
+    } catch (err) {
+      lastError = err;
+      if (attempt < retries) {
+        if (typeof options.onWarn === "function") {
+          options.onWarn(`VP confirm request failed, retry ${attempt + 1}/${retries}`, {
+            step: "r1_vp_confirm",
+            attempt: attempt + 1,
+            error: err.message || String(err)
+          });
+        }
+        await sleep(retryDelayMs);
+        continue;
+      }
+    }
+  }
+
+  if (lastData?.ok === true) {
+    const recoveredVpText = normalizeVpDraftText(lastData.vp_text || lastData.final_vp_text, vpDraft);
+    const recoveredScores = {
+      coverage: lastData.scores?.coverage ?? fallbackScores?.coverage ?? null,
+      generalizability: lastData.scores?.generalizability ?? fallbackScores?.generalizability ?? null,
+      effectiveness: lastData.scores?.effectiveness ?? fallbackScores?.effectiveness ?? null
+    };
+    if (typeof options.onWarn === "function") {
+      options.onWarn("VP confirm recovered locally from latest valid draft", {
+        step: "r1_vp_confirm",
+        error: lastError?.message || null,
+        recovered_vp_text: recoveredVpText
+      });
+    }
+    return {
+      ...lastData,
+      ok: true,
+      vp_text: recoveredVpText,
+      final_vp_text: recoveredVpText,
+      scores: recoveredScores,
+      vp_result: buildVpResultFromText(recoveredVpText, fallbackVpResult),
+      recovered_from_confirm_fallback: true
+    };
+  }
+
+  if (lastError) throw lastError;
+  assert(lastData?.ok === true, "submitVP confirm returned ok=false");
+  assert(lastData?.vp_result && typeof lastData.vp_result === "object", "submitVP confirm missing vp_result");
+  return lastData;
+}
+
+async function chatWithVpCoach(api, teamId, payload, options = {}) {
+  const retries = Math.max(0, Number(options.retries || 0));
+  const retryDelayMs = Math.max(0, Number(options.retryDelayMs || 800));
+  const timeoutMs = Math.max(1000, Number(options.timeoutMs || 30000));
+  const fallbackReply = String(options.fallbackReply || "").trim();
+  let lastError = null;
+
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      const data = await stepApi(api, "R1.5_vp_chat").post(
+        `/api/team/${encodeURIComponent(teamId)}/phase3/chat`,
+        payload,
+        { retries: 0, timeoutMs }
+      );
+      if (data?.ok === true && String(data.coach_reply || "").trim()) {
+        return data;
+      }
+      lastError = new Error(`vp chat response invalid on attempt ${attempt + 1}`);
+    } catch (err) {
+      lastError = err;
+    }
+
+    if (attempt < retries) {
+      if (typeof options.onWarn === "function") {
+        options.onWarn(`VP chat request failed, retry ${attempt + 1}/${retries}`, {
+          step: "r1_vp_chat",
+          attempt: attempt + 1,
+          error: lastError?.message || String(lastError)
+        });
+      }
+      await sleep(retryDelayMs);
+      continue;
+    }
+  }
+
+  if (fallbackReply) {
+    if (typeof options.onWarn === "function") {
+      options.onWarn("VP chat recovered with local fallback coach reply", {
+        step: "r1_vp_chat",
+        error: lastError?.message || String(lastError || ""),
+        fallback_reply: fallbackReply
+      });
+    }
+    return {
+      ok: true,
+      coach_reply: fallbackReply,
+      recovered_from_chat_fallback: true
+    };
+  }
+
+  throw lastError || new Error("vp chat failed");
 }
 
 function createStudentActor(options, teamIndex, memberIndex, teamId, memberId, fallbackMemberName) {
@@ -454,9 +708,13 @@ async function runRound1(result, api, teamSize, teamIndex, options, tracker) {
     : await leadWriterActor.generatePhase1Choice({
       grid_id: majority.grid_id,
       architecture: majority.architecture
-    });
+  });
   let vpDraft = normalizeVpDraftText(initialVpDraft);
-  const baselineScoreData = await runStep(result, "r1_vp_score", async () => scoreVPDraft(api, teamId, majority, vpDraft));
+  const baselineScoreData = await runStep(result, "r1_vp_score", async () => scoreVPDraft(api, teamId, majority, vpDraft, {
+    retries: 2,
+    onWarn: (message, details) => warn(result, message, details)
+  }));
+  let lastValidVpScoreData = baselineScoreData;
   tracker.recordVpScoreFeatures(baselineScoreData.features, baselineScoreData.scores);
   tracker.pushVpIteration({
     iteration: 0,
@@ -468,7 +726,8 @@ async function runRound1(result, api, teamSize, teamIndex, options, tracker) {
       G: baselineScoreData.scores?.generalizability,
       E: baselineScoreData.scores?.effectiveness
     },
-    coach_reply: baselineScoreData.coach_reply || null
+    coach_reply: baselineScoreData.coach_reply || null,
+    speaker_reply: null
   });
   const chatHistory = [];
   await runStep(result, "r1_vp_chat", async () => {
@@ -480,11 +739,17 @@ async function runRound1(result, api, teamSize, teamIndex, options, tracker) {
       const speakerReply = round === 0
         ? `我们团队目前主张的定位是 ${majority.grid_id} / ${majority.architecture}，请指出最该补强的一点。`
         : await speakerActor.generateVPChatReply(lastCoachReply, chatHistory);
-      const chatData = await stepApi(api, "R1.5_vp_chat").chatVP(teamId, {
+      const chatData = await chatWithVpCoach(api, teamId, {
         message: speakerReply,
         grid_id: majority.grid_id,
         architecture: majority.architecture,
         jinang: jinangContext
+      }, {
+        retries: 2,
+        timeoutMs: 30000,
+        retryDelayMs: 800,
+        fallbackReply: buildFallbackCoachReply(majority.grid_id, majority.architecture),
+        onWarn: (message, details) => warn(result, message, details)
       });
       assert(chatData.ok === true, `vp chat round ${round + 1} failed`);
       assert(String(chatData.coach_reply || "").trim(), `vp chat round ${round + 1} reply is empty`);
@@ -499,12 +764,19 @@ async function runRound1(result, api, teamSize, teamIndex, options, tracker) {
         conversationHistory: chatHistory
       });
       vpDraft = normalizeVpDraftText(revisedVp, previousVp);
-      const revisedScoreData = await scoreVPDraft(api, teamId, majority, vpDraft);
+      const revisedScoreData = await scoreVPDraft(api, teamId, majority, vpDraft, {
+        retries: 2,
+        fallbackData: lastValidVpScoreData,
+        onWarn: (message, details) => warn(result, message, details)
+      });
       const revisedScores = {
         C: revisedScoreData.scores?.coverage,
         G: revisedScoreData.scores?.generalizability,
         E: revisedScoreData.scores?.effectiveness
       };
+      if (hasValidVpScores(revisedScoreData)) {
+        lastValidVpScoreData = revisedScoreData;
+      }
       tracker.recordVpScoreFeatures(revisedScoreData.features, revisedScoreData.scores);
       tracker.pushVpIteration({
         iteration: round + 1,
@@ -513,11 +785,28 @@ async function runRound1(result, api, teamSize, teamIndex, options, tracker) {
         vp_text: vpDraft,
         scores: revisedScores,
         coach_reply: chatData.coach_reply,
+        speaker_reply: speakerReply,
         changes: {
           who_changed: vpDraft !== previousVp,
           pain_changed: vpDraft !== previousVp,
           how_changed: vpDraft !== previousVp
         }
+      });
+      tracker.pushVpChatLog({
+        round_number: round + 1,
+        coach_message: chatData.coach_reply,
+        speaker_persona: speaker.persona,
+        speaker_name: speaker.name,
+        speaker_reply: speakerReply,
+        lead_writer_persona: result.meta.round1LeadWriter?.persona || null,
+        lead_writer_name: result.meta.round1LeadWriter?.name || null,
+        vp_before: previousVp,
+        vp_after: vpDraft,
+        score_product_before: scoreProduct(tracker.team.vpIterations[tracker.team.vpIterations.length - 2]?.scores),
+        score_product_after: scoreProduct(revisedScores),
+        score_C: revisedScores.C,
+        score_G: revisedScores.G,
+        score_E: revisedScores.E
       });
       lastCoachReply = chatData.coach_reply;
       if (verbose) {
@@ -527,27 +816,26 @@ async function runRound1(result, api, teamSize, teamIndex, options, tracker) {
   });
   tracker.team.vp_coach_turns_total = countUserTurns(chatHistory);
 
-  const confirmData = await runStep(result, "r1_vp_confirm", async () => {
-    const data = await stepApi(api, "R1.5_vp_confirm").submitVP(teamId, {
-      mode: "confirm",
-      grid_id: majority.grid_id,
-      architecture: majority.architecture,
-      vp_text: vpDraft,
-      jinang: jinangContext
-    });
-    assert(data.ok === true, "submitVP confirm returned ok=false");
-    assert(data.vp_result && typeof data.vp_result === "object", "submitVP confirm missing vp_result");
-    return data;
-  });
+  const confirmData = await runStep(result, "r1_vp_confirm", async () => confirmVPDraft(
+    api,
+    teamId,
+    majority,
+    vpDraft,
+    jinangContext,
+    {
+      retries: 2,
+      fallbackScores: lastValidVpScoreData?.scores || baselineScoreData?.scores || null,
+      fallbackVpResult: buildVpResultFromText(vpDraft),
+      onWarn: (message, details) => warn(result, message, details)
+    }
+  ));
   const confirmedVpText = normalizeVpDraftText(confirmData.vp_text || confirmData.final_vp_text, vpDraft);
   const confirmScores = {
     C: confirmData.scores?.coverage ?? baselineScoreData.scores?.coverage,
     G: confirmData.scores?.generalizability ?? baselineScoreData.scores?.generalizability,
     E: confirmData.scores?.effectiveness ?? baselineScoreData.scores?.effectiveness
   };
-  const confirmScoreProduct = [confirmScores.C, confirmScores.G, confirmScores.E].every((value) => Number.isFinite(Number(value)))
-    ? Number((Number(confirmScores.C) * Number(confirmScores.G) * Number(confirmScores.E)).toFixed(4))
-    : null;
+  const confirmScoreProduct = scoreProduct(confirmScores);
   const bestHistorical = tracker.getBestVpIteration();
   const bestOverall = !bestHistorical || (confirmScoreProduct != null && confirmScoreProduct >= bestHistorical.score)
     ? {
@@ -564,11 +852,39 @@ async function runRound1(result, api, teamSize, teamIndex, options, tracker) {
     (confirmScoreProduct == null || confirmScoreProduct < bestHistorical.score)
   );
   const selectedVpText = useBestIteration ? bestHistorical.vp_text : confirmedVpText;
-  const selectedScores = useBestIteration ? bestHistorical.scores : confirmScores;
+  const selectedScoreData = useBestIteration
+    ? await runStep(result, "r1_vp_rescore_best", async () => {
+        try {
+          return await scoreVPDraft(api, teamId, majority, selectedVpText);
+        } catch (err) {
+          warn(result, "Best iteration rescore failed; falling back to the stored best-iteration scores", {
+            step: "r1_vp_rescore_best",
+            error: err.message || String(err)
+          });
+          return {
+            scores: {
+              coverage: bestHistorical?.scores?.C,
+              generalizability: bestHistorical?.scores?.G,
+              effectiveness: bestHistorical?.scores?.E
+            },
+            features: null,
+            recovered_from_iteration: true
+          };
+        }
+      })
+    : confirmData;
+  const selectedScores = {
+    C: selectedScoreData.scores?.coverage ?? bestHistorical?.scores?.C ?? confirmScores.C,
+    G: selectedScoreData.scores?.generalizability ?? bestHistorical?.scores?.G ?? confirmScores.G,
+    E: selectedScoreData.scores?.effectiveness ?? bestHistorical?.scores?.E ?? confirmScores.E
+  };
   const selectedVpResult = useBestIteration
     ? buildVpResultFromText(selectedVpText, confirmData.vp_result || null)
     : (confirmData.vp_result || buildVpResultFromText(selectedVpText));
-  tracker.recordVpScoreFeatures(confirmData.features || baselineScoreData.features, selectedScores || baselineScoreData.scores);
+  tracker.recordVpScoreFeatures(
+    selectedScoreData.features || confirmData.features || baselineScoreData.features,
+    selectedScores || baselineScoreData.scores
+  );
   tracker.pushVpIteration({
     iteration: 4,
     trigger: "confirm_submit",
@@ -576,6 +892,7 @@ async function runRound1(result, api, teamSize, teamIndex, options, tracker) {
     vp_text: selectedVpText,
     scores: selectedScores,
     coach_reply: confirmData.coach_reply || null,
+    speaker_reply: null,
     changes: {
       who_changed: selectedVpText !== vpDraft,
       pain_changed: selectedVpText !== vpDraft,
@@ -596,6 +913,12 @@ async function runRound1(result, api, teamSize, teamIndex, options, tracker) {
   };
 
   const phase3State = await stepApi(api, "R1.5_phase3_state").getPhase3State(teamId);
+  const leaderMemberId = resolveLeaderMemberId(
+    phase3State.leader_member_id,
+    phase3State.leaderMemberId,
+    members[leadWriterIndex]?.id,
+    members[0]?.id
+  );
   tracker.team.vp_coach_turns_total = Math.max(
     tracker.team.vp_coach_turns_total || 0,
     countUserTurns(phase3State.coach_history)
@@ -605,6 +928,11 @@ async function runRound1(result, api, teamSize, teamIndex, options, tracker) {
       grid_id: majority.grid_id,
       architecture: majority.architecture,
       scores: selectedScores || confirmData.scores || baselineScoreData.scores,
+      vp_text: selectedVpText,
+      confirmed_fields: buildConfirmedFieldsFromVp(selectedVpResult, selectedVpText),
+      member_id: leaderMemberId,
+      source_iteration: useBestIteration ? bestHistorical?.trigger || "confirm_submit" : "confirm_submit",
+      used_best_iteration: useBestIteration,
       conversation_history: phase3State.coach_history || [],
       vp_result: selectedVpResult,
       vp_result_raw: confirmData.vp_result_raw || null
@@ -630,7 +958,9 @@ async function runRound1(result, api, teamSize, teamIndex, options, tracker) {
   });
 
   await runStep(result, "r1_freeze", async () => {
-    const data = await stepApi(api, "R1.8_freeze").freezeTeam(teamId);
+    const data = await stepApi(api, "R1.8_freeze", leaderMemberId).freezeTeam(teamId, {
+      member_id: leaderMemberId
+    });
     assert(data.ok === true, "freezeTeam returned ok=false");
     assert(data.status === "frozen", `freezeTeam status=${data.status}, expected frozen`);
   });
@@ -680,7 +1010,7 @@ async function runRound2(result, api, teamId, members, memberActors, teamIndex, 
   );
   tracker.recordAssignments(assignments);
 
-  const interviewMembers = assignments.filter((assignment) => assignment.dims.length > 0).slice(0, Math.min(3, assignments.length));
+  const interviewMembers = assignments.filter((assignment) => assignment.dims.length > 0);
   const sessionIds = new Set();
   const interviewResults = await runStep(result, "r2_interviews", async () => {
     const out = await Promise.all(interviewMembers.map(async (assignment) => {
@@ -728,7 +1058,10 @@ async function runRound2(result, api, teamId, members, memberActors, teamIndex, 
       assert(endData.isComplete === true, `interview did not complete for ${assignment.memberName}`);
       assert(endData.round <= 10, `interview round exceeded limit for ${assignment.memberName}`);
       assert(endData.radar && typeof endData.radar === "object", `interview radar missing for ${assignment.memberName}`);
-      tracker.recordInterview(assignment.memberId, history, endData);
+      tracker.recordInterview(assignment.memberId, history, endData, {
+        interview_persona_id: startData.persona?.id || null,
+        interview_persona_name: startData.persona?.name || null
+      });
       return {
         memberId: assignment.memberId,
         dims: assignment.dims,
@@ -853,13 +1186,17 @@ async function runRound2(result, api, teamId, members, memberActors, teamIndex, 
     members[0]?.id || null,
     members[0]?.member_name || "成员1"
   );
+  const pricingBase = readTeamPricingBase(recap, tracker);
+  const channelFee = round2ChannelFeePercent(recap.final_grid_id);
   const price = await pricingStudent.generatePriceChoice({
-    basePrice: recap.P || recap.Pmax || 12000,
-    min: Math.max(5000, Math.round(Number(recap.P || recap.Pmax || 12000) * 0.7)),
-    max: Math.max(5000, Math.round(Number(recap.Pmax || recap.P || 12000) * 1.1)),
-    totalCOGS: recap.COGSbase || 2000
+    basePrice: pricingBase,
+    min: Math.max(5000, Math.round(pricingBase * 0.5)),
+    max: Math.round(pricingBase * 1.2),
+    totalCOGS: recap.COGSbase || 2000,
+    channelFee
   });
-  tracker.recordPrice(price, Number(recap.WTP || 0) > 0 ? Number((price / Number(recap.WTP)).toFixed(4)) : null);
+  const pricingWtp = Number(tracker.team.r1_wtp_adj || recap.wtp_breakdown?.final_result?.WTPadj || 0);
+  tracker.recordPrice(price, pricingWtp > 0 ? Number((price / pricingWtp).toFixed(4)) : null);
 
   const previewData = await runStep(result, "r2_calculate_preview", async () => {
     const calcGridId = toCalcGridId(recap.final_grid_id, recap.architecture || stateData.round1_context?.architecture || "");
@@ -876,7 +1213,10 @@ async function runRound2(result, api, teamId, members, memberActors, teamIndex, 
       COGSbase: Number(recap.COGSbase || 2000),
       TAM: Number(recap.TAM || 50000),
       H: Number(recap.H || 0.3),
-      wtp_multiplier: tracker.team.r1_wtp_multiplier
+      wtp_multiplier: tracker.team.r1_wtp_multiplier,
+      WTPref_override: tracker.team.r1_wtp_ref,
+      teamId,
+      sessionId: "preview"
     });
     assert(data.ok === true, "calculateRD returned ok=false");
     assert(Number.isFinite(Number(data.share)), "calculateRD missing share");
@@ -888,7 +1228,13 @@ async function runRound2(result, api, teamId, members, memberActors, teamIndex, 
   tracker.team.r2_coverNice = Number.isFinite(Number(previewData.coverNice)) ? Number(previewData.coverNice) : tracker.team.r2_coverNice;
 
   await runStep(result, "r2_submit_final", async () => {
+    const round2LeaderMemberId = resolveLeaderMemberId(
+      stateData.leader_member_id,
+      stateData.leaderMemberId,
+      members[0]?.id
+    );
     const data = await stepApi(api, "R2.7_submit_final").submitFinal(teamId, {
+      member_id: round2LeaderMemberId,
       price,
       selections: mergeData.teamSelections,
       radar: mergeData.mergedInterview?.radar || {},

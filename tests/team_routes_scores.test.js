@@ -3,8 +3,12 @@ const assert = require("node:assert/strict");
 
 const {
   clipScore,
+  lambdaMap,
+  rhoDiscount,
+  buildRound1Outcome,
   vpResultToApiScores,
-  buildVpResultScoringText
+  buildVpResultScoringText,
+  vpResultToConfirmedFields
 } = require("../server/routes/teamRoutes");
 
 test("clipScore keeps null-like values as null instead of coercing to 1.0", () => {
@@ -94,4 +98,76 @@ test("buildVpResultScoringText skips empty fields instead of filling placeholder
     ].join("\n")
   );
   assert.doesNotMatch(conversation, /未明确/);
+});
+
+test("vpResultToConfirmedFields maps vp_result fields into Round 2 persona context", () => {
+  const fields = vpResultToConfirmedFields({
+    target_customer: "夜间巡视压力大的民营养老院",
+    scenario_pain: "护工成本上涨且夜班覆盖不足",
+    value_creation: "通过夜间巡检与异常提醒降低跌倒漏检风险",
+    boundary: "不适用于急性医疗处置"
+  });
+
+  assert.deepEqual(fields, {
+    who_raw: "夜间巡视压力大的民营养老院",
+    pain_raw: "护工成本上涨且夜班覆盖不足",
+    how_raw: "通过夜间巡检与异常提醒降低跌倒漏检风险",
+    alternative_raw: "未明确",
+    boundary_raw: "不适用于急性医疗处置"
+  });
+});
+
+test("vpResultToConfirmedFields falls back to vp text labels when vp_result is incomplete", () => {
+  const fields = vpResultToConfirmedFields({}, [
+    "WHO：独居白领",
+    "PAIN：每天加班到 9 点回家没人说话",
+    "HOW：通过陪伴互动缓解下班后的孤独感",
+    "BOUNDARY：高强度心理危机不适用"
+  ].join("\n"));
+
+  assert.deepEqual(fields, {
+    who_raw: "独居白领",
+    pain_raw: "每天加班到 9 点回家没人说话",
+    how_raw: "通过陪伴互动缓解下班后的孤独感",
+    alternative_raw: "未明确",
+    boundary_raw: "高强度心理危机不适用"
+  });
+});
+
+test("rhoDiscount applies customer clarity discount to WTP multiplier", () => {
+  assert.equal(lambdaMap(5), 1.1);
+  assert.equal(rhoDiscount(3), 0.9);
+
+  const round1 = buildRound1Outcome(
+    "ToC_Differentiation_Adult",
+    "Experience",
+    { C: 3, G: 5, E: 5 },
+    0
+  );
+
+  assert.equal(round1.C, 3);
+  assert.equal(round1.G, 5);
+  assert.equal(round1.E_raw, 5);
+  assert.equal(round1.lambda_G, 1.1);
+  assert.equal(round1.lambda_E, 1.1);
+  assert.equal(round1.rho_C, 0.9);
+  assert.equal(Number(round1.wtp_multiplier.toFixed(3)), 1.089);
+  assert.equal(round1.jinang_wtp_bonus, 0);
+  assert.equal(round1.WTPadj, 18421);
+});
+
+test("buildRound1Outcome applies jinang bonus to WTP without changing E", () => {
+  const round1 = buildRound1Outcome(
+    "ToC_Differentiation_Adult",
+    "Experience",
+    { C: 3, G: 5, E: 4 },
+    0.7
+  );
+
+  assert.equal(round1.E_raw, 4);
+  assert.equal(round1.jinang_E_boost, 0);
+  assert.equal(round1.jinang_wtp_bonus, 0.035);
+  assert.equal(Number(round1.wtp_multiplier.toFixed(4)), 1.0246);
+  assert.equal(round1.WTPadj, 17686);
+  assert.equal(round1.VPscore, 3.7);
 });

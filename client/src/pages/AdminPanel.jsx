@@ -11,6 +11,7 @@ import {
   teacherForceMergeAll,
   teacherForceSubmitCards,
   teacherResetMember,
+  teacherResetSession,
   teacherResetTeam,
   verifyTeacherCode
 } from "../api/teacherApi";
@@ -234,6 +235,13 @@ function TeamCard({ team, expanded, onToggle, onAction, busy }) {
   const timeout = timeoutState(team);
   const statusColor = STATUS_COLORS[team.r2.status] || "#64748b";
   const submittedMembers = team.members.filter((member) => member.cardStatus === "submitted").length;
+  const [actionChoice, setActionChoice] = useState("");
+
+  const handleTeamAction = () => {
+    if (!actionChoice) return;
+    onAction(actionChoice, { team_id: team.id });
+    setActionChoice("");
+  };
 
   return (
     <div
@@ -302,21 +310,61 @@ function TeamCard({ team, expanded, onToggle, onAction, busy }) {
             <span style={{ fontSize: 11, color: timeout.kind === "normal" ? "#64748b" : timeout.kind === "critical" ? "#dc2626" : "#c2410c" }}>
               {timeout.text || `已在此状态 ${fmtMinutes(team.r2.durationMinutes)}`}
             </span>
-            <button
-              onClick={onToggle}
-              style={{
-                padding: "8px 12px",
-                borderRadius: 10,
-                border: "1px solid #cbd5e1",
-                background: "#fff",
-                color: "#334155",
-                fontSize: 12,
-                fontWeight: 700,
-                cursor: "pointer"
-              }}
-            >
-              {expanded ? "收起" : "展开"}
-            </button>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <select
+                value={actionChoice}
+                onChange={(e) => setActionChoice(e.target.value)}
+                style={{
+                  padding: "8px 10px",
+                  borderRadius: 10,
+                  border: "1px solid #cbd5e1",
+                  background: "#fff",
+                  color: "#334155",
+                  fontSize: 12,
+                  fontWeight: 700
+                }}
+              >
+                <option value="">操作 ▼</option>
+                <option value="forceMerge">推进：强制合并（用已提交的卡）</option>
+                <option value="forceAdvancePricing">推进：强制推进到定价</option>
+                <option value="forceAdvanceSubmitted">推进：强制提交</option>
+                <option value="resetTeamInterview">重置：到访谈阶段（清空全部 R2）</option>
+                <option value="resetTeamCards">重置：到选卡阶段（清空选卡及之后）</option>
+                <option value="resetTeamMerge">重置：到合并阶段（清空合并及之后）</option>
+                <option value="resetTeamPricing">重置：到定价阶段（清空定价及之后）</option>
+              </select>
+              <button
+                onClick={handleTeamAction}
+                disabled={!actionChoice || busy}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: 10,
+                  border: "1px solid #cbd5e1",
+                  background: actionChoice ? "#1a5c3a" : "#f8fafc",
+                  color: actionChoice ? "#fff" : "#94a3b8",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: actionChoice && !busy ? "pointer" : "not-allowed"
+                }}
+              >
+                执行
+              </button>
+              <button
+                onClick={onToggle}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: 10,
+                  border: "1px solid #cbd5e1",
+                  background: "#fff",
+                  color: "#334155",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: "pointer"
+                }}
+              >
+                {expanded ? "收起" : "展开"}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -361,29 +409,33 @@ function TeamCard({ team, expanded, onToggle, onAction, busy }) {
                             强制结束访谈
                           </button>
                         )}
-                        {member.cardStatus !== "submitted" && member.cardsSelected > 0 && (
+                        {member.cardStatus === "selecting" && (
                           <button
                             onClick={() => onAction("forceSubmitCards", { team_id: team.id, member_id: member.id })}
                             disabled={busy}
                             style={actionButtonStyle("#8b5cf6")}
                           >
-                            强制提交
+                            强制提交选卡
                           </button>
                         )}
-                        <button
-                          onClick={() => onAction("resetMemberInterview", { team_id: team.id, member_id: member.id })}
-                          disabled={busy}
-                          style={ghostButtonStyle()}
-                        >
-                          重置到访谈
-                        </button>
-                        <button
-                          onClick={() => onAction("resetMemberSelecting", { team_id: team.id, member_id: member.id })}
-                          disabled={busy}
-                          style={ghostButtonStyle()}
-                        >
-                          重置到选卡
-                        </button>
+                        {member.interviewStatus === "in_progress" && (
+                          <button
+                            onClick={() => onAction("resetMemberInterview", { team_id: team.id, member_id: member.id })}
+                            disabled={busy}
+                            style={ghostButtonStyle(true)}
+                          >
+                            重置访谈
+                          </button>
+                        )}
+                        {(member.cardStatus === "selecting" || member.cardStatus === "submitted") && (
+                          <button
+                            onClick={() => onAction("resetMemberSelecting", { team_id: team.id, member_id: member.id })}
+                            disabled={busy}
+                            style={ghostButtonStyle(true)}
+                          >
+                            重置选卡
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -392,35 +444,8 @@ function TeamCard({ team, expanded, onToggle, onAction, busy }) {
             </table>
           </div>
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 16 }}>
-            <button
-              onClick={() => onAction("forceMerge", { team_id: team.id })}
-              disabled={busy}
-              style={actionButtonStyle("#1a5c3a")}
-            >
-              强制合并（用已提交 {submittedMembers} 人的卡）
-            </button>
-            <button
-              onClick={() => onAction("forceAdvance", { team_id: team.id, target_status: "R2_TEAM_DISCUSSION" })}
-              disabled={busy}
-              style={actionButtonStyle("#0f766e")}
-            >
-              跳到讨论阶段
-            </button>
-            <button
-              onClick={() => onAction("resetTeamInterview", { team_id: team.id })}
-              disabled={busy}
-              style={ghostButtonStyle()}
-            >
-              重置到访谈阶段
-            </button>
-            <button
-              onClick={() => onAction("resetTeamReview", { team_id: team.id })}
-              disabled={busy}
-              style={ghostButtonStyle()}
-            >
-              重置到回顾阶段
-            </button>
+          <div style={{ fontSize: 11, color: "#94a3b8" }}>
+            可在上方“操作”菜单中执行推进或重置。
           </div>
         </div>
       )}
@@ -441,15 +466,15 @@ function actionButtonStyle(color) {
   };
 }
 
-function ghostButtonStyle() {
+function ghostButtonStyle(isSubtle = false) {
   return {
-    padding: "8px 12px",
+    padding: isSubtle ? "6px 10px" : "8px 12px",
     borderRadius: 10,
-    border: "1px solid #cbd5e1",
+    border: isSubtle ? "1px solid #e2e8f0" : "1px solid #cbd5e1",
     background: "#fff",
-    color: "#334155",
-    fontSize: 12,
-    fontWeight: 700,
+    color: isSubtle ? "#6b7280" : "#334155",
+    fontSize: isSubtle ? 11 : 12,
+    fontWeight: isSubtle ? 600 : 700,
     cursor: "pointer"
   };
 }
@@ -466,7 +491,16 @@ export default function AdminPanel() {
   const [importResult, setImportResult] = useState(null);
   const [importError, setImportError] = useState("");
   const [lastUpdatedAt, setLastUpdatedAt] = useState("");
+  const [toasts, setToasts] = useState([]);
   const fileRef = useRef(null);
+
+  const pushToast = (type, message) => {
+    const id = `${Date.now()}-${Math.random()}`;
+    setToasts((prev) => [...prev, { id, type, message }]);
+    window.setTimeout(() => {
+      setToasts((prev) => prev.filter((item) => item.id !== id));
+    }, 3000);
+  };
 
   const loadSession = async (silent = false) => {
     if (!teacherCode) return;
@@ -503,14 +537,15 @@ export default function AdminPanel() {
     setTeacherCode("");
   };
 
-  const withRefresh = async (label, fn) => {
+  const withRefresh = async (label, fn, successMessage) => {
     setBusyAction(label);
     try {
       const result = await fn();
       await loadSession(true);
+      if (successMessage) pushToast("success", successMessage);
       return result;
     } catch (err) {
-      window.alert(err.message || "操作失败");
+      pushToast("error", err.message || "操作失败");
       return null;
     } finally {
       setBusyAction("");
@@ -521,43 +556,87 @@ export default function AdminPanel() {
     if (!teacherCode) return;
 
     if (type === "forceEndInterview") {
-      await withRefresh("forceEndInterview", () => teacherForceEndInterview(teacherCode, payload));
+      await withRefresh("forceEndInterview", () => teacherForceEndInterview(teacherCode, payload), "已强制结束该成员访谈");
       return;
     }
     if (type === "forceSubmitCards") {
-      await withRefresh("forceSubmitCards", () => teacherForceSubmitCards(teacherCode, payload));
+      await withRefresh("forceSubmitCards", () => teacherForceSubmitCards(teacherCode, payload), "已强制提交该成员选卡");
       return;
     }
     if (type === "forceMerge") {
-      await withRefresh("forceMerge", () => teacherForceMerge(teacherCode, payload));
+      await withRefresh("forceMerge", () => teacherForceMerge(teacherCode, payload), "已强制合并该组");
+      return;
+    }
+    if (type === "forceAdvancePricing") {
+      await withRefresh("forceAdvancePricing", () => teacherForceAdvance(teacherCode, { ...payload, target_step: "pricing" }), "已推进到定价阶段");
+      return;
+    }
+    if (type === "forceAdvanceSubmitted") {
+      await withRefresh("forceAdvanceSubmitted", () => teacherForceAdvance(teacherCode, { ...payload, target_step: "submitted" }), "已强制提交该组");
       return;
     }
     if (type === "forceAdvance") {
-      await withRefresh("forceAdvance", () => teacherForceAdvance(teacherCode, payload));
+      await withRefresh("forceAdvance", () => teacherForceAdvance(teacherCode, payload), "已推进该组状态");
       return;
     }
     if (type === "resetMemberInterview") {
-      const confirmed = window.confirm("将该成员重置到访谈阶段，并清除其此后数据。继续吗？");
+      const confirmed = window.confirm("确认要重置该成员到访谈阶段？\n将清除其访谈记录与选卡数据。");
       if (!confirmed) return;
-      await withRefresh("resetMemberInterview", () => teacherResetMember(teacherCode, { ...payload, reset_to: "interviewing" }));
+      await withRefresh(
+        "resetMemberInterview",
+        () => teacherResetMember(teacherCode, { ...payload, reset_to: "interviewing", confirm: true }),
+        "已重置该成员到访谈阶段"
+      );
       return;
     }
     if (type === "resetMemberSelecting") {
-      const confirmed = window.confirm("将该成员重置到选卡阶段，并清除其此后数据。继续吗？");
+      const confirmed = window.confirm("确认要重置该成员到选卡阶段？\n将清除其选卡数据，保留访谈结果。");
       if (!confirmed) return;
-      await withRefresh("resetMemberSelecting", () => teacherResetMember(teacherCode, { ...payload, reset_to: "selecting" }));
+      await withRefresh(
+        "resetMemberSelecting",
+        () => teacherResetMember(teacherCode, { ...payload, reset_to: "selecting", confirm: true }),
+        "已重置该成员到选卡阶段"
+      );
       return;
     }
     if (type === "resetTeamInterview") {
-      const confirmed = window.confirm("此操作不可撤销，将清除该组在访谈阶段之后的所有数据。继续吗？");
+      const confirmed = window.confirm("确认重置到访谈阶段？\n将清除：全部访谈/选卡/合并/定价数据。");
       if (!confirmed) return;
-      await withRefresh("resetTeamInterview", () => teacherResetTeam(teacherCode, { ...payload, reset_to: "R2_INTERVIEWING", confirm: true }));
+      await withRefresh(
+        "resetTeamInterview",
+        () => teacherResetTeam(teacherCode, { ...payload, reset_to: "R2_INTERVIEWING", confirm: true }),
+        "已重置该组到访谈阶段"
+      );
       return;
     }
-    if (type === "resetTeamReview") {
-      const confirmed = window.confirm("此操作不可撤销，将清除该组在回顾阶段之后的所有数据。继续吗？");
+    if (type === "resetTeamCards") {
+      const confirmed = window.confirm("确认重置到选卡阶段？\n将清除：全员选卡、合并与定价数据。\n保留：访谈记录。");
       if (!confirmed) return;
-      await withRefresh("resetTeamReview", () => teacherResetTeam(teacherCode, { ...payload, reset_to: "R2_REVIEW", confirm: true }));
+      await withRefresh(
+        "resetTeamCards",
+        () => teacherResetTeam(teacherCode, { ...payload, reset_to: "R2_INDIVIDUAL_CARDS", confirm: true }),
+        "已重置该组到选卡阶段"
+      );
+      return;
+    }
+    if (type === "resetTeamMerge") {
+      const confirmed = window.confirm("确认重置到合并阶段？\n将清除：合并结果与定价数据。\n保留：访谈记录与个人选卡。");
+      if (!confirmed) return;
+      await withRefresh(
+        "resetTeamMerge",
+        () => teacherResetTeam(teacherCode, { ...payload, reset_to: "R2_TEAM_MERGE", confirm: true }),
+        "已重置该组到合并阶段"
+      );
+      return;
+    }
+    if (type === "resetTeamPricing") {
+      const confirmed = window.confirm("确认重置到定价阶段？\n将清除：定价与提交数据。\n保留：访谈、选卡与合并结果。");
+      if (!confirmed) return;
+      await withRefresh(
+        "resetTeamPricing",
+        () => teacherResetTeam(teacherCode, { ...payload, reset_to: "R2_TEAM_DISCUSSION", confirm: true }),
+        "已重置该组到定价阶段"
+      );
     }
   };
 
@@ -623,6 +702,22 @@ export default function AdminPanel() {
     }
   };
 
+  const handleResetSession = async () => {
+    if (!teacherCode) return;
+    const confirmed = window.confirm("确定要清空所有数据？此操作不可撤销。");
+    if (!confirmed) return;
+
+    setBusyAction("resetSession");
+    try {
+      const out = await teacherResetSession(teacherCode, { confirm: true });
+      window.alert(`已清空课程数据：删除 ${Number(out?.deleted_teams || 0)} 个团队，${Number(out?.deleted_members || 0)} 个成员。`);
+      window.location.reload();
+    } catch (err) {
+      window.alert(err.message || "重置课程失败");
+      setBusyAction("");
+    }
+  };
+
   if (!teacherCode) {
     return <AuthGate onVerified={setTeacherCode} />;
   }
@@ -656,6 +751,26 @@ export default function AdminPanel() {
           </div>
         </div>
       </div>
+      {toasts.length > 0 && (
+        <div style={{ position: "fixed", top: 16, right: 16, display: "flex", flexDirection: "column", gap: 10, zIndex: 50 }}>
+          {toasts.map((toast) => (
+            <div
+              key={toast.id}
+              style={{
+                padding: "10px 14px",
+                borderRadius: 10,
+                background: toast.type === "error" ? "#fee2e2" : "#dcfce7",
+                color: toast.type === "error" ? "#991b1b" : "#166534",
+                fontSize: 12,
+                fontWeight: 700,
+                boxShadow: "0 8px 16px rgba(15,23,42,0.12)"
+              }}
+            >
+              {toast.message}
+            </div>
+          ))}
+        </div>
+      )}
 
       <div style={{ maxWidth: 1280, margin: "0 auto", padding: "24px" }}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 18 }}>
@@ -705,14 +820,14 @@ export default function AdminPanel() {
 
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 18 }}>
               <button
-                onClick={() => withRefresh("openRound2", () => openTeacherRound2(teacherCode))}
+                onClick={() => withRefresh("openRound2", () => openTeacherRound2(teacherCode), "已开放 Round 2")}
                 disabled={Boolean(busyAction)}
                 style={actionButtonStyle("#1a5c3a")}
               >
                 开放 Round 2
               </button>
               <button
-                onClick={() => withRefresh("forceMergeAll", () => teacherForceMergeAll(teacherCode))}
+                onClick={() => withRefresh("forceMergeAll", () => teacherForceMergeAll(teacherCode), "已批量强制合并")}
                 disabled={Boolean(busyAction)}
                 style={actionButtonStyle("#8b5cf6")}
               >
@@ -728,6 +843,13 @@ export default function AdminPanel() {
               <span style={{ marginLeft: "auto", fontSize: 12, color: "#64748b", alignSelf: "center" }}>
                 {busyAction ? "操作中..." : lastUpdatedAt ? `最近刷新 ${lastUpdatedAt}` : ""}
               </span>
+              <button
+                onClick={handleResetSession}
+                disabled={Boolean(busyAction)}
+                style={actionButtonStyle("#dc2626")}
+              >
+                重置课程
+              </button>
             </div>
 
             <div style={{ padding: 20, borderRadius: 18, background: "#fff", border: "1px solid #e2e8f0", marginBottom: 18 }}>

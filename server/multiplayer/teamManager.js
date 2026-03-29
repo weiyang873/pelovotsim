@@ -1,6 +1,8 @@
 const path = require("node:path");
 const crypto = require("node:crypto");
 const { dealJinang } = require("./jinangDealer");
+const { ensureSchema: ensureComputationLogSchema } = require("./computationLog");
+const { ensureSchema: ensureVpIterationSchema } = require("./vpIterationStore");
 const { runSql, sqlQuote } = require("../db/pgSql");
 
 const ROOT = path.join(__dirname, "..", "..");
@@ -18,6 +20,7 @@ async function ensureSchema() {
       team_size INTEGER,
       status TEXT,
       created_at TIMESTAMPTZ,
+      leader_member_id TEXT,
       final_grid_id TEXT,
       final_architecture TEXT,
       final_architecture_source TEXT DEFAULT 'player_selected',
@@ -46,7 +49,11 @@ async function ensureSchema() {
       member_index INTEGER,
       jinang_market_id TEXT,
       jinang_tech_id TEXT,
-      joined_at TIMESTAMPTZ
+      joined_at TIMESTAMPTZ,
+      vp_text TEXT,
+      vp_confirmed_fields JSONB,
+      vp_scores JSONB,
+      vp_confirmed_at TIMESTAMPTZ
     );
 
     CREATE TABLE IF NOT EXISTS member_submissions (
@@ -70,6 +77,15 @@ async function ensureSchema() {
       matched BOOLEAN,
       match_reason TEXT,
       effect_applied TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS round1_team_drafts (
+      team_id TEXT PRIMARY KEY,
+      grid_id TEXT,
+      architecture TEXT,
+      vp_text TEXT,
+      updated_by TEXT,
+      updated_at TIMESTAMPTZ
     );
 
     CREATE TABLE IF NOT EXISTS students (
@@ -97,18 +113,28 @@ async function ensureSchema() {
     ALTER TABLE teams ALTER COLUMN final_vp_e_adj TYPE DOUBLE PRECISION USING final_vp_e_adj::DOUBLE PRECISION;
     ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_rho_c DOUBLE PRECISION;
     ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_wtp_multiplier DOUBLE PRECISION;
+    ALTER TABLE teams ADD COLUMN IF NOT EXISTS leader_member_id TEXT;
+    ALTER TABLE team_members ADD COLUMN IF NOT EXISTS vp_text TEXT;
+    ALTER TABLE team_members ADD COLUMN IF NOT EXISTS vp_confirmed_fields JSONB;
+    ALTER TABLE team_members ADD COLUMN IF NOT EXISTS vp_scores JSONB;
+    ALTER TABLE team_members ADD COLUMN IF NOT EXISTS vp_confirmed_at TIMESTAMPTZ;
   `);
+  await ensureComputationLogSchema();
+  await ensureVpIterationSchema();
 }
 
 async function getTeamRow(teamId) {
   const rows = await runSql(`
-    SELECT id, team_name, team_size, status, created_at,
-      final_grid_id, final_architecture, final_architecture_source, final_channel1, final_channel2,
-      final_channel1_share, final_vp_text, final_vp_scores, final_gm_max, final_target_gm,
-      final_sam, final_wtp_adj, final_wtp_ref, final_vp_c, final_vp_g, final_vp_e_raw, final_vp_e_adj,
-      final_rho_c, final_wtp_multiplier
-    FROM teams
-    WHERE id = ${sqlQuote(teamId)}
+    SELECT t.id, t.team_name, t.team_size, t.status, t.created_at,
+      t.leader_member_id,
+      leader.member_name AS leader_name,
+      t.final_grid_id, t.final_architecture, t.final_architecture_source, t.final_channel1, t.final_channel2,
+      t.final_channel1_share, t.final_vp_text, t.final_vp_scores, t.final_gm_max, t.final_target_gm,
+      t.final_sam, t.final_wtp_adj, t.final_wtp_ref, t.final_vp_c, t.final_vp_g, t.final_vp_e_raw, t.final_vp_e_adj,
+      t.final_rho_c, t.final_wtp_multiplier
+    FROM teams t
+    LEFT JOIN team_members leader ON leader.id = t.leader_member_id
+    WHERE t.id = ${sqlQuote(teamId)}
     LIMIT 1;
   `);
   return rows[0] || null;
@@ -129,7 +155,7 @@ async function createTeam(teamName, teamSize) {
 
   await runSql(`
     INSERT INTO teams (
-      id, team_name, team_size, status, created_at,
+      id, team_name, team_size, status, created_at, leader_member_id,
       final_grid_id, final_architecture, final_architecture_source, final_channel1, final_channel2,
       final_channel1_share, final_vp_text, final_vp_scores, final_gm_max, final_target_gm,
       final_sam, final_wtp_adj, final_wtp_ref, final_vp_c, final_vp_g, final_vp_e_raw, final_vp_e_adj,
@@ -140,6 +166,7 @@ async function createTeam(teamName, teamSize) {
       ${size},
       'forming',
       ${sqlQuote(createdAt)},
+      NULL,
       NULL, NULL, 'player_selected', NULL, NULL,
       NULL, NULL, NULL, NULL, NULL,
       NULL, NULL, NULL, NULL, NULL, NULL, NULL,
@@ -230,6 +257,30 @@ async function getTeam(teamId) {
   return { ...team, members };
 }
 
+async function setTeamLeader(teamId, memberId) {
+  await ensureSchema();
+  const tid = String(teamId || "").trim();
+  const mid = String(memberId || "").trim();
+  if (!tid) throw new Error("teamId required");
+  if (!mid) throw new Error("memberId required");
+
+  const memberRows = await runSql(`
+    SELECT id
+    FROM team_members
+    WHERE team_id = ${sqlQuote(tid)} AND id = ${sqlQuote(mid)}
+    LIMIT 1;
+  `);
+  if (!memberRows[0]) throw new Error("member not found in team");
+
+  await runSql(`
+    UPDATE teams
+    SET leader_member_id = ${sqlQuote(mid)}
+    WHERE id = ${sqlQuote(tid)};
+  `);
+
+  return getTeam(tid);
+}
+
 async function updateTeamStatus(teamId, newStatus) {
   await ensureSchema();
   const tid = String(teamId || "").trim();
@@ -255,5 +306,6 @@ module.exports = {
   createTeam,
   joinTeam,
   getTeam,
+  setTeamLeader,
   updateTeamStatus
 };

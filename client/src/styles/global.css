@@ -4,7 +4,13 @@ html, body, #root {
   padding: 0;
   min-height: 100%;
 }
+
+* {
+  box-sizing: border-box;
+}
+
 body {
   font-family: "Noto Sans SC", sans-serif;
   background: #f5f1eb;
+  color: #0f172a;
 }

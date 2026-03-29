@@ -19,11 +19,11 @@ const FEATURE_KEYS = [
 
 const SCORING_WEIGHTS = {
   C: {
-    has_clear_customer: 0.45,
-    has_scenario: 0.35,
-    scenario_is_recurring: 0.35,
-    pain_has_specificity: 0.45,
-    pain_has_structural_cause: 0.40,
+    has_clear_customer: 0.40,
+    has_scenario: 0.30,
+    scenario_is_recurring: 0.30,
+    pain_has_specificity: 0.40,
+    pain_has_structural_cause: 0.35,
     architecture_penalty: -0.25,
     tob_wrong_customer: -0.40
   },
@@ -34,9 +34,9 @@ const SCORING_WEIGHTS = {
     pain_has_structural_cause: 0.45
   },
   E: {
-    has_mechanism: 0.75,
-    has_alternative_comparison: 0.75,
-    has_boundary: 0.50,
+    has_mechanism: 0.65,
+    has_alternative_comparison: 0.65,
+    has_boundary: 0.40,
     architecture_penalty: -0.25
   }
 };
@@ -137,29 +137,101 @@ function calculateScores(features) {
 }
 
 function buildExtractPrompt(conversation, cellLabel, architectureLabel) {
-  return `你是一个文本分析工具。请根据以下完整的 VP Coach 对话记录，对 13 个特征逐一打分。对话中包含学生的发言和教练的反馈，请从学生表达的内容中寻找证据。
+  return `你是一个严格的文本分析工具。请根据以下 VP Coach 对话记录，对 13 个特征逐一打分。
 
-每个特征只有三个值：
-- 0 = 完全没有提到
-- 1 = 提到了但模糊、薄弱、不具体
-- 2 = 清楚、具体、有说服力
+## 最重要的规则（必须遵守）
+
+对话记录中有两种角色：
+- 【学生原话】：这是学生自己说的内容。只有这部分才算证据。
+- 【教练说的】：这是 AI 教练的引导和总结。教练说的任何内容都不算学生的证据。
+
+没有例外。即使教练帮学生整合了一句完整的价值主张，且学生说了"对""可以""没问题"，你也不能把教练写的内容算作学生的证据。学生的"对"只能证明学生同意了，不能证明学生自己能说出那些内容。评分必须基于学生自己主动表达的粒度。
+
+举例：学生只说了"高端诊所"四个字，教练后来总结为"依赖满意度评分和复购率的高端诊所"，学生说"对"。此时 has_clear_customer = 1，不是 2。
+
+## 每个特征只有三个值
+- 0 = 学生完全没有提到相关内容
+- 1 = 学生提到了但模糊、薄弱、只有一个要素
+- 2 = 学生说得清楚、具体、有至少两个交叉要素或有画面感
 
 只输出 JSON，不要任何其他文字。
 
-重要规则：
-- 你只能根据下面这份对话记录中学生自己说过的内容评分。
-- 教练的引导性提问和建议不算学生的证据，只有学生明确表达或认可的内容才算。
-- 如果教练帮学生整合了一句完整的价值主张，且学生没有否定，可以作为评分依据。
-- 如果只有一句笼统表述，不能按高分处理。
-
-完整 VP Coach 对话记录：
+## 完整对话记录
 ${conversation || "（暂无对话）"}
 
-学生选定的市场：${cellLabel || "未提供"}
-学生选定的架构：${architectureLabel || "未提供"}
+## 学生选定的市场：${cellLabel || "未提供"}
+## 学生选定的架构：${architectureLabel || "未提供"}
 
-13 个特征和判断标准如下：
+## 13 个特征的评分标准
 
+has_clear_customer:
+  0 = 学生没说客户是谁，或只说"用户""大家""所有人"
+  1 = 学生说了一个人群类型但只有 1 个限定（如只说"养老院"或"年轻人"或"企业"）
+  2 = 学生给了至少 2 个交叉限定（如"一线城市的民营养老院"或"25-35岁独居白领"）
+
+has_scenario:
+  0 = 学生没有描述任何使用场景
+  1 = 学生提了场景但只有 1 个要素（只有地点，或只有时间，或只有情境）
+  2 = 学生描述的场景有时间+地点+情境中的至少 2 个
+
+scenario_is_recurring:
+  0 = 学生没提频率，或场景明显是一次性的
+  1 = 学生暗示了可能重复但没有明确频率
+  2 = 学生明确说了是高频场景（有"每天""每次""经常"等频率词）
+
+pain_has_specificity:
+  0 = 学生的痛点只是抽象词（"孤独""不方便""压力大"）
+  1 = 学生的痛点有方向但没具体画面（"老人孤独""回家没人陪"）
+  2 = 学生给了有画面感的痛点描述（"老人坐着发呆 3 小时""推开门只有冰箱嗡嗡声"）
+
+pain_has_structural_cause:
+  0 = 学生没有解释痛点为什么存在
+  1 = 学生暗示了原因但没展开
+  2 = 学生明确说了痛点的结构性原因（如"双职工结构决定了陪伴真空"）
+
+pain_not_extreme_trigger:
+  0 = 学生描述的痛点依赖极端或偶发事件
+  1 = 学生的痛点日常存在但只是断言没论证
+  2 = 学生解释了为什么这个痛点是日常性的
+
+pain_transferable:
+  0 = 学生的痛点只对特定个体成立
+  1 = 学生说"很多人都有"但没有论证
+  2 = 学生给了至少 2 个不同的用户子群或场景来论证迁移性
+
+gain_not_niche:
+  0 = 学生描述的收益只有小众人群在意
+  1 = 收益看起来不小众但学生没论证
+  2 = 学生论证了为什么多数目标用户都会受益
+
+has_mechanism:
+  0 = 学生只有口号（"AI陪伴""更智能""交互卖萌"）
+  1 = 学生提了产品功能但没说因果链
+  2 = 学生说清了：具体功能 → 用户因此得到的变化 → 为什么比替代方案好（三要素都要有）
+
+has_alternative_comparison:
+  0 = 学生完全没提替代方案
+  1 = 学生提到了"现有方案不好"但没说具体是什么
+  2 = 学生指出了至少一种具体替代方案并说明了差在哪
+
+has_boundary:
+  0 = 学生没有提到任何边界或局限
+  1 = 学生暗示了某种限制但不明确
+  2 = 学生明确说了什么情况下不管用
+
+architecture_consistent:
+  0 = 学生描述的价值主张跟选定架构明显矛盾
+  1 = 大方向没矛盾但重点不够突出
+  2 = 内容跟选定架构高度一致
+
+tob_customer_is_institution:
+  仅当市场包含 ToB 时判断，否则填 null
+  0 = 学生的客户明显是终端用户而不是机构
+  1 = 学生提到了机构但不清楚谁决策
+  2 = 学生明确说了客户是机构且决策者可识别
+  null = 不是 ToB 市场
+
+输出格式（只输出这个 JSON，不要其他任何文字）：
 {
   "has_clear_customer": 0,
   "has_scenario": 0,
@@ -174,63 +246,115 @@ ${conversation || "（暂无对话）"}
   "has_boundary": 0,
   "architecture_consistent": 0,
   "tob_customer_is_institution": 0
+}`;
 }
 
-// 0 = 没提客户，或只说"用户""大家""所有人"
-// 1 = 提了人群类型但只有 1 个限定（如"养老院""年轻人""企业""老人"）
-// 2 = 人群有至少 2 个交叉限定条件（如"一线城市 50-150 床的民营养老院运营负责人"或"25-35 岁独居、月入 1.5 万以上的一线城市女性白领"）
+function buildExtractPromptForVP(vpText, cellLabel, architectureLabel) {
+  return `你是一个严格的文本分析工具。请对以下这句价值主张进行 13 个特征的评分。
 
-// 0 = 没有描述任何使用场景
-// 1 = 提了场景但只有 1 个要素，只有时间、只有地点或只有情境，缺少具体画面
-// 2 = 场景有时间、地点、情境中的至少 2 个要素（如"每天晚上八点推开门家里黑灯没声音"）
+## 待评分的价值主张
+"${vpText}"
 
-// 0 = 没提频率，或场景明显是一次性的
-// 1 = 暗示了可能重复但没有明确频率
-// 2 = 明确是高频场景，且有频率词（如"每天""每次下班""每个工作日晚上"）
+## 学生选定的市场：${cellLabel || "未提供"}
+## 学生选定的架构：${architectureLabel || "未提供"}
 
-// 0 = 痛点只是抽象感受词（如"孤独""不方便""压力大"）
-// 1 = 痛点有方向但没具体画面（如"老人孤独""回家没人陪""护工不够"）
-// 2 = 痛点有具体画面和可量化后果（如"老人坐着发呆 3 小时，家属投诉要求退住"或"推开门只有冰箱嗡嗡声，连说句话的人都没有"）
+## 评分规则
 
-// 0 = 痛点是个人选择或偶然因素导致的
-// 1 = 暗示了结构性原因但没有展开论证
-// 2 = 明确论证了痛点源于不可避免的生活结构或行业结构（如"双职工家庭结构决定了下班后必然有 2-3 小时的陪伴真空"）
+每个特征只有三个值：
+- 0 = 这句话里完全没有涉及该方面
+- 1 = 提到了但模糊、笼统、只有一个要素
+- 2 = 说得清楚、具体、有至少两个交叉要素或有画面感
 
-// 0 = 痛点依赖极端或偶发事件
-// 1 = 痛点日常存在但 VP 只是断言没有论证
-// 2 = VP 明确解释了为什么这个痛点是日常性的（给出了结构性原因或频率证据）
+注意：
+- 只评这句话本身包含的信息，不要推测或脑补
+- 政策性套话（"赋能""优化""提升"）如果没有具体画面或因果链，不能打 2
+- "为养老机构"只有一个限定 -> has_clear_customer=1。"为面临护工成本上涨和夜间跌倒风险的养老机构"有两个交叉限定 -> has_clear_customer=2
 
-// 0 = 痛点只对特定个体成立
-// 1 = 痛点看起来普遍但 VP 没有论证迁移性，只是断言"很多人都有"
-// 2 = VP 明确给出了至少 2 个不同的用户子群或场景来论证痛点的可迁移性
+## 13 个特征
 
-// 0 = 收益只有小众人群在意
-// 1 = 收益看起来不小众但 VP 没有论证为什么多数人需要
-// 2 = VP 明确论证了为什么目标人群中的多数人都会受益（有数据、类比或逻辑推理）
+has_clear_customer:
+  0 = 没有说客户是谁，或只说"用户""大家"
+  1 = 说了客户类型但只有 1 个限定（如只说"养老院"或"年轻人"）
+  2 = 有至少 2 个交叉限定（如"面临护工成本上涨的民营养老院"）
 
-// 0 = 只有口号（如"AI陪伴""更智能""更温暖"）
-// 1 = 提了产品功能但没说因果链（如"LOVOT 可以陪伴老人"只说了功能没说因此带来什么变化）
-// 2 = 说清了具体产品功能 + 用户因此得到的变化 + 为什么比替代方案好（三个要素都要有）
+has_scenario:
+  0 = 没有描述使用场景
+  1 = 提了场景但只有 1 个要素
+  2 = 场景有时间+地点+情境中的至少 2 个
 
-// 0 = 完全没提替代方案
-// 1 = 提到了"现有方案不好"但没指出具体是什么方案
-// 2 = 指出了至少一种具体的替代方案并说明了差在哪
+scenario_is_recurring:
+  0 = 没提频率，或场景明显是一次性的
+  1 = 暗示可能重复但没有明确频率
+  2 = 明确是高频场景（有"每天""每次"等频率词，或场景本身是日常性的如"夜间巡房"）
 
-// 0 = 没有提到任何边界或局限
-// 1 = 暗示了某种限制但不明确
-// 2 = 明确说了什么时候不管用
+pain_has_specificity:
+  0 = 痛点只是抽象词（"孤独""不方便""压力大"）
+  1 = 痛点有方向但没具体画面（"老人孤独""人手不够"）
+  2 = 有具体画面或可量化后果（"老人半夜离床跌倒""员工巡房时被老人聊天打断无法完成工作"）
 
-// 0 = 价值主张的内容跟选定架构明显矛盾
-// 1 = 大方向没有矛盾但重点不够突出
-// 2 = 内容跟选定架构高度一致
+pain_has_structural_cause:
+  0 = 没有解释痛点为什么存在
+  1 = 暗示了原因但没展开
+  2 = 明确说了结构性原因（如"护工成本刚性上涨""双职工结构"）
 
-// 仅当学生选的市场包含 ToB 时判断，否则填 null
-// 0 = 客户明显写的是终端用户而不是机构
-// 1 = 提到了机构但不清楚是谁决策
-// 2 = 客户明确是机构且决策者可识别
-// null = 学生选的不是 ToB 市场，此项不适用。但如果学生选的是 ToC 却写了明显的 ToB 场景，请填 0，并在 architecture_consistent 也相应扣分
+pain_not_extreme_trigger:
+  0 = 痛点依赖极端或偶发事件
+  1 = 痛点日常存在但只是断言
+  2 = 痛点是日常性的且有解释
 
-再次提醒：只能根据这份对话记录里学生明确表达或认可的内容评分，记录里没写出来的内容一律不算证据。`;
+pain_transferable:
+  0 = 痛点只对特定个体成立
+  1 = 看起来普遍但没论证
+  2 = 给了至少 2 个子群或场景来论证迁移性
+
+gain_not_niche:
+  0 = 收益只有小众人群在意
+  1 = 收益不小众但没论证
+  2 = 论证了为什么多数目标用户都会受益
+
+has_mechanism:
+  0 = 只有口号（"AI陪伴""更智能"）
+  1 = 提了功能但没说因果链
+  2 = 说清了：功能 -> 用户变化 -> 为什么比替代好（三要素齐全）
+
+has_alternative_comparison:
+  0 = 没提替代方案
+  1 = 提到"现有方案不好"但没说具体是什么
+  2 = 指出了具体替代方案并说明差在哪
+
+has_boundary:
+  0 = 没有提到边界
+  1 = 暗示了限制但不明确
+  2 = 明确说了什么情况下不管用
+
+architecture_consistent:
+  0 = VP 内容跟选定架构明显矛盾
+  1 = 大方向没矛盾但重点不突出
+  2 = 内容跟选定架构高度一致
+
+tob_customer_is_institution:
+  仅当市场包含 ToB 时判断，否则填 null
+  0 = 客户明显是终端用户不是机构
+  1 = 提到机构但不清楚谁决策
+  2 = 客户明确是机构且决策者可识别
+  null = 不是 ToB 市场
+
+只输出 JSON，不要其他任何文字：
+{
+  "has_clear_customer": 0,
+  "has_scenario": 0,
+  "scenario_is_recurring": 0,
+  "pain_has_specificity": 0,
+  "pain_has_structural_cause": 0,
+  "pain_not_extreme_trigger": 0,
+  "pain_transferable": 0,
+  "gain_not_niche": 0,
+  "has_mechanism": 0,
+  "has_alternative_comparison": 0,
+  "has_boundary": 0,
+  "architecture_consistent": 0,
+  "tob_customer_is_institution": 0
+}`;
 }
 
 async function extractFeaturesDetailed(conversation, cellLabel, architectureLabel) {
@@ -290,7 +414,7 @@ E = ${scores.E}/5.0（价值创造说服力）
 抽取的特征：
 ${JSON.stringify(features, null, 2)}
 
-学生的对话历史摘要：
+学生的价值主张：
 ${latestVpText}
 
 要求：
@@ -357,6 +481,57 @@ async function generateFeedback(scores, features, latestVpText) {
   return result.feedback;
 }
 
+async function scoreVpText(vpText, cellLabel, architectureLabel) {
+  if (!vpText || vpText.length < 10) {
+    return { features: null, scores: null, feedback: "VP 文本过短，无法评分。", raw: null };
+  }
+
+  const extractMessages = [
+    { role: "system", content: "你是一个文本分析工具。你只能输出一个 JSON 对象。" },
+    { role: "user", content: buildExtractPromptForVP(vpText, cellLabel, architectureLabel) }
+  ];
+
+  let features = null;
+  let extractRaw = null;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const raw = await withLlmLogging({
+      caller: "vpScorer.scoreVpText.extract",
+      teamId: null,
+      memberId: null,
+      messages: extractMessages
+    }, () => chatCompletion(extractMessages, { temperature: 0, max_tokens: 400 }));
+    extractRaw = raw;
+    try {
+      const parsed = parseJsonLoose(raw);
+      features = normalizeFeatures(parsed, cellLabel);
+      break;
+    } catch (_) {}
+  }
+
+  if (!features) {
+    return { features: null, scores: null, feedback: "特征提取失败。", raw: { extractReply: extractRaw } };
+  }
+
+  const scores = calculateScores(features);
+
+  try {
+    const feedbackResult = await generateFeedbackDetailed(scores, features, vpText);
+    return {
+      features,
+      scores,
+      feedback: feedbackResult.feedback,
+      raw: { extractReply: extractRaw, feedbackReply: feedbackResult.raw }
+    };
+  } catch (_) {
+    return {
+      features,
+      scores,
+      feedback: buildFallbackFeedback(scores, features),
+      raw: { extractReply: extractRaw, feedbackReply: null }
+    };
+  }
+}
+
 async function scoreVp(conversation, cellLabel, architectureLabel) {
   const extracted = await extractFeaturesDetailed(conversation, cellLabel, architectureLabel);
   if (!extracted.features) {
@@ -402,6 +577,8 @@ module.exports = {
   SCORING_WEIGHTS,
   extractFeatures,
   calculateScores,
+  buildExtractPromptForVP,
   generateFeedback,
+  scoreVpText,
   scoreVp
 };

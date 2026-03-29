@@ -174,7 +174,7 @@ async function main() {
         assert(r1.WTPref > 0, "WTPref should be > 0");
         assert(r1.rho_C >= 0.1 && r1.rho_C <= 0.9, `rho_C=${r1.rho_C} out of range`);
         assert(r1.C >= 1 && r1.C <= 5, `C=${r1.C} out of range`);
-        assert(r1.Eadj >= r1.E_raw, `Eadj=${r1.Eadj} < E_raw=${r1.E_raw}`);
+        assert(r1.Eadj === r1.E_raw, `Eadj=${r1.Eadj} should equal E_raw=${r1.E_raw}`);
       }
     });
 

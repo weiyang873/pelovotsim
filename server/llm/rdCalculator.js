@@ -5,6 +5,7 @@
 const fs = require("fs");
 const path = require("path");
 const embeddingService = require("./embeddingService");
+const { scheduleStages } = require("../multiplayer/computationLog");
 
 const dataDir = path.join(__dirname, "../../data");
 const configDir = path.join(__dirname, "../../game_config_v0.1");
@@ -98,11 +99,16 @@ const DEFAULT_PARAMS = {
   tau1: 0.16,
   tau2: 0.22,
 
+  tier_cover_low: 0.5,
+  tier_cover_mid: 0.8,
+  tier_cover_high: 1.0,
+
   omega_core: 0.45,
   omega_nice: 0.25,
   omega_sub: 0.2,
-  omega_risk: 0.35,
+  omega_risk: 0.15,
   omega_cost: 0.2,
+  cost_ref: 5000,
 
   // wtpPrime uplift coefficient
   gamma: 0.3,
@@ -173,6 +179,59 @@ function clip(x, lo, hi) {
   return Math.max(lo, Math.min(hi, x));
 }
 
+function roundForLog(value, digits = 6) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return 0;
+  return Number(num.toFixed(digits));
+}
+
+function cloneForLog(value, fallback = null) {
+  try {
+    return JSON.parse(JSON.stringify(value == null ? fallback : value));
+  } catch (_) {
+    return fallback;
+  }
+}
+
+function getComputationContext(input) {
+  const src = input && typeof input === "object" ? input : {};
+  const teamId = String(src.teamId || src.team_id || "").trim();
+  const sessionId = String(src.sessionId || src.session_id || "").trim();
+  if (!teamId || !sessionId) return null;
+  const memberId = String(src.memberId || src.member_id || "").trim();
+  return {
+    team_id: teamId,
+    session_id: sessionId,
+    member_id: memberId || null,
+    source: String(src.source || "web").trim() || "web"
+  };
+}
+
+function normalizeChannel(value) {
+  const raw = String(value || "").trim().toUpperCase();
+  if (!raw) return null;
+  if (raw === "TOB" || raw === "B2B") return "ToB";
+  if (raw === "TOC" || raw === "B2C") return "ToC";
+  return null;
+}
+
+function normalizeStrategy(value) {
+  const raw = String(value || "").trim().toUpperCase();
+  if (!raw) return null;
+  if (raw.includes("DIFF") || raw.includes("DIFFERENTIATION")) return "DIFF";
+  if (raw.includes("COST")) return "COST";
+  return null;
+}
+
+function normalizeAge(value) {
+  const raw = String(value || "").trim().toUpperCase();
+  if (!raw) return null;
+  if (raw.includes("ELDER") || raw.includes("OLD") || raw.includes("SENIOR")) return "ELDER";
+  if (raw.includes("CHILD") || raw.includes("KID")) return "CHILD";
+  if (raw.includes("ADULT")) return "ADULT";
+  return null;
+}
+
 function parseGridId(gridId) {
   const raw = String(gridId || "").trim();
   const parts = raw.split("_").filter(Boolean);
@@ -181,10 +240,85 @@ function parseGridId(gridId) {
   const s0 = String(parts[1] || "").toUpperCase();
   const a0 = String(parts[2] || "").toUpperCase();
 
-  const channel = c0 === "TOB" || c0 === "B2B" ? "ToB" : "ToC";
-  const strategy = s0.includes("DIFF") || s0.includes("DIFFERENTIATION") ? "DIFF" : "COST";
-  const age = a0.includes("ELDER") ? "ELDER" : a0.includes("CHILD") ? "CHILD" : "ADULT";
-  return { channel, strategy, age };
+  const channel = normalizeChannel(c0) || "ToC";
+  const strategy = normalizeStrategy(s0) || "COST";
+  const age = normalizeAge(a0) || "ADULT";
+  const ageExplicit = normalizeAge(a0) !== null;
+  return { channel, strategy, age, ageExplicit };
+}
+
+function resolveWtpGrid(gridId, context = {}) {
+  const base = parseGridId(gridId);
+  if (base.ageExplicit) {
+    return {
+      gridId: `${base.channel}_${base.strategy}_${base.age}`,
+      channel: base.channel,
+      strategy: base.strategy,
+      age: base.age,
+      source: "gridId"
+    };
+  }
+
+  const ctx = context && typeof context === "object" ? context : {};
+  const round1GridId = String(
+    ctx.round1GridId ||
+    ctx.round1_grid_id ||
+    ((ctx.round1Context || {}).gridId) ||
+    ((ctx.round1Context || {}).grid_id) ||
+    ""
+  ).trim();
+  if (round1GridId) {
+    const parsedRound1 = parseGridId(round1GridId);
+    if (!parsedRound1.ageExplicit) {
+      throw new Error(`Round 1 gridId missing explicit age: ${round1GridId}`);
+    }
+    return {
+      gridId: `${parsedRound1.channel}_${parsedRound1.strategy}_${parsedRound1.age}`,
+      channel: parsedRound1.channel,
+      strategy: parsedRound1.strategy,
+      age: parsedRound1.age,
+      source: "round1GridId"
+    };
+  }
+
+  const round1Context = ctx.round1Context && typeof ctx.round1Context === "object"
+    ? ctx.round1Context
+    : {};
+  const channel = normalizeChannel(
+    round1Context.channel ||
+    round1Context.customerType ||
+    round1Context.customer_type
+  ) || base.channel;
+  const strategy = normalizeStrategy(round1Context.strategy) || base.strategy;
+  const age = normalizeAge(
+    round1Context.age ||
+    round1Context.ageGroup ||
+    round1Context.age_group ||
+    ctx.round1Age ||
+    ctx.round1_age ||
+    ctx.age
+  );
+  if (age) {
+    return {
+      gridId: `${channel}_${strategy}_${age}`,
+      channel,
+      strategy,
+      age,
+      source: "round1Context"
+    };
+  }
+
+  if (ctx.requireRound1Age) {
+    throw new Error(`Round 2 WTP context missing Round 1 age for gridId: ${gridId}`);
+  }
+
+  return {
+    gridId: `${base.channel}_${base.strategy}_${base.age}`,
+    channel: base.channel,
+    strategy: base.strategy,
+    age: base.age,
+    source: "fallback_gridId"
+  };
 }
 
 function normalInverseCDF(p) {
@@ -238,8 +372,20 @@ function computeBucketMean(strategy, distParams) {
   return sum / steps;
 }
 
-function computeWTPParams(gridId) {
-  const { channel, strategy, age } = parseGridId(gridId);
+function computeGammaRaw(strategy, age) {
+  if (strategy === "DIFF") {
+    const cv = Number(SHAPE_PARAMS.cv[age]);
+    if (!Number.isFinite(cv) || cv <= 0) throw new Error(`Unknown age for cv: ${age}`);
+    return { gamma: 4 / (cv * Math.sqrt(2 * Math.PI)), shapeParamKey: "cv", shapeParamValue: cv };
+  }
+  const sigmaLog = Number(SHAPE_PARAMS.sigma_log[age]);
+  if (!Number.isFinite(sigmaLog) || sigmaLog <= 0) throw new Error(`Unknown age for sigma_log: ${age}`);
+  return { gamma: 4 / (sigmaLog * Math.sqrt(2 * Math.PI)), shapeParamKey: "sigma_log", shapeParamValue: sigmaLog };
+}
+
+function computeWTPParams(gridId, context = {}) {
+  const resolved = resolveWtpGrid(gridId, context);
+  const { channel, strategy, age } = resolved;
   const Panchor = Number(GLOBAL_PARAMS.Panchor || 30000);
   const ps = clip(Number(PERCENTILES[age] || 0.97), 1e-6, 1 - 1e-6);
   const z_ps = normalInverseCDF(ps);
@@ -247,8 +393,8 @@ function computeWTPParams(gridId) {
   let WTPmean;
   let WTPmedian;
   let WTPref;
-  let gammaPrice;
   let distParams;
+  const gammaConfig = computeGammaRaw(strategy, age);
 
   if (strategy === "DIFF") {
     const cv = Number(SHAPE_PARAMS.cv[age] || 0.4);
@@ -256,14 +402,12 @@ function computeWTPParams(gridId) {
     const sigma = cv * mu;
     WTPmean = mu;
     WTPmedian = mu;
-    gammaPrice = 4 / (cv * Math.sqrt(2 * Math.PI));
     distParams = { mu, sigma };
   } else {
     const sigma_log = Number(SHAPE_PARAMS.sigma_log[age] || 0.55);
     const mu_log = Math.log(Panchor) - sigma_log * z_ps;
     WTPmean = Math.exp(mu_log + (sigma_log * sigma_log) / 2);
     WTPmedian = Math.exp(mu_log);
-    gammaPrice = 4 / (sigma_log * Math.sqrt(2 * Math.PI));
     distParams = { mu_log, sigma_log };
   }
 
@@ -279,10 +423,14 @@ function computeWTPParams(gridId) {
     WTPmean,
     WTPmedian,
     WTPref,
-    gamma: gammaPrice,
+    gamma: gammaConfig.gamma,
     channel,
     strategy,
-    age
+    age,
+    shapeParamKey: gammaConfig.shapeParamKey,
+    shapeParamValue: gammaConfig.shapeParamValue,
+    sourceGridId: resolved.gridId,
+    source: resolved.source
   };
 }
 
@@ -323,11 +471,12 @@ function calculateVolume(price, gridId, X, wtpParams, Vscore = 0) {
 
 function calculateCOGSbase(Q) {
   const V = Number(GLOBAL_PARAMS.V || 0);
+  console.log("[rdCalculator] V =", V);
   return V;
 }
 
 function computeValueScore(coverCore, coverNice, subLift, risk, positiveDCOGS, cogsAnchor, params = DEFAULT_PARAMS) {
-  const costRatio = Number(cogsAnchor || 0) > 0 ? Number(positiveDCOGS || 0) / Number(cogsAnchor) : 0;
+  const costRatio = Number(positiveDCOGS || 0) / Number(params.cost_ref || 5000);
   const raw = params.omega_core * coverCore +
     params.omega_nice * coverNice +
     params.omega_sub * subLift -
@@ -820,6 +969,7 @@ async function computeEvi({ tags, scores }) {
 
 async function calculate(input, overrideParams = DEFAULT_PARAMS) {
   const params = { ...DEFAULT_PARAMS, ...(input.params || {}), ...(overrideParams || {}) };
+  const computationContext = getComputationContext(input);
   const gridId = String(input.gridId || "").trim();
   const selections = normalizeSelections(input);
   const tags = Array.isArray(input.tags) ? input.tags : [];
@@ -837,18 +987,31 @@ async function calculate(input, overrideParams = DEFAULT_PARAMS) {
     operations: Number(radarInput.operations != null ? radarInput.operations : radarInput.ops != null ? radarInput.ops : 5)
   };
 
-  const baseWtpParams = computeWTPParams(gridId);
+  const baseWtpParams = computeWTPParams(gridId, { ...input, requireRound1Age: true });
+  const hasWtpRefOverride = input && input.WTPref_override != null && Number.isFinite(Number(input.WTPref_override));
+  const baseWtpRef = hasWtpRefOverride
+    ? Number(input.WTPref_override)
+    : Number(baseWtpParams.WTPref || 0);
   const hasWtpMultiplier = input && input.wtp_multiplier != null;
   const rawWtpMult = hasWtpMultiplier ? Number(input.wtp_multiplier || 1) : 1;
   const compressedMult = hasWtpMultiplier ? compressWtpMult(rawWtpMult) : 1;
-  const wtpParams = hasWtpMultiplier
+  const wtpParams = hasWtpMultiplier || hasWtpRefOverride
     ? {
         ...baseWtpParams,
         WTPmean: Number(baseWtpParams.WTPmean || 0) * compressedMult,
         WTPmedian: Number(baseWtpParams.WTPmedian || 0) * compressedMult,
-        WTPref: Number(baseWtpParams.WTPref || 0) * compressedMult
+        WTPref: baseWtpRef * compressedMult
       }
     : baseWtpParams;
+  console.log("[rdCalculator] WTPref 来源:", {
+    gridId,
+    source: hasWtpRefOverride ? "input.WTPref_override" : `computeWTPParams(${baseWtpParams.sourceGridId})`,
+    wtpSource: baseWtpParams.source,
+    baseWTPref: baseWtpRef,
+    rawWtpMult,
+    compressedWtpMult: compressedMult,
+    adjustedWTPref: Number(wtpParams.WTPref || 0)
+  });
   const WTP = Number(input.WTP != null ? input.WTP : wtpParams.WTPmedian);
   const e = Number(input.e != null ? input.e : 1.2);
   const P = Number(input.P != null ? input.P : Math.round(wtpParams.WTPref * 0.85));
@@ -879,6 +1042,13 @@ async function calculate(input, overrideParams = DEFAULT_PARAMS) {
   for (const key of DIM_KEYS) {
     w_star[key] = (1 - params.lambda * evi) * w_grid[key] + params.lambda * evi * w_interview[key];
   }
+  const weightFusionLog = {
+    evi: roundForLog(evi),
+    lambda: roundForLog(params.lambda),
+    w_grid: cloneForLog(w_grid, {}),
+    w_interview: cloneForLog(w_interview, {}),
+    w_star: cloneForLog(w_star, {})
+  };
 
   let sev = 0;
   for (const key of DIM_KEYS) sev += w_star[key] * sd[key];
@@ -893,6 +1063,44 @@ async function calculate(input, overrideParams = DEFAULT_PARAMS) {
     const imp = clip(1 + (w >= params.tau1 ? 1 : 0) + (w >= params.tau2 ? 1 : 0), 1, 3);
     return { tag, dimCN: resolvedDimCN, dimKey, w, tier, imp };
   }));
+  let coreTags = tagObjects.filter((t) => t.tier === "core");
+  let niceTags = tagObjects.filter((t) => t.tier === "nice");
+  if (coreTags.length === 0 && tagObjects.length > 0) {
+    const sortedTags = tagObjects
+      .slice()
+      .sort((a, b) => Number(b.w || 0) - Number(a.w || 0));
+    const topDimensions = new Set();
+    sortedTags.forEach((item) => {
+      if (topDimensions.size >= 2) return;
+      const dim = String(item.dimKey || item.dimCN || "").trim();
+      if (!dim) return;
+      topDimensions.add(dim);
+    });
+    if (topDimensions.size > 0) {
+      tagObjects.forEach((item) => {
+        const dim = String(item.dimKey || item.dimCN || "").trim();
+        item.tier = topDimensions.has(dim) ? "core" : "nice";
+      });
+      coreTags = tagObjects.filter((t) => t.tier === "core");
+      niceTags = tagObjects.filter((t) => t.tier === "nice");
+      console.log("[tag_layering] core_tags was empty, forced top-2 dims:", Array.from(topDimensions));
+    }
+  }
+  const tagLayeringLog = {
+    tags: tagObjects.map((item) => ({
+      tag: item.tag,
+      dimCN: item.dimCN,
+      dimKey: item.dimKey,
+      w: roundForLog(item.w),
+      tier: item.tier,
+      imp: item.imp
+    })),
+    core_tags: coreTags.map((item) => item.tag),
+    nice_tags: niceTags.map((item) => item.tag),
+    tau_core: roundForLog(params.tau_core),
+    tau1: roundForLog(params.tau1),
+    tau2: roundForLog(params.tau2)
+  };
 
   // ===== Step 7: selection aggregation =====
   let dCOGS = 0;
@@ -901,38 +1109,102 @@ async function calculate(input, overrideParams = DEFAULT_PARAMS) {
   let subLift = 0;
   let load = 0;
   let positiveDCOGS = 0;
-  const allCovers = new Set();
+  const allCovers = new Map();
+  const selectionDetails = [];
   for (const sel of selections) {
     const p = getCapabilityParams(sel.cap_id, sel.tier);
+    const coverVal = Number(
+      sel.tier === "low" ? params.tier_cover_low
+        : sel.tier === "high" ? params.tier_cover_high
+        : params.tier_cover_mid
+    ) || 0.8;
     dCOGS += p.dCOGS;
     totalNREWan += p.nre_tier;
     riskSum += p.risk;
     subLift += p.sub_lift;
     load += p.load;
     positiveDCOGS += Math.max(0, p.dCOGS);
-    (p.covers || []).forEach((t) => allCovers.add(t));
+    (p.covers || []).forEach((t) => {
+      allCovers.set(t, Math.max(Number(allCovers.get(t) || 0), coverVal));
+    });
+    selectionDetails.push({
+      cap_id: sel.cap_id,
+      tier: sel.tier,
+      dCOGS: Number(p.dCOGS || 0),
+      nre: Number(p.nre_tier || 0),
+      risk: Number(p.risk || 0),
+      sub_lift: Number(p.sub_lift || 0),
+      load: Number(p.load || 0),
+      covers: cloneForLog(p.covers || [], [])
+    });
   }
   const risk = Math.max(0, riskSum);
   const complexity = cogsAnchor > 0 ? positiveDCOGS / cogsAnchor : 0;
 
   function isCovered(tag) {
-    return allCovers.has(tag);
+    return Number(allCovers.get(tag) || 0);
   }
 
-  const coreTags = tagObjects.filter((t) => t.tier === "core");
-  const niceTags = tagObjects.filter((t) => t.tier === "nice");
   const coverCoreDen = coreTags.reduce((acc, t) => acc + t.imp, 0);
-  const coverCoreNum = coreTags.reduce((acc, t) => acc + t.imp * (isCovered(t.tag) ? 1 : 0), 0);
+  const coverCoreNum = coreTags.reduce((acc, t) => acc + t.imp * isCovered(t.tag), 0);
   const coverNiceDen = niceTags.reduce((acc, t) => acc + t.imp, 0);
-  const coverNiceNum = niceTags.reduce((acc, t) => acc + t.imp * (isCovered(t.tag) ? 1 : 0), 0);
+  const coverNiceNum = niceTags.reduce((acc, t) => acc + t.imp * isCovered(t.tag), 0);
   const coverCore = coverCoreDen > 0 ? coverCoreNum / coverCoreDen : 0;
   const coverNice = coverNiceDen > 0 ? coverNiceNum / coverNiceDen : 0;
+  const coveredTags = tagObjects
+    .map((item) => ({ tag: item.tag, covered: roundForLog(isCovered(item.tag)) }))
+    .filter((item) => item.covered > 0);
+  console.log(
+    "[coverCore] team:",
+    computationContext?.team_id || null,
+    "core_tags:",
+    coreTags.map((item) => item.tag),
+    "covered:",
+    coveredTags
+  );
+  const cardSelectionLog = {
+    selections: selectionDetails,
+    total_dCOGS: Number(dCOGS || 0),
+    total_NRE_wan: Number(totalNREWan || 0),
+    total_risk: roundForLog(risk),
+    total_subLift: roundForLog(subLift),
+    total_load: roundForLog(load),
+    budget_utilization: cogsAnchor > 0 ? roundForLog(positiveDCOGS / cogsAnchor) : 0
+  };
+  const coverageLog = {
+    core_tags_total: coreTags.length,
+    core_tags_covered: roundForLog(coreTags.reduce((acc, item) => acc + isCovered(item.tag), 0)),
+    coverCore: roundForLog(coverCore),
+    nice_tags_total: niceTags.length,
+    nice_tags_covered: roundForLog(niceTags.reduce((acc, item) => acc + isCovered(item.tag), 0)),
+    coverNice: roundForLog(coverNice),
+    tag_breakdown: tagObjects.map((item) => ({
+      tag: item.tag,
+      tier: item.tier,
+      covered: roundForLog(isCovered(item.tag))
+    }))
+  };
 
   // ===== v2 core =====
   const I = evi * (0.5 * sev + 0.35 * coverCore + 0.1 * coverNice);
   const fit = clip(0.7 * coverCore + 0.3 * coverNice, 0, 1);
   const X = params.wI * I + params.wfit * fit + params.wsub * subLift + params.wrisk * risk + params.wcx * complexity;
   const V = computeValueScore(coverCore, coverNice, subLift, risk, positiveDCOGS, cogsAnchor, params);
+  const productScoresLog = {
+    I: roundForLog(I),
+    sev: roundForLog(sev),
+    fit: roundForLog(fit),
+    Vscore: roundForLog(V),
+    X: roundForLog(X),
+    wI: roundForLog(params.wI),
+    wfit: roundForLog(params.wfit),
+    wsub: roundForLog(params.wsub),
+    wrisk: roundForLog(params.wrisk),
+    wcx: roundForLog(params.wcx),
+    sub_lift: roundForLog(subLift),
+    risk: roundForLog(risk),
+    complexity: roundForLog(complexity)
+  };
   const wtpPrime = Number(wtpParams.WTPref || 0) * (1 + Number(params.gamma || 0) * V);
   const volume = calculateVolume(P, gridId, X, wtpParams, V);
   const adoption = volume.shareRate;
@@ -952,6 +1224,69 @@ async function calculate(input, overrideParams = DEFAULT_PARAMS) {
   const rdInvestment = units * Math.max(0, dCOGS);
   const roi = rdInvestment > 0 ? profit / rdInvestment : null;
   const actualGm = P > 0 ? 1 - profitResult.f - COGS_final / P : 0;
+  const { channel, strategy, age } = parseGridId(gridId);
+  const gridConfig = GRID_PARAMS[`${channel}_${age}`] || {};
+  const marketSize = strategy === "DIFF"
+    ? Number(gridConfig.N_DIFF || 0)
+    : Number(gridConfig.N_COST || 0);
+  const volumeLog = {
+    gridId,
+    round1_gridId: String(wtpParams.sourceGridId || ""),
+    age: String(wtpParams.age || ""),
+    strategy: String(wtpParams.strategy || ""),
+    P: Number(P || 0),
+    WTPref_adjusted: roundForLog(wtpParams.WTPref),
+    compressed_mult: roundForLog(compressedMult),
+    Meff: roundForLog(volume.Meff),
+    N: marketSize,
+    Aw: roundForLog(gridConfig.Aw || 0),
+    friction: roundForLog(gridConfig.friction || 0),
+    alpha: roundForLog(GLOBAL_PARAMS.alpha || 0),
+    X: roundForLog(X),
+    cv_or_sigma_log: roundForLog(wtpParams.shapeParamValue || 0),
+    gamma_raw: roundForLog(volume.gammaRaw),
+    gamma_eff: roundForLog(volume.gammaEff),
+    mu: roundForLog(GLOBAL_PARAMS.mu || 0),
+    Vscore: roundForLog(V),
+    z: roundForLog(volume.z),
+    sigmoid_z: roundForLog(volume.shareRate),
+    Q: roundForLog(volume.Q),
+    share: roundForLog(volume.shareRate)
+  };
+  const profitLog = {
+    P: Number(P || 0),
+    f: roundForLog(profitResult.f),
+    V: roundForLog(profitResult.COGSbase),
+    dCOGS: Number(dCOGS || 0),
+    unit_cost: roundForLog(profitResult.COGS),
+    net_revenue_per_unit: roundForLog(P * (1 - profitResult.f)),
+    unit_margin: roundForLog(profitResult.unitMargin),
+    F_base: roundForLog(profitResult.F_base),
+    NRE_total: roundForLog(totalNREWan * 10000),
+    F_total: roundForLog(profitResult.F_total),
+    Q: roundForLog(profitResult.Q),
+    profit_hw: roundForLog(profitResult.profitHW),
+    attach: roundForLog(profitResult.attach),
+    S: roundForLog(GLOBAL_PARAMS.S_monthly || 0),
+    gm_sub: roundForLog(GLOBAL_PARAMS.gm_sub || 0),
+    T: roundForLog(GLOBAL_PARAMS.T || 0),
+    LTV_sub: roundForLog(profitResult.LTV_sub),
+    profit_sub: roundForLog(profitResult.profitSub),
+    total_profit: roundForLog(profitResult.totalProfit),
+    BEQ: profitResult.breakeven_q,
+    actual_gm: roundForLog(actualGm)
+  };
+  if (computationContext) {
+    scheduleStages(computationContext, [
+      { stage: "r2_weight_fusion", params: weightFusionLog },
+      { stage: "r2_tag_layering", params: tagLayeringLog },
+      { stage: "r2_card_selection", params: cardSelectionLog },
+      { stage: "r2_coverage", params: coverageLog },
+      { stage: "r2_product_scores", params: productScoresLog },
+      { stage: "r2_volume", params: volumeLog },
+      { stage: "r2_profit", params: profitLog }
+    ]);
+  }
 
   return {
     roi,

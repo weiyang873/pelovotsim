@@ -2,10 +2,13 @@ const path = require("node:path");
 const { runSql, sqlQuote } = require("../db/pgSql");
 
 const Engine = require("../../engine");
-const { chat } = require("../llm/vpCoach");
+const { chat, synthesizeVP } = require("../llm/vpCoach");
+const { extractVpFields } = require("../llm/vpEmbeddingScorer");
 const { scoreVp } = require("../llm/vpScorer");
+const { scoreVpByWord, generateVpFeedback } = require("../llm/vpWordScorer");
 const { chatCompletion } = require("../llm/deepseekClient");
 const { withLlmLogging } = require("../llm/llm_logger");
+const { computeWTPParams, compressWtpMult, GRID_PARAMS, PERCENTILES, SHAPE_PARAMS, GLOBAL_PARAMS } = require("../llm/rdCalculator");
 const {
   createVpSession,
   appendMessage,
@@ -14,17 +17,55 @@ const {
   getTeamSessions
 } = require("../llm/sessions");
 const { settleAllJinang } = require("../multiplayer/jinangSettler");
-const { getMemberJinang } = require("../multiplayer/jinangDealer");
-const { getTeam, updateTeamStatus, createTeam: createTeamRow, joinTeam: joinTeamRow } = require("../multiplayer/teamManager");
+const { getMemberJinang, loadJinangConfig } = require("../multiplayer/jinangDealer");
+const { scheduleStages } = require("../multiplayer/computationLog");
+const { appendIteration: appendVpIteration } = require("../multiplayer/vpIterationStore");
+const {
+  getTeam,
+  updateTeamStatus,
+  createTeam: createTeamRow,
+  joinTeam: joinTeamRow,
+  setTeamLeader
+} = require("../multiplayer/teamManager");
 const { getTeamRound2State } = require("../multiplayer/round2State");
 
 const ROOT = path.join(__dirname, "..", "..");
 const CONFIG_DIR = path.join(ROOT, "game_config_v0.1");
 
 let cachedEngineConfig = null;
+const VP_FEEDBACK_VERSION = 2;
 
 function makeResponse(status, body) {
   return { status, body };
+}
+
+function readRequesterMemberId(body = {}, fallback = "") {
+  return String(
+    body?.memberId ||
+    body?.member_id ||
+    body?.requester_member_id ||
+    fallback ||
+    ""
+  ).trim();
+}
+
+function buildLeaderMeta(team, requesterMemberId = "") {
+  const leaderMemberId = String(team?.leader_member_id || "").trim();
+  const leaderName = String(team?.leader_name || "").trim();
+  const memberId = String(requesterMemberId || "").trim();
+  return {
+    leader_member_id: leaderMemberId || null,
+    leader_name: leaderName || "",
+    is_leader: Boolean(memberId && leaderMemberId && memberId === leaderMemberId)
+  };
+}
+
+function makeOnlyLeaderResponse(team, requesterMemberId = "") {
+  return makeResponse(403, {
+    ok: false,
+    error: "only_leader",
+    ...buildLeaderMeta(team, requesterMemberId)
+  });
 }
 
 function getEngineConfig() {
@@ -39,6 +80,338 @@ function clipScore(v, lo, hi) {
   const n = Number(v);
   if (!Number.isFinite(n)) return null;
   return Math.max(lo, Math.min(hi, Math.round(n * 10) / 10));
+}
+
+function roundToTenth(value, fallback = 0) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.round(n * 10) / 10;
+}
+
+function clamp01(value) {
+  return Math.max(0, Math.min(1, Number(value || 0)));
+}
+
+function mean(values) {
+  const list = (Array.isArray(values) ? values : []).filter((item) => Number.isFinite(item));
+  if (!list.length) return 0;
+  return list.reduce((sum, item) => sum + item, 0) / list.length;
+}
+
+function roundForLog(value, digits = 6) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return Number(n.toFixed(digits));
+}
+
+function buildComputationContext({ teamId, sessionId, memberId, source = "web" }) {
+  const team_id = String(teamId || "").trim();
+  const session_id = String(sessionId || "").trim();
+  if (!team_id || !session_id) return null;
+  const member_id = String(memberId || "").trim();
+  return {
+    team_id,
+    session_id,
+    member_id: member_id || null,
+    source
+  };
+}
+
+function lambdaMap(score) {
+  const clamped = clipScore(score, 1, 5) ?? 3;
+  return Number((0.60 + clamped * 0.10).toFixed(2));
+}
+
+function rhoDiscount(score) {
+  const clamped = clipScore(score, 1, 5) ?? 3;
+  return Number((0.75 + clamped * 0.05).toFixed(2));
+}
+
+function computeVpCompositeScore(C, G, EScore) {
+  const c = clipScore(C, 1, 5) ?? 3;
+  const g = clipScore(G, 1, 5) ?? 3;
+  const e = clipScore(EScore, 1, 5) ?? 3;
+  const avgGE = (g + e) / 2;
+  return Math.min(5, Math.round(Math.sqrt(c * avgGE) * 10) / 10);
+}
+
+async function resolveIterationSpeaker(teamId, memberId) {
+  const mid = String(memberId || "").trim();
+  if (!mid) return { memberId: null, speakerName: "", speakerPersona: "" };
+  try {
+    const member = await assertMemberInTeam(teamId, mid);
+    return {
+      memberId: mid,
+      speakerName: String(member?.member_name || "").trim(),
+      speakerPersona: ""
+    };
+  } catch (_) {
+    return { memberId: null, speakerName: "", speakerPersona: "" };
+  }
+}
+
+function normalizeIterationScores(scores) {
+  const src = scores && typeof scores === "object" ? scores : {};
+  const c = clipScore(src.coverage ?? src.C ?? src.raw_C, 1, 5);
+  const g = clipScore(src.generalizability ?? src.G ?? src.raw_G, 1, 5);
+  const e = clipScore(src.effectiveness ?? src.E ?? src.raw_E ?? src.Eadj, 1, 5);
+  const composite = src.VPscore != null
+    ? clipScore(src.VPscore, 1, 5)
+    : (c != null && g != null && e != null ? computeVpCompositeScore(c, g, e) : null);
+  return {
+    C: c,
+    G: g,
+    E: e,
+    VPscore: composite
+  };
+}
+
+async function recordVpIteration(entry) {
+  const teamId = String(entry?.teamId || "").trim();
+  const vpAfter = String(entry?.vpAfter || "").trim();
+  if (!teamId || !vpAfter) return null;
+  const speaker = await resolveIterationSpeaker(teamId, entry?.memberId);
+  const normalized = normalizeIterationScores(entry?.scores || {});
+  return appendVpIteration({
+    teamId,
+    sessionId: entry?.sessionId,
+    memberId: speaker.memberId,
+    trigger: entry?.trigger,
+    speakerName: entry?.speakerName || speaker.speakerName,
+    speakerPersona: entry?.speakerPersona || speaker.speakerPersona,
+    vpBefore: entry?.vpBefore,
+    vpAfter,
+    scoreBefore: entry?.scoreBefore,
+    scoreAfter: normalized.VPscore,
+    scoreC: normalized.C,
+    scoreG: normalized.G,
+    scoreE: normalized.E,
+    sourceIteration: entry?.sourceIteration,
+    usedBestIteration: entry?.usedBestIteration === true
+  }).catch(() => null);
+}
+
+function buildPersistedVpScores(C, G, EScore) {
+  const c = clipScore(C, 1, 5);
+  const g = clipScore(G, 1, 5);
+  const e = clipScore(EScore, 1, 5);
+  return {
+    C: c,
+    G: g,
+    E: e,
+    VPscore: computeVpCompositeScore(c, g, e)
+  };
+}
+
+function computeJinangWtpBonus(matchStrength) {
+  return Number((clamp01(matchStrength) * 0.05).toFixed(4));
+}
+
+function scoreMarketCardPreview(card, decision) {
+  const weights = card?.affinity_weights || {};
+  const dims = [];
+
+  const customerScore = Number(weights.customer_type?.[decision.customerType]);
+  if (Number.isFinite(customerScore)) dims.push(customerScore);
+
+  const strategyScore = Number(weights.strategy?.[decision.strategy]);
+  if (Number.isFinite(strategyScore)) dims.push(strategyScore);
+
+  const ageScore = Number(weights.age?.[decision.ageGroup]);
+  if (Number.isFinite(ageScore)) dims.push(ageScore);
+
+  return clamp01(mean(dims));
+}
+
+async function getPreviewMarketJinang(teamId, gridId, architecture) {
+  const team = await getTeam(teamId);
+  if (!team) throw new Error("team not found");
+
+  const parsed = parseGridId(gridId);
+  const decision = {
+    customerType: parsed.customerType,
+    strategy: parsed.strategy,
+    ageGroup: parsed.ageGroup,
+    architecture: normalizeArchitecture(architecture)
+  };
+  const cfg = loadJinangConfig();
+  const marketMap = Object.fromEntries((cfg.market || []).map((card) => [card.id, card]));
+  const members = Array.isArray(team.members) ? team.members : [];
+
+  let best = null;
+  members.forEach((member) => {
+    const card = marketMap[member.jinang_market_id];
+    if (!card) return;
+    const matchStrength = roundToTenth(scoreMarketCardPreview(card, decision), 0);
+    const matched = matchStrength >= 0.5;
+    if (!best || matchStrength > best.match_strength) {
+      best = {
+        id: card.id,
+        name: card.name,
+        member_id: member.id,
+        member_name: member.member_name,
+        match_strength: matchStrength,
+        matched
+      };
+    }
+  });
+
+  return best;
+}
+
+function buildRound1Outcome(gridId, architecture, rawScores, marketMatchStrength, options = {}) {
+  const base = Engine.computeRound1V2(gridId, architecture, rawScores, 0);
+  const C = clipScore(rawScores?.C ?? base?.C, 1, 5) ?? 3;
+  const G = clipScore(rawScores?.G ?? base?.G, 1, 5) ?? 3;
+  const ERaw = clipScore(rawScores?.E ?? base?.E_raw, 1, 5) ?? 3;
+  const Eadj = ERaw;
+  const jinangMatchStrength = clamp01(marketMatchStrength);
+  const lambdaG = lambdaMap(G);
+  const lambdaE = lambdaMap(ERaw);
+  const rhoC = rhoDiscount(C);
+  const vpEffect = Number((lambdaG * lambdaE * rhoC).toFixed(4));
+  const jinangWtpBonus = computeJinangWtpBonus(jinangMatchStrength);
+  const wtpMultiplier = Number((vpEffect * (1 + jinangWtpBonus)).toFixed(4));
+  const compressedMult = compressWtpMult(wtpMultiplier);
+  const WTPref = Math.round(Number(base?.WTPref || 0));
+  const WTPadjRaw = Math.round(WTPref * wtpMultiplier);
+  const WTPadj = Math.round(WTPref * compressedMult);
+  const VPscore = computeVpCompositeScore(C, G, ERaw);
+  const computationContext = buildComputationContext(options);
+  if (computationContext) {
+    const wtpParams = computeWTPParams(gridId);
+    const gridCfg = GRID_PARAMS[`${wtpParams.channel}_${wtpParams.age}`] || {};
+    const marketSize = wtpParams.strategy === "DIFF"
+      ? Number(gridCfg.N_DIFF || 0) / 10000
+      : Number(gridCfg.N_COST || 0) / 10000;
+    const shapeValue = wtpParams.strategy === "DIFF"
+      ? Number(SHAPE_PARAMS.cv[wtpParams.age] || 0)
+      : Number(SHAPE_PARAMS.sigma_log[wtpParams.age] || 0);
+    scheduleStages(computationContext, [
+      {
+        stage: "r1_wtp_params",
+        params: {
+          gridId,
+          channel: wtpParams.channel,
+          strategy: wtpParams.strategy,
+          age: wtpParams.age,
+          Panchor: Number(GLOBAL_PARAMS.Panchor || 0),
+          ps: roundForLog(PERCENTILES[wtpParams.age] || 0),
+          "cv/sigma_log": roundForLog(shapeValue),
+          WTPmean: roundForLog(wtpParams.WTPmean),
+          WTPmedian: roundForLog(wtpParams.WTPmedian),
+          WTPref: roundForLog(wtpParams.WTPref),
+          gamma: roundForLog(wtpParams.gamma)
+        }
+      },
+      {
+        stage: "r1_sam",
+        params: {
+          gridId,
+          N: marketSize,
+          Aw: roundForLog(gridCfg.Aw || 0),
+          WTPmean: roundForLog(wtpParams.WTPmean),
+          SAM_billion: Number(base?.SAM_billion || 0)
+        }
+      },
+      {
+        stage: "r1_vp_score",
+        params: {
+          vp_text: String(options.vpText || "").trim(),
+          raw_C: Number(C || 0),
+          raw_G: Number(G || 0),
+          raw_E: Number(ERaw || 0),
+          jinang_market_match: roundForLog(jinangMatchStrength),
+          jinang_tech_match: roundForLog(options.jinangTechMatch || 0),
+          delta: roundForLog(Eadj - ERaw),
+          Eadj: Number(Eadj || 0),
+          lambda_G: roundForLog(lambdaG),
+          lambda_Eadj: roundForLog(lambdaE),
+          wtp_mult_raw: roundForLog(wtpMultiplier)
+        }
+      },
+      {
+        stage: "r1_wtp_adj",
+        params: {
+          WTPref: Number(WTPref || 0),
+          lambda_G: roundForLog(lambdaG),
+          lambda_Eadj: roundForLog(lambdaE),
+          wtp_mult_raw: roundForLog(wtpMultiplier),
+          wtp_mult_compressed: roundForLog(compressedMult),
+          WTPref_adjusted: Number(WTPadj || 0)
+        }
+      }
+    ]);
+  }
+
+  return {
+    ...base,
+    C,
+    G,
+    E_raw: ERaw,
+    Eadj,
+    VPscore,
+    WTPref,
+    WTPadj,
+    WTPadj_raw: WTPadjRaw,
+    rho_C: rhoC,
+    lambda_G: lambdaG,
+    lambda_E: lambdaE,
+    wtp_vp_effect: vpEffect,
+    jinang_wtp_bonus: jinangWtpBonus,
+    wtp_multiplier: wtpMultiplier,
+    wtp_mult_compressed: compressedMult,
+    jinang_match_strength: jinangMatchStrength,
+    jinang_E_boost: 0
+  };
+}
+
+function normalizeVpScoresInput(scores) {
+  if (!scores || typeof scores !== "object") return null;
+  const coverage = clipScore(scores.coverage ?? scores.C, 1, 5);
+  const generalizability = clipScore(scores.generalizability ?? scores.G, 1, 5);
+  const effectiveness = clipScore(scores.effectiveness ?? scores.E, 1, 5);
+  if (coverage == null || generalizability == null || effectiveness == null) return null;
+  return { coverage, generalizability, effectiveness };
+}
+
+function scheduleFinalRound1Stages(context, outcome, options = {}) {
+  const computationContext = buildComputationContext(context);
+  if (!computationContext || !outcome) return 0;
+  const sourceIteration = String(options.source_iteration || "confirm_submit").trim() || "confirm_submit";
+  const usedBestIteration = options.used_best_iteration === true;
+  const vpText = String(options.vp_text || "").trim();
+  return scheduleStages(computationContext, [
+    {
+      stage: "r1_vp_score_final",
+      params: {
+        is_final: true,
+        source_iteration: sourceIteration,
+        used_best_iteration: usedBestIteration,
+        raw_C: Number(outcome.C || 0),
+        raw_G: Number(outcome.G || 0),
+        raw_E: Number(outcome.E_raw || 0),
+        Eadj: Number(outcome.Eadj || 0),
+        lambda_G: roundForLog(outcome.lambda_G),
+        lambda_Eadj: roundForLog(outcome.lambda_E),
+        wtp_mult_raw: roundForLog(outcome.wtp_multiplier),
+        wtp_mult_compressed: roundForLog(outcome.wtp_mult_compressed),
+        WTPref: Number(outcome.WTPref || 0),
+        WTPref_adjusted: Number(outcome.WTPadj || 0),
+        vp_text: vpText
+      }
+    },
+    {
+      stage: "r1_wtp_adj_final",
+      params: {
+        is_final: true,
+        WTPref: Number(outcome.WTPref || 0),
+        wtp_mult_raw: roundForLog(outcome.wtp_multiplier),
+        wtp_mult_compressed: roundForLog(outcome.wtp_mult_compressed),
+        WTPref_adjusted: Number(outcome.WTPadj || 0)
+      }
+    }
+  ]);
 }
 
 function getEligibleMarketMatchStrength(settlements) {
@@ -212,6 +585,95 @@ async function assertMemberInTeam(teamId, memberId) {
   return rows[0];
 }
 
+async function getFirstRound1Submitter(teamId) {
+  const rows = await runSql(`
+    SELECT member_id
+    FROM member_submissions
+    WHERE team_id = ${sqlQuote(teamId)}
+    ORDER BY submitted_at ASC, id ASC
+    LIMIT 1;
+  `);
+  return String(rows[0]?.member_id || "").trim() || null;
+}
+
+async function assignRound1LeaderIfNeeded(teamId) {
+  const team = await getTeam(teamId);
+  if (!team) return null;
+  if (String(team.leader_member_id || "").trim()) return team;
+  const firstSubmitterId = await getFirstRound1Submitter(teamId);
+  if (!firstSubmitterId) return team;
+  return setTeamLeader(teamId, firstSubmitterId);
+}
+
+async function ensureLeaderPermission(teamId, memberId) {
+  const team = await getTeam(teamId);
+  if (!team) return { ok: false, response: makeResponse(404, { ok: false, error: "team not found" }) };
+  const requesterId = String(memberId || "").trim();
+  if (!requesterId) {
+    return { ok: false, response: makeOnlyLeaderResponse(team, requesterId) };
+  }
+  await assertMemberInTeam(teamId, requesterId);
+  const teamWithLeader = String(team.leader_member_id || "").trim()
+    ? team
+    : await assignRound1LeaderIfNeeded(teamId);
+  const leaderMeta = buildLeaderMeta(teamWithLeader, requesterId);
+  if (!leaderMeta.is_leader) {
+    return { ok: false, response: makeOnlyLeaderResponse(teamWithLeader, requesterId) };
+  }
+  return { ok: true, team: teamWithLeader, leaderMeta };
+}
+
+async function readRound1TeamDraft(teamId) {
+  const rows = await runSql(`
+    SELECT team_id, grid_id, architecture, vp_text, updated_by, updated_at
+    FROM round1_team_drafts
+    WHERE team_id = ${sqlQuote(teamId)}
+    LIMIT 1;
+  `);
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    team_id: row.team_id,
+    grid_id: row.grid_id || "",
+    architecture: row.architecture || "",
+    vp_text: row.vp_text || "",
+    updated_by: row.updated_by || "",
+    updated_at: row.updated_at || null
+  };
+}
+
+async function saveRound1TeamDraft(teamId, memberId, patch = {}) {
+  const existing = await readRound1TeamDraft(teamId);
+  const next = {
+    grid_id: String(patch.grid_id ?? existing?.grid_id ?? "").trim(),
+    architecture: String(patch.architecture ?? existing?.architecture ?? "").trim(),
+    vp_text: String(patch.vp_text ?? existing?.vp_text ?? "").trim(),
+    updated_by: String(memberId || "").trim(),
+    updated_at: new Date().toISOString()
+  };
+
+  await runSql(`
+    INSERT INTO round1_team_drafts (
+      team_id, grid_id, architecture, vp_text, updated_by, updated_at
+    ) VALUES (
+      ${sqlQuote(teamId)},
+      ${sqlQuote(next.grid_id || null)},
+      ${sqlQuote(next.architecture || null)},
+      ${sqlQuote(next.vp_text || null)},
+      ${sqlQuote(next.updated_by || null)},
+      ${sqlQuote(next.updated_at)}
+    )
+    ON CONFLICT (team_id) DO UPDATE SET
+      grid_id = EXCLUDED.grid_id,
+      architecture = EXCLUDED.architecture,
+      vp_text = EXCLUDED.vp_text,
+      updated_by = EXCLUDED.updated_by,
+      updated_at = EXCLUDED.updated_at;
+  `);
+
+  return readRound1TeamDraft(teamId);
+}
+
 
 async function submitPhase1(teamId, memberId, body) {
   try {
@@ -262,8 +724,11 @@ async function submitPhase1(teamId, memberId, body) {
     let statusUpdated = false;
     if (submittedCount >= teamSize && team.status !== "phase2") {
       await updateTeamStatus(teamId, "phase2");
+      await assignRound1LeaderIfNeeded(teamId);
       statusUpdated = true;
     }
+
+    const updatedTeam = statusUpdated ? await getTeam(teamId) : team;
 
     return makeResponse(200, {
       ok: true,
@@ -271,7 +736,8 @@ async function submitPhase1(teamId, memberId, body) {
       personal_gm_max: Number(calc.gmMax),
       submitted_count: submittedCount,
       team_size: teamSize,
-      team_status_updated_to_phase2: statusUpdated
+      team_status_updated_to_phase2: statusUpdated,
+      ...buildLeaderMeta(updatedTeam, memberId)
     });
   } catch (e) {
     return makeResponse(400, { ok: false, error: e.message });
@@ -370,6 +836,13 @@ async function getOrCreatePhase3Session(teamId) {
   return createVpSession(teamId, {});
 }
 
+async function getLatestPhase3SessionRecord(teamId) {
+  const all = await getTeamSessions(teamId) || [];
+  return all
+    .filter((s) => s && s.sessionId)
+    .sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")))[0] || null;
+}
+
 async function buildPhase3JinangContext(teamId) {
   const team = await getTeam(teamId);
   const members = Array.isArray(team?.members) ? team.members : [];
@@ -433,49 +906,54 @@ function buildVpResultScoringText(vpResult) {
   ].filter(Boolean).join("\n");
 }
 
-const AUTO_VP_DRAFT_REQUEST = "请帮我们整理当前最新版本的价值主张，用一句完整的话，放在引号里。然后指出当前最需要提升的一个方向。";
-
-function extractVpSentence(text) {
-  const content = String(text || "");
-  const patterns = [
-    /[“"]([\s\S]{20,}?)[”"]/g,
-    /「([\s\S]{20,}?)」/g,
-    /"([\s\S]{20,}?)"/g
-  ];
-
-  let longest = "";
-  for (const pattern of patterns) {
-    let match = null;
-    while ((match = pattern.exec(content)) !== null) {
-      const candidate = String(match[1] || "").trim();
-      if (candidate.length > longest.length) {
-        longest = candidate;
-      }
-    }
+function normalizeConfirmedFieldValue(value, { emptyAsUndefined = false } = {}) {
+  const text = String(value || "").trim();
+  if (!text || text === "未明确") {
+    return emptyAsUndefined ? "" : "未明确";
   }
-  return longest || null;
+  return text;
 }
 
-function countPhase3StudentMessages(messages) {
-  const list = Array.isArray(messages) ? messages : [];
-  return list.filter((item) => item && item.role === "user").length;
-}
-
-function getCachedPhase3ScorePayload(pmfScore) {
-  const cached = pmfScore && typeof pmfScore === "object" ? pmfScore : null;
-  if (!cached || !cached.scores) return null;
-  const scores = vpResultToApiScores(cached);
-  if (!scores || areApiScoresEmpty(scores) || !String(cached._vp_sentence || "").trim()) return null;
+function normalizeConfirmedFieldsPayload(raw) {
+  const src = raw && typeof raw === "object" ? raw : {};
   return {
-    replyText: "",
-    vpResult: cached,
-    vpResultRaw: null,
-    vpDraft: String(cached._vp_sentence || "").trim(),
-    scores,
-    scoreValid: true,
-    features: cached._scoring_features || cached.features || null,
-    scoredAtUserMsgCount: Number(cached._scored_at_user_msg_count || 0)
+    who_raw: normalizeConfirmedFieldValue(src.who_raw, { emptyAsUndefined: true }),
+    pain_raw: normalizeConfirmedFieldValue(src.pain_raw, { emptyAsUndefined: true }),
+    how_raw: normalizeConfirmedFieldValue(src.how_raw, { emptyAsUndefined: true }),
+    alternative_raw: normalizeConfirmedFieldValue(src.alternative_raw),
+    boundary_raw: normalizeConfirmedFieldValue(src.boundary_raw)
   };
+}
+
+function vpResultToConfirmedFields(vpResult, vpText = "") {
+  const result = vpResult && typeof vpResult === "object" ? vpResult : {};
+  const sourceText = String(vpText || "").trim();
+  const confirmedFields = normalizeConfirmedFieldsPayload({
+    who_raw: result.who_raw || result.target_customer || result.who || extractTextValue(sourceText, "WHO") || extractTextValue(sourceText, "目标客户"),
+    pain_raw: result.pain_raw || result.scenario_pain || result.pain || extractTextValue(sourceText, "PAIN") || extractTextValue(sourceText, "场景痛点"),
+    how_raw: result.how_raw || result.value_creation || result.how || extractTextValue(sourceText, "HOW") || extractTextValue(sourceText, "价值创造"),
+    alternative_raw: result.alternative_raw || result.alternative || "",
+    boundary_raw: result.boundary_raw || result.boundary || extractTextValue(sourceText, "BOUNDARY") || extractTextValue(sourceText, "边界条件")
+  });
+  return Object.values(confirmedFields).some((value) => String(value || "").trim()) ? confirmedFields : null;
+}
+
+function buildConfirmedVpResult(confirmedFields, scores = null) {
+  const fields = confirmedFields && typeof confirmedFields === "object" ? confirmedFields : {};
+  const result = {
+    target_customer: String(fields.who_raw || "").trim() || "未提取到明确目标人群",
+    scenario_pain: String(fields.pain_raw || "").trim() || "未提取到明确痛点场景",
+    value_creation: String(fields.how_raw || "").trim() || "未提取到明确解决机制",
+    boundary: String(fields.boundary_raw || "").trim() || "未明确"
+  };
+  if (scores && typeof scores === "object") {
+    result.scores = {
+      C: { score: clipScore(scores.C, 1, 5), feedback: "" },
+      G: { score: clipScore(scores.G, 1, 5), feedback: "" },
+      E: { score: clipScore(scores.E, 1, 5), feedback: "" }
+    };
+  }
+  return result;
 }
 
 function extractTextValue(src, key) {
@@ -637,8 +1115,11 @@ async function joinTeamApi(body) {
 async function getTeamApi(teamId) {
   try {
     const tid = String(teamId || "").trim();
-    const team = await getTeam(tid);
+    let team = await getTeam(tid);
     if (!team) return makeResponse(404, { ok: false, error: "team not found" });
+    if (!String(team.leader_member_id || "").trim() && ["phase2", "phase3", "phase4", "frozen"].includes(String(team.status || ""))) {
+      team = await assignRound1LeaderIfNeeded(tid) || team;
+    }
     return makeResponse(200, {
       ok: true,
       team,
@@ -735,21 +1216,401 @@ async function readTeamSubmissions(teamId) {
 
 async function teamSubmissions(teamId) {
   try {
-    const team = await getTeam(teamId);
+    let team = await getTeam(teamId);
     if (!team) return makeResponse(404, { ok: false, error: "team not found" });
+    if (!String(team.leader_member_id || "").trim() && ["phase2", "phase3", "phase4", "frozen"].includes(String(team.status || ""))) {
+      team = await assignRound1LeaderIfNeeded(teamId) || team;
+    }
     const submissions = await readTeamSubmissions(teamId);
+    const draft = await readRound1TeamDraft(teamId);
     return makeResponse(200, {
       ok: true,
       team: {
         id: team.id,
         team_name: team.team_name,
         team_size: Number(team.team_size || 0),
-        status: team.status || "forming"
+        status: team.status || "forming",
+        ...buildLeaderMeta(team)
       },
+      team_draft: draft,
       submissions
     });
   } catch (e) {
     return makeResponse(400, { ok: false, error: e.message });
+  }
+}
+
+async function savePhase2Draft(teamId, body) {
+  try {
+    const memberId = readRequesterMemberId(body);
+    const permission = await ensureLeaderPermission(teamId, memberId);
+    if (!permission.ok) return permission.response;
+
+    const gridId = String(body?.grid_id || body?.gridId || "").trim();
+    const architecture = String(body?.architecture || "").trim();
+    if (!gridId || !architecture) {
+      return makeResponse(400, { ok: false, error: "grid_id and architecture required" });
+    }
+
+    const draft = await saveRound1TeamDraft(teamId, memberId, {
+      grid_id: gridId,
+      architecture: normalizeArchitecture(architecture)
+    });
+
+    return makeResponse(200, {
+      ok: true,
+      team_id: teamId,
+      team_draft: draft,
+      ...buildLeaderMeta(permission.team, memberId)
+    });
+  } catch (e) {
+    return makeResponse(400, { ok: false, error: e.message });
+  }
+}
+
+async function savePhase3Draft(teamId, body) {
+  try {
+    const memberId = readRequesterMemberId(body);
+    const permission = await ensureLeaderPermission(teamId, memberId);
+    if (!permission.ok) return permission.response;
+
+    const patch = {};
+    const gridId = String(body?.grid_id || body?.gridId || "").trim();
+    const architecture = String(body?.architecture || "").trim();
+    if (gridId) patch.grid_id = gridId;
+    if (architecture) patch.architecture = normalizeArchitecture(architecture);
+    if (body?.vp_text !== undefined || body?.vpText !== undefined) {
+      patch.vp_text = String(body?.vp_text ?? body?.vpText ?? "").trim();
+    }
+
+    const draft = await saveRound1TeamDraft(teamId, memberId, patch);
+    return makeResponse(200, {
+      ok: true,
+      team_id: teamId,
+      team_draft: draft,
+      ...buildLeaderMeta(permission.team, memberId)
+    });
+  } catch (e) {
+    return makeResponse(400, { ok: false, error: e.message });
+  }
+}
+
+async function persistConfirmedVpResult({
+  teamId,
+  memberId,
+  vpText,
+  confirmedFields,
+  scores,
+  confirmedAt
+}) {
+  console.log("[confirm-and-score] 写入数据库:", "PostgreSQL", teamId);
+  if (teamId && memberId) {
+    await assertMemberInTeam(teamId, memberId);
+    await runSql(`
+      UPDATE team_members
+      SET vp_text = ${sqlQuote(String(vpText || "").trim())},
+          vp_confirmed_fields = ${sqlQuote(JSON.stringify(confirmedFields || {}))}::jsonb,
+          vp_scores = ${sqlQuote(JSON.stringify(scores || {}))}::jsonb,
+          vp_confirmed_at = ${sqlQuote(confirmedAt)}
+      WHERE id = ${sqlQuote(memberId)} AND team_id = ${sqlQuote(teamId)};
+    `);
+  }
+
+  const latestSession = await getLatestPhase3SessionRecord(teamId);
+  const sessionId = latestSession?.sessionId || await getOrCreatePhase3Session(teamId);
+  const session = await getSession(sessionId);
+  const nextPmfScore = {
+    ...(session?.pmfScore && typeof session.pmfScore === "object" ? session.pmfScore : {}),
+    ...buildConfirmedVpResult(confirmedFields, scores),
+    _vp_sentence: String(vpText || "").trim(),
+    _confirmed_fields: confirmedFields,
+    _confirmed_at: confirmedAt,
+    _vp_word_scores: scores,
+    _scorer: "vpWordScorer"
+  };
+
+  await updateSession(sessionId, {
+    pmfScore: nextPmfScore,
+    status: "submitted"
+  });
+
+  return { sessionId, sessionPayload: nextPmfScore };
+}
+
+async function persistVpFeedback(teamId, feedback) {
+  const latestSession = await getLatestPhase3SessionRecord(teamId);
+  if (!latestSession?.sessionId) return null;
+  const nextPmfScore = {
+    ...(latestSession?.pmfScore && typeof latestSession.pmfScore === "object" ? latestSession.pmfScore : {}),
+    _vp_feedback: String(feedback || "").trim(),
+    _vp_feedback_version: VP_FEEDBACK_VERSION
+  };
+  await updateSession(latestSession.sessionId, { pmfScore: nextPmfScore });
+  return latestSession.sessionId;
+}
+
+async function synthesizePhase3Vp(teamId, body) {
+  try {
+    const payload = body || {};
+    const memberId = readRequesterMemberId(payload);
+    const permission = await ensureLeaderPermission(teamId, memberId);
+    if (!permission.ok) return permission.response;
+    const team = permission.team;
+    const requestedGridId = String(payload.grid_id || "").trim();
+    const requestedArch = String(payload.architecture || "").trim();
+    const latestSession = await getLatestPhase3SessionRecord(teamId);
+    if (String(latestSession?.status || "") === "submitted") {
+      return makeResponse(400, { ok: false, error: "vp already confirmed and locked" });
+    }
+
+    const sessionId = latestSession?.sessionId || await getOrCreatePhase3Session(teamId);
+    if (requestedGridId && requestedArch) {
+      const jinangContext = payload.jinang && typeof payload.jinang === "object"
+        ? payload.jinang
+        : await buildPhase3JinangContext(teamId);
+      const strategy = {
+        ...resolvePhase3Strategy(requestedGridId, requestedArch),
+        jinang: jinangContext
+      };
+      await updateSession(sessionId, { strategy });
+    }
+
+    const session = await getSession(sessionId);
+    if (!session) return makeResponse(500, { ok: false, error: "vp session not found" });
+
+    const out = await synthesizeVP(session);
+    const nextPmfScore = {
+      ...(session?.pmfScore && typeof session.pmfScore === "object" ? session.pmfScore : {}),
+      _vp_sentence: String(out?.vpText || "").trim(),
+      _synthesis_raw: String(out?.raw || "").trim(),
+      _synthesis_feedback: String(out?.feedback || "").trim(),
+      _synthesis_message_count: Number(out?.messageCount || (Array.isArray(session?.messages) ? session.messages.length : 0))
+    };
+    await updateSession(sessionId, { pmfScore: nextPmfScore });
+    if (!out?.cached && String(out?.feedback || "").trim()) {
+      await appendMessage(sessionId, "assistant", String(out.feedback || "").trim());
+    }
+    const previewScores = await (async () => {
+      try {
+        return scoreVpByWord(String(out?.vpText || "").trim(), requestedGridId || session?.strategy?.grid_id, requestedArch || session?.strategy?.architecture);
+      } catch (_) {
+        return null;
+      }
+    })();
+    await recordVpIteration({
+      teamId,
+      sessionId,
+      memberId,
+      trigger: "synthesize",
+      vpAfter: String(out?.vpText || "").trim(),
+      scores: previewScores?.scores || null
+    });
+    await saveRound1TeamDraft(teamId, memberId, {
+      grid_id: requestedGridId || session?.strategy?.grid_id || "",
+      architecture: requestedArch || session?.strategy?.architecture || "",
+      vp_text: String(out?.vpText || "").trim()
+    }).catch(() => {});
+
+    return makeResponse(200, {
+      ok: true,
+      session_id: sessionId,
+      vp_text: String(out?.vpText || "").trim(),
+      raw: String(out?.raw || ""),
+      feedback: String(out?.feedback || "").trim(),
+      cached: Boolean(out?.cached)
+    });
+  } catch (e) {
+    return makeResponse(400, { ok: false, error: e.message });
+  }
+}
+
+async function extractVpFieldsApi(body) {
+  try {
+    const vpText = String(body?.vpText || "").trim();
+    const last5Turns = String(body?.last5Turns || "").trim();
+    if (vpText.length < 5) {
+      return makeResponse(400, { ok: false, error: "VP 文本太短" });
+    }
+    const extracted = await extractVpFields(vpText, { last5Turns });
+    return makeResponse(200, {
+      ok: true,
+      fields: {
+        who_raw: String(extracted?.who_raw || "未明确").trim() || "未明确",
+        pain_raw: String(extracted?.pain_raw || "未明确").trim() || "未明确",
+        how_raw: String(extracted?.how_raw || "未明确").trim() || "未明确",
+        alternative_raw: String(extracted?.alternative_raw || "未明确").trim() || "未明确",
+        boundary_raw: String(extracted?.boundary_raw || "未明确").trim() || "未明确"
+      }
+    });
+  } catch (e) {
+    console.error("[extract-fields] error:", e);
+    return makeResponse(500, { ok: false, error: "切片失败，请重试" });
+  }
+}
+
+async function confirmAndScoreVp(body) {
+  try {
+    const payload = body || {};
+    const teamId = String(payload.teamId || "").trim();
+    const memberId = String(payload.memberId || "").trim();
+    const vpText = String(payload.vpText || "").trim();
+    const gridId = String(payload.gridId || "").trim();
+    const architecture = String(payload.architecture || "").trim();
+    const confirmedFields = normalizeConfirmedFieldsPayload(payload.confirmedFields);
+
+    if (!teamId) {
+      return makeResponse(400, { ok: false, error: "缺少 teamId" });
+    }
+    const permission = await ensureLeaderPermission(teamId, memberId);
+    if (!permission.ok) return permission.response;
+    const team = permission.team;
+    if (!gridId || !architecture) {
+      return makeResponse(400, { ok: false, error: "缺少必要参数" });
+    }
+    if (!confirmedFields.who_raw || confirmedFields.who_raw.length < 2) {
+      return makeResponse(400, { ok: false, error: "目标客户不能为空" });
+    }
+    if (!confirmedFields.pain_raw || confirmedFields.pain_raw.length < 2) {
+      return makeResponse(400, { ok: false, error: "痛点不能为空" });
+    }
+    if (!confirmedFields.how_raw || confirmedFields.how_raw.length < 2) {
+      return makeResponse(400, { ok: false, error: "解决方式不能为空" });
+    }
+
+    const result = await scoreVpByWord(confirmedFields, gridId, architecture);
+    const previewMarketJinang = await getPreviewMarketJinang(teamId, gridId, architecture).catch(() => null);
+    const marketMatchStrength = previewMarketJinang?.matched
+      ? Number(previewMarketJinang.match_strength || 0)
+      : 0;
+    const round1Outcome = buildRound1Outcome(gridId, architecture, result?.scores || {}, marketMatchStrength, {
+      teamId,
+      sessionId: `confirm:${teamId}:${memberId || "member"}`,
+      memberId,
+      vpText
+    });
+    const confirmedAt = new Date().toISOString();
+    console.log(
+      "[confirm-and-score] wtpMultiplier:",
+      round1Outcome.wtp_multiplier,
+      "vpEffect:",
+      round1Outcome.wtp_vp_effect,
+      "jinangBonus:",
+      round1Outcome.jinang_wtp_bonus,
+      "rhoDiscount:",
+      round1Outcome.rho_C
+    );
+    const normalizedScores = {
+      C: clipScore(round1Outcome.C, 1, 5),
+      G: clipScore(round1Outcome.G, 1, 5),
+      E: clipScore(round1Outcome.E_raw, 1, 5),
+      Eadj: clipScore(round1Outcome.Eadj, 1, 5),
+      VPscore: clipScore(round1Outcome.VPscore, 1, 5)
+    };
+    const feedback = await generateVpFeedback({
+      vpText,
+      confirmedFields,
+      scores: normalizedScores,
+      gridLabel: resolvePhase3Strategy(gridId, architecture).cell_label,
+      archLabel: toArchitecturePromptLabel(architecture),
+      teamId,
+      memberId
+    });
+    const persisted = await persistConfirmedVpResult({
+      teamId,
+      memberId,
+      vpText,
+      confirmedFields,
+      scores: normalizedScores,
+      confirmedAt
+    });
+    if (feedback) {
+      await persistVpFeedback(teamId, feedback).catch(() => {});
+    }
+    await recordVpIteration({
+      teamId,
+      sessionId: persisted.sessionId,
+      memberId,
+      trigger: "confirm_score",
+      vpAfter: vpText,
+      scores: normalizedScores
+    });
+    await saveRound1TeamDraft(teamId, memberId, {
+      grid_id: gridId,
+      architecture,
+      vp_text: vpText
+    }).catch(() => {});
+
+    return makeResponse(200, {
+      ok: true,
+      scores: normalizedScores,
+      feedback: feedback || null,
+      confirmedAt,
+      fields: confirmedFields,
+      session_id: persisted.sessionId,
+      vp_result: buildConfirmedVpResult(confirmedFields, normalizedScores),
+      jinang: {
+        marketJinang: previewMarketJinang ? {
+          id: previewMarketJinang.id,
+          name: previewMarketJinang.name,
+          member_id: previewMarketJinang.member_id,
+          member_name: previewMarketJinang.member_name,
+          match_strength: Number(previewMarketJinang.match_strength || 0),
+          bonus: round1Outcome.jinang_wtp_bonus
+        } : null
+      },
+      wtp: {
+        vpEffect: round1Outcome.wtp_vp_effect,
+        jinangBonus: round1Outcome.jinang_wtp_bonus,
+        multiplier: round1Outcome.wtp_multiplier,
+        lambdaG: round1Outcome.lambda_G,
+        lambdaE: round1Outcome.lambda_E,
+        rhoC: round1Outcome.rho_C,
+        percentChange: Math.round((Number(round1Outcome.wtp_multiplier || 1) - 1) * 100)
+      }
+    });
+  } catch (e) {
+    console.error("[confirm-and-score] error:", e);
+    return makeResponse(500, { ok: false, error: "评分失败，请重试" });
+  }
+}
+
+async function generateVpFeedbackApi(body) {
+  try {
+    const payload = body || {};
+    const teamId = String(payload.teamId || "").trim();
+    const memberId = String(payload.memberId || "").trim();
+    const vpText = String(payload.vpText || "").trim();
+    const gridLabel = String(payload.gridLabel || "").trim();
+    const archLabel = String(payload.archLabel || "").trim();
+    const confirmedFields = payload.confirmedFields && typeof payload.confirmedFields === "object"
+      ? payload.confirmedFields
+      : null;
+    const scores = payload.scores && typeof payload.scores === "object"
+      ? payload.scores
+      : null;
+
+    if (!confirmedFields || !scores) {
+      return makeResponse(400, { ok: false, error: "缺少必要参数" });
+    }
+
+    const feedback = await generateVpFeedback({
+      vpText,
+      confirmedFields,
+      scores,
+      gridLabel,
+      archLabel,
+      teamId,
+      memberId
+    });
+
+    if (teamId && feedback) {
+      await persistVpFeedback(teamId, feedback).catch(() => {});
+    }
+
+    return makeResponse(200, { ok: true, feedback: feedback || null });
+  } catch (e) {
+    console.error("[generate-feedback] error:", e);
+    return makeResponse(503, { ok: false, error: "AI 服务暂时不可用，请重试" });
   }
 }
 
@@ -760,11 +1621,8 @@ async function submitPhase3Vp(teamId, body) {
     if (!team) return makeResponse(404, { ok: false, error: "team not found" });
 
     const payload = body || {};
+    const memberId = String(payload.memberId || payload.member_id || "").trim();
     const mode = String(payload.mode || payload.action || "score").toLowerCase();
-    if (mode !== "score" && mode !== "confirm") {
-      return makeResponse(400, { ok: false, error: "mode must be score or confirm" });
-    }
-
     const requestedGridId = String(payload.grid_id || "").trim();
     const requestedArch = String(payload.architecture || "").trim();
     const gridId = requestedGridId || String(team.final_grid_id || "").trim();
@@ -781,169 +1639,168 @@ async function submitPhase3Vp(teamId, body) {
       jinang: jinangContext
     };
     const architectureLabel = toArchitecturePromptLabel(strategy.architecture_label || strategy.architecture);
-    const confirmUserMessage = "我们决定确认提交最终版价值主张，请给出最终提交结果。";
-
     const sessionId = await getOrCreatePhase3Session(teamId);
     await updateSession(sessionId, { strategy });
-    let session = await getSession(sessionId);
+    const session = await getSession(sessionId);
     if (!session) return makeResponse(500, { ok: false, error: "vp session not found" });
 
+    if (mode === "score") {
+      const vpText = String(payload.vp_text || payload.vpText || "").trim();
+      if (vpText.length < 5) {
+        return makeResponse(400, { ok: false, error: "vp_text required" });
+      }
+
+      let scoringResult = null;
+      try {
+        scoringResult = await scoreVpByWord(vpText, gridId, architecture);
+      } catch (_) {
+        scoringResult = null;
+      }
+      const rawWordScores = scoringResult?.scores || {};
+      const scores = {
+        coverage: clipScore(rawWordScores.C, 1, 5),
+        generalizability: clipScore(rawWordScores.G, 1, 5),
+        effectiveness: clipScore(rawWordScores.E, 1, 5)
+      };
+      const scoreValid = scores.coverage != null && scores.generalizability != null && scores.effectiveness != null;
+      const previewMarketJinang = await getPreviewMarketJinang(teamId, gridId, architecture).catch(() => null);
+      const marketMatchStrength = previewMarketJinang?.matched
+        ? Number(previewMarketJinang.match_strength || 0)
+        : 0;
+      const round1Outcome = buildRound1Outcome(gridId, architecture, {
+        C: scores.coverage,
+        G: scores.generalizability,
+        E: scores.effectiveness
+      }, marketMatchStrength, {
+        teamId,
+        sessionId,
+        vpText
+      });
+
+      await updateSession(sessionId, {
+        pmfScore: {
+          _vp_sentence: vpText,
+          _scoring_features: scoringResult?.details || null,
+          preview_scores: scores
+        },
+        status: "chatting"
+      });
+      await recordVpIteration({
+        teamId,
+        sessionId,
+        memberId,
+        trigger: "score_preview",
+        vpAfter: vpText,
+        scores
+      });
+
+      return makeResponse(200, {
+        ok: true,
+        mode,
+        session_id: sessionId,
+        has_score_preview: true,
+        score_valid: scoreValid,
+        scores,
+        features: scoringResult?.details || null,
+        vp_draft: vpText,
+        scored_at_user_msg_count: 0,
+        bottleneck: "建议继续打磨目标客户、痛点场景和价值表达。",
+        coach_reply: null,
+        vp_result: null,
+        vp_result_raw: null,
+        wtp_preview: {
+          multiplier: round1Outcome.wtp_multiplier,
+          wtp_adj: round1Outcome.WTPadj,
+          vp_effect: round1Outcome.wtp_vp_effect
+        }
+      });
+    }
+
+    if (mode !== "confirm") {
+      return makeResponse(400, { ok: false, error: "mode must be score or confirm" });
+    }
+
+    const confirmUserMessage = "我们决定确认提交最终版价值主张，请给出最终提交结果。";
     let replyText = "";
     let vpResult = null;
     let vpResultRaw = null;
-    let vpDraft = null;
     let scoreValid = false;
     let scores = emptyApiScores();
     let features = null;
     let pmfScorePayload = null;
-    let scoredAtUserMsgCount = countPhase3StudentMessages(session.messages);
+    const out = await chat(session, confirmUserMessage, { mode: "confirm", temperature: 0 });
+    replyText = String(out?.replyText || "").trim();
+    vpResult = out?.vpResult || null;
+    vpResultRaw = out?.vpResultRaw || null;
 
-    if (mode === "score") {
-      const cached = getCachedPhase3ScorePayload(session.pmfScore);
-      console.log("[phase3-score] enter", {
-        mode,
-        teamId,
-        sessionId,
-        hasCached: Boolean(cached),
-        cachedScoredAtUserMsgCount: Number(session?.pmfScore?._scored_at_user_msg_count || 0),
-        currentUserMsgCount: scoredAtUserMsgCount
-      });
-      if (cached && cached.scoredAtUserMsgCount === scoredAtUserMsgCount) {
-        console.log("[phase3-score] cache-hit", {
-          mode,
-          teamId,
-          sessionId,
-          hasCached: true,
-          cachedScoredAtUserMsgCount: cached.scoredAtUserMsgCount,
-          currentUserMsgCount: scoredAtUserMsgCount
-        });
-        replyText = "";
-        vpResult = cached.vpResult;
-        vpResultRaw = cached.vpResultRaw;
-        vpDraft = cached.vpDraft;
-        scores = cached.scores;
-        scoreValid = cached.scoreValid;
-        features = cached.features;
+    await appendMessage(sessionId, "user", confirmUserMessage);
+    await appendMessage(sessionId, "assistant", replyText);
+
+    if (vpResult) {
+      const confirmedScoringConversation = buildVpResultScoringText(vpResult);
+      let scoringResult = null;
+      try {
+        scoringResult = await scoreVp(confirmedScoringConversation, strategy.cell_label, architectureLabel);
+      } catch (_) {
+        scoringResult = null;
+      }
+      features = scoringResult?.features || null;
+      const confirmedScores = scorerScoresToApi(scoringResult?.scores);
+      if (confirmedScores) {
+        scoreValid = true;
+        scores = confirmedScores;
       } else {
-        console.log("[phase3-score] cache-miss", {
-          mode,
-          teamId,
-          sessionId,
-          hasCached: Boolean(cached),
-          cachedScoredAtUserMsgCount: cached ? cached.scoredAtUserMsgCount : null,
-          currentUserMsgCount: scoredAtUserMsgCount
-        });
-        const out = await chat(session, AUTO_VP_DRAFT_REQUEST, { mode: "chat", temperature: 0 });
-        replyText = String(out?.replyText || "").trim();
-
-        await appendMessage(sessionId, "user", AUTO_VP_DRAFT_REQUEST);
-        await appendMessage(sessionId, "assistant", replyText);
-
-        vpDraft = extractVpSentence(replyText) || "";
-        const scoringResult = vpDraft
-          ? await scoreVp(vpDraft, strategy.cell_label, architectureLabel).catch(() => null)
-          : null;
-        features = scoringResult?.features || null;
-        scores = scorerScoresToApi(scoringResult?.scores);
-        scoreValid = Boolean(scores && !areApiScoresEmpty(scores));
-        if (!scoreValid) {
-          scores = emptyApiScores();
-        }
-
-        const newUserMsgCount = scoredAtUserMsgCount + 1;
-        pmfScorePayload = scoreValid ? {
-          scores: {
-            C: { score: scores.coverage, feedback: "" },
-            G: { score: scores.generalizability, feedback: "" },
-            E: { score: scores.effectiveness, feedback: "" }
-          },
-          _scoring_features: features,
-          _vp_sentence: vpDraft || "",
-          _scored_at_user_msg_count: newUserMsgCount
-        } : null;
-        await updateSession(sessionId, { pmfScore: pmfScorePayload });
-        scoredAtUserMsgCount = newUserMsgCount;
+        scores = emptyApiScores();
+        scoreValid = false;
       }
-    } else {
-      const cached = getCachedPhase3ScorePayload(session.pmfScore);
-      const out = await chat(session, confirmUserMessage, { mode: "confirm", temperature: 0 });
-      replyText = String(out?.replyText || "").trim();
-      vpResult = out?.vpResult || null;
-      vpResultRaw = out?.vpResultRaw || null;
-
-      await appendMessage(sessionId, "user", confirmUserMessage);
-      await appendMessage(sessionId, "assistant", replyText);
-
-      if (!vpResult) {
-        vpResult = buildFallbackVpResult({
-          sessionMessages: session.messages,
-          replyText,
-          userMessage: confirmUserMessage,
-          scores: null
-        });
-      }
-
-      if (cached && cached.scoredAtUserMsgCount === scoredAtUserMsgCount) {
-        scores = cached.scores;
-        scoreValid = cached.scoreValid;
-        features = cached.features;
-        vpDraft = cached.vpDraft;
-      } else {
-        const scoringText = buildVpResultScoringText(vpResult) || replyText || "";
-        const scoringResult = await scoreVp(scoringText, strategy.cell_label, architectureLabel).catch(() => null);
-        features = scoringResult?.features || null;
-        scores = scorerScoresToApi(scoringResult?.scores);
-        scoreValid = Boolean(scores && !areApiScoresEmpty(scores));
-        if (!scoreValid) {
-          scores = emptyApiScores();
-        }
-        vpDraft = extractVpSentence(replyText) || "";
-      }
-
-      if (vpResult && scoreValid) {
-        vpResult = {
-          ...vpResult,
-          scores: {
-            C: { score: scores.coverage, feedback: "" },
-            G: { score: scores.generalizability, feedback: "" },
-            E: { score: scores.effectiveness, feedback: "" }
-          }
-        };
-      }
-
-      pmfScorePayload = {
-        ...(vpResult || {}),
-        ...(features ? { _scoring_features: features } : {}),
-        _vp_sentence: String(vpDraft || "").trim(),
-        _scored_at_user_msg_count: scoredAtUserMsgCount
-      };
-
-      await updateSession(sessionId, {
-        pmfScore: pmfScorePayload,
-        status: "submitted"
-      });
     }
+
+    const confirmedFields = vpResultToConfirmedFields(
+      vpResult,
+      String(payload.vp_text || payload.vpText || buildVpResultScoringText(vpResult) || "").trim()
+    );
+    const confirmedAt = confirmedFields ? new Date().toISOString() : null;
+
+    if (vpResult && scoreValid) {
+      vpResult = {
+        ...vpResult,
+        scores: {
+          C: { score: scores.coverage, feedback: "" },
+          G: { score: scores.generalizability, feedback: "" },
+          E: { score: scores.effectiveness, feedback: "" }
+        }
+      };
+    }
+
+    pmfScorePayload = vpResult
+      ? {
+          ...vpResult,
+          ...(features ? { _scoring_features: features } : {}),
+          ...(confirmedFields ? {
+            _vp_sentence: String(payload.vp_text || payload.vpText || buildVpResultScoringText(vpResult) || "").trim(),
+            _confirmed_fields: confirmedFields,
+            _confirmed_at: confirmedAt
+          } : {})
+        }
+      : null;
+
+    await updateSession(sessionId, {
+      pmfScore: pmfScorePayload,
+      status: "submitted"
+    });
 
     const bottleneck = String(replyText || "").split(/\n+/).map((s) => s.trim()).find(Boolean) || "建议补充更具体场景。";
-    if (mode === "score") {
-      console.log("[phase3-score] vpDraft", {
-        teamId,
-        sessionId,
-        vpDraft,
-        coachReply: replyText
-      });
-    }
 
     return makeResponse(200, {
       ok: true,
       mode,
       session_id: sessionId,
-      has_score_preview: mode === "score" || mode === "confirm",
+      has_score_preview: true,
       score_valid: scoreValid,
       scores,
       features,
-      vp_draft: vpDraft,
-      scored_at_user_msg_count: scoredAtUserMsgCount,
+      vp_draft: null,
+      scored_at_user_msg_count: 0,
       bottleneck,
       coach_reply: replyText,
       vp_result: vpResult || null,
@@ -959,6 +1816,7 @@ async function chatPhase3(teamId, body) {
     const team = await getTeam(teamId);
     if (!team) return makeResponse(404, { ok: false, error: "team not found" });
     const message = String(body?.message || "").trim();
+    const memberId = String(body?.memberId || body?.member_id || "").trim();
     if (!message) return makeResponse(400, { ok: false, error: "message required" });
     const requestedGridId = String(body?.grid_id || "").trim();
     const requestedArch = String(body?.architecture || "").trim();
@@ -987,7 +1845,8 @@ async function chatPhase3(teamId, body) {
     return makeResponse(200, {
       ok: true,
       session_id: sessionId,
-      coach_reply: out.replyText
+      coach_reply: out.replyText,
+      member_id: memberId || null
     });
   } catch (e) {
     return makeResponse(400, { ok: false, error: e.message });
@@ -996,10 +1855,11 @@ async function chatPhase3(teamId, body) {
 
 async function finalizePhase3(teamId, body) {
   try {
-    const team = await getTeam(teamId);
-    if (!team) return makeResponse(404, { ok: false, error: "team not found" });
-
     const payload = body || {};
+    const memberId = String(payload.memberId || payload.member_id || "").trim();
+    const permission = await ensureLeaderPermission(teamId, memberId);
+    if (!permission.ok) return permission.response;
+    const team = permission.team;
     const gridId = String(payload.grid_id || "").trim();
     const architecture = String(payload.architecture || "").trim();
     if (!gridId || !architecture) {
@@ -1007,8 +1867,9 @@ async function finalizePhase3(teamId, body) {
     }
 
     const arch = normalizeArchitecture(architecture);
-    const sessionId = await getOrCreatePhase3Session(teamId);
-    const session = await getSession(sessionId);
+    const latestSession = await getLatestPhase3SessionRecord(teamId);
+    const sessionId = latestSession?.sessionId || await getOrCreatePhase3Session(teamId);
+    const session = latestSession || await getSession(sessionId);
     const vpSummary = await summarizeVpFromConversation({
       gridId,
       architecture: arch,
@@ -1020,13 +1881,21 @@ async function finalizePhase3(teamId, body) {
     const finalArch = confirmedArch && confirmedArch !== arch ? confirmedArch : arch;
     const archSource = confirmedArch && confirmedArch !== arch ? "coach_confirmed" : "player_selected";
 
-    const payloadVpScores = vpResultToApiScores(payload.vp_result || null);
-    const scoreInput = payload.scores && typeof payload.scores === "object" ? payload.scores : {};
-    const vpScores = {
-      C: clipScore(scoreInput.coverage ?? payloadVpScores?.coverage, 1, 5),
-      G: clipScore(scoreInput.generalizability ?? payloadVpScores?.generalizability, 1, 5),
-      E: clipScore(scoreInput.effectiveness ?? payloadVpScores?.effectiveness, 1, 5)
-    };
+    const payloadScores = normalizeVpScoresInput(payload.scores);
+    const sessionScores = vpResultToApiScores(session?.pmfScore || null);
+    const finalScores = payloadScores || sessionScores || emptyApiScores();
+    const confirmedFields = payload.confirmed_fields && typeof payload.confirmed_fields === "object"
+      ? (() => {
+          const normalized = normalizeConfirmedFieldsPayload(payload.confirmed_fields);
+          return Object.values(normalized).some((value) => String(value || "").trim()) ? normalized : null;
+        })()
+      : vpResultToConfirmedFields(payload.vp_result || null, String(payload.vp_text || payload.vpText || vpSummary.text || "").trim());
+    const confirmedAt = confirmedFields ? new Date().toISOString() : null;
+    const vpScores = buildPersistedVpScores(
+      finalScores?.coverage,
+      finalScores?.generalizability,
+      finalScores?.effectiveness
+    );
     const engineVpScores = {
       C: vpScores.C ?? 3,
       G: vpScores.G ?? 3,
@@ -1045,7 +1914,20 @@ async function finalizePhase3(teamId, body) {
 
     const settle = await settleAllJinang(teamId);
     const maxMarketMs = getEligibleMarketMatchStrength(settle?.settlements || []);
-    const r1 = Engine.computeRound1V2(gridId, finalArch, engineVpScores, maxMarketMs);
+    const r1 = buildRound1Outcome(gridId, finalArch, engineVpScores, maxMarketMs, {
+      teamId,
+      sessionId,
+      vpText: String(payload.vp_text || payload.vpText || vpSummary.text || "").trim()
+    });
+    scheduleFinalRound1Stages(
+      { teamId, sessionId, source: "web" },
+      r1,
+      {
+        source_iteration: payload.source_iteration,
+        used_best_iteration: payload.used_best_iteration === true,
+        vp_text: String(payload.vp_text || payload.vpText || vpSummary.text || "").trim()
+      }
+    );
 
     await runSql(`
       UPDATE teams
@@ -1060,8 +1942,50 @@ async function finalizePhase3(teamId, body) {
           final_wtp_multiplier = ${Number(r1.wtp_multiplier)}
       WHERE id = ${sqlQuote(teamId)};
     `);
+    console.log("[Round1 finalize] 存储 WTP:", {
+      table: "teams",
+      final_wtp_adj: Number(r1.WTPadj),
+      final_wtp_ref: Number(r1.WTPref),
+      final_wtp_multiplier: Number(r1.wtp_multiplier),
+      wtp_vp_effect: Number(r1.wtp_vp_effect),
+      jinang_wtp_bonus: Number(r1.jinang_wtp_bonus)
+    });
+
+    if (sessionId) {
+      const nextPmfScore = {
+        ...(session?.pmfScore && typeof session.pmfScore === "object" ? session.pmfScore : {}),
+        ...(payloadScores ? {
+          scores: {
+            C: { score: vpScores.C, feedback: "" },
+            G: { score: vpScores.G, feedback: "" },
+            E: { score: vpScores.E, feedback: "" }
+          }
+        } : {}),
+        ...(confirmedFields ? {
+          _vp_sentence: String(payload.vp_text || payload.vpText || vpSummary.text || "").trim(),
+          _confirmed_fields: confirmedFields,
+          _confirmed_at: confirmedAt
+        } : {})
+      };
+      await updateSession(sessionId, { pmfScore: nextPmfScore }).catch(() => {});
+    }
 
     await updateTeamStatus(teamId, "phase4");
+    await recordVpIteration({
+      teamId,
+      sessionId,
+      memberId,
+      trigger: "finalize",
+      vpAfter: String(payload.vp_text || payload.vpText || vpSummary.text || "").trim(),
+      scores: vpScores,
+      sourceIteration: payload.source_iteration,
+      usedBestIteration: payload.used_best_iteration === true
+    });
+    await saveRound1TeamDraft(teamId, memberId, {
+      grid_id: gridId,
+      architecture: finalArch,
+      vp_text: vpSummary.text
+    }).catch(() => {});
 
     return makeResponse(200, {
       ok: true,
@@ -1095,7 +2019,7 @@ async function buildPhase4Data(teamId) {
       rawScores = recoveredScores;
       await runSql(`
         UPDATE teams
-        SET final_vp_scores = ${sqlQuote(JSON.stringify(recoveredScores))},
+        SET final_vp_scores = ${sqlQuote(JSON.stringify(buildPersistedVpScores(recoveredScores.C, recoveredScores.G, recoveredScores.E)))},
             final_vp_c = ${Number(recoveredScores.C)},
             final_vp_g = ${Number(recoveredScores.G)},
             final_vp_e_raw = ${Number(recoveredScores.E)}
@@ -1103,11 +2027,11 @@ async function buildPhase4Data(teamId) {
       `);
     }
   }
-  const vpScores = {
-    C: clipScore(rawScores.C ?? team.final_vp_c, 1, 5),
-    G: clipScore(rawScores.G ?? team.final_vp_g, 1, 5),
-    E: clipScore(rawScores.E ?? team.final_vp_e_raw, 1, 5)
-  };
+  const vpScores = buildPersistedVpScores(
+    rawScores.C ?? team.final_vp_c,
+    rawScores.G ?? team.final_vp_g,
+    rawScores.E ?? team.final_vp_e_raw
+  );
   const engineVpScores = {
     C: vpScores.C ?? 3,
     G: vpScores.G ?? 3,
@@ -1115,11 +2039,16 @@ async function buildPhase4Data(teamId) {
   };
 
   const settle = await settleAllJinang(teamId);
-    const maxMarketMs = getEligibleMarketMatchStrength(settle?.settlements || []);
-    const r1Base = Engine.computeRound1V2(team.final_grid_id, team.final_architecture, engineVpScores, 0);
-    const r1 = Engine.computeRound1V2(team.final_grid_id, team.final_architecture, engineVpScores, maxMarketMs);
-
+  const maxMarketMs = getEligibleMarketMatchStrength(settle?.settlements || []);
+  const sessions = await getTeamSessions(teamId);
+  const latestSession = getLatestPhase3Session(sessions);
   const vpText = team.final_vp_text || "";
+  const r1Base = buildRound1Outcome(team.final_grid_id, team.final_architecture, engineVpScores, 0);
+  const r1 = buildRound1Outcome(team.final_grid_id, team.final_architecture, engineVpScores, maxMarketMs, {
+    teamId,
+    sessionId: latestSession?.sessionId || `phase4:${teamId}`,
+    vpText
+  });
   const extractField = (text, key) => {
     const re = new RegExp(key + "\\s*[：:]\\s*([^\\n]+)");
     const match = String(text || "").match(re);
@@ -1139,10 +2068,54 @@ async function buildPhase4Data(teamId) {
         final_wtp_multiplier = ${Number(r1.wtp_multiplier)}
     WHERE id = ${sqlQuote(teamId)};
   `);
+  console.log("[Phase4] 刷新 WTP:", {
+    table: "teams",
+    final_wtp_adj: Number(r1.WTPadj),
+    final_wtp_ref: Number(r1.WTPref),
+    final_wtp_multiplier: Number(r1.wtp_multiplier),
+    wtp_vp_effect: Number(r1.wtp_vp_effect),
+    jinang_wtp_bonus: Number(r1.jinang_wtp_bonus)
+  });
 
-    return {
-      ok: true,
-      team: {
+  let vpFeedback = String(latestSession?.pmfScore?._vp_feedback || "").trim() || null;
+  const vpFeedbackVersion = Number(latestSession?.pmfScore?._vp_feedback_version || 0);
+  const confirmedFields = latestSession?.pmfScore?._confirmed_fields && typeof latestSession.pmfScore._confirmed_fields === "object"
+    ? latestSession.pmfScore._confirmed_fields
+    : null;
+  if ((!vpFeedback || vpFeedbackVersion < VP_FEEDBACK_VERSION) && confirmedFields) {
+    try {
+      vpFeedback = await generateVpFeedback({
+        vpText: String(latestSession?.pmfScore?._vp_sentence || vpText || "").trim(),
+        confirmedFields,
+        scores: {
+          C: clipScore(r1.C, 1, 5),
+          G: clipScore(r1.G, 1, 5),
+          E: clipScore(r1.E_raw, 1, 5),
+          Eadj: clipScore(r1.Eadj, 1, 5),
+          VPscore: clipScore(r1.VPscore, 1, 5)
+        },
+        gridLabel: resolvePhase3Strategy(team.final_grid_id, team.final_architecture).cell_label,
+        archLabel: toArchitecturePromptLabel(team.final_architecture),
+        teamId,
+        memberId: latestSession?.pmfScore?._member_id || null
+      });
+      if (vpFeedback) {
+        await persistVpFeedback(teamId, vpFeedback).catch(() => {});
+      }
+    } catch (_) {
+      vpFeedback = null;
+    }
+  }
+  const marketSettlements = Array.isArray(settle?.settlements)
+    ? settle.settlements
+        .filter((item) => item && item.jinang_type === "market")
+        .sort((a, b) => Number(b.match_strength || 0) - Number(a.match_strength || 0))
+    : [];
+  const topMarketJinang = marketSettlements[0] || null;
+
+  return {
+    ok: true,
+    team: {
       id: team.id,
       team_name: team.team_name,
       status: team.status,
@@ -1150,25 +2123,42 @@ async function buildPhase4Data(teamId) {
       final_architecture: team.final_architecture,
       final_architecture_source: team.final_architecture_source || "player_selected",
       final_vp_text: team.final_vp_text
-      },
-      r1_result: r1,
-      wtp_breakdown: {
-        base_result: r1Base,
-        final_result: r1,
-        market_jinang_match_strength: maxMarketMs,
-        base_pct: Math.round(((Number(r1Base.WTPadj || 0) / Math.max(1, Number(r1Base.WTPref || 1))) - 1) * 100),
-        final_pct: Math.round(((Number(r1.WTPadj || 0) / Math.max(1, Number(r1.WTPref || 1))) - 1) * 100),
-        jinang_delta_pct: Math.round((((Number(r1.WTPadj || 0) - Number(r1Base.WTPadj || 0)) / Math.max(1, Number(r1Base.WTPref || 1)))) * 100)
-      },
-      vp_scores: {
-        C: clipScore(rawScores.C ?? vpScores.C, 1, 5),
-        G: clipScore(rawScores.G ?? vpScores.G, 1, 5),
-      E: clipScore(rawScores.E ?? vpScores.E, 1, 5)
+    },
+    r1_result: r1,
+    wtp_breakdown: {
+      base_result: r1Base,
+      final_result: r1,
+      market_jinang_match_strength: maxMarketMs,
+      rho_discount: r1.rho_C,
+      vp_effect: r1.wtp_vp_effect,
+      jinang_bonus: r1.jinang_wtp_bonus,
+      multiplier: r1.wtp_multiplier,
+      base_pct: Math.round((Number(r1.wtp_vp_effect || 1) - 1) * 100),
+      final_pct: Math.round((Number(r1.wtp_multiplier || 1) - 1) * 100),
+      jinang_delta_pct: Math.round(Number(r1.jinang_wtp_bonus || 0) * 100)
+    },
+    vp_scores: {
+      C: clipScore(rawScores.C ?? vpScores.C, 1, 5),
+      G: clipScore(rawScores.G ?? vpScores.G, 1, 5),
+      E: clipScore(rawScores.E ?? vpScores.E, 1, 5),
+      Eadj: clipScore(r1.Eadj, 1, 5),
+      VPscore: clipScore(r1.VPscore, 1, 5)
     },
     vp_summary: {
       who: extractField(vpText, "WHO"),
       pain: extractField(vpText, "PAIN"),
       how: extractField(vpText, "HOW")
+    },
+    vp_feedback: vpFeedback,
+    jinang: {
+      market_jinang: topMarketJinang ? {
+        id: topMarketJinang.jinang_id,
+        name: topMarketJinang.name,
+        member_id: topMarketJinang.member_id,
+        member_name: topMarketJinang.member_name,
+        match_strength: Number(topMarketJinang.match_strength || 0),
+        bonus: r1.jinang_wtp_bonus
+      } : null
     },
     settle
   };
@@ -1184,10 +2174,14 @@ async function phase4Data(teamId) {
   }
 }
 
-async function phase3State(teamId) {
+async function phase3State(teamId, requesterMemberId = "") {
   try {
-    const team = await getTeam(teamId);
+    let team = await getTeam(teamId);
     if (!team) return makeResponse(404, { ok: false, error: "team not found" });
+    if (!String(team.leader_member_id || "").trim() && ["phase2", "phase3", "phase4", "frozen"].includes(String(team.status || ""))) {
+      team = await assignRound1LeaderIfNeeded(teamId) || team;
+    }
+    const draft = await readRound1TeamDraft(teamId);
 
     const sessions = await getTeamSessions(teamId);
     const session = getLatestPhase3Session(sessions);
@@ -1195,10 +2189,15 @@ async function phase3State(teamId) {
       return makeResponse(200, {
         ok: true,
         team_id: teamId,
+        ...buildLeaderMeta(team, requesterMemberId),
+        team_draft: draft,
         session_id: null,
         status: "chatting",
-        strategy: null,
+        strategy: draft?.grid_id && draft?.architecture
+          ? resolvePhase3Strategy(draft.grid_id, draft.architecture)
+          : null,
         coach_history: [],
+        vp_confirmation: null,
         score_state: {
           has_score_preview: false,
           score_valid: false,
@@ -1216,7 +2215,11 @@ async function phase3State(teamId) {
     const messages = Array.isArray(session.messages) ? session.messages : [];
     const coachHistory = restoreCoachHistory(messages);
     const scoreFromSession = vpResultToApiScores(session.pmfScore || null);
-    const vpDraft = String(session?.pmfScore?._vp_sentence || "").trim();
+    const vpDraft = String(session?.pmfScore?._vp_sentence || draft?.vp_text || "").trim();
+    const confirmedFields = session?.pmfScore?._confirmed_fields && typeof session.pmfScore._confirmed_fields === "object"
+      ? session.pmfScore._confirmed_fields
+      : null;
+    const confirmedAt = String(session?.pmfScore?._confirmed_at || "").trim() || null;
     const scores = scoreFromSession || {
       coverage: null,
       generalizability: null,
@@ -1229,10 +2232,22 @@ async function phase3State(teamId) {
     return makeResponse(200, {
       ok: true,
       team_id: teamId,
+      ...buildLeaderMeta(team, requesterMemberId),
+      team_draft: draft,
       session_id: session.sessionId,
       status,
-      strategy: session.strategy || null,
+      strategy: session.strategy || (draft?.grid_id && draft?.architecture
+        ? resolvePhase3Strategy(draft.grid_id, draft.architecture)
+        : null),
       coach_history: coachHistory,
+      vp_confirmation: confirmedFields ? {
+        status: scoreValid ? "scored" : "confirming",
+        vp_text: vpDraft || "",
+        fields: confirmedFields,
+        scores: session?.pmfScore?._vp_word_scores || null,
+        confirmed_at: confirmedAt,
+        feedback: String(session?.pmfScore?._vp_feedback || "").trim() || null
+      } : null,
       score_state: {
         has_score_preview: hasScorePreview,
         score_valid: scoreValid,
@@ -1291,28 +2306,34 @@ async function getPhase3Scores(teamId) {
   }
 }
 
-async function freezeTeam(teamId) {
+async function freezeTeam(teamId, body = {}) {
   try {
-    const team = await getTeam(teamId);
-    if (!team) return makeResponse(404, { ok: false, error: "team not found" });
+    const memberId = readRequesterMemberId(body);
+    const permission = await ensureLeaderPermission(teamId, memberId);
+    if (!permission.ok) return permission.response;
+    const team = permission.team;
     if (!team.final_grid_id) {
       return makeResponse(400, { ok: false, error: "must finalize before freezing" });
     }
     await updateTeamStatus(teamId, "frozen");
-    return makeResponse(200, { ok: true, status: "frozen" });
+    return makeResponse(200, { ok: true, status: "frozen", ...buildLeaderMeta(team, memberId) });
   } catch (e) {
     return makeResponse(400, { ok: false, error: e.message });
   }
 }
 
-async function getTeamStatus(teamId) {
+async function getTeamStatus(teamId, requesterMemberId = "") {
   try {
-    const team = await getTeam(teamId);
+    let team = await getTeam(teamId);
     if (!team) return makeResponse(404, { ok: false, error: "team not found" });
+    if (!String(team.leader_member_id || "").trim() && ["phase2", "phase3", "phase4", "frozen"].includes(String(team.status || ""))) {
+      team = await assignRound1LeaderIfNeeded(teamId) || team;
+    }
     const memberCount = Array.isArray(team.members) ? team.members.length : 0;
     const submittedCount = await countTeamSubmissions(teamId);
     const status = String(team.status || "forming");
     const round2State = await getTeamRound2State(teamId);
+    const draft = await readRound1TeamDraft(teamId);
     return makeResponse(200, {
       ok: true,
       status,
@@ -1320,6 +2341,8 @@ async function getTeamStatus(teamId) {
       all_submitted: submittedCount >= memberCount && memberCount > 0,
       member_count: memberCount,
       submitted_count: submittedCount,
+      ...buildLeaderMeta(team, requesterMemberId),
+      team_draft: draft,
       r2_status: round2State?.r2?.status || "R2_NOT_STARTED",
       r2_status_label: round2State?.r2?.statusLabel || "未开始"
     });
@@ -1361,8 +2384,14 @@ module.exports = {
   getTeamApi,
   submitPhase1,
   teamSubmissions,
+  savePhase2Draft,
+  savePhase3Draft,
+  synthesizePhase3Vp,
   submitPhase3Vp,
   chatPhase3,
+  extractVpFieldsApi,
+  confirmAndScoreVp,
+  generateVpFeedbackApi,
   finalizePhase3,
   phase3State,
   getPhase3Scores,
@@ -1371,6 +2400,10 @@ module.exports = {
   getTeamStatus,
   getMemberJinangApi,
   clipScore,
+  lambdaMap,
+  rhoDiscount,
+  buildRound1Outcome,
   vpResultToApiScores,
-  buildVpResultScoringText
+  buildVpResultScoringText,
+  vpResultToConfirmedFields
 };
