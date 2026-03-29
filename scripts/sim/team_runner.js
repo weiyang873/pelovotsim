@@ -1202,6 +1202,7 @@ async function runRound2(result, api, teamId, members, memberActors, teamIndex, 
     const calcGridId = toCalcGridId(recap.final_grid_id, recap.architecture || stateData.round1_context?.architecture || "");
     const data = await stepApi(api, "R2.7_calculate_preview").calculateRD({
       gridId: calcGridId,
+      round1GridId: recap.final_grid_id,
       selections: mergeData.teamSelections,
       radar: mergeData.mergedInterview?.radar || {},
       tags: mergeData.mergedInterview?.tags || [],

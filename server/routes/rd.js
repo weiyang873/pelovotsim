@@ -6,6 +6,7 @@ const {
   computeAdoption,
   DEFAULT_PARAMS
 } = require("../llm/rdCalculator");
+const TeamManager = require("../multiplayer/teamManager");
 const capGroups = require("../../data/capability_groups_v2.json");
 const rules = require("../../data/compatibility_rules_v2.json");
 const gridPriors = require("../../data/grid_priors_v4_cap_weights.json");
@@ -14,9 +15,35 @@ function makeResponse(status, body) {
   return { status, body };
 }
 
+async function enrichRound1Context(payload) {
+  const nextPayload = payload && typeof payload === "object" ? { ...payload } : {};
+  const hasRound1GridId = String(
+    nextPayload.round1GridId ||
+    nextPayload.round1_grid_id ||
+    ((nextPayload.round1Context || {}).gridId) ||
+    ((nextPayload.round1Context || {}).grid_id) ||
+    ""
+  ).trim().length > 0;
+  if (hasRound1GridId) return nextPayload;
+
+  const teamId = String(nextPayload.teamId || nextPayload.team_id || "").trim();
+  if (!teamId) return nextPayload;
+
+  const team = await TeamManager.getTeam(teamId);
+  const round1GridId = String(team?.final_grid_id || "").trim();
+  if (!round1GridId) return nextPayload;
+
+  nextPayload.round1GridId = round1GridId;
+  nextPayload.round1Context = {
+    ...(nextPayload.round1Context && typeof nextPayload.round1Context === "object" ? nextPayload.round1Context : {}),
+    gridId: round1GridId
+  };
+  return nextPayload;
+}
+
 async function calculateRoute(body) {
   try {
-    const payload = body || {};
+    const payload = await enrichRound1Context(body || {});
     const selections = Array.isArray(payload.selections) ? payload.selections : [];
     const validation = validateSelections(selections);
 
@@ -111,6 +138,7 @@ async function analysisStream(res) {
 }
 
 module.exports = {
+  enrichRound1Context,
   calculateRoute,
   previewPriceRoute,
   validateRoute,

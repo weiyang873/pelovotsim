@@ -1,5 +1,7 @@
 const assert = require("node:assert/strict");
 
+const RdRoutes = require("../server/routes/rd");
+const TeamManager = require("../server/multiplayer/teamManager");
 const {
   calculate,
   computeWTPParams,
@@ -225,6 +227,51 @@ async function testRound2GammaRequiresRound1Age() {
   );
 }
 
+async function testCalculateRouteHydratesRound1ContextFromTeam() {
+  const originalGetTeam = TeamManager.getTeam;
+  TeamManager.getTeam = async (teamId) => ({
+    id: teamId,
+    final_grid_id: "ToB_Differentiation_Elder"
+  });
+  try {
+    const response = await RdRoutes.calculateRoute({
+      gridId: "B2B_Differentiation_Experience",
+      teamId: "team-elder",
+      selections: [
+        { cap_id: "voice_basic", tier: "mid" },
+        { cap_id: "perception_base", tier: "mid" },
+        { cap_id: "basic_avoidance", tier: "mid" },
+        { cap_id: "privacy_trust", tier: "mid" },
+        { cap_id: "cloud_update", tier: "mid" },
+        { cap_id: "self_diag", tier: "mid" }
+      ],
+      radarScores: {
+        perception: 6,
+        mobility: 5,
+        interaction: 7,
+        safety_privacy: 6,
+        integration: 5,
+        operations: 5
+      },
+      tags: [{ tag: "语音交互", polarity: 1 }],
+      evi: 0.7,
+      P: 12000,
+      Pmax: 15000,
+      WTP: 14000,
+      e: 1.2,
+      COGSbase: 2000,
+      TAM: 50000,
+      H: 0.3
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.ok, true, JSON.stringify(response.body));
+    assert.equal(Math.abs(response.body.gammaRaw - 4.559327) < 0.001, true, `route gammaRaw=${response.body.gammaRaw}`);
+  } finally {
+    TeamManager.getTeam = originalGetTeam;
+  }
+}
+
 async function run() {
   testWtpParams();
   testVolumeBehavior();
@@ -237,6 +284,7 @@ async function run() {
   await testCoreTagFallbackWhenLayeringIsEmpty();
   await testRound2GammaUsesRound1Age();
   await testRound2GammaRequiresRound1Age();
+  await testCalculateRouteHydratesRound1ContextFromTeam();
   console.log("rd_v2_model.test.js: all tests passed");
 }
 
