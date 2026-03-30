@@ -562,7 +562,7 @@ function calculateProfit(price, gridId, X, dCOGS, coverCore, coverNice, subLift,
   );
   const LTV_sub = attach * Number(GLOBAL_PARAMS.S_monthly || 0) * Number(GLOBAL_PARAMS.gm_sub || 0) * Number(GLOBAL_PARAMS.T || 0);
   const profitSubRaw = qRaw * LTV_sub;
-  const unitMargin = netRevenuePerUnit - COGS + LTV_sub;
+  const unitMargin = netRevenuePerUnit - COGS;
   const totalProfitRaw = profitHWRaw + profitSubRaw - Number(penalty || 0) - FTotal;
   const breakevenQ = unitMargin > 0 ? Math.ceil(FTotal / unitMargin) : null;
 

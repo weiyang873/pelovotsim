@@ -1,0 +1,17 @@
+node_modules
+client/node_modules
+.git
+.env
+.DS_Store
+*.md
+docs/
+artifacts/
+data/llm_logs/
+data/persona_sim_logs/
+data/sim_logs/
+data/vp_coach_test_logs/
+data/vp_coach_test_logs_v2/
+data/vp_concept_test_logs/
+data/vp_cot_test_logs/
+data/vp_embedding_test_logs/
+!legal/terms_zh.md

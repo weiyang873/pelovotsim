@@ -1,12 +1,12 @@
 # 部署就绪审计报告
 
-生成时间：2026-03-25 19:08:50 CST
+生成时间：2026-03-30 15:17:37 CST
 
 ## 总结
 
 - ✅ 已就绪：3 项
-- ⚠️ 需要修复：6 项
-- ❌ 未处理：1 项
+- ⚠️ 需要修复：5 项
+- ❌ 未处理：2 项
 
 ## 详细结果
 
@@ -14,148 +14,152 @@
 状态：⚠️ 需要修复
 
 发现：
-- 新前端 API 调用已使用相对路径 `/api`，没有把生产 API 域名写死在浏览器代码里：`client/src/api/teamApi.js:1`、`client/src/api/teacherApi.js:1`、`client/src/api/round2Api.js:1`、`client/src/api/rdApi.js:1`。
-- Vite 开发代理仍硬编码到本地后端：`client/vite.config.js:7-10` 使用 `http://127.0.0.1:8787`。这只适用于开发，生产环境必须由 nginx / ingress 代理 `/api`。
-- 后端默认监听地址是本地回环：`server.js:50-51` 定义 `HOST = process.env.HOST || "127.0.0.1"`，`server.js:2975-2977` 用该地址启动服务。若 Docker/云主机未显式设置 `HOST=0.0.0.0`，外部无法访问。
-- 多个测试/冒烟脚本默认指向本地地址，例如 `scripts/smoke_test_v2.js:11-18`、`scripts/sim/api_client.js:16-20`、`test-marketing.js:6`。这些不是生产前端代码，但容易混淆部署说明。
+- 前端运行时代码已经统一使用相对路径 `/api`，未发现把生产 API 主机写死在 React 代码里，例如 `client/src/api/teamApi.js:1-170`、`client/src/api/round2Api.js:1-180`、`client/src/api/teacherApi.js:1-196`。
+- Vite 开发代理仍硬编码到本地地址 `http://127.0.0.1:8787`，见 `client/vite.config.js:7-10`。这只影响开发环境，但也说明生产环境必须由 Node 或 nginx 接管 `/api` 转发。
+- 后端监听地址默认是 `127.0.0.1`，见 `server.js:50-57`。如果容器里没有显式设置 `HOST=0.0.0.0`，服务默认不会对外暴露。
+- 多个测试/压测脚本仍写死 `http://127.0.0.1:8787`，例如 `scripts/test_round1_e2e.js:14`、`scripts/test_round2_e2e.js:14`、`scripts/smoke_test_round1.js:15`、`scripts/smoke_test_v2.js:16`、`scripts/ai_simulation_test.js:57`、`scripts/batch_sim_test.js:432`。
 
 建议：
-- 生产部署显式设置 `HOST=0.0.0.0`。
-- 保持前端继续使用相对 `/api`，并在 nginx / ingress 上转发 `/api` 到 Node 服务。
-- 将测试脚本里的本地默认地址与生产部署文档明确分开。
+- 生产部署时明确设置 `HOST=0.0.0.0`，不要依赖 `server.js:51` 的默认值。
+- 保持前端调用相对路径 `/api`，不要回退到绝对域名。
+- 如果生产用 nginx，补一条 `/api -> Node` 的反向代理规则，等价替代 `client/vite.config.js:7-10` 的开发代理。
+- 把测试脚本里的默认 `BASE_URL` 标成“仅本地测试默认值”，避免被误用到 CI/CD 或运维脚本。
 
 ### 2. 数据库连接
 状态：⚠️ 需要修复
 
 发现：
-- 运行时数据库连接已切到 PostgreSQL，且从环境变量读取：`server/db/pgSql.js:3-15` 使用 `DATABASE_URL` 或 `PGHOST/PGPORT/PGUSER/PGPASSWORD/PGDATABASE`。
-- 连接池大小为 `20`，空闲超时 `30000ms`，连接超时 `5000ms`：`server/db/pgSql.js:13-15`。按“60 人并发至少 20”的要求，当前配置达标。
-- `server.js:53-57` 中的 `DB_PATH` 仅用于启动日志展示，不是实际连接实现。
-- 仓库里仍保留 SQLite 迁移/校验脚本：`scripts/migrations/migrate-sqlite-to-postgres.js:6-12`、`scripts/migrations/verify-postgres-migration.js:6-11`，并且 `README.md:63-70` 仍写着“写入 SQLite(sim.db)”，与当前 PostgreSQL 主路径不一致。
+- PostgreSQL 连接读取自环境变量，没有在源码中硬编码连接串，见 `server/db/pgSql.js:3-15`。
+- 连接池 `max: 20`，满足“60 人并发建议至少 20”的基线，见 `server/db/pgSql.js:13-15`。
+- 服务端启动日志仍保留一个混淆性的 `DB_PATH` 拼接字符串，见 `server.js:53-57`、`server.js:3092-3095`。它不是实际连接实现，但会让运维误以为数据库配置来自这个值。
+- 运行时主路径已经是 PostgreSQL，但仓库文档仍大面积写着 SQLite，例如 `README.md:29`、`README.md:63-77`、`AGENTS.md:10-19`、`AGENTS.md:98-99`。
+- SQLite 迁移脚本仍保留在仓库中，属于迁移工具而非线上运行依赖，例如 `scripts/migrations/migrate-sqlite-to-postgres.js:7-12`、`scripts/migrations/verify-postgres-migration.js:7-24`。
 
 建议：
-- 运行时继续以 PostgreSQL 为唯一主路径，并把 SQLite 明确标注为“仅迁移工具”。
-- 更新部署文档，避免运维人员误以为生产仍依赖 `sim.db`。
-- 保持 `pool max = 20` 作为起点，压测后按真实连接占用再调优。
+- 部署文档统一声明“生产数据库为 PostgreSQL”，把 SQLite 限定为历史迁移工具。
+- 清理或重命名 `server.js:53-57` 的 `DB_PATH` 日志语义，避免和真实连接配置混淆。
+- 为运维提供明确的 PostgreSQL 配置方式：`DATABASE_URL` 或 `PGHOST/PGPORT/PGUSER/PGPASSWORD/PGDATABASE` 二选一。
 
 ### 3. DeepSeek API 并发与错误处理
-状态：❌ 未处理
+状态：⚠️ 需要修复
 
 发现：
-- DeepSeek API key 通过环境变量读取，这点是正确的：`server/llm/deepseekClient.js:12-16`。
-- 共享调用器没有超时控制：`server/llm/deepseekClient.js:25-58` 只创建 `http/https.request`，没有 `AbortController`、`req.setTimeout()` 或任何超时兜底。上游卡住时，请求可能长期悬挂。
-- 共享调用器没有 429 / 5xx / 网络抖动重试：同一文件 `server/llm/deepseekClient.js:25-58` 不包含退避重试逻辑。
-- 生产代码中的多个调用点都直接依赖这个共享调用器，例如 `server/routes/teamRoutes.js:816-824`、`server/routes/round2Routes.js:937-945`、`server/routes/teacherDebrief.js:615-620`、`server/routes/teacherDebrief.js:672-677`、`server/llm/vpCoach.js:447-452`。
-- 唯一能看到的“重试”只是解析失败后二次要求模型输出 JSON，不是网络/限流重试：`server/llm/requirementBuilder.js:103-117`。
-- 没有统一的出站并发控制。`server.js:323-332` 与 `server.js:772-775` 的 rate limit 只覆盖一类 LLM wizard 请求，不覆盖全部 DeepSeek 调用链。
-- 错误处理不一致：有些路由在顶层 `.catch()` 返回 500，例如 `server.js:1978-1980`、`server.js:2005-2006`；也有逻辑本地吞掉异常后降级为 `null`，如 `server/routes/round2Routes.js:937-953`。
+- DeepSeek API key 来自环境变量，未在源码中硬编码，见 `server/llm/deepseekClient.js:117-121`。
+- 已实现超时控制，默认 `60000ms`，见 `server/llm/deepseekClient.js:5`、`server/llm/deepseekClient.js:95-99`。
+- 已实现错误处理和有限重试；`429`、`5xx`、超时和部分网络错误会重试 1 次，见 `server/llm/deepseekClient.js:24-29`、`server/llm/deepseekClient.js:131-150`。
+- 主要调用点通常会记录日志并在上层兜底，例如 `server/routes/teamRoutes.js:1022-1065`、`server/routes/round2Routes.js:1031-1047`、`server/routes/round2Routes.js:2571-2579`、`server/routes/round2Routes.js:3112-3134`、`server/routes/teacherDebrief.js:929-995`。
+- 但服务端未发现统一的并发控制器。`server/` 内对 `chatCompletion(...)` 的调用是直接发出的，例如 `server/routes/teamRoutes.js:1027-1035`、`server/routes/round2Routes.js:1032-1038`、`server/routes/teacherDebrief.js:929-934`；检索 `server/` 未发现 `p-limit`、semaphore、队列或类似限流器。
+- 本地 `.env` 含有真实 `DEEPSEEK_API_KEY` 配置项，见 `.env:7`；虽然该文件未加入索引，但生产镜像和运维流程仍应避免把本地密钥打包进去。
 
 建议：
-- 在 `server/llm/deepseekClient.js` 统一增加请求超时。
-- 在共享客户端增加 429 / 5xx / `ECONNRESET` / `ETIMEDOUT` 的指数退避重试。
-- 在共享客户端前增加 semaphore / 队列，限制同时出站的 DeepSeek 请求数。
-- 统一调用失败的返回策略，不要有的直接报错、有的静默降级。
+- 在 `chatCompletion` 外层增加服务端并发闸门或请求队列，至少按实例总并发数做限制。
+- 将 `MAX_RETRIES=1` 提升为可配置项，并对 `429` 做指数退避，而不是固定 2 秒重试。
+- 把 DeepSeek 降级策略写清楚：哪些端点失败后返回 fallback，哪些端点必须显式报错。
+- 确认部署流程不会把本地 `.env` 复制进镜像或公开到日志。
 
 ### 4. 前端构建
 状态：✅ 已处理
 
 发现：
-- `client` 构建成功，产物输出到 `client/dist/`。本次审计执行 `npm run build` 已通过。
-- 构建后的入口文件是 `client/dist/index.html`，资源路径为 `/multiplayer/assets/...`：`client/dist/index.html:7-8`。
-- 该路径与 `client/vite.config.js:5` 的 `base: "/multiplayer/"` 一致。
-- 对构建产物执行 `rg 'localhost|127.0.0.1' client/dist` 无匹配，未发现本地地址残留。
+- `client/package.json:6-9` 定义了标准构建命令 `vite build`。
+- 实际执行 `cd client && npm run build` 成功，产物输出到 `client/dist/`，包含 `index.html`、`assets/`、`docs/`。
+- 构建产物 `client/dist/index.html:7-8` 使用的是 `/multiplayer/assets/...` 绝对路径，与 `client/vite.config.js:5` 的 `base: "/multiplayer/"` 一致。
+- 对 `client/dist/` 进行 `localhost|127.0.0.1` 检索，没有匹配结果。
 
 建议：
-- 若生产就部署在 `/multiplayer/` 路径下，当前产物可直接用。
-- 若未来部署路径变化到根路径或其他子路径，需要同步调整 Vite `base`。
+- 如果生产不是部署在 `/multiplayer/` 子路径，而是挂在域名根路径或别的子路径，需要同步调整 `client/vite.config.js:5`。
 
 ### 5. 静态文件服务
 状态：✅ 已处理
 
 发现：
-- 静态文件服务逻辑不在 `server/` 子目录，而在根目录 `server.js`，这一点需要注意。
-- `/multiplayer` 路由会从 `client/dist` 读取文件：`server.js:2841-2868`。
-- `/admin` 与 `/teacher` 也复用同一个 `client/dist`，并带有 fallback 到 `index.html`：`server.js:2871-2898`。
-- 所有非 `/api/` 请求最终都会进入静态资源分发：`server.js:2922-2929`。
+- Node 后端已经内建静态资源服务和 SPA fallback。
+- `/multiplayer` 会从 `client/dist` 提供文件，并在资源不存在时回退到 `client/dist/index.html`，见 `server.js:2930-2957`。
+- `/admin`、`/teacher` 也会回退到 `client/dist/index.html`，见 `server.js:2988-3015`。
+- `/docs/*` 和 `/legal/terms_zh.md` 也有单独静态出口，见 `server.js:2905-2927`、`server.js:2960-2970`。
+- 非 `/api/*` 请求统一进入 `serveStatic()`，见 `server.js:3039-3047`。
 
 建议：
-- 当前 Node 服务已经具备生产级静态资源托管与 SPA fallback 的基本能力。
-- 如果前面再接 nginx，需保持同样的 `index.html` fallback 行为。
+- 如果后续改为 nginx 直出前端静态文件，需要把 `/multiplayer`、`/admin`、`/teacher` 的 fallback 规则完整迁过去。
 
 ### 6. WebSocket / SSE / 流式响应
 状态：✅ 已处理
 
 发现：
-- 全仓库未发现对外暴露的 `EventSource`、`WebSocket`、`ws://`、`text/event-stream` 接口。
-- `server.js:1989-1993` 与 `server.js:2634-2658` 的 `res.writeHead()` 只是普通文件下载响应，不是流式长连接。
-- `server/llm/chatService.js:3-49` 确实存在一个 Anthropic 流式辅助函数，但仓库内没有调用点；`rg 'streamChatCompletion\\(' .` 只命中定义本身。
+- 在前后端检索中，没有发现对外暴露的 `EventSource`、`text/event-stream`、`WebSocket`、`ws://` 或 `res.write` 持续流式接口。
+- 仓库中唯一明确的“流式”实现是上游 Anthropic 流读取助手 `server/llm/chatService.js:3-49`，它是服务端消费上游流，不是向浏览器提供 SSE/WebSocket。
+- 因此当前部署不依赖反向代理对 SSE/WebSocket 的特殊保活配置。
 
 建议：
-- 当前部署不需要为 WebSocket / SSE 单独配置 keepalive。
-- 如果未来启用真实流式接口，应补上 `Cache-Control: no-cache`、`Connection: keep-alive` 和心跳包。
+- 当前无需为 SSE/WebSocket 添加 nginx 特殊配置。
+- 如果后续把 `server/llm/chatService.js` 暴露成浏览器可访问流式接口，需要补上 `Cache-Control: no-cache`、`Connection: keep-alive` 和心跳机制。
 
 ### 7. 文件路径与权限
 状态：⚠️ 需要修复
 
 发现：
-- 运行时会写入 `data/llm_logs`：`server/llm/llm_logger.js:6-7`、`server/llm/llm_logger.js:79-81`。
-- 运行时会写入 `data/tag_cache.json`：`server/llm/tagExtractor.js:8`、`server/llm/tagExtractor.js:19-22`、`server/llm/tagExtractor.js:106-108`。
-- 运行时会写入 `data/score_cache.json`：`server/llm/dimensionScorer.js:7`、`server/llm/dimensionScorer.js:18-21`、`server/llm/dimensionScorer.js:47-48`。
-- embedding 模型缓存默认落在 `$HOME/.cache/huggingface`，除非显式指定 `HF_CACHE_DIR` 或 `HF_LOCAL_MODEL_PATH`：`server/llm/embeddingService.js:7-16`、`server/llm/embeddingService.js:23-29`、`server/llm/embeddingService.js:54-71`。
-- 迁移工具仍会读取根目录 `sim.db`：`scripts/migrations/migrate-sqlite-to-postgres.js:6-10`，但这不是生产运行路径。
+- 运行时会写入 `data/llm_logs/`，见 `server/llm/llm_logger.js:6-15`、`server/llm/llm_logger.js:72-82`。
+- 运行时会写入 `data/tag_cache.json`，见 `server/llm/tagExtractor.js:8-22`。
+- 运行时会写入 `data/score_cache.json`，见 `server/llm/dimensionScorer.js:7-21`。
+- Embedding 模型默认使用 `$HOME/.cache/huggingface` 作为缓存目录，见 `server/llm/embeddingService.js:7-16`。如果本地缓存不完整，还会尝试在线拉取模型，见 `server/llm/embeddingService.js:54-71`。
+- 数据库存储本身已经不写本地 `.db/.sqlite` 文件，主路径走 PostgreSQL；根目录里的 `sim.db`、`db.sqlite` 更像历史文件，不是当前运行主依赖。
 
 建议：
-- Docker 镜像内必须保证应用目录下 `data/` 可写。
-- 若要持久化日志/缓存，给 `data/` 挂 volume。
-- 若容器是只读根文件系统，需提前指定可写缓存目录，并为 HuggingFace 模型缓存单独挂载 volume。
-- 若生产环境禁止在线拉模型，预烘焙模型并设置 `HF_LOCAL_MODEL_PATH`，必要时加 `HF_DISABLE_REMOTE=1`。
+- 容器内至少保证这两个位置可写：项目内 `data/`，以及 `HF_CACHE_DIR` 指向的模型缓存目录。
+- 生产建议显式设置 `HF_CACHE_DIR`、`HF_LOCAL_MODEL_PATH`，不要默认落到 `$HOME/.cache/...`。
+- 如果部署环境禁止在线下载模型，必须提前把 embedding 模型预热到本地缓存，并设置 `HF_DISABLE_REMOTE=1` 验证启动行为。
 
 ### 8. 环境变量完整性
-状态：⚠️ 需要修复
+状态：❌ 未处理
 
 发现：
-- 生产必填变量：
-  - `ADMIN_CODE`，无默认值：`server/routes/adminRoutes.js:9-14`、`server/routes/teacherDebrief.js:51-56`。
-  - `DEEPSEEK_API_KEY`，无默认值：`server/llm/deepseekClient.js:12-16`。
-  - 数据库连接信息：`DATABASE_URL` 或 `PGHOST/PGPORT/PGUSER/PGPASSWORD/PGDATABASE`：`server/db/pgSql.js:3-15`。
-- 生产可选但常见变量：
-  - `PORT` 默认 `8787`、`HOST` 默认 `127.0.0.1`：`server.js:50-51`。
-  - `PGSSL` 默认关闭：`server/db/pgSql.js:10-12`。
-  - `DEEPSEEK_MODEL` 默认 `deepseek-chat`、`DEEPSEEK_BASE_URL` 默认 `https://api.deepseek.com`：`server/llm/deepseekClient.js:13-14`。
-  - `LLM_LOG` 默认开启：`server/llm/llm_logger.js:6-7`。
-  - `HF_CACHE_DIR`、`HF_LOCAL_MODEL_PATH`、`HF_DISABLE_REMOTE` 影响 embedding 模型加载与缓存：`server/llm/embeddingService.js:7-16`、`server/llm/embeddingService.js:27-29`。
-  - `ANTHROPIC_API_KEY` 仅在未来启用 `server/llm/chatService.js` 时需要：`server/llm/chatService.js:3-7`。
-- 测试/脚本专用变量也很多，如 `BASE_URL`、`TEAM_SIZE`、`NUM_TEAMS`、`CONCURRENCY`、`SKIP_LLM`、`SKIP_ROUND2`、`STRICT_DEEPSEEK`、`BATCH_ROUNDS`、`BATCH_SLEEP_MS`、`PERSONA_IDS`、`FIXED_TAU`、`FIXED_CAP`、`LOG_LEVEL`、`TRIAL_CODE`、`NODE_ENV` 等，来源分散在 `scripts/`、`server.js` 与工具脚本。
-- 仓库内没有统一的 `.env.example` 或部署变量清单。
+- `.env.example:1-5` 只覆盖了 DeepSeek 相关变量，没有覆盖 PostgreSQL、管理口令、监听地址、embedding 缓存等部署必需项。
+- 代码中实际依赖的运行时环境变量至少包括：
+  - 数据库：`DATABASE_URL` 或 `PGHOST/PGPORT/PGUSER/PGPASSWORD/PGDATABASE`，见 `server/db/pgSql.js:3-15`。
+  - 服务监听：`PORT`、`HOST`，见 `server.js:50-57`。
+  - 管理端：`ADMIN_CODE`，见 `server/routes/adminRoutes.js:10-14`、`server/routes/teacherDebrief.js:64-67`。
+  - 试用入口：`TRIAL_CODE`，见 `server.js:1889`。
+  - DeepSeek：`DEEPSEEK_API_KEY`、`DEEPSEEK_BASE_URL`、`DEEPSEEK_MODEL`、`DEEPSEEK_TIMEOUT_MS`，见 `server/llm/deepseekClient.js:5`、`server/llm/deepseekClient.js:117-129`。
+  - 日志：`LLM_LOG`、`LLM_DEBUG`，见 `server/llm/llm_logger.js:6-7`、`server.js:622`。
+  - Embedding：`HF_CACHE_DIR`、`HF_LOCAL_MODEL_PATH`、`HF_DISABLE_REMOTE`、`HOME`，见 `server/llm/embeddingService.js:7-16`、`server/llm/embeddingService.js:23-31`。
+  - 可选上游：`ANTHROPIC_API_KEY`，见 `server/llm/chatService.js:3-5`。
+- 测试/压测脚本还依赖一组只在脚本场景使用的变量：`BASE_URL`、`NUM_TEAMS`、`TEAM_SIZE`、`CONCURRENCY`、`LOG_LEVEL`、`STRICT_DEEPSEEK`、`SKIP_LLM`、`SKIP_ROUND`、`BATCH_ROUNDS`、`BATCH_SLEEP_MS`、`PERSONA_IDS`、`FIXED_TAU`、`FIXED_CAP`，见 `scripts/ai_simulation_test.js:57-62`、`scripts/batch_sim_test.js:432-439`、`scripts/persona_sim_test.js:179-184`、`scripts/smoke_test_round1.js:15-17`、`scripts/smoke_test_v2.js:16-18`。
+- 本地 `.env:1-9` 已经存在一份“真实运行配置”，但它不是正式部署模板，也没有说明哪些变量是必填、哪些有默认值。
 
 建议：
-- 补一份部署变量清单，把“生产必填 / 生产可选 / 测试专用”分开。
-- 启动时对 `ADMIN_CODE`、`DEEPSEEK_API_KEY`、数据库连接变量做 fail-fast 校验。
-- 明确写出生产推荐值，尤其是 `HOST=0.0.0.0`、是否启用 `PGSSL`、以及 HuggingFace 缓存目录。
+- 新增正式的部署模板，例如 `.env.production.example`，至少列出：
+  - 必填：`DATABASE_URL` 或 `PG*` 全套、`ADMIN_CODE`、`DEEPSEEK_API_KEY`
+  - 强烈建议显式设置：`HOST=0.0.0.0`、`PORT`、`TRIAL_CODE`、`PGSSL`
+  - embedding 相关：`HF_CACHE_DIR`、`HF_LOCAL_MODEL_PATH`、`HF_DISABLE_REMOTE`
+  - 可选：`DEEPSEEK_BASE_URL`、`DEEPSEEK_MODEL`、`DEEPSEEK_TIMEOUT_MS`、`LLM_LOG`、`LLM_DEBUG`、`ANTHROPIC_API_KEY`
+- 在文档里明确区分“运行时必需变量”和“测试脚本变量”。
+- 不要把本地 `.env` 当作部署契约；部署系统应单独管理 secrets。
 
 ### 9. 数据库初始化脚本
 状态：⚠️ 需要修复
 
 发现：
-- 有独立初始化脚本，但它是 Node 脚本，不是 `.sql`：`scripts/migrations/init-postgres-schema.js:1-258`。
-- 应用启动时也会自动建表：`server.js:105-176` 创建核心表，`server.js:2963-2969` 在启动阶段调用 `initDb()`、`ensureTeamSchema()`、`Round2.ensureSchema()`、`TeacherDebrief.ensureSchema()`、`TeacherConsole.ensureSchema()`、`Sessions.ensureSchema()`、`MarketingSessions.ensureSchema()`。
-- 多人模式相关表会在模块内自动创建，例如 `server/multiplayer/teamManager.js:14-110`、`server/multiplayer/computationLog.js:75-97`、`server/multiplayer/round2State.js:146-157`。
-- 当前仓库没有可直接放进 `docker-entrypoint-initdb.d/` 的 `.sql` 文件。
+- 没有独立的 `.sql` 初始化文件可直接放进 `docker-entrypoint-initdb.d/`。
+- 但存在独立的 Node 初始化脚本 `scripts/migrations/init-postgres-schema.js:4-259`，能创建主要 PostgreSQL 表和索引。
+- 应用启动时也会自动建表：`server.js:3078-3095` 会调用 `initDb()`、`ensureTeamSchema()`、`Round2.ensureSchema()`、`TeacherDebrief.ensureSchema()` 等。
+- 核心多人表 `teams`、`team_members`、`member_submissions`、`jinang_settlements` 也会在运行时自动创建，见 `server/multiplayer/teamManager.js:15-120`。
 
 建议：
-- 在 Docker/CI/CD 中明确“谁负责建表”。更稳妥的做法是把初始化作为独立步骤，而不是依赖应用首次启动自动 DDL。
-- 如果继续依赖启动自动建表，必须确保应用连接账号拥有 `CREATE/ALTER` 权限。
-- 最好补一份可审阅的 SQL 初始化脚本，方便 DBA 或托管数据库环境接入。
+- 如果计划把数据库初始化前置到 PostgreSQL 容器阶段，补一份纯 SQL schema 文件。
+- 如果继续采用“应用首次启动自动建表”，要把这一点写进部署说明，并在健康检查前确认数据库账号具备 `CREATE TABLE/ALTER TABLE/CREATE INDEX` 权限。
+- 将 `scripts/migrations/init-postgres-schema.js` 纳入部署文档或镜像入口，避免首次启动依赖隐式行为。
 
 ### 10. package.json 入口与脚本
-状态：⚠️ 需要修复
+状态：❌ 未处理
 
 发现：
-- 根目录 `package.json` 没有 `main`，也没有 `start` 脚本：`package.json:4-9`。
-- 后端入口只能从 `dev` 脚本推断为 `node server.js`：`package.json:5`。
-- 前端构建脚本是根目录 `build-client` 与 `client/package.json:6-9` 的 `build`。
+- 根目录 `package.json:4-9` 只有 `dev`、`build-client`、`dev-client`、`preview-client`，没有 `main` 字段，也没有 `start` 脚本。
+- 后端真实入口仍然是 `server.js`，可从 `package.json:5` 和 `server.js:3075-3100` 推断出来，但这没有被正式声明为生产入口。
+- 前端 `client/package.json:6-9` 已经具备清晰的 `build` 脚本，这部分没有问题。
 
 建议：
-- Dockerfile / PaaS 需要显式用 `node server.js` 作为后端启动命令，不能依赖 `npm start`。
-- 若要兼容通用部署平台，建议后续补上 `start` 脚本。
-- 当前前端 build 命令已明确，可直接用于镜像构建阶段。
+- 至少补一个正式生产入口约定：
+  - 方案 A：在根 `package.json` 增加 `start: "node server.js"`
+  - 方案 B：在 Dockerfile/Procfile/systemd 中明确写 `node server.js`
+- 如果希望工具链自动识别入口，再补 `main: "server.js"`。
+- 在部署文档中把“后端启动命令”和“前端构建命令”分别写死，避免运维猜测。

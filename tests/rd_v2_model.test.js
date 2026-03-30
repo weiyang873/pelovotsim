@@ -74,6 +74,18 @@ function testProfitDirection() {
   assert.equal(profitGood.breakeven_q > 0, true, `beq=${profitGood.breakeven_q}`);
 }
 
+function testProfitMarginExcludesSubscriptionLtv() {
+  const wtp = computeWTPParams("ToC_DIFF_ELDER");
+  const result = calculateProfit(15000, "ToC_DIFF_ELDER", 5.0, 800, 0.8, 0.5, 0.3, 0.2, wtp, 0, 0, 120);
+  const hardwareUnitMargin = (15000 * (1 - result.f)) - result.COGS;
+  const expectedProfit = result.profitHW + result.profitSub - result.F_total;
+  const expectedBeq = hardwareUnitMargin > 0 ? Math.ceil(result.F_total / hardwareUnitMargin) : null;
+
+  assert.equal(Math.abs(result.unitMargin - hardwareUnitMargin) < 1e-9, true, `unitMargin=${result.unitMargin}, hardware=${hardwareUnitMargin}, ltv=${result.LTV_sub}`);
+  assert.equal(Math.abs(result.totalProfit - expectedProfit) < 1e-6, true, `totalProfit=${result.totalProfit}, expected=${expectedProfit}`);
+  assert.equal(result.breakeven_q, expectedBeq, `beq=${result.breakeven_q}, expected=${expectedBeq}`);
+}
+
 function testCompressWtpMult() {
   assert.equal(compressWtpMult(0.6), 0.75);
   assert.equal(Math.abs(compressWtpMult(1.0) - 1.0166666666666666) < 1e-9, true, `mult@1.0=${compressWtpMult(1.0)}`);
@@ -279,6 +291,7 @@ async function run() {
   testCostStructure();
   testNreStructure();
   testProfitDirection();
+  testProfitMarginExcludesSubscriptionLtv();
   testCompressWtpMult();
   await testCalculateWtpMultiplier();
   await testCoreTagFallbackWhenLayeringIsEmpty();
