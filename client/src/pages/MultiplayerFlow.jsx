@@ -436,6 +436,12 @@ function buildLastCoachTurns(history) {
   }).filter(Boolean).join("\n");
 }
 
+function coachMessageSignature(message) {
+  const role = String(message?.role || "").trim();
+  const text = String(message?.text || "").trim();
+  return `${role}::${text}`;
+}
+
 function normalizeStepValue(value, fallback = 0) {
   const n = Number(value);
   if (!Number.isFinite(n)) return fallback;
@@ -808,6 +814,10 @@ export default function App() {
   const [isGeneratingVpFeedback, setIsGeneratingVpFeedback] = useState(false);
   const [vpPanelError, setVpPanelError] = useState("");
   const coachBootstrappedRef = useRef(false);
+  const coachHistoryRef = useRef([]);
+  const vpPanelStateRef = useRef("chatting");
+  const pendingCoachMessagesRef = useRef([]);
+  const pendingCoachSeqRef = useRef(0);
   const coachScrollRef = useRef(null);
   const autoRound2RedirectRef = useRef(false);
   const allowRound1ReviewRef = useRef(false);
@@ -815,6 +825,69 @@ export default function App() {
   const round1VpDraftTouchedRef = useRef(false);
   const userCoachTurns = coachHistory.filter((m) => m.role === "user").length;
   const assistantCoachTurns = coachHistory.filter((m) => m.role === "coach").length;
+
+  const syncCoachReply = (history) => {
+    const list = Array.isArray(history) ? history : [];
+    const lastCoachMessage = [...list].reverse().find((item) => item?.role === "coach");
+    setCoachReply(lastCoachMessage ? String(lastCoachMessage.text || "") : "");
+  };
+
+  const syncCoachHistoryWithPending = (serverHistory) => {
+    const restoredHistory = Array.isArray(serverHistory) ? serverHistory : [];
+    const serverCounts = new Map();
+    restoredHistory.forEach((item) => {
+      const signature = coachMessageSignature(item);
+      serverCounts.set(signature, (serverCounts.get(signature) || 0) + 1);
+    });
+
+    const matchedCounts = new Map();
+    const remainingPending = [];
+    pendingCoachMessagesRef.current.forEach((item) => {
+      const signature = coachMessageSignature(item);
+      const matchedCount = matchedCounts.get(signature) || 0;
+      const serverCount = serverCounts.get(signature) || 0;
+      if (matchedCount < serverCount) {
+        matchedCounts.set(signature, matchedCount + 1);
+      } else {
+        remainingPending.push(item);
+      }
+    });
+
+    pendingCoachMessagesRef.current = remainingPending;
+    const mergedHistory = [...restoredHistory, ...remainingPending];
+    coachHistoryRef.current = mergedHistory;
+    setCoachHistory(mergedHistory);
+    syncCoachReply(mergedHistory);
+  };
+
+  const queuePendingCoachMessage = ({ role, text, type = "chat" }) => {
+    const messageText = String(text || "").trim();
+    if (!messageText) return "";
+    pendingCoachSeqRef.current += 1;
+    const pendingMessage = {
+      clientId: `pending-${Date.now()}-${pendingCoachSeqRef.current}`,
+      type,
+      role,
+      text: messageText,
+      ts: Date.now(),
+      pending: true
+    };
+    pendingCoachMessagesRef.current = [...pendingCoachMessagesRef.current, pendingMessage];
+    const nextHistory = [...coachHistoryRef.current, pendingMessage];
+    coachHistoryRef.current = nextHistory;
+    setCoachHistory(nextHistory);
+    syncCoachReply(nextHistory);
+    return pendingMessage.clientId;
+  };
+
+  const dropPendingCoachMessage = (clientId) => {
+    if (!clientId) return;
+    pendingCoachMessagesRef.current = pendingCoachMessagesRef.current.filter((item) => item.clientId !== clientId);
+    const nextHistory = coachHistoryRef.current.filter((item) => item.clientId !== clientId);
+    coachHistoryRef.current = nextHistory;
+    setCoachHistory(nextHistory);
+    syncCoachReply(nextHistory);
+  };
 
   function toUiCell(gridId) {
     const raw = String(gridId || "").trim();
@@ -922,8 +995,7 @@ export default function App() {
       setTeamArch(restoredTeamArch);
       setArch((prev) => prev || restoredTeamArch);
     }
-    setCoachHistory(restoredHistory);
-    setCoachReply(restoredHistory.length ? String(restoredHistory[restoredHistory.length - 1]?.text || "") : "");
+    syncCoachHistoryWithPending(restoredHistory);
     if (preserveDraft) setCoachInput(savedDraft);
     setCoachVpText((prev) => {
       if (round1VpDraftTouchedRef.current && requesterIsLeader) return prev;
@@ -940,7 +1012,7 @@ export default function App() {
       setVpFeedbackRequest(null);
       setIsGeneratingVpFeedback(false);
       setVpPanelState(confirmation.status === "confirming" ? "confirming" : "scored");
-    } else {
+    } else if (vpPanelStateRef.current !== "confirming") {
       setVpConfirmedFields(emptyConfirmedFields());
       setVpConfirmedScores(null);
       setVpConfirmedAt("");
@@ -1170,9 +1242,17 @@ export default function App() {
   }, [coachHistory]);
 
   useEffect(() => {
+    coachHistoryRef.current = coachHistory;
+  }, [coachHistory]);
+
+  useEffect(() => {
     if (typeof window === "undefined" || !teamId) return;
     window.sessionStorage.setItem(coachDraftStorageKey(teamId), String(coachInput || ""));
   }, [teamId, coachInput]);
+
+  useEffect(() => {
+    vpPanelStateRef.current = vpPanelState;
+  }, [vpPanelState]);
 
   useEffect(() => {
     if (step !== 5 || !teamId) return;
@@ -1298,12 +1378,11 @@ export default function App() {
     })
       .then((out) => {
         const reply = out.coach_reply || "";
-        setCoachHistory((prev) => [...prev, { type: "chat", role: "coach", text: reply, ts: Date.now() }]);
-        setCoachReply(reply);
+        queuePendingCoachMessage({ type: "chat", role: "coach", text: reply });
         return reloadPhase3State({ preserveDraft: true }).catch(() => {});
       })
       .catch((e) => {
-        setCoachHistory((prev) => [...prev, { type: "chat", role: "coach", text: `教练暂不可用：${e.message || e}`, ts: Date.now() }]);
+        queuePendingCoachMessage({ type: "chat", role: "coach", text: `教练暂不可用：${e.message || e}` });
       })
       .finally(() => {
         setIsSendingCoach(false);
@@ -1313,6 +1392,7 @@ export default function App() {
   useEffect(() => {
     if (step === 4) return;
     coachBootstrappedRef.current = false;
+    pendingCoachMessagesRef.current = [];
     round1VpDraftTouchedRef.current = false;
     setPhase3StateLoaded(false);
     setCoachVpText("");
@@ -1414,9 +1494,10 @@ export default function App() {
   const handleCoachSend = async () => {
     const message = String(coachInput || "").trim();
     if (!teamId || !message || isSendingCoach || vpPanelState !== "chatting") return;
+    let pendingUserId = "";
     try {
       setIsSendingCoach(true);
-      setCoachHistory((prev) => [...prev, { type: "chat", role: "user", text: message, ts: Date.now() }]);
+      pendingUserId = queuePendingCoachMessage({ type: "chat", role: "user", text: message });
       setCoachInput("");
       const out = await chatWithCoach(teamId, {
         message,
@@ -1425,11 +1506,11 @@ export default function App() {
         memberId
       });
       const reply = out.coach_reply || "";
-      setCoachHistory((prev) => [...prev, { type: "chat", role: "coach", text: reply, ts: Date.now() }]);
-      setCoachReply(reply);
+      queuePendingCoachMessage({ type: "chat", role: "coach", text: reply });
       await reloadPhase3State({ preserveDraft: false }).catch(() => {});
     } catch (e) {
-      setCoachHistory((prev) => [...prev, { type: "chat", role: "coach", text: `发送失败：${e.message || e}`, ts: Date.now() }]);
+      dropPendingCoachMessage(pendingUserId);
+      queuePendingCoachMessage({ type: "chat", role: "coach", text: `发送失败：${e.message || e}` });
     } finally {
       setIsSendingCoach(false);
     }
@@ -1452,14 +1533,10 @@ export default function App() {
       const feedbackText = String(out?.feedback || "").trim();
       setCoachVpText(nextVp);
       if (!out?.cached && feedbackText) {
-        setCoachHistory((prev) => {
-          const last = prev[prev.length - 1];
-          if (last?.role === "coach" && String(last?.text || "").trim() === feedbackText) {
-            return prev;
-          }
-          return [...prev, { type: "chat", role: "coach", text: feedbackText, ts: Date.now() }];
-        });
-        setCoachReply(feedbackText);
+        const last = coachHistoryRef.current[coachHistoryRef.current.length - 1];
+        if (!(last?.role === "coach" && String(last?.text || "").trim() === feedbackText)) {
+          queuePendingCoachMessage({ type: "chat", role: "coach", text: feedbackText });
+        }
         await reloadPhase3State({ preserveDraft: true }).catch(() => {});
       }
       setStatusLine(out?.cached ? "当前对话没有新消息，返回了上次合成结果。" : "已根据当前对话合成 VP，可继续编辑。");
