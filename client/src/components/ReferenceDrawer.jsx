@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import "./reference-drawer.css";
 
 const DOC_TABS = [
@@ -20,34 +20,57 @@ function extractToc(html) {
     .filter((heading) => heading.id && heading.text);
 }
 
+function normalizeHtml(html) {
+  if (!html) return "";
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
+  return String(doc.body?.innerHTML || html).trim();
+}
+
+function createDocState() {
+  return DOC_TABS.reduce((accumulator, tab) => {
+    accumulator[tab.key] = { html: "", error: "", loaded: false };
+    return accumulator;
+  }, {});
+}
+
 export default function ReferenceDrawer() {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("briefing");
-  const [docs, setDocs] = useState({ briefing: "", guide: "" });
-  const [loadError, setLoadError] = useState("");
+  const [docs, setDocs] = useState(createDocState);
   const [activeHeadingId, setActiveHeadingId] = useState("");
   const [mobileTocOpen, setMobileTocOpen] = useState(false);
   const contentRef = useRef(null);
+  const tocRef = useRef(null);
 
   useEffect(() => {
     let canceled = false;
-    Promise.all(
-      DOC_TABS.map(async (tab) => {
+
+    DOC_TABS.forEach(async (tab) => {
+      try {
         const response = await fetch(tab.path);
         if (!response.ok) {
           throw new Error(`加载失败: ${tab.label}`);
         }
-        return [tab.key, await response.text()];
-      })
-    )
-      .then((entries) => {
+        const html = normalizeHtml(await response.text());
         if (canceled) return;
-        setDocs(Object.fromEntries(entries));
-      })
-      .catch((error) => {
+        setDocs((prev) => ({
+          ...prev,
+          [tab.key]: { html, error: "", loaded: true }
+        }));
+      } catch (error) {
         if (canceled) return;
-        setLoadError(error.message || "参考资料加载失败");
-      });
+        setDocs((prev) => ({
+          ...prev,
+          [tab.key]: {
+            html: "",
+            error: error.message || "参考资料加载失败",
+            loaded: true
+          }
+        }));
+      }
+    });
+
     return () => {
       canceled = true;
     };
@@ -65,8 +88,27 @@ export default function ReferenceDrawer() {
     };
   }, [isOpen]);
 
-  const currentHtml = docs[activeTab];
-  const tocItems = extractToc(currentHtml);
+  useEffect(() => {
+    if (!isOpen) return undefined;
+
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isOpen]);
+
+  useEffect(() => {
+    setMobileTocOpen(false);
+  }, [activeTab]);
+
+  const currentDoc = docs[activeTab] || { html: "", error: "", loaded: false };
+  const currentHtml = currentDoc.html;
+  const currentError = currentDoc.error;
+  const tocItems = useMemo(() => extractToc(currentHtml), [currentHtml]);
 
   useEffect(() => {
     if (!isOpen || !contentRef.current || !currentHtml) return undefined;
@@ -113,6 +155,7 @@ export default function ReferenceDrawer() {
   useEffect(() => {
     if (!isOpen || !contentRef.current) return;
     contentRef.current.scrollTo({ top: 0, behavior: "auto" });
+    setActiveHeadingId("");
   }, [activeTab, isOpen]);
 
   const handleHeadingClick = (id) => {
@@ -124,6 +167,14 @@ export default function ReferenceDrawer() {
     setActiveHeadingId(id);
     setMobileTocOpen(false);
   };
+
+  useEffect(() => {
+    if (!isOpen || !tocRef.current || !activeHeadingId) return;
+    const activeItem = Array.from(tocRef.current.querySelectorAll("[data-heading-id]")).find(
+      (item) => item.getAttribute("data-heading-id") === activeHeadingId
+    );
+    activeItem?.scrollIntoView({ block: "nearest" });
+  }, [activeHeadingId, isOpen]);
 
   return (
     <>
@@ -146,8 +197,10 @@ export default function ReferenceDrawer() {
 
       <aside
         className={`reference-drawer${isOpen ? " is-open" : ""}`}
-        aria-hidden={isOpen ? "false" : "true"}
+        aria-hidden={!isOpen}
         aria-label="参考资料面板"
+        aria-modal={isOpen ? "true" : undefined}
+        role="dialog"
       >
         <div className="reference-drawer__header">
           <div className="reference-drawer__tabs" role="tablist" aria-label="参考资料切换">
@@ -184,12 +237,17 @@ export default function ReferenceDrawer() {
         </div>
 
         <div className="reference-drawer__body">
-          <nav className={`reference-drawer__toc${mobileTocOpen ? " is-open" : ""}`} aria-label="文档目录">
+          <nav
+            ref={tocRef}
+            className={`reference-drawer__toc${mobileTocOpen ? " is-open" : ""}`}
+            aria-label="文档目录"
+          >
             {tocItems.length ? (
               tocItems.map((item) => (
                 <button
                   key={item.id}
                   type="button"
+                  data-heading-id={item.id}
                   className={`reference-drawer__toc-item level-${item.level}${activeHeadingId === item.id ? " is-active" : ""}`}
                   onClick={() => handleHeadingClick(item.id)}
                 >
@@ -197,13 +255,15 @@ export default function ReferenceDrawer() {
                 </button>
               ))
             ) : (
-              <div className="reference-drawer__toc-empty">目录加载中...</div>
+              <div className="reference-drawer__toc-empty">
+                {currentError ? "当前文档暂时不可用" : "目录加载中..."}
+              </div>
             )}
           </nav>
 
           <div className="reference-drawer__content-wrap">
-            {loadError ? (
-              <div className="reference-drawer__empty">{loadError}</div>
+            {currentError ? (
+              <div className="reference-drawer__empty">{currentError}</div>
             ) : currentHtml ? (
               <div
                 ref={contentRef}
@@ -211,7 +271,9 @@ export default function ReferenceDrawer() {
                 dangerouslySetInnerHTML={{ __html: currentHtml }}
               />
             ) : (
-              <div className="reference-drawer__empty">参考资料加载中...</div>
+              <div className="reference-drawer__empty">
+                {currentDoc.loaded ? "当前文档暂无内容" : "参考资料加载中..."}
+              </div>
             )}
           </div>
         </div>

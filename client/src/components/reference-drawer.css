@@ -1,26 +1,13 @@
-:root {
-  --app-bg: #f5f1eb;
-  --app-card-bg: #ffffff;
-  --app-card-border: #e2e8f0;
-  --app-text: #0f172a;
-  --app-text-muted: #64748b;
-  --app-text-secondary: #475569;
-  --app-accent: #1a5c3a;
-  --app-accent-strong: #15482d;
-  --app-shadow-lg: 0 24px 48px rgba(15, 23, 42, 0.18);
-  --app-shadow-md: 0 12px 28px rgba(15, 23, 42, 0.12);
-}
-
 .reference-drawer__handle {
   position: fixed;
   right: 0;
   top: 50%;
   transform: translateY(-50%);
   z-index: 1000;
-  width: 32px;
-  min-height: 112px;
+  width: 30px;
+  min-height: 110px;
   border: none;
-  border-radius: 10px 0 0 10px;
+  border-radius: 6px 0 0 6px;
   background: rgba(26, 92, 58, 0.9);
   color: #ffffff;
   font: inherit;
@@ -63,7 +50,7 @@
   position: fixed;
   top: 0;
   right: 0;
-  width: min(780px, 90vw);
+  width: min(820px, 92vw);
   height: 100vh;
   background: var(--app-bg);
   box-shadow: -18px 0 40px rgba(15, 23, 42, 0.2);
@@ -83,7 +70,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px 18px;
+  padding: 16px;
   background: #ffffff;
   border-bottom: 1px solid var(--app-card-border);
 }
@@ -95,9 +82,9 @@
 }
 
 .reference-drawer__tab {
-  border: 1px solid transparent;
+  border: 1px solid #cbd5e1;
   border-radius: 999px;
-  background: transparent;
+  background: #ffffff;
   color: var(--app-text-secondary);
   padding: 10px 14px;
   font: inherit;
@@ -108,9 +95,9 @@
 }
 
 .reference-drawer__tab.is-active {
-  background: rgba(26, 92, 58, 0.1);
-  color: var(--app-accent);
-  border-color: rgba(26, 92, 58, 0.18);
+  background: var(--app-accent);
+  color: #ffffff;
+  border-color: var(--app-accent);
 }
 
 .reference-drawer__header-actions {
@@ -175,8 +162,14 @@
   border-radius: 10px;
   font: inherit;
   font-size: 12px;
-  line-height: 1.35;
+  line-height: 1.25;
   cursor: pointer;
+  transition: background 180ms ease, color 180ms ease;
+}
+
+.reference-drawer__toc-item:hover {
+  background: rgba(26, 92, 58, 0.08);
+  color: var(--app-text);
 }
 
 .reference-drawer__toc-item.level-2 {
@@ -222,8 +215,9 @@
 
 .reference-drawer__content {
   box-sizing: border-box;
+  font-family: inherit;
   color: var(--app-text-secondary);
-  padding: 32px 32px 44px;
+  padding: 32px 36px 44px;
   font-size: 14px;
   line-height: 1.8;
   scroll-behavior: smooth;
@@ -311,10 +305,12 @@
 
   .reference-drawer__header {
     padding: 14px 12px;
+    align-items: flex-start;
   }
 
   .reference-drawer__tabs {
     gap: 6px;
+    flex: 1;
   }
 
   .reference-drawer__tab {
@@ -357,7 +353,7 @@
   .reference-drawer__content-wrap {
     flex: 1;
     min-height: 0;
-    padding: 14px;
+    padding: 12px;
   }
 
   .reference-drawer__content {

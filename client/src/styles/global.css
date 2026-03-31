@@ -1,3 +1,17 @@
+:root {
+  --app-bg: #f5f1eb;
+  --app-bg-alt: #fafaf8;
+  --app-card-bg: #ffffff;
+  --app-card-border: #e2e8f0;
+  --app-text: #0f172a;
+  --app-text-secondary: #475569;
+  --app-text-muted: #64748b;
+  --app-accent: #1a5c3a;
+  --app-accent-strong: #15482d;
+  --app-shadow-md: 0 12px 28px rgba(15, 23, 42, 0.12);
+  --app-shadow-lg: 0 24px 48px rgba(15, 23, 42, 0.18);
+}
+
 /* Prototype currently uses inline styles. Keep global reset minimal. */
 html, body, #root {
   margin: 0;
@@ -11,6 +25,6 @@ html, body, #root {
 
 body {
   font-family: "Noto Sans SC", sans-serif;
-  background: #f5f1eb;
-  color: #0f172a;
+  background: var(--app-bg);
+  color: var(--app-text);
 }
