@@ -177,10 +177,12 @@ export default function App() {
     );
   }
 
+  const shouldShowReferenceDrawer = !shouldShowEntryPage;
+
   return (
     <>
       {content}
-      <ReferenceDrawer />
+      {shouldShowReferenceDrawer ? <ReferenceDrawer /> : null}
     </>
   );
 }
