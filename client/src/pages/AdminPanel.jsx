@@ -493,13 +493,16 @@ export default function AdminPanel() {
   const [lastUpdatedAt, setLastUpdatedAt] = useState("");
   const [toasts, setToasts] = useState([]);
   const fileRef = useRef(null);
+  const toastTimersRef = useRef([]);
 
   const pushToast = (type, message) => {
     const id = `${Date.now()}-${Math.random()}`;
     setToasts((prev) => [...prev, { id, type, message }]);
-    window.setTimeout(() => {
+    const timer = window.setTimeout(() => {
       setToasts((prev) => prev.filter((item) => item.id !== id));
+      toastTimersRef.current = toastTimersRef.current.filter((item) => item !== timer);
     }, 3000);
+    toastTimersRef.current.push(timer);
   };
 
   const loadSession = async (silent = false) => {
@@ -531,6 +534,13 @@ export default function AdminPanel() {
     const timer = setInterval(() => loadSession(true), 5000);
     return () => clearInterval(timer);
   }, [teacherCode, activeTab]);
+
+  useEffect(() => {
+    return () => {
+      toastTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+      toastTimersRef.current = [];
+    };
+  }, []);
 
   const handleLogout = () => {
     clearTeacherCode();

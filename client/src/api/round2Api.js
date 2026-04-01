@@ -13,24 +13,29 @@ async function asJson(res) {
   return data;
 }
 
-export async function getRound2Recap(teamId) {
-  const res = await fetch(`${BASE}/round2/recap?teamId=${encodeURIComponent(teamId)}`);
+export async function getRound2Recap(teamId, options = {}) {
+  const res = await fetch(`${BASE}/round2/recap?teamId=${encodeURIComponent(teamId)}`, {
+    signal: options.signal
+  });
   return asJson(res);
 }
 
-export async function getRound2TeamResult(teamId, sessionId = "default") {
+export async function getRound2TeamResult(teamId, sessionId = "default", options = {}) {
   const res = await fetch(
-    `${BASE}/round2/team-result?teamId=${encodeURIComponent(teamId)}&session_id=${encodeURIComponent(sessionId)}`
+    `${BASE}/round2/team-result?teamId=${encodeURIComponent(teamId)}&session_id=${encodeURIComponent(sessionId)}`,
+    { signal: options.signal }
   );
   return asJson(res);
 }
 
-export async function getRound2State(teamId, memberId = "") {
+export async function getRound2State(teamId, memberId = "", options = {}) {
   const query = new URLSearchParams({
     teamId: String(teamId || "").trim()
   });
   if (memberId) query.set("memberId", String(memberId || "").trim());
-  const res = await fetch(`${BASE}/round2/state?${query.toString()}`);
+  const res = await fetch(`${BASE}/round2/state?${query.toString()}`, {
+    signal: options.signal
+  });
   return asJson(res);
 }
 
@@ -74,11 +79,12 @@ export async function round2InterviewAuto(payload) {
   return asJson(res);
 }
 
-export async function startRound2Interview(payload) {
+export async function startRound2Interview(payload, options = {}) {
   const res = await fetch(`${BASE}/round2/interview/start`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
+    signal: options.signal
   });
   return asJson(res);
 }
@@ -101,12 +107,14 @@ export async function endRound2Interview(payload) {
   return asJson(res);
 }
 
-export async function getRound2InterviewSession(teamId, memberId, sessionId = "") {
+export async function getRound2InterviewSession(teamId, memberId, sessionId = "", options = {}) {
   const query = new URLSearchParams();
   if (sessionId) query.set("sessionId", String(sessionId || "").trim());
   if (teamId) query.set("teamId", String(teamId || "").trim());
   if (memberId) query.set("memberId", String(memberId || "").trim());
-  const res = await fetch(`${BASE}/round2/interview/session?${query.toString()}`);
+  const res = await fetch(`${BASE}/round2/interview/session?${query.toString()}`, {
+    signal: options.signal
+  });
   return asJson(res);
 }
 
@@ -128,13 +136,15 @@ export async function mergeRound2Selections(payload) {
   return asJson(res);
 }
 
-export async function getRound2TeamMerge(teamId, COGSbase = "", memberId = "") {
+export async function getRound2TeamMerge(teamId, COGSbase = "", memberId = "", options = {}) {
   const query = new URLSearchParams({
     teamId: String(teamId || "").trim()
   });
   if (COGSbase !== "" && COGSbase != null) query.set("COGSbase", String(COGSbase));
   if (memberId) query.set("memberId", String(memberId || "").trim());
-  const res = await fetch(`${BASE}/round2/team-merge?${query.toString()}`);
+  const res = await fetch(`${BASE}/round2/team-merge?${query.toString()}`, {
+    signal: options.signal
+  });
   return asJson(res);
 }
 

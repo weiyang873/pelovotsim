@@ -31,8 +31,10 @@ export async function joinTeam(teamId, memberName) {
   return asJson(res);
 }
 
-export async function getMemberJinang(teamId, memberId) {
-  const res = await fetch(`${BASE}/team/${encodeURIComponent(teamId)}/member/${encodeURIComponent(memberId)}/jinang`);
+export async function getMemberJinang(teamId, memberId, options = {}) {
+  const res = await fetch(`${BASE}/team/${encodeURIComponent(teamId)}/member/${encodeURIComponent(memberId)}/jinang`, {
+    signal: options.signal
+  });
   return asJson(res);
 }
 
@@ -45,19 +47,23 @@ export async function submitPersonalChoice(teamId, memberId, choice) {
   return asJson(res);
 }
 
-export async function getTeamStatus(teamId, memberId = "") {
+export async function getTeamStatus(teamId, memberId = "", options = {}) {
   const query = memberId
     ? `?memberId=${encodeURIComponent(String(memberId || "").trim())}`
     : "";
-  const res = await fetch(`${BASE}/team/${encodeURIComponent(teamId)}/status${query}`);
+  const res = await fetch(`${BASE}/team/${encodeURIComponent(teamId)}/status${query}`, {
+    signal: options.signal
+  });
   return asJson(res);
 }
 
-export async function getSubmissions(teamId, memberId = "") {
+export async function getSubmissions(teamId, memberId = "", options = {}) {
   const query = memberId
     ? `?memberId=${encodeURIComponent(String(memberId || "").trim())}`
     : "";
-  const res = await fetch(`${BASE}/team/${encodeURIComponent(teamId)}/submissions${query}`);
+  const res = await fetch(`${BASE}/team/${encodeURIComponent(teamId)}/submissions${query}`, {
+    signal: options.signal
+  });
   return asJson(res);
 }
 
@@ -97,12 +103,13 @@ export async function synthesizeTeamVP(teamId, payload) {
   return asJson(res);
 }
 
-export async function chatWithCoach(teamId, payload) {
+export async function chatWithCoach(teamId, payload, options = {}) {
   const body = typeof payload === "string" ? { message: payload } : (payload || {});
   const res = await fetch(`${BASE}/team/${encodeURIComponent(teamId)}/phase3/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
+    signal: options.signal
   });
   return asJson(res);
 }
@@ -116,16 +123,20 @@ export async function finalizeDecision(teamId, finalData) {
   return asJson(res);
 }
 
-export async function getPhase3State(teamId, memberId = "") {
+export async function getPhase3State(teamId, memberId = "", options = {}) {
   const query = memberId
     ? `?memberId=${encodeURIComponent(String(memberId || "").trim())}`
     : "";
-  const res = await fetch(`${BASE}/team/${encodeURIComponent(teamId)}/phase3/state${query}`);
+  const res = await fetch(`${BASE}/team/${encodeURIComponent(teamId)}/phase3/state${query}`, {
+    signal: options.signal
+  });
   return asJson(res);
 }
 
-export async function getVpScores(teamId) {
-  const res = await fetch(`${BASE}/vp/scores?team_id=${encodeURIComponent(teamId)}`);
+export async function getVpScores(teamId, options = {}) {
+  const res = await fetch(`${BASE}/vp/scores?team_id=${encodeURIComponent(teamId)}`, {
+    signal: options.signal
+  });
   return asJson(res);
 }
 
@@ -156,8 +167,10 @@ export async function generateVpFeedback(payload) {
   return asJson(res);
 }
 
-export async function getResults(teamId) {
-  const res = await fetch(`${BASE}/team/${encodeURIComponent(teamId)}/phase4`);
+export async function getResults(teamId, options = {}) {
+  const res = await fetch(`${BASE}/team/${encodeURIComponent(teamId)}/phase4`, {
+    signal: options.signal
+  });
   return asJson(res);
 }
 

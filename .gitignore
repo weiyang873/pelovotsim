@@ -23,6 +23,7 @@ data/tag_cache.json
 data/llm_sessions.json
 data/vp_sessions.json
 data/marketing_sessions.json
+tests/e2e/reports/
 
 # OS
 .DS_Store

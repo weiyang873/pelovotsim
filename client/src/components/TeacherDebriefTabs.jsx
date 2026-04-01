@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   downloadTeacherCsv,
   generateTeacherDebrief,
@@ -2221,6 +2221,7 @@ export default function TeacherDebriefTabs({ activeTab, teacherCode, onExportJso
   const [debriefRound, setDebriefRound] = useState(2);
   const [scripts, setScripts] = useState({});
   const [scriptLoading, setScriptLoading] = useState(false);
+  const mountedRef = useRef(true);
 
   const sessionId = "default";
   const debriefTabs = ["Round 1 复盘", "Round 2 复盘", "跨轮对比", "AI 讲解稿", "导出"];
@@ -2229,17 +2230,28 @@ export default function TeacherDebriefTabs({ activeTab, teacherCode, onExportJso
     if (!teacherCode) return;
     if (loading) return;
     if (debriefData && !force) return;
+    if (!mountedRef.current) return;
     setLoading(true);
     setError("");
     try {
       const data = await getTeacherDebriefData(teacherCode, sessionId);
+      if (!mountedRef.current) return;
       setDebriefData(data);
     } catch (err) {
+      if (!mountedRef.current) return;
       setError(err.message || "读取教师复盘数据失败");
     } finally {
-      setLoading(false);
+      if (mountedRef.current) {
+        setLoading(false);
+      }
     }
   };
+
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!teacherCode || !debriefTabs.includes(activeTab)) return;

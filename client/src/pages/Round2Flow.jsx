@@ -102,6 +102,25 @@ function createEmptyInterviewProgress() {
   };
 }
 
+function buildInterviewMessageKey(message, fallbackIndex = 0) {
+  const explicitId = String(message?.id || message?.messageId || "").trim();
+  if (explicitId) return explicitId;
+  const role = String(message?.role || "").trim() || "message";
+  const speaker = String(message?.speaker || "").trim();
+  const ts = String(message?.timestamp || message?.ts || "").trim();
+  const text = String(message?.text || "").trim();
+  return `${role}::${speaker}::${ts || fallbackIndex}::${text}`;
+}
+
+function toInterviewMessage(message, fallbackIndex = 0) {
+  return {
+    id: buildInterviewMessageKey(message, fallbackIndex),
+    role: message?.role === "user" ? "user" : "assistant",
+    speaker: message?.speaker || (message?.role === "user" ? "你" : "访谈对象"),
+    text: String(message?.text || "").trim()
+  };
+}
+
 const STEPS = ["第一轮回顾","用户访谈","个人选卡","团队合并","研发与定价","确认提交"];
 
 const F_BASE_WAN = 500;
@@ -691,6 +710,7 @@ export default function App() {
   const round2DraftTouchedRef = useRef(false);
   const previousStatusRef = useRef("");
   const previousStepRef = useRef(0);
+  const systemNoticeTimerRef = useRef(null);
 
   const isTeamMode = Boolean(teamId);
 
@@ -699,6 +719,7 @@ export default function App() {
     if (!ctx.teamId) return;
 
     let canceled = false;
+    const controller = new AbortController();
     setTeamId(ctx.teamId);
     setMemberId(ctx.memberId);
     setSessionId(ctx.sessionId);
@@ -711,10 +732,10 @@ export default function App() {
     setLoadError("");
 
     Promise.all([
-      fetch(`/api/team/${encodeURIComponent(ctx.teamId)}`).then((res) => res.json()),
-      getRound2Recap(ctx.teamId),
-      getRound2State(ctx.teamId, ctx.memberId).catch(() => null),
-      getRound2TeamResult(ctx.teamId, ctx.sessionId).catch(() => ({ submission: null, radar: null, result: null }))
+      fetch(`/api/team/${encodeURIComponent(ctx.teamId)}`, { signal: controller.signal }).then((res) => res.json()),
+      getRound2Recap(ctx.teamId, { signal: controller.signal }),
+      getRound2State(ctx.teamId, ctx.memberId, { signal: controller.signal }).catch(() => null),
+      getRound2TeamResult(ctx.teamId, ctx.sessionId, { signal: controller.signal }).catch(() => ({ submission: null, radar: null, result: null }))
     ])
       .then(([teamRes, recapRes, stateRes, snapshotRes]) => {
         if (canceled) return;
@@ -755,6 +776,7 @@ export default function App() {
         }
       })
       .catch((err) => {
+        if (err?.name === "AbortError") return;
         if (!canceled) {
           setLoadError(err.message || "Round 2 上下文加载失败");
         }
@@ -765,6 +787,7 @@ export default function App() {
 
     return () => {
       canceled = true;
+      controller.abort();
     };
   }, []);
 
@@ -791,9 +814,12 @@ export default function App() {
     if (!teamId) return undefined;
 
     let canceled = false;
+    let currentController = null;
     const tick = async () => {
       try {
-        const data = await getRound2State(teamId, memberId);
+        currentController?.abort();
+        currentController = new AbortController();
+        const data = await getRound2State(teamId, memberId, { signal: currentController.signal });
         if (canceled) return;
 
         const nextStatus = String(data?.team_status || "");
@@ -830,6 +856,9 @@ export default function App() {
         });
 
         if (prevStatus && prevStatus !== nextStatus) {
+          if (systemNoticeTimerRef.current) {
+            window.clearTimeout(systemNoticeTimerRef.current);
+          }
           if (nextStep > 0 && nextStep < prevStep) {
             setSel({});
             setTeamDraftSelections({});
@@ -839,19 +868,27 @@ export default function App() {
           } else {
             setSystemNotice(teamStatusNotice(nextStatus));
           }
-          window.setTimeout(() => {
+          systemNoticeTimerRef.current = window.setTimeout(() => {
             setSystemNotice("");
+            systemNoticeTimerRef.current = null;
           }, 3000);
         }
         previousStatusRef.current = nextStatus;
         previousStepRef.current = nextStep;
-      } catch (_) {}
+      } catch (error) {
+        if (error?.name === "AbortError") return;
+      }
     };
 
     tick();
     const timer = setInterval(tick, 3000);
     return () => {
       canceled = true;
+      currentController?.abort();
+      if (systemNoticeTimerRef.current) {
+        window.clearTimeout(systemNoticeTimerRef.current);
+        systemNoticeTimerRef.current = null;
+      }
       clearInterval(timer);
     };
   }, [teamId, memberId]);
@@ -1157,11 +1194,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     );
     setInterviewMessages(
       (Array.isArray(session?.history) ? session.history : [])
-        .map((message) => ({
-          role: message.role === "user" ? "user" : "assistant",
-          speaker: message.speaker || (message.role === "user" ? "你" : "访谈对象"),
-          text: String(message.text || "").trim()
-        }))
+        .map((message, index) => toInterviewMessage(message, index))
         .filter((message) => message.text)
     );
     setInterviewSessionId(String(session?.sessionId || ""));
@@ -1178,7 +1211,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
   }, [interviewTransition, memberDims]);
 
   const handleStartAnotherInterview = useCallback(async () => {
-    if (!teamId || !memberId) return;
+    if (!teamId || !memberId || isStartingInterview) return;
     try {
       setIsStartingInterview(true);
       setInterviewError("");
@@ -1204,7 +1237,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     } finally {
       setIsStartingInterview(false);
     }
-  }, [applyInterviewPayload, memberDims, memberId, teamId]);
+  }, [applyInterviewPayload, isStartingInterview, memberDims, memberId, teamId]);
 
   const handleInterviewEnd = useCallback(async () => {
     if (!interviewSessionId || isSendingInterview) return;
@@ -1243,6 +1276,15 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
   }, [memberDims]);
 
   useEffect(() => {
+    return () => {
+      if (systemNoticeTimerRef.current) {
+        window.clearTimeout(systemNoticeTimerRef.current);
+        systemNoticeTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (!teamId || !memberId) return;
     setInterviewRestoreChecked(false);
     setInterviewError("");
@@ -1255,16 +1297,18 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     setInterviewProgress(createEmptyInterviewProgress());
     setInterviewTransition(null);
     setInterviewCanEnd(false);
+    const controller = new AbortController();
     let canceled = false;
     const restoreInterview = async () => {
       try {
-        const out = await getRound2InterviewSession(teamId, memberId, interviewSessionId);
+        const out = await getRound2InterviewSession(teamId, memberId, interviewSessionId, { signal: controller.signal });
         if (canceled) return;
         applyInterviewPayload(out);
         if (!out?.session && out?.progress?.completedCount >= 3) {
           setStep(2);
         }
-      } catch (_) {
+      } catch (error) {
+        if (error?.name === "AbortError") return;
       } finally {
         if (!canceled) setInterviewRestoreChecked(true);
       }
@@ -1272,6 +1316,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     restoreInterview();
     return () => {
       canceled = true;
+      controller.abort();
     };
   }, [teamId, memberId]);
 
@@ -1287,6 +1332,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     ) {
       return;
     }
+    const controller = new AbortController();
     let canceled = false;
     const startInterview = async () => {
       try {
@@ -1296,7 +1342,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
           teamId,
           memberId,
           memberDims
-        });
+        }, { signal: controller.signal });
         if (canceled) return;
         applyInterviewPayload({
           ...out,
@@ -1311,6 +1357,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
           } : null
         });
       } catch (err) {
+        if (err?.name === "AbortError") return;
         if (!canceled) setInterviewError(err.message || "访谈启动失败");
       } finally {
         if (!canceled) setIsStartingInterview(false);
@@ -1319,16 +1366,18 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     startInterview();
     return () => {
       canceled = true;
+      controller.abort();
     };
   }, [applyInterviewPayload, completedInterviewCount, interviewRestoreChecked, interviewSessionId, interviewTransition, memberDims, memberId, step, teamId]);
 
   useEffect(() => {
     if (step < 3 || !teamId || submitted) return;
+    const controller = new AbortController();
     let canceled = false;
     const loadMerge = async () => {
       try {
         setMergeError("");
-        const out = await getRound2TeamMerge(teamId, baseCost, memberId);
+        const out = await getRound2TeamMerge(teamId, baseCost, memberId, { signal: controller.signal });
         if (canceled) return;
         setMergeData(out);
         setLeaderMemberId(String(out?.leader_member_id || leaderMemberId));
@@ -1342,12 +1391,14 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
           setTeamPrice(Number(out.team_draft.price));
         }
       } catch (err) {
+        if (err?.name === "AbortError") return;
         if (!canceled) setMergeError(round2LeaderErrorMessage(err));
       }
     };
     loadMerge();
     return () => {
       canceled = true;
+      controller.abort();
     };
   }, [step, teamId, memberId, submitted, baseCost, serverSelections]);
 
@@ -1371,14 +1422,25 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     try {
       setIsSendingInterview(true);
       setInterviewError("");
-      setInterviewMessages((prev) => [...prev, { role: "user", speaker: "你", text: message }]);
+      setInterviewMessages((prev) => [
+        ...prev,
+        toInterviewMessage({ id: `local-user-${Date.now()}`, role: "user", speaker: "你", text: message }, prev.length)
+      ]);
       setInterviewInput("");
       const out = await replyRound2Interview({
         sessionId: interviewSessionId,
         message
       });
       const replyText = String(out.reply || "").trim();
-      setInterviewMessages((prev) => [...prev, { role: "assistant", speaker: out.speaker || activeInterviewPersona?.name || "访谈对象", text: replyText }]);
+      setInterviewMessages((prev) => [
+        ...prev,
+        toInterviewMessage({
+          id: `local-assistant-${Date.now()}`,
+          role: "assistant",
+          speaker: out.speaker || activeInterviewPersona?.name || "访谈对象",
+          text: replyText
+        }, prev.length)
+      ]);
       setInterviewRound(Number(out.round || interviewRound));
       setInterviewProgress(out.progress || createEmptyInterviewProgress());
       setInterviewCanEnd(Boolean(out.canEnd));
@@ -1472,7 +1534,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     const hasConflict = card.conflicts?.some(cid => !!sels[cid]);
 
     return (
-      <div key={card.id} style={{
+      <div key={card.id} data-testid={`r2-card-${card.id}`} style={{
         padding:"12px 14px", borderRadius:10, position:"relative",
         border: isOn ? `2px solid ${card.tag==="降本"?"#2FAB6E":dim.c}` : hasConflict ? "1.5px dashed #d1d5db" : "1.5px solid #e5e7eb",
         background: card.tag==="降本"?"#fafff8":card.tag==="降险"?"#f8faff":"#fff",
@@ -1511,12 +1573,17 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
             const dcogsTone = getHintTone(dcogsLabel);
             const nreTone = getHintTone(nreLabel);
             return (
-              <div key={t} onClick={()=>isOn && !(mode === "team" && round2TeamControlsLocked) && setSelectionTier(card.id, t, mode)} style={{
+              <div
+                key={t}
+                data-testid={`r2-tier-${card.id}-${t.toUpperCase()}`}
+                onClick={()=>isOn && !(mode === "team" && round2TeamControlsLocked) && setSelectionTier(card.id, t, mode)}
+                style={{
                 display:"flex",alignItems:"flex-start",gap:8,padding:"8px 10px",borderRadius:6,
                 cursor:isOn && !(mode === "team" && round2TeamControlsLocked) ? "pointer" : "default",
                 border:active?`2px solid ${ac}`:"1px solid #e5e7eb",
                 background:active?ac+"08":"#fafafa", opacity:isOn?1:0.4, transition:"all 0.2s",
-              }}>
+              }}
+              >
                 <div style={{width:14,height:14,borderRadius:"50%",border:active?`4px solid ${ac}`:"2px solid #d1d5db",background:"#fff",flexShrink:0,marginTop:2}}/>
                 <div style={{flex:1}}>
                   <div>
@@ -1556,8 +1623,8 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
         </div>
 
         {/* Dependencies */}
-        {isOn && card.deps?.filter(d => TS.indexOf(d.tier) <= TS.indexOf(tier)).map((dep,i) => (
-          <div key={i} style={{marginTop:6,marginLeft:24,padding:"4px 8px",borderRadius:4,background:dep.cross?"#EFF6FF":"#FEF3C7",border:dep.cross?"1px solid #BFDBFE":"1px solid #FDE68A",fontSize:11,color:dep.cross?"#1E40AF":"#92400E"}}>
+        {isOn && card.deps?.filter(d => TS.indexOf(d.tier) <= TS.indexOf(tier)).map((dep, i) => (
+          <div key={`${dep.type}-${dep.target}-${dep.tl}-${dep.tier || i}`} style={{marginTop:6,marginLeft:24,padding:"4px 8px",borderRadius:4,background:dep.cross?"#EFF6FF":"#FEF3C7",border:dep.cross?"1px solid #BFDBFE":"1px solid #FDE68A",fontSize:11,color:dep.cross?"#1E40AF":"#92400E"}}>
             {dep.type} <strong>{fc(dep.target)?.n||dep.target}</strong> 达到{dep.tl}以上{dep.cross && <span style={{opacity:0.7}}>（其他成员负责）</span>}
           </div>
         ))}
@@ -1572,7 +1639,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     const cnt = cards.filter(c=>!!sels[c.id]).length;
     const imp = IMP[dimId];
     return (
-      <div key={dimId} style={{marginBottom:8}}>
+      <div key={dimId} data-testid={`r2-dim-${dimId}`} style={{marginBottom:8}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",background:dim.c+"10",borderBottom:`3px solid ${dim.c}`,borderRadius:"10px 10px 0 0"}}>
           <div>
             <span style={{fontSize:15,fontWeight:800}}>{dim.icon} {dim.l}</span>
@@ -1705,7 +1772,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
 
       {/* ═══ Step 0: 任务背景 + R1 回顾 + R2 预告 ═══ */}
       {step===0 && (
-        <div style={{background:"#fff",borderRadius:14,padding:24,border:"1px solid #e5e7eb"}}>
+        <div data-testid="r2-recap-container" style={{background:"#fff",borderRadius:14,padding:24,border:"1px solid #e5e7eb"}}>
 
           {/* Mission context */}
           <div style={{padding:"16px 20px",borderRadius:12,background:"#f9fafb",border:"1px solid #e5e7eb",marginBottom:20}}>
@@ -1736,7 +1803,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
             <div style={{fontSize:14,fontWeight:700,color:"#374151",marginBottom:12}}>价值主张评分</div>
             <div style={{maxWidth:340,margin:"0 auto",padding:"18px 16px",borderRadius:12,background:"#f9fafb",border:"1px solid #e5e7eb",textAlign:"center"}}>
               <div style={{fontSize:12,color:"#6b7280",fontWeight:700,marginBottom:8}}>VP 综合评分</div>
-              <div style={{fontSize:42,fontWeight:800,color:"#111827",lineHeight:1}}>{resultVpScore.toFixed(1)}</div>
+              <div data-testid="r2-recap-vpscore" style={{fontSize:42,fontWeight:800,color:"#111827",lineHeight:1}}>{resultVpScore.toFixed(1)}</div>
               <div style={{marginTop:10}}>
                 <Round1StarRating score={resultVpScore} />
               </div>
@@ -1813,13 +1880,17 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
               ))}
             </div>
           </div>
+          <div style={{display:"none"}}>
+            <span data-testid="r2-recap-target-gm">{String(teamRecap?.target_gm ?? "")}</span>
+            <span data-testid="r2-recap-space-tier">{String(teamRecap?.market_space_tier || "")}</span>
+          </div>
           <button onClick={()=>setStep(1)} style={BS}>进入第二轮 →</button>
         </div>
       )}
 
       {/* ═══ Step 1: 用户访谈 ═══ */}
       {step===1 && (
-        <div style={{background:"#fff",borderRadius:14,padding:24,border:"1px solid #e5e7eb"}}>
+        <div data-testid="r2-interview-container" style={{background:"#fff",borderRadius:14,padding:24,border:"1px solid #e5e7eb"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap",marginBottom:16}}>
             <div>
               <h2 style={{fontSize:18,fontWeight:800,margin:"0 0 8px"}}>深度用户访谈</h2>
@@ -1987,7 +2058,8 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                         const isUser = message.role === "user";
                         return (
                           <div
-                            key={`${message.role}-${index}`}
+                            key={message.id || buildInterviewMessageKey(message, index)}
+                            data-testid={isUser ? "r2-interview-user-msg" : "r2-interview-persona-msg"}
                             style={{
                               padding:"10px 14px",
                               borderRadius:isUser?"10px 10px 2px 10px":"10px 10px 10px 2px",
@@ -2022,6 +2094,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                         )}
                         <div style={{display:"flex",gap:8,padding:"12px 16px",borderTop:"1px solid #e5e7eb",background:"#fff"}}>
                           <input
+                            data-testid="r2-interview-input"
                             ref={interviewInputRef}
                             type="text"
                             value={interviewInput}
@@ -2032,6 +2105,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                             style={{flex:1,padding:"8px 12px",borderRadius:8,border:"1.5px solid #d1d5db",fontSize:13,outline:"none"}}
                           />
                           <button
+                            data-testid="r2-interview-send-btn"
                             type="button"
                             onClick={handleInterviewSend}
                             disabled={isStartingInterview || isSendingInterview || !String(interviewInput || "").trim()}
@@ -2057,7 +2131,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                 </div>
                 <span style={{fontSize:11,color:"#888"}}>{interviewProgressLabel}</span>
               </div>
-              <div style={{padding:"14px 18px",borderRadius:10,background:"#f9fafb",border:"1px solid #e5e7eb",marginBottom:12}}>
+              <div data-testid="r2-radar-scores" style={{padding:"14px 18px",borderRadius:10,background:"#f9fafb",border:"1px solid #e5e7eb",marginBottom:12}}>
                 <div style={{fontSize:13,fontWeight:700,color:"#374151",marginBottom:8}}>访谈结果摘要</div>
                 <p style={{fontSize:12,color:"#888",margin:"0 0 8px"}}>
                   {showInterviewSummary ? buildInterviewSummary(interviewResult, memberDims) : "当前完成一场访谈后，这里会展示对应的真实提炼结果。"}
@@ -2135,7 +2209,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
 
       {/* ═══ Step 2: 个人选卡 (NO cost numbers) ═══ */}
       {step===2 && (
-        <div>
+        <div data-testid="r2-card-selection-container">
           <div style={{background:"#fff",padding:"14px 18px",borderRadius:"14px 14px 0 0",border:"1px solid #e5e7eb",borderBottom:"none"}}>
             <h2 style={{fontSize:18,fontWeight:800,margin:"0 0 4px"}}>个人选卡（{memberName}）</h2>
             <p style={{fontSize:13,color:"#666",margin:0,lineHeight:1.6}}>
@@ -2145,7 +2219,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
           </div>
           {/* Sticky bar — individual: no cost numbers */}
           <div style={{position:"sticky",top:0,zIndex:10,display:"flex",gap:10,padding:"10px 16px",background:"#fff",border:"1px solid #e5e7eb",borderTop:"none",borderRadius:"0 0 14px 14px",marginBottom:8,boxShadow:"0 2px 8px rgba(0,0,0,0.04)"}}>
-            <div style={{padding:"6px 14px",borderRadius:8,background:"#f9fafb",border:"1px solid #e5e7eb",fontSize:13,color:"#374151"}}>
+            <div data-testid="r2-budget-display" style={{padding:"6px 14px",borderRadius:8,background:"#f9fafb",border:"1px solid #e5e7eb",fontSize:13,color:"#374151"}}>
               已选 <strong>{indCalc.cnt}</strong> 张
             </div>
             <div style={{flex:1}}/>
@@ -2195,7 +2269,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
         const gmColor = currentGM >= 40 ? "#166534" : currentGM >= 25 ? "#D97706" : "#DC2626";
         const gmStatus = currentGM >= 40 ? "\u5065\u5EB7" : currentGM >= 25 ? "\u504F\u7D27" : "\u5371\u9669";
         return (
-        <div style={{background:"#fff",borderRadius:14,padding:24,border:"1px solid #e5e7eb"}}>
+        <div data-testid="r2-merge-container" style={{background:"#fff",borderRadius:14,padding:24,border:"1px solid #e5e7eb"}}>
           <h2 style={{fontSize:18,fontWeight:800,margin:"0 0 8px"}}>团队合并 — 成本结构第一次揭示</h2>
           <p style={{fontSize:13,color:"#666",margin:"0 0 16px",lineHeight:1.7}}>
             所有成员的选择已自动合并。现在开始揭示每张卡的单位增量成本和研发投入，让你们看到“功能堆上去以后，成本会变成什么样子”。
@@ -2505,6 +2579,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
               <div style={{fontSize:14,fontWeight:700,color:"#374151",marginBottom:12}}>产品售价</div>
               <div style={{fontSize:36,fontWeight:800,color:"#1a5c3a",marginBottom:8}}>¥{teamPrice.toLocaleString()}</div>
               <input
+                data-testid="r2-price-input"
                 type="range"
                 min={5000}
                 max={20000}
@@ -2661,7 +2736,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
             >
               ← 返回修改
             </button>
-            <button onClick={handleFinalSubmit} disabled={isSubmittingFinal || round2TeamControlsLocked} style={{...BS,flex:1,opacity:isSubmittingFinal||round2TeamControlsLocked?0.7:1,cursor:isSubmittingFinal?"wait":(round2TeamControlsLocked?"not-allowed":"pointer")}}>
+            <button data-testid="r2-final-submit" onClick={handleFinalSubmit} disabled={isSubmittingFinal || round2TeamControlsLocked} style={{...BS,flex:1,opacity:isSubmittingFinal||round2TeamControlsLocked?0.7:1,cursor:isSubmittingFinal?"wait":(round2TeamControlsLocked?"not-allowed":"pointer")}}>
               {round2TeamControlsLocked ? `仅组长 ${leaderDisplayName(leaderName)} 可提交` : (isSubmittingFinal ? "提交中..." : "确认提交 ✓")}
             </button>
           </div>
@@ -2675,7 +2750,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
 
       {/* ═══ Submitted result ═══ */}
       {step===5 && submitted && (
-        <div style={{background:"#fff",borderRadius:14,padding:24,border:"1px solid #e5e7eb"}}>
+        <div data-testid="r2-results-container" style={{background:"#fff",borderRadius:14,padding:24,border:"1px solid #e5e7eb"}}>
           <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
             <div style={{fontSize:36}}>✅</div>
             <div>
@@ -2703,7 +2778,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                 </div>
                 <div style={{padding:"14px 16px",borderRadius:10,background:Number(submittedCalc.profit || 0) >= 0 ? "#f0fdf4" : "#fef2f2",border:Number(submittedCalc.profit || 0) >= 0 ? "1px solid #bbf7d0" : "1px solid #fecaca"}}>
                   <div style={{fontSize:11,color:"#6b7280"}}>利润</div>
-                  <div style={{fontSize:26,fontWeight:800,color:Number(submittedCalc.profit || 0) >= 0 ? "#166534" : "#b91c1c",marginTop:4}}>
+                  <div data-testid="r2-profit-value" style={{fontSize:26,fontWeight:800,color:Number(submittedCalc.profit || 0) >= 0 ? "#166534" : "#b91c1c",marginTop:4}}>
                     {formatSignedCurrency(Math.round(Number(submittedCalc.profit || 0)))}
                   </div>
                 </div>

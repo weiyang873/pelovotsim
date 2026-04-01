@@ -442,6 +442,15 @@ function coachMessageSignature(message) {
   return `${role}::${text}`;
 }
 
+function coachMessageKey(message, fallbackIndex = 0) {
+  const clientId = String(message?.clientId || message?.id || "").trim();
+  if (clientId) return clientId;
+  const role = String(message?.role || "").trim() || "message";
+  const ts = String(message?.ts || message?.timestamp || "").trim();
+  const text = String(message?.text || "").trim();
+  return `${role}::${ts || fallbackIndex}::${text}`;
+}
+
 function normalizeStepValue(value, fallback = 0) {
   const n = Number(value);
   if (!Number.isFinite(n)) return fallback;
@@ -473,7 +482,7 @@ function formatLeaderLockMessage(error) {
 }
 
 // Card component
-function JinnangCard({ card, size = "full", selected, onSelect, flipped, onFlip, glowing }) {
+function JinnangCard({ card, size = "full", selected, onSelect, flipped, onFlip, glowing, testId = "" }) {
   const isMarket = card.id.startsWith("M");
   const accentColor = isMarket ? "#2FAB6E" : "#3B82C4";
   const bgGrad = isMarket
@@ -482,7 +491,9 @@ function JinnangCard({ card, size = "full", selected, onSelect, flipped, onFlip,
 
   if (size === "mini") {
     return (
-      <div style={{
+      <div
+        data-testid={testId || undefined}
+        style={{
         display: "inline-flex", alignItems: "center", gap: 6,
         padding: "4px 10px", borderRadius: 6,
         background: glowing ? `${accentColor}18` : bgGrad,
@@ -490,7 +501,8 @@ function JinnangCard({ card, size = "full", selected, onSelect, flipped, onFlip,
         fontSize: 12, color: "#374151", cursor: "default",
         boxShadow: glowing ? `0 0 12px ${accentColor}30` : "none",
         transition: "all 0.3s ease",
-      }}>
+      }}
+      >
         <span>{card.icon}</span>
         <span style={{ fontWeight: 600 }}>{card.title}</span>
         {glowing && <span style={{ fontSize: 10, color: accentColor, fontWeight: 700 }}>✦ 匹配</span>}
@@ -503,6 +515,7 @@ function JinnangCard({ card, size = "full", selected, onSelect, flipped, onFlip,
 
   return (
     <div
+      data-testid={testId || undefined}
       onClick={() => {
         if (onSelect) onSelect(card.id);
         if (onFlip) onFlip(card.id);
@@ -721,6 +734,7 @@ function StrategyGrid({ selections, highlightCell, onCellClick }) {
                   return (
                     <td
                       key={a}
+                      data-testid={`grid-${c.toLowerCase()}-${s.toLowerCase()}-${a.toLowerCase()}`}
                       onClick={() => onCellClick && onCellClick(cellKey)}
                       style={{
                         border: "1px solid #d1d5db",
@@ -795,6 +809,7 @@ export default function App() {
   const [teamArch, setTeamArch] = useState(null);
   const [step1Done, setStep1Done] = useState(false);
   const [selfSubmitted, setSelfSubmitted] = useState(false);
+  const [isCreatingTeam, setIsCreatingTeam] = useState(false);
   const [isSubmittingPersonal, setIsSubmittingPersonal] = useState(false);
   const [isSendingCoach, setIsSendingCoach] = useState(false);
   const [isSynthesizingVp, setIsSynthesizingVp] = useState(false);
@@ -1029,7 +1044,7 @@ export default function App() {
 
   const reloadPhase3State = async (options = {}) => {
     if (!teamId) return null;
-    const data = await getPhase3State(teamId, memberId);
+    const data = await getPhase3State(teamId, memberId, { signal: options.signal });
     applyPhase3StatePayload(data, options);
     return data;
   };
@@ -1093,7 +1108,8 @@ export default function App() {
 
   useEffect(() => {
     if (!teamId) return;
-    fetch(`/api/team/${encodeURIComponent(teamId)}`)
+    const controller = new AbortController();
+    fetch(`/api/team/${encodeURIComponent(teamId)}`, { signal: controller.signal })
       .then((res) => res.json())
       .then((data) => {
         if (!data?.ok || !data?.team) return;
@@ -1115,7 +1131,12 @@ export default function App() {
           });
         }
       })
-      .catch(() => {});
+      .catch((error) => {
+        if (error?.name === "AbortError") return;
+      });
+    return () => {
+      controller.abort();
+    };
   }, [entryMode, memberId, teamId]);
 
   const marketUiId = toUiCard(jinangPair.market, "market")?.id || "M05";
@@ -1126,9 +1147,12 @@ export default function App() {
   useEffect(() => {
     if (!teamId) return;
     let previousR2Status = "";
+    let currentController = null;
     const syncStatus = async () => {
       try {
-        const status = await getTeamStatus(teamId, memberId);
+        currentController?.abort();
+        currentController = new AbortController();
+        const status = await getTeamStatus(teamId, memberId, { signal: currentController.signal });
         setTeamStatus(status.status || "forming");
         setStatusLine(`已提交 ${status.submitted_count}/${status.member_count}`);
         setLeaderMemberId(String(status.leader_member_id || ""));
@@ -1174,38 +1198,57 @@ export default function App() {
           ? Math.max(requestedStep, 4)
           : Math.max(requestedStep, statusStep);
         if (nextStep !== step && nextStep > 0) setStep(nextStep);
-      } catch (_) {}
+      } catch (error) {
+        if (error?.name === "AbortError") return;
+      }
     };
 
     syncStatus();
     const timer = setInterval(syncStatus, 3000);
-    return () => clearInterval(timer);
+    return () => {
+      currentController?.abort();
+      clearInterval(timer);
+    };
   }, [entryMode, memberId, teamId, step]);
 
   useEffect(() => {
     if (step !== 1 || !teamId || !memberId) return;
-    getMemberJinang(teamId, memberId)
+    const controller = new AbortController();
+    getMemberJinang(teamId, memberId, { signal: controller.signal })
       .then((data) => {
         setJinangPair({
           market: data.jinang?.market || null,
           tech: data.jinang?.tech || null
         });
       })
-      .catch(() => {});
+      .catch((error) => {
+        if (error?.name === "AbortError") return;
+      });
+    return () => {
+      controller.abort();
+    };
   }, [step, teamId, memberId]);
 
   useEffect(() => {
     if (step !== 3 || !teamId) return;
-    getSubmissions(teamId)
+    const controller = new AbortController();
+    getSubmissions(teamId, "", { signal: controller.signal })
       .then((data) => setSubmissions(data.submissions || []))
-      .catch(() => {});
+      .catch((error) => {
+        if (error?.name === "AbortError") return;
+      });
+    return () => {
+      controller.abort();
+    };
   }, [step, teamId]);
 
   useEffect(() => {
     if (step !== 3 || !teamId || !submissions.length) return;
+    const controller = new AbortController();
+    let cancelled = false;
     Promise.all(
       submissions.map((s) =>
-        getMemberJinang(teamId, s.member_id)
+        getMemberJinang(teamId, s.member_id, { signal: controller.signal })
           .then((data) => {
             const marketId = data?.jinang?.market?.id || "";
             const techId = data?.jinang?.tech?.id || "";
@@ -1219,20 +1262,31 @@ export default function App() {
           .catch(() => ({ member_id: s.member_id, cards: [] }))
       )
     ).then((list) => {
+      if (cancelled) return;
       const nextMap = {};
       list.forEach((item) => {
         nextMap[item.member_id] = item.cards;
       });
       setMemberCardsMap(nextMap);
     });
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
   }, [step, teamId, submissions]);
 
   useEffect(() => {
     if (step !== 4 || !teamId) return;
     if (!submissions.length) {
-      getSubmissions(teamId)
+      const controller = new AbortController();
+      getSubmissions(teamId, "", { signal: controller.signal })
         .then((data) => setSubmissions(data.submissions || []))
-        .catch(() => {});
+        .catch((error) => {
+          if (error?.name === "AbortError") return;
+        });
+      return () => {
+        controller.abort();
+      };
     }
   }, [step, teamId, submissions.length]);
 
@@ -1256,9 +1310,15 @@ export default function App() {
 
   useEffect(() => {
     if (step !== 5 || !teamId) return;
-    getResults(teamId)
+    const controller = new AbortController();
+    getResults(teamId, { signal: controller.signal })
       .then((data) => setResults(data))
-      .catch(() => {});
+      .catch((error) => {
+        if (error?.name === "AbortError") return;
+      });
+    return () => {
+      controller.abort();
+    };
   }, [step, teamId]);
 
   useEffect(() => {
@@ -1277,19 +1337,22 @@ export default function App() {
       setPhase3StateLoaded(false);
       return;
     }
+    const controller = new AbortController();
     let cancelled = false;
-    getPhase3State(teamId, memberId)
+    getPhase3State(teamId, memberId, { signal: controller.signal })
       .then((stateData) => {
         if (cancelled) return;
         applyPhase3StatePayload(stateData, { preserveDraft: true });
       })
-      .catch(() => {
+      .catch((error) => {
+        if (error?.name === "AbortError") return;
         if (cancelled) return;
         coachBootstrappedRef.current = false;
         setPhase3StateLoaded(true);
       });
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [memberId, step, teamId]);
 
@@ -1311,10 +1374,18 @@ export default function App() {
 
   useEffect(() => {
     if (step !== 4 || !teamId) return undefined;
+    let currentController = null;
     const timer = window.setInterval(() => {
-      reloadPhase3State({ preserveDraft: true }).catch(() => {});
+      currentController?.abort();
+      currentController = new AbortController();
+      reloadPhase3State({ preserveDraft: true, signal: currentController.signal }).catch((error) => {
+        if (error?.name === "AbortError") return;
+      });
     }, 3000);
-    return () => window.clearInterval(timer);
+    return () => {
+      currentController?.abort();
+      window.clearInterval(timer);
+    };
   }, [memberId, step, teamId]);
 
   useEffect(() => {
@@ -1323,6 +1394,8 @@ export default function App() {
     if (coachBootstrappedRef.current) return;
     if (!isLeader) return;
     if (!submissions.length) return;
+    let cancelled = false;
+    const controller = new AbortController();
     const grouped = {};
     submissions.forEach((s) => {
       const key = String(s?.submission?.grid_id || "未提交");
@@ -1375,18 +1448,27 @@ export default function App() {
       message: intro,
       grid_id: toGridId(teamCell || selectedCell),
       architecture: teamArch || arch
-    })
+    }, { signal: controller.signal })
       .then((out) => {
+        if (cancelled) return;
         const reply = out.coach_reply || "";
         queuePendingCoachMessage({ type: "chat", role: "coach", text: reply });
-        return reloadPhase3State({ preserveDraft: true }).catch(() => {});
+        return reloadPhase3State({ preserveDraft: true }).catch((error) => {
+          if (error?.name === "AbortError") return;
+        });
       })
       .catch((e) => {
+        if (cancelled || e?.name === "AbortError") return;
         queuePendingCoachMessage({ type: "chat", role: "coach", text: `教练暂不可用：${e.message || e}` });
       })
       .finally(() => {
+        if (cancelled) return;
         setIsSendingCoach(false);
       });
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
   }, [step, teamId, submissions, selectedCell, demoSelections, arch, phase3StateLoaded, isLeader]);
 
   useEffect(() => {
@@ -1442,7 +1524,9 @@ export default function App() {
   }, [arch, coachVpText, isLeader, memberId, results, selectedCell, step, teamArch, teamCell, teamId, teamStatus]);
 
   const handleCreateTeam = async () => {
+    if (isCreatingTeam) return;
     try {
+      setIsCreatingTeam(true);
       const out = await createTeam(teamName, teamSize);
       const createdTeamId = out.team?.id || "";
       const firstMemberId = out.member_links?.[0]?.member_id || "";
@@ -1463,6 +1547,8 @@ export default function App() {
       }
     } catch (e) {
       setStatusLine(`建组失败: ${e.message || e}`);
+    } finally {
+      setIsCreatingTeam(false);
     }
   };
 
@@ -1909,6 +1995,7 @@ export default function App() {
                 </div>
               </button>
               <button
+                data-testid="entry-trial-btn"
                 onClick={() => setEntryMode("trial")}
                 style={{
                   padding: "20px 32px", borderRadius: 12,
@@ -2034,6 +2121,7 @@ export default function App() {
                   {[1, 2, 3, 4, 5, 6].map((n) => (
                     <button
                       key={n}
+                      data-testid={`team-size-${n}`}
                       onClick={() => setTeamSize(n)}
                       style={{
                         width: 44, height: 44, borderRadius: 10,
@@ -2073,13 +2161,16 @@ export default function App() {
               </div>
             </div>
             <button
+              data-testid="team-create-btn"
               onClick={handleCreateTeam}
+              disabled={isCreatingTeam}
               style={{
                 marginTop: 28, padding: "12px 32px", borderRadius: 10,
                 background: "#1a5c3a", color: "#fff", border: "none",
                 fontSize: 15, fontWeight: 700, cursor: "pointer",
+                opacity: isCreatingTeam ? 0.7 : 1
               }}
-            >确认建组，开始 Round 1 →</button>
+            >{isCreatingTeam ? "建组中..." : "确认建组，开始 Round 1 →"}</button>
           </div>
         )}
 
@@ -2123,15 +2214,18 @@ export default function App() {
                 card={toUiCard(jinangPair.market, "market") || getCard("M05")}
                 flipped={isReadOnlyReview || revealedCards[marketUiId]}
                 onFlip={isReadOnlyReview ? undefined : flipCard}
+                testId="jinang-market-card"
               />
               <JinnangCard
                 card={toUiCard(jinangPair.tech, "tech") || getCard("T02")}
                 flipped={isReadOnlyReview || revealedCards[techUiId]}
                 onFlip={isReadOnlyReview ? undefined : flipCard}
+                testId="jinang-tech-card"
               />
             </div>
 
             <button
+              data-testid="jinang-continue-btn"
               onClick={() => {
                 if (!cardsReady || !cardsRevealed) return;
                 setStep1Done(true);
@@ -2222,8 +2316,8 @@ export default function App() {
                   }
                 ].map((item) => {
                   const selected = arch === item.key;
-                  return (
-                    <div key={item.key} onClick={() => {
+                      return (
+                    <div key={item.key} data-testid={`arch-${String(item.key || "").toLowerCase()}`} onClick={() => {
                       if (isReadOnlyReview) return;
                       setArch(item.key);
                     }} style={{
@@ -2254,6 +2348,7 @@ export default function App() {
                 尝试回答：给谁（WHO）、解决什么问题（PAIN）、怎么解决（HOW）
               </p>
               <textarea
+                data-testid="vp-draft-input"
                 value={vpDraft}
                 onChange={(e) => setVpDraft(e.target.value)}
                 placeholder="例：为独居年轻白领提供下班后的情感陪伴，通过主动感知情绪和多轮对话缓解孤独感……"
@@ -2269,6 +2364,7 @@ export default function App() {
             </div>
 
             <button
+              data-testid="round1-personal-submit-btn"
               onClick={handleSubmitPersonal}
               disabled={isReadOnlyReview || !selectedCell || !arch || isSubmittingPersonal || selfSubmitted}
               style={{
@@ -2292,7 +2388,7 @@ export default function App() {
 
         {/* ── Step 3: 战略分布 ── */}
         {step === 3 && (
-          <div style={{
+          <div data-testid="r1-distribution-container" style={{
             background: "#fff", borderRadius: 16, padding: "32px 28px",
             border: "1px solid #e5e7eb",
           }}>
@@ -2439,6 +2535,7 @@ export default function App() {
                   return (
                     <button
                       key={item.key}
+                      data-testid={`team-arch-${String(item.key || "").toLowerCase()}`}
                       onClick={() => {
                         if (round1TeamControlsLocked) return;
                         setTeamArch(item.key);
@@ -2458,6 +2555,7 @@ export default function App() {
             </div>
 
             <button
+              data-testid="round1-distribution-continue-btn"
               onClick={() => {
                 if (!teamCell || !teamArch) return;
                 setSelectedCell(teamCell);
@@ -2560,6 +2658,7 @@ export default function App() {
               <div style={{ padding: "14px 16px", background: "#fff", borderBottom: "1px solid #e5e7eb" }}>
                 <div
                   ref={coachScrollRef}
+                  data-testid="coach-messages"
                   style={{
                     maxHeight: 360, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10,
                   }}
@@ -2569,7 +2668,8 @@ export default function App() {
                   )}
                   {coachHistory.map((m, idx) => (
                     <div
-                      key={`${m.role}-${idx}`}
+                      key={coachMessageKey(m, idx)}
+                      data-testid={m.role === "coach" ? "coach-message-coach" : "coach-message-user"}
                       style={{
                         alignSelf: m.role === "coach" ? "flex-start" : "flex-end",
                         maxWidth: "82%",
@@ -2605,6 +2705,7 @@ export default function App() {
 
               <div style={{ display: "flex", gap: 10, alignItems: "stretch", padding: "16px", background: "#fff" }}>
                 <input
+                  data-testid="coach-message-input"
                   value={coachInput}
                   onChange={(e) => setCoachInput(e.target.value)}
                   onKeyDown={(e) => {
@@ -2630,6 +2731,7 @@ export default function App() {
                   disabled={phase3ChatLocked || isSendingCoach}
                 />
                 <button
+                  data-testid="coach-send-btn"
                   style={{
                     padding: "0 20px", borderRadius: 10,
                     background: "#1a5c3a", color: "#fff", border: "none",
@@ -2663,6 +2765,7 @@ export default function App() {
                 </div>
               )}
               <textarea
+                data-testid="round1-vp-textarea"
                 value={coachVpText}
                 onChange={(e) => setCoachVpText(e.target.value)}
                 readOnly={phase3EditLocked}
@@ -2684,6 +2787,7 @@ export default function App() {
               />
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
                 <button
+                  data-testid="vp-synthesize-btn"
                   type="button"
                   onClick={handleSynthesizeVp}
                   disabled={!canSynthesizeVp}
@@ -2702,6 +2806,7 @@ export default function App() {
                   {isSynthesizingVp ? "正在合成..." : "合成VP"}
                 </button>
                 <button
+                  data-testid="vp-submit-btn"
                   type="button"
                   onClick={handleSubmitVp}
                   disabled={!canSubmitVp}
@@ -2738,13 +2843,16 @@ export default function App() {
             )}
 
             {vpPanelState !== "chatting" && (
-              <div style={{
+              <div
+                data-testid="vp-confirm-fields"
+                style={{
                 border: "1.5px solid #d1d5db",
                 borderRadius: 12,
                 padding: "18px 18px 16px",
                 background: "#fff",
                 marginBottom: 18
-              }}>
+              }}
+              >
                 <div style={{ fontSize: 16, fontWeight: 800, color: "#111827", marginBottom: 6 }}>
                   确认你的价值主张切片
                 </div>
@@ -2766,6 +2874,7 @@ export default function App() {
                       {!item.required && <span style={{ color: "#9ca3af", marginLeft: 6, fontWeight: 500 }}>可选</span>}
                     </div>
                     <textarea
+                      data-testid={`vp-confirm-${item.key}`}
                       value={vpConfirmedFields[item.key]}
                       onChange={(e) => handleConfirmedFieldChange(item.key, e.target.value)}
                       disabled={vpPanelState === "scored" || round1TeamControlsLocked}
@@ -2792,6 +2901,7 @@ export default function App() {
                 {vpPanelState === "confirming" && (
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 6 }}>
                     <button
+                      data-testid="vp-return-edit-btn"
                       type="button"
                       onClick={handleReturnToEditing}
                       disabled={round1TeamControlsLocked}
@@ -2809,6 +2919,7 @@ export default function App() {
                       返回修改
                     </button>
                     <button
+                      data-testid="vp-confirm-btn"
                       type="button"
                       onClick={handleConfirmAndScore}
                       disabled={isConfirmingVp || round1TeamControlsLocked}
@@ -2848,7 +2959,7 @@ export default function App() {
 
         {/* ── Step 5: 结果展示 ── */}
         {step === 5 && (
-          <div style={{
+          <div data-testid="r1-results-container" style={{
             background: "#fff", borderRadius: 16, padding: "32px 28px",
             border: "1px solid #e5e7eb",
           }}>
@@ -3087,6 +3198,7 @@ export default function App() {
                 </div>
               </div>
               <button
+                data-testid="r1-freeze-btn"
                 type="button"
                 onClick={handleFreeze}
                 disabled={round1TeamControlsLocked || isFreezing}

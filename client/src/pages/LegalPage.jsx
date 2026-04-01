@@ -189,11 +189,12 @@ export default function LegalPage() {
 
   useEffect(() => {
     let canceled = false;
+    const controller = new AbortController();
     window.scrollTo(0, 0);
 
     const loadMarkdown = async () => {
       try {
-        const res = await fetch("/legal/terms_zh.md");
+        const res = await fetch("/legal/terms_zh.md", { signal: controller.signal });
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}`);
         }
@@ -202,6 +203,7 @@ export default function LegalPage() {
           setMarkdown(text);
         }
       } catch (err) {
+        if (err?.name === "AbortError") return;
         if (!canceled) {
           setError(err.message || "加载法律条款失败");
         }
@@ -211,6 +213,7 @@ export default function LegalPage() {
     loadMarkdown();
     return () => {
       canceled = true;
+      controller.abort();
     };
   }, []);
 

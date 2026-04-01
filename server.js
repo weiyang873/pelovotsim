@@ -40,6 +40,7 @@ const Rd = require("./server/routes/rd");
 const Round2 = require("./server/routes/round2Routes");
 const TeamRoutes = require("./server/routes/teamRoutes");
 const TestRoutes = require("./server/routes/testRoutes");
+const TestExportRoutes = require("./server/routes/testExportRoutes");
 const AdminRoutes = require("./server/routes/adminRoutes");
 const TeacherDebrief = require("./server/routes/teacherDebrief");
 const TeacherConsole = require("./server/routes/teacherConsole");
@@ -2723,6 +2724,32 @@ function handleApi(req, res) {
         res.end(String(out.body.text || ""));
       })
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "marketing export failed" }));
+  }
+
+  if (req.method === "GET" && /^\/api\/test\/export\/[^/?]+(?:\?.*)?$/.test(String(req.url || ""))) {
+    try {
+      const url = new URL(String(req.url || ""), `http://${req.headers.host || "127.0.0.1"}`);
+      const teamId = decodeURIComponent(url.pathname.split("/")[4] || "");
+      return TestExportRoutes.exportTeamDataApi({
+        teamId,
+        format: url.searchParams.get("format") || "json"
+      }, req.headers)
+        .then((out) => {
+          if (!out?.body?.ok) return sendJson(res, out.status || 500, out.body || { ok: false, error: "test export failed" });
+          if (out.body.buffer) {
+            res.writeHead(out.status || 200, {
+              "Content-Type": out.body.contentType || "application/octet-stream",
+              "Content-Disposition": `attachment; filename=\"${out.body.filename || "test-export.zip"}\"`
+            });
+            res.end(out.body.buffer);
+            return;
+          }
+          return sendJson(res, out.status || 200, out.body.data);
+        })
+        .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "test export failed" }));
+    } catch (err) {
+      return sendJson(res, 400, { ok: false, error: err.message || "invalid test export request" });
+    }
   }
 
   if (req.method === "POST" && String(req.url || "").startsWith("/api/round1/vp/")) {

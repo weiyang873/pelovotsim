@@ -45,10 +45,11 @@ export default function ReferenceDrawer() {
 
   useEffect(() => {
     let canceled = false;
+    const controller = new AbortController();
 
     DOC_TABS.forEach(async (tab) => {
       try {
-        const response = await fetch(tab.path);
+        const response = await fetch(tab.path, { signal: controller.signal });
         if (!response.ok) {
           throw new Error(`加载失败: ${tab.label}`);
         }
@@ -59,7 +60,7 @@ export default function ReferenceDrawer() {
           [tab.key]: { html, error: "", loaded: true }
         }));
       } catch (error) {
-        if (canceled) return;
+        if (canceled || error?.name === "AbortError") return;
         setDocs((prev) => ({
           ...prev,
           [tab.key]: {
@@ -73,6 +74,7 @@ export default function ReferenceDrawer() {
 
     return () => {
       canceled = true;
+      controller.abort();
     };
   }, []);
 

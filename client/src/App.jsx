@@ -92,19 +92,25 @@ export default function App() {
     }
 
     let canceled = false;
+    let currentController = null;
     const tick = async () => {
       try {
-        const status = await getTeamStatus(teamId);
+        currentController?.abort();
+        currentController = new AbortController();
+        const status = await getTeamStatus(teamId, "", { signal: currentController.signal });
         if (!canceled) {
           setIsFrozen(status.status === "frozen");
         }
-      } catch (_) {}
+      } catch (error) {
+        if (error?.name === "AbortError") return;
+      }
     };
 
     tick();
     const timer = setInterval(tick, 2000);
     return () => {
       canceled = true;
+      currentController?.abort();
       clearInterval(timer);
     };
   }, [isLegal, isRound2, pathname]);

@@ -6,10 +6,11 @@ export default function TestRound2Entry() {
 
   useEffect(() => {
     let canceled = false;
+    const controller = new AbortController();
 
     const bootstrap = async () => {
       try {
-        const res = await fetch("/api/test/skip-to-r2");
+        const res = await fetch("/api/test/skip-to-r2", { signal: controller.signal });
         const data = await res.json();
         if (!data.ok) {
           throw new Error(data.error || "测试入口初始化失败");
@@ -22,6 +23,7 @@ export default function TestRound2Entry() {
         if (canceled) return;
         window.location.href = data.redirect_url || `/multiplayer/round2?teamId=${encodeURIComponent(data.team_id || "")}&memberId=${encodeURIComponent(data.member_id || "")}&session_id=default`;
       } catch (e) {
+        if (e?.name === "AbortError") return;
         if (!canceled) {
           setError(e.message || "测试入口初始化失败");
         }
@@ -31,6 +33,7 @@ export default function TestRound2Entry() {
     bootstrap();
     return () => {
       canceled = true;
+      controller.abort();
     };
   }, []);
 
