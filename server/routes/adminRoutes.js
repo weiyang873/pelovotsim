@@ -1,5 +1,5 @@
 const { runSql, sqlQuote } = require("../db/pgSql");
-const { createTeam, getTeam } = require("../multiplayer/teamManager");
+const { createTeam, getTeam, setTeamLeader } = require("../multiplayer/teamManager");
 const { flushAll, readLogEntries } = require("../llm/llm_logger");
 const TeacherDebrief = require("./teacherDebrief");
 
@@ -44,7 +44,8 @@ async function importStudents(body) {
       if (!groups[groupLabel]) groups[groupLabel] = [];
       groups[groupLabel].push({
         student_id: String(row.student_id).trim(),
-        name: String(row.name).trim()
+        name: String(row.name).trim(),
+        is_leader: Boolean(row.is_leader)
       });
     }
 
@@ -85,12 +86,21 @@ async function importStudents(body) {
         `);
       }
 
+      const preferredLeaderIndex = members.findIndex((member) => member.is_leader);
+      const leaderIndex = preferredLeaderIndex >= 0 ? preferredLeaderIndex : 0;
+      const leaderMember = teamMembers[leaderIndex] || teamMembers[0] || null;
+      if (leaderMember?.id) {
+        await setTeamLeader(team.id, leaderMember.id);
+      }
+
       results.push({
         group: groupLabel,
         team_id: team.id,
         team_name: teamName,
         size: members.length,
-        students: members.map((member) => member.student_id)
+        students: members.map((member) => member.student_id),
+        leader_student_id: members[leaderIndex]?.student_id || "",
+        leader_name: members[leaderIndex]?.name || ""
       });
     }
 

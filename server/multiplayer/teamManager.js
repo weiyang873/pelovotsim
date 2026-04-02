@@ -47,6 +47,7 @@ async function ensureSchema() {
       team_id TEXT REFERENCES teams(id),
       member_name TEXT,
       member_index INTEGER,
+      is_leader BOOLEAN DEFAULT FALSE,
       jinang_market_id TEXT,
       jinang_tech_id TEXT,
       joined_at TIMESTAMPTZ,
@@ -114,6 +115,7 @@ async function ensureSchema() {
     ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_rho_c DOUBLE PRECISION;
     ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_wtp_multiplier DOUBLE PRECISION;
     ALTER TABLE teams ADD COLUMN IF NOT EXISTS leader_member_id TEXT;
+    ALTER TABLE team_members ADD COLUMN IF NOT EXISTS is_leader BOOLEAN DEFAULT FALSE;
     ALTER TABLE team_members ADD COLUMN IF NOT EXISTS vp_text TEXT;
     ALTER TABLE team_members ADD COLUMN IF NOT EXISTS vp_confirmed_fields JSONB;
     ALTER TABLE team_members ADD COLUMN IF NOT EXISTS vp_scores JSONB;
@@ -179,12 +181,13 @@ async function createTeam(teamName, teamSize) {
     const mid = crypto.randomUUID();
     await runSql(`
       INSERT INTO team_members (
-        id, team_id, member_name, member_index, jinang_market_id, jinang_tech_id, joined_at
+        id, team_id, member_name, member_index, is_leader, jinang_market_id, jinang_tech_id, joined_at
       ) VALUES (
         ${sqlQuote(mid)},
         ${sqlQuote(id)},
         ${sqlQuote(`成员${i}`)},
         ${i},
+        FALSE,
         NULL,
         NULL,
         ${sqlQuote(createdAt)}
@@ -209,7 +212,7 @@ async function joinTeam(teamId, memberName) {
   if (!team) throw new Error(`team not found: ${tid}`);
 
   const existingMembers = await runSql(`
-    SELECT id, team_id, member_name, member_index, jinang_market_id, jinang_tech_id, joined_at
+    SELECT id, team_id, member_name, member_index, is_leader, jinang_market_id, jinang_tech_id, joined_at
     FROM team_members
     WHERE team_id = ${sqlQuote(tid)}
     ORDER BY member_index ASC;
@@ -231,7 +234,7 @@ async function joinTeam(teamId, memberName) {
   `);
 
   const rows = await runSql(`
-    SELECT id, team_id, member_name, member_index, jinang_market_id, jinang_tech_id, joined_at
+    SELECT id, team_id, member_name, member_index, is_leader, jinang_market_id, jinang_tech_id, joined_at
     FROM team_members
     WHERE id = ${sqlQuote(unclaimed.id)}
     LIMIT 1;
@@ -248,7 +251,7 @@ async function getTeam(teamId) {
   if (!team) return null;
 
   const members = await runSql(`
-    SELECT id, team_id, member_name, member_index, jinang_market_id, jinang_tech_id, joined_at
+    SELECT id, team_id, member_name, member_index, is_leader, jinang_market_id, jinang_tech_id, joined_at
     FROM team_members
     WHERE team_id = ${sqlQuote(tid)}
     ORDER BY member_index ASC;
@@ -276,6 +279,12 @@ async function setTeamLeader(teamId, memberId) {
     UPDATE teams
     SET leader_member_id = ${sqlQuote(mid)}
     WHERE id = ${sqlQuote(tid)};
+  `);
+
+  await runSql(`
+    UPDATE team_members
+    SET is_leader = CASE WHEN id = ${sqlQuote(mid)} THEN TRUE ELSE FALSE END
+    WHERE team_id = ${sqlQuote(tid)};
   `);
 
   return getTeam(tid);

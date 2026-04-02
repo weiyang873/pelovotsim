@@ -336,22 +336,6 @@ function buildVpRecapSentence(summary, fallbackText) {
     .trim();
 }
 
-function cardMatchesCell(card, cellKey) {
-  if (!card || !card.affinity || !cellKey) return false;
-  const [customer, strategy, age] = String(cellKey).split("_");
-  const affinity = card.affinity || {};
-
-  const keys = ["customer", "strategy", "age"].filter((k) => Boolean(affinity[k]));
-  if (!keys.length) return false;
-
-  for (const key of keys) {
-    const expected = String(affinity[key]);
-    const actual = key === "customer" ? customer : key === "strategy" ? strategy : age;
-    if (expected !== actual) return false;
-  }
-  return true;
-}
-
 function toPercentChange(adj, ref) {
   const a = Number(adj || 0);
   const b = Number(ref || 0);
@@ -828,11 +812,15 @@ export default function App() {
   const [vpFeedbackRequest, setVpFeedbackRequest] = useState(null);
   const [isGeneratingVpFeedback, setIsGeneratingVpFeedback] = useState(false);
   const [vpPanelError, setVpPanelError] = useState("");
+  const [coachBootstrapError, setCoachBootstrapError] = useState("");
+  const [coachBootstrapNonce, setCoachBootstrapNonce] = useState(0);
   const coachBootstrappedRef = useRef(false);
   const coachHistoryRef = useRef([]);
   const vpPanelStateRef = useRef("chatting");
   const pendingCoachMessagesRef = useRef([]);
   const pendingCoachSeqRef = useRef(0);
+  const coachInputDirtyRef = useRef(false);
+  const coachInputDraftHydratedRef = useRef(false);
   const coachScrollRef = useRef(null);
   const autoRound2RedirectRef = useRef(false);
   const allowRound1ReviewRef = useRef(false);
@@ -987,6 +975,23 @@ export default function App() {
     setRevealedCards((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
+  const handleCoachInputChange = (nextValue) => {
+    coachInputDirtyRef.current = true;
+    setCoachInput(nextValue);
+  };
+
+  const handleCoachVpTextChange = (nextValue) => {
+    round1VpDraftTouchedRef.current = true;
+    setCoachVpText(nextValue);
+  };
+
+  const handleRetryCoachBootstrap = () => {
+    coachBootstrappedRef.current = false;
+    setCoachBootstrapError("");
+    setIsSendingCoach(false);
+    setCoachBootstrapNonce((prev) => prev + 1);
+  };
+
   const applyPhase3StatePayload = (data, { preserveDraft = true } = {}) => {
     const restoredHistory = Array.isArray(data?.coach_history) ? data.coach_history : [];
     const strategy = data?.strategy || {};
@@ -1011,7 +1016,16 @@ export default function App() {
       setArch((prev) => prev || restoredTeamArch);
     }
     syncCoachHistoryWithPending(restoredHistory);
-    if (preserveDraft) setCoachInput(savedDraft);
+    if (preserveDraft) {
+      setCoachInput((prev) => {
+        if (coachInputDirtyRef.current) return prev;
+        if (!coachInputDraftHydratedRef.current) {
+          coachInputDraftHydratedRef.current = true;
+          return savedDraft;
+        }
+        return prev || savedDraft;
+      });
+    }
     setCoachVpText((prev) => {
       if (round1VpDraftTouchedRef.current && requesterIsLeader) return prev;
       if (confirmation) return restoredVpText;
@@ -1038,6 +1052,7 @@ export default function App() {
       setVpPanelState("chatting");
     }
     setVpPanelError("");
+    setCoachBootstrapError("");
     coachBootstrappedRef.current = restoredHistory.length > 0;
     setPhase3StateLoaded(true);
   };
@@ -1443,6 +1458,7 @@ export default function App() {
     }
 
     coachBootstrappedRef.current = true;
+    setCoachBootstrapError("");
     setIsSendingCoach(true);
     chatWithCoach(teamId, {
       message: intro,
@@ -1458,25 +1474,30 @@ export default function App() {
         });
       })
       .catch((e) => {
-        if (cancelled || e?.name === "AbortError") return;
+        if (e?.name === "AbortError") return;
+        if (cancelled) return;
+        coachBootstrappedRef.current = false;
+        setCoachBootstrapError(`初始化失败：${e.message || e}`);
         queuePendingCoachMessage({ type: "chat", role: "coach", text: `教练暂不可用：${e.message || e}` });
       })
       .finally(() => {
-        if (cancelled) return;
         setIsSendingCoach(false);
       });
     return () => {
       cancelled = true;
       controller.abort();
     };
-  }, [step, teamId, submissions, selectedCell, demoSelections, arch, phase3StateLoaded, isLeader]);
+  }, [step, teamId, submissions, selectedCell, teamCell, demoSelections, arch, teamArch, phase3StateLoaded, isLeader, coachBootstrapNonce]);
 
   useEffect(() => {
     if (step === 4) return;
     coachBootstrappedRef.current = false;
     pendingCoachMessagesRef.current = [];
+    coachInputDirtyRef.current = false;
+    coachInputDraftHydratedRef.current = false;
     round1VpDraftTouchedRef.current = false;
     setPhase3StateLoaded(false);
+    setCoachBootstrapError("");
     setCoachVpText("");
     setVpPanelState("chatting");
     setVpConfirmedFields(emptyConfirmedFields());
@@ -1584,6 +1605,7 @@ export default function App() {
     try {
       setIsSendingCoach(true);
       pendingUserId = queuePendingCoachMessage({ type: "chat", role: "user", text: message });
+      coachInputDirtyRef.current = false;
       setCoachInput("");
       const out = await chatWithCoach(teamId, {
         message,
@@ -2441,7 +2463,6 @@ export default function App() {
                               key={`${member.member_id}-${card.id}`}
                               card={card}
                               size="mini"
-                              glowing={Boolean(teamCell) && cardMatchesCell(card, teamCell)}
                             />
                           ))}
                         </div>
@@ -2464,45 +2485,6 @@ export default function App() {
               <div style={{ fontSize: 13, color: "#78350f", lineHeight: 1.7 }}>
                 {divergenceInsight}
               </div>
-            </div>
-
-            <div style={{
-              marginTop: 18, padding: "16px 20px", borderRadius: 12,
-              background: "#f0fdf4", border: "1.5px solid #bbf7d0",
-            }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#166534", marginBottom: 8 }}>
-                🔦 锦囊匹配分析
-              </div>
-              <div style={{ fontSize: 13, color: "#15803d", lineHeight: 1.8, marginBottom: 8 }}>
-                {teamCell ? `如果团队选择 ${formatUiCellCn(teamCell)}：` : "请先在下方确定团队目标市场后查看匹配分析。"}
-              </div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {teamCell && submissions.flatMap((s) => {
-                  const cards = memberCardsMap[s.member_id] || [];
-                  return cards
-                    .filter((card) => cardMatchesCell(card, teamCell))
-                    .map((card) => (
-                      <div key={`${s.member_id}-${card.id}`} style={{
-                        display: "flex", alignItems: "center", gap: 6,
-                        padding: "6px 12px", borderRadius: 8,
-                        background: "#dcfce7", border: "1px solid #86efac",
-                        fontSize: 12,
-                      }}>
-                        <span>{card.icon}</span>
-                        <span style={{ fontWeight: 700, color: "#166534" }}>{card.title}</span>
-                        <span style={{ color: "#15803d" }}>· {s.member_name || "成员"}</span>
-                      </div>
-                    ));
-                })}
-              </div>
-              {teamCell && (
-                <div style={{ fontSize: 12, color: "#4ade80", marginTop: 8 }}>
-                  {submissions.reduce((acc, s) => {
-                    const cards = memberCardsMap[s.member_id] || [];
-                    return acc + cards.filter((card) => cardMatchesCell(card, teamCell)).length;
-                  }, 0)} 张锦囊可激活
-                </div>
-              )}
             </div>
 
             <div style={{
@@ -2703,11 +2685,46 @@ export default function App() {
                 </div>
               </div>
 
+              {coachBootstrapError && (
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                  padding: "12px 16px",
+                  background: "#fef2f2",
+                  borderBottom: "1px solid #fecaca"
+                }}>
+                  <div style={{ fontSize: 13, color: "#b91c1c", lineHeight: 1.6 }}>
+                    {coachBootstrapError}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRetryCoachBootstrap}
+                    disabled={isSendingCoach}
+                    style={{
+                      padding: "8px 12px",
+                      borderRadius: 8,
+                      border: "1px solid #fecaca",
+                      background: "#fff",
+                      color: "#991b1b",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: isSendingCoach ? "default" : "pointer",
+                      opacity: isSendingCoach ? 0.6 : 1,
+                      whiteSpace: "nowrap"
+                    }}
+                  >
+                    重试初始化
+                  </button>
+                </div>
+              )}
+
               <div style={{ display: "flex", gap: 10, alignItems: "stretch", padding: "16px", background: "#fff" }}>
                 <input
                   data-testid="coach-message-input"
                   value={coachInput}
-                  onChange={(e) => setCoachInput(e.target.value)}
+                  onChange={(e) => handleCoachInputChange(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
@@ -2767,7 +2784,7 @@ export default function App() {
               <textarea
                 data-testid="round1-vp-textarea"
                 value={coachVpText}
-                onChange={(e) => setCoachVpText(e.target.value)}
+                onChange={(e) => handleCoachVpTextChange(e.target.value)}
                 readOnly={phase3EditLocked}
                 style={{
                   width: "100%",

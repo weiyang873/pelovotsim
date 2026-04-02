@@ -52,6 +52,45 @@ const DIM_LABELS = {
   ops: "运营"
 };
 
+function parseLeaderMarker(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  return normalized === "1" || normalized === "是" || normalized === "y";
+}
+
+function normalizeImportedStudents(rows) {
+  const explicitLeaderByGroup = new Map();
+  const fallbackLeaderByGroup = new Map();
+
+  rows.forEach((row) => {
+    const groupKey = String(row.group || "");
+    if (!fallbackLeaderByGroup.has(groupKey)) {
+      fallbackLeaderByGroup.set(groupKey, row.id);
+    }
+    if (row.is_leader && !explicitLeaderByGroup.has(groupKey)) {
+      explicitLeaderByGroup.set(groupKey, row.id);
+    }
+  });
+
+  return rows.map((row) => {
+    const groupKey = String(row.group || "");
+    const leaderId = explicitLeaderByGroup.get(groupKey) || fallbackLeaderByGroup.get(groupKey);
+    return { ...row, is_leader: row.id === leaderId };
+  });
+}
+
+function buildImportPreviewRows(rawRows) {
+  const parsedRows = (Array.isArray(rawRows) ? rawRows : [])
+    .filter((row) => row && row.length >= 3 && row[0] && row[1] && row[2])
+    .map((row, index) => ({
+      id: `${String(row[0]).trim()}-${String(row[1]).trim()}-${index}`,
+      group: String(row[0]).trim(),
+      student_id: String(row[1]).trim(),
+      name: String(row[2]).trim(),
+      is_leader: parseLeaderMarker(row[3])
+    }));
+  return normalizeImportedStudents(parsedRows);
+}
+
 function readTeacherCode() {
   if (typeof window === "undefined") return "";
   return window.localStorage.getItem(TEACHER_CODE_KEY) || "";
@@ -491,6 +530,8 @@ export default function AdminPanel() {
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
   const [importError, setImportError] = useState("");
+  const [importPreviewRows, setImportPreviewRows] = useState([]);
+  const [importPreviewFileName, setImportPreviewFileName] = useState("");
   const [lastUpdatedAt, setLastUpdatedAt] = useState("");
   const [toasts, setToasts] = useState([]);
   const fileRef = useRef(null);
@@ -651,9 +692,9 @@ export default function AdminPanel() {
     }
   };
 
-  const handleImport = async () => {
+  const handleImportFileChange = async () => {
     const file = fileRef.current?.files?.[0];
-    if (!file || !teacherCode) return;
+    if (!file) return;
 
     setImporting(true);
     setImportError("");
@@ -668,26 +709,53 @@ export default function AdminPanel() {
       let dataRows = rows;
       if (rows.length > 0) {
         const first = rows[0] || [];
-        const isHeader = first.some((value) => /组号|group|学号|student|姓名|name/i.test(String(value || "")));
+        const isHeader = first.some((value) => /组号|group|学号|student|姓名|name|组长|leader/i.test(String(value || "")));
         if (isHeader) dataRows = rows.slice(1);
       }
 
-      const students = dataRows
-        .filter((row) => row && row.length >= 3 && row[0] && row[1] && row[2])
-        .map((row) => ({
-          group: String(row[0]).trim(),
-          student_id: String(row[1]).trim(),
-          name: String(row[2]).trim()
-        }));
+      const students = buildImportPreviewRows(dataRows);
 
       if (!students.length) {
-        setImportError("未找到有效数据。请确认格式：A列=组号 B列=学号 C列=姓名");
-        setImporting(false);
+        setImportPreviewRows([]);
+        setImportPreviewFileName("");
+        setImportError("未找到有效数据。请确认格式：A列=组号 B列=学号 C列=姓名 D列=组长");
         return;
       }
+      setImportPreviewRows(students);
+      setImportPreviewFileName(file.name || "");
+    } catch (err) {
+      setImportPreviewRows([]);
+      setImportPreviewFileName("");
+      setImportError(err.message || "导入失败");
+    } finally {
+      setImporting(false);
+    }
+  };
 
-      const out = await importStudentsForTeacher(teacherCode, students);
+  const handleTogglePreviewLeader = (groupLabel, rowId) => {
+    setImportPreviewRows((prev) => normalizeImportedStudents(prev.map((row) => (
+      row.group === groupLabel
+        ? { ...row, is_leader: row.id === rowId }
+        : row
+    ))));
+  };
+
+  const handleConfirmImport = async () => {
+    if (!teacherCode || importPreviewRows.length === 0) return;
+    setImporting(true);
+    setImportError("");
+    setImportResult(null);
+    try {
+      const out = await importStudentsForTeacher(teacherCode, importPreviewRows.map((row) => ({
+        group: row.group,
+        student_id: row.student_id,
+        name: row.name,
+        is_leader: row.is_leader
+      })));
       setImportResult(out);
+      setImportPreviewRows([]);
+      setImportPreviewFileName("");
+      if (fileRef.current) fileRef.current.value = "";
       await loadSession(true);
     } catch (err) {
       setImportError(err.message || "导入失败");
@@ -733,6 +801,12 @@ export default function AdminPanel() {
   }
 
   const meta = sessionData.meta || { totalStudents: 0, totalTeams: 0, r1Frozen: 0, r2Submitted: 0 };
+  const importPreviewGroups = importPreviewRows.reduce((acc, row) => {
+    const groupKey = String(row.group || "");
+    if (!acc[groupKey]) acc[groupKey] = [];
+    acc[groupKey].push(row);
+    return acc;
+  }, {});
 
   return (
     <div style={{ minHeight: "100vh", background: "#f8fafc", fontFamily: "'Noto Sans SC', sans-serif", color: "#0f172a" }}>
@@ -864,15 +938,93 @@ export default function AdminPanel() {
 
             <div style={{ padding: 20, borderRadius: 18, background: "#fff", border: "1px solid #e2e8f0", marginBottom: 18 }}>
               <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a", marginBottom: 8 }}>班级导组</div>
-              <div style={{ fontSize: 12, color: "#64748b", marginBottom: 12 }}>A列=组号 B列=学号 C列=姓名。第一行可为表头。</div>
-              <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" style={{ display: "none" }} onChange={handleImport} />
-              <button onClick={() => fileRef.current?.click()} disabled={importing || Boolean(busyAction)} style={ghostButtonStyle()}>
-                {importing ? "导入中..." : "选择 Excel 并建组"}
-              </button>
+              <div style={{ fontSize: 12, color: "#64748b", marginBottom: 12 }}>
+                A列=组号 B列=学号 C列=姓名 D列=组长（选填，填1或"是"）。第一行可为表头。
+              </div>
+              <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" style={{ display: "none" }} onChange={handleImportFileChange} />
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                <button onClick={() => fileRef.current?.click()} disabled={importing || Boolean(busyAction)} style={ghostButtonStyle()}>
+                  {importing ? "处理中..." : (importPreviewRows.length > 0 ? "重新选择 Excel" : "选择 Excel")}
+                </button>
+                <button
+                  onClick={handleConfirmImport}
+                  disabled={importing || Boolean(busyAction) || importPreviewRows.length === 0}
+                  style={actionButtonStyle("#1a5c3a")}
+                >
+                  {importing ? "导入中..." : "确认导入并建组"}
+                </button>
+                {importPreviewFileName && (
+                  <span style={{ fontSize: 12, color: "#64748b" }}>
+                    当前文件：{importPreviewFileName}
+                  </span>
+                )}
+              </div>
               {importError && <div style={{ fontSize: 12, color: "#dc2626", marginTop: 8 }}>{importError}</div>}
               {importResult && (
                 <div style={{ fontSize: 12, color: "#059669", marginTop: 8 }}>
                   已导入 {importResult.imported_teams} 组 / {importResult.imported_students} 人
+                </div>
+              )}
+              {importPreviewRows.length > 0 && (
+                <div style={{ marginTop: 14, borderRadius: 14, border: "1px solid #e2e8f0", overflow: "hidden" }}>
+                  <div style={{ padding: "12px 14px", background: "#f8fafc", fontSize: 12, color: "#475569", fontWeight: 700 }}>
+                    导入预览：点击 `★` 可切换组长
+                  </div>
+                  <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 12 }}>
+                    {Object.entries(importPreviewGroups).map(([groupLabel, members]) => (
+                      <div key={groupLabel} style={{ border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden" }}>
+                        <div style={{ padding: "10px 12px", background: "#fff", borderBottom: "1px solid #e2e8f0", fontSize: 13, fontWeight: 800, color: "#0f172a" }}>
+                          第{groupLabel}组 · {members.length} 人
+                        </div>
+                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, background: "#fff" }}>
+                          <thead>
+                            <tr style={{ background: "#f8fafc", color: "#64748b" }}>
+                              {["组长", "学号", "姓名"].map((label) => (
+                                <th key={label} style={{ textAlign: "left", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" }}>{label}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {members.map((row) => (
+                              <tr
+                                key={row.id}
+                                onClick={() => handleTogglePreviewLeader(groupLabel, row.id)}
+                                style={{ cursor: "pointer" }}
+                              >
+                                <td style={{ padding: "10px 12px", borderBottom: "1px solid #f1f5f9", width: 80 }}>
+                                  <button
+                                    type="button"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      handleTogglePreviewLeader(groupLabel, row.id);
+                                    }}
+                                    style={{
+                                      border: "none",
+                                      background: "transparent",
+                                      color: row.is_leader ? "#f59e0b" : "#cbd5e1",
+                                      fontSize: 18,
+                                      cursor: "pointer",
+                                      padding: 0,
+                                      lineHeight: 1
+                                    }}
+                                    aria-label={`设置 ${row.name} 为第${groupLabel}组组长`}
+                                  >
+                                    ★
+                                  </button>
+                                </td>
+                                <td style={{ padding: "10px 12px", borderBottom: "1px solid #f1f5f9", color: "#334155", fontWeight: 700 }}>
+                                  {row.student_id}
+                                </td>
+                                <td style={{ padding: "10px 12px", borderBottom: "1px solid #f1f5f9", color: "#334155" }}>
+                                  {row.name}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
