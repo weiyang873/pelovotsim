@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import * as XLSX from "xlsx";
 import TeacherDebriefTabs from "../components/TeacherDebriefTabs";
 import {
   exportTeacherResults,
@@ -659,7 +660,6 @@ export default function AdminPanel() {
     setImportResult(null);
 
     try {
-      const XLSX = await import("https://cdn.jsdelivr.net/npm/xlsx@0.20.0/+esm");
       const buffer = await file.arrayBuffer();
       const workbook = XLSX.read(buffer, { type: "array" });
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
