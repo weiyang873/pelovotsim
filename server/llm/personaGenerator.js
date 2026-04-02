@@ -142,9 +142,14 @@ function buildPersonaPrompt(context) {
 - 年龄（必须跟 who_raw 描述的人群一致）
 - 职业和工作状态
 - 家庭结构和居住状态
-- 日常生活中跟产品相关的 2-3 个具体场景
-- 消费习惯和价格敏感度
-- 一个让这个人愿意认真聊的具体触发事件
+- 性格特点
+- 典型的一天（2-3句话，描述日常节奏）
+- 对科技产品/智能设备的态度（一句话）
+- 访谈时的沟通风格（一句话，如"话多容易跑题"或"沉默寡言需要追问"）
+- 表面需求（2-3条，可以主动透露的）
+- 核心痛点（2-3条，需要追问才会说的）
+- 最深层痛点（1条，只有问得很精准时才会说）
+- 矛盾点（1-2条，如"想要陪伴但不想维护关系"）
 
 不要生成机构负责人或企业采购。
 不要生成泛泛的描述，要有具体细节。
@@ -153,14 +158,16 @@ function buildPersonaPrompt(context) {
 {
   "name": "林小雨",
   "age": 28,
-  "title": "互联网公司产品经理",
+  "occupation": "互联网公司产品经理",
   "living_situation": "一线城市独居，租住一居室",
-  "family": "单身，父母在老家",
-  "daily_scenes": ["每天加班到9点，回家只有冰箱声", "周末宅家刷手机，偶尔跟朋友聚餐", "养过猫但出差多送人了"],
-  "spending": "月入2万，愿意为提升生活品质花钱，但对超过5000的非必需品会犹豫",
-  "trigger": "上周生病发烧一个人在家躺了两天，没人知道",
   "personality": "外向但社交疲惫，想要陪伴但不想维护关系",
-  "background": "985本科毕业4年，换过两份工作，目前这份比较稳定但加班多"
+  "daily_routine": "早9晚9到公司，回家点外卖刷手机，周末偶尔跟朋友聚餐",
+  "tech_comfort": "手机重度用户，但对智能家居类产品没什么了解",
+  "interview_style": "话不多但表达清晰，需要追问才会展开说",
+  "desires": ["回家有点生活气息", "不想太费精力维护什么东西"],
+  "pains": ["加班多回家只有冰箱声", "养过猫但出差多送人了", "周末偶尔觉得一个人也挺无聊"],
+  "hidden_pain": "上周生病发烧一个人在家躺了两天，没人知道",
+  "contradictions": ["想要陪伴但不想维护关系", "觉得电子产品没温度但又离不开手机"]
 }`;
 }
 
@@ -194,6 +201,17 @@ function normalizeRound1Persona(persona, context) {
       trigger,
       personality,
       background,
+      daily_routine: String(raw.daily_routine || "").trim()
+        || (pressures.length ? `日常工作围绕：${pressures.slice(0, 2).join("；")}` : ""),
+      tech_comfort: String(raw.tech_comfort || "对新技术持务实态度，关注投入产出比").trim(),
+      interview_style: String(raw.interview_style || "务实直接，关注具体效果和数据").trim(),
+      desires: Array.isArray(raw.desires) ? raw.desires.filter(Boolean).map(String)
+        : (budget ? ["希望控制成本", "提高运营效率"] : []),
+      pains: Array.isArray(raw.pains) ? raw.pains.filter(Boolean).map(String)
+        : pressures.slice(0, 3),
+      hidden_pain: String(raw.hidden_pain || raw.trigger || "").trim(),
+      contradictions: Array.isArray(raw.contradictions) ? raw.contradictions.filter(Boolean).map(String)
+        : ["想引入新技术但担心员工接受度", "预算有限但问题紧迫"],
       desc: [title, orgType, personality].filter(Boolean).join("，")
     };
   }
@@ -214,11 +232,19 @@ function normalizeRound1Persona(persona, context) {
     occupation: title,
     living_situation: living,
     family,
+    personality,
+    background,
+    daily_routine: String(raw.daily_routine || "").trim()
+      || (dailyScenes.length ? dailyScenes.join("；") : ""),
+    tech_comfort: String(raw.tech_comfort || "").trim(),
+    interview_style: String(raw.interview_style || "").trim(),
+    desires: Array.isArray(raw.desires) ? raw.desires.filter(Boolean).map(String) : [],
+    pains: Array.isArray(raw.pains) ? raw.pains.filter(Boolean).map(String) : [],
+    hidden_pain: String(raw.hidden_pain || raw.trigger || "").trim(),
+    contradictions: Array.isArray(raw.contradictions) ? raw.contradictions.filter(Boolean).map(String) : [],
     daily_scenes: dailyScenes,
     spending,
     trigger,
-    personality,
-    background,
     desc: [title, family || living, personality].filter(Boolean).join("，")
   };
 }

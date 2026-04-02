@@ -310,6 +310,20 @@ function parseVpSummaryText(text) {
   };
 }
 
+function normalizeVpSummaryData(summary, fallbackText = "") {
+  if (summary && typeof summary === "object") {
+    return {
+      who: String(summary.who || "").trim(),
+      pain: String(summary.pain || "").trim(),
+      how: String(summary.how || "").trim(),
+      boundary: String(summary.boundary || "").trim(),
+      archConsistency: String(summary.archConsistency || summary.arch_consistency || "").trim(),
+      coachComment: String(summary.coachComment || summary.coach_comment || "").trim()
+    };
+  }
+  return parseVpSummaryText(fallbackText);
+}
+
 function buildVpRecapSentence(summary, fallbackText) {
   const src = summary && typeof summary === "object" ? summary : {};
   const who = String(src.who || "").trim();
@@ -374,9 +388,27 @@ function emptyConfirmedFields() {
   };
 }
 
+const VP_EMPTY_PLACEHOLDERS = new Set([
+  "",
+  "未明确",
+  "待补充",
+  "(待补充)",
+  "（待补充）",
+  "无",
+  "暂无",
+  "N/A",
+  "n/a",
+  "未填写"
+]);
+
+function isVpPlaceholderValue(value) {
+  const text = String(value || "").trim();
+  return VP_EMPTY_PLACEHOLDERS.has(text);
+}
+
 function normalizeEditableVpField(value) {
   const text = String(value || "").trim();
-  return !text || text === "未明确" ? "" : text;
+  return isVpPlaceholderValue(text) ? "" : text;
 }
 
 function normalizeEditableVpFields(fields) {
@@ -396,8 +428,8 @@ function buildConfirmPayloadFields(fields) {
     who_raw: String(src.who_raw || "").trim(),
     pain_raw: String(src.pain_raw || "").trim(),
     how_raw: String(src.how_raw || "").trim(),
-    alternative_raw: String(src.alternative_raw || "").trim() || "未明确",
-    boundary_raw: String(src.boundary_raw || "").trim() || "未明确"
+    alternative_raw: isVpPlaceholderValue(src.alternative_raw) ? "未明确" : String(src.alternative_raw || "").trim(),
+    boundary_raw: isVpPlaceholderValue(src.boundary_raw) ? "未明确" : String(src.boundary_raw || "").trim()
   };
 }
 
@@ -455,6 +487,15 @@ function coachDraftStorageKey(teamId) {
 
 function leaderBannerName(leaderName) {
   return String(leaderName || "").trim() || "组长";
+}
+
+function formatStudentGroupName(groupLabel, teamName) {
+  const team = String(teamName || "").trim();
+  if (team) return team;
+  const raw = String(groupLabel || "").trim();
+  if (!raw) return "未分组";
+  if (raw.startsWith("第") || raw.endsWith("组")) return raw;
+  return `第${raw}组`;
 }
 
 function formatLeaderLockMessage(error) {
@@ -1834,8 +1875,17 @@ export default function App() {
     : "本轮已经提交。你们可以点击上方步骤回看前面的内容，但当前为只读模式。";
   const coachFinalCell = teamCell || selectedCell;
   const coachFinalArch = teamArch || arch;
-  const round1LeaderBanner = isLeaderLockedViewer
-    ? `当前由 ${leaderBannerName(leaderName)} 操作，请口头讨论你的建议`
+  const storedStudentSession = readStudentSession() || null;
+  const currentStudentId = String(storedStudentSession?.studentId || "").trim() || (entryMode === "trial" ? "试玩模式" : "—");
+  const currentMemberName = String(
+    storedStudentSession?.studentName ||
+    teamMembers.find((item) => item.id === memberId)?.member_name ||
+    ""
+  ).trim() || "当前学生";
+  const currentGroupName = formatStudentGroupName(storedStudentSession?.groupLabel, teamName);
+  const isRound1TeamStage = step >= 3 && step <= 4 && !isReadOnlyReview;
+  const round1LeaderBanner = isRound1TeamStage && hasLeaderLock
+    ? (isLeader ? "你是本组操作人" : `请到组长 ${leaderBannerName(leaderName)} 的设备上操作`)
     : "";
   const round1TeamControlsLocked = isReadOnlyReview || isLeaderLockedViewer;
   const phase3EditLocked = round1TeamControlsLocked || vpPanelState !== "chatting";
@@ -1860,8 +1910,11 @@ export default function App() {
   const resultVpScore = normalizeScoreValue(results?.vp_scores?.VPscore ?? r1?.VPscore);
   const resultFeedbackText = String(results?.vp_feedback || vpFeedbackText || "").trim();
   const resultMarketJinang = results?.jinang?.market_jinang || null;
-  const vpSummary = results?.vp_summary || parseVpSummaryText(results?.team?.final_vp_text);
-  const vpRecapSentence = buildVpRecapSentence(vpSummary, results?.team?.final_vp_text);
+  const finalVpText = String(results?.team?.final_vp_text || "").trim();
+  const vpSummary = normalizeVpSummaryData(
+    results?.vp_summary || results?.team?.final_vp_summary,
+    finalVpText
+  );
   const finalCell = results?.team?.final_grid_id ? toUiCell(results.team.final_grid_id) : (teamCell || selectedCell);
   const finalArch = results?.team?.final_architecture || teamArch || arch || "Experience";
   const wtpBreakdown = results?.wtp_breakdown || {};
@@ -1956,6 +2009,46 @@ export default function App() {
         <p style={{ fontSize: 13, color: "#6b7280", marginTop: 4, marginBottom: 24 }}>
           {statusLine || "请按步骤完成小组第一轮战略决策。"}
         </p>
+
+        {teamId && memberId && (
+          <div style={{
+            position: "sticky",
+            top: 12,
+            zIndex: 10,
+            marginBottom: 18,
+            padding: "14px 16px",
+            borderRadius: 14,
+            background: "#fff",
+            border: "1px solid #dbe4ea",
+            boxShadow: "0 10px 24px rgba(15,23,42,0.06)"
+          }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12 }}>
+              {[
+                { label: "学号", value: currentStudentId },
+                { label: "姓名", value: currentMemberName },
+                { label: "所在组", value: currentGroupName },
+                { label: "身份", value: isLeader ? "组长 ★" : "组员" }
+              ].map((item) => (
+                <div key={item.label}>
+                  <div style={{ fontSize: 11, color: "#64748b", marginBottom: 4 }}>{item.label}</div>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>{item.value}</div>
+                </div>
+              ))}
+            </div>
+            {isRound1TeamStage && hasLeaderLock && (
+              <div style={{
+                marginTop: 12,
+                paddingTop: 12,
+                borderTop: "1px solid #e2e8f0",
+                fontSize: 12,
+                color: isLeader ? "#166534" : "#92400e",
+                fontWeight: 700
+              }}>
+                {isLeader ? "你是本组操作人" : `请到组长 ${leaderBannerName(leaderName)} 的设备上操作`}
+              </div>
+            )}
+          </div>
+        )}
 
         <StepBar current={step} onStep={goStep} maxUnlocked={maxUnlockedStep} />
         {isReadOnlyReview && (
@@ -2069,10 +2162,11 @@ export default function App() {
                     <div key={member.id || i} style={{
                       display: "flex", alignItems: "center", gap: 8,
                       padding: "8px 14px", borderRadius: 10,
-                      background: `${MEMBER_COLORS[i % MEMBER_COLORS.length]}12`,
+                      background: isCurrent ? `${MEMBER_COLORS[i % MEMBER_COLORS.length]}22` : `${MEMBER_COLORS[i % MEMBER_COLORS.length]}12`,
                       border: isCurrent
                         ? `2px solid ${MEMBER_COLORS[i % MEMBER_COLORS.length]}`
                         : `1.5px solid ${MEMBER_COLORS[i % MEMBER_COLORS.length]}30`,
+                      boxShadow: isCurrent ? `0 0 0 3px ${MEMBER_COLORS[i % MEMBER_COLORS.length]}18` : "none",
                     }}>
                       <div style={{
                         width: 28, height: 28, borderRadius: "50%",
@@ -2080,7 +2174,7 @@ export default function App() {
                         display: "flex", alignItems: "center", justifyContent: "center",
                         fontSize: 13, fontWeight: 700,
                       }}>{String.fromCharCode(65 + i)}</div>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>
+                      <span style={{ fontSize: 13, fontWeight: isCurrent ? 800 : 600, color: "#374151" }}>
                         {isCurrent ? `你（${member.member_name || "成员"}）` : (member.member_name || `成员${i + 1}`)}
                         {isTeamLeaderMember ? " 👑" : ""}
                       </span>
@@ -2435,10 +2529,15 @@ export default function App() {
               {demoSelections.map((sel) => {
                 const member = submissions[sel.memberIdx] || {};
                 const cards = memberCardsMap[member.member_id] || [];
+                const isCurrentMember = member.member_id === memberId;
                 return (
                   <div key={sel.memberIdx} style={{
                     display: "flex", alignItems: "flex-start", gap: 8,
                     flex: "1 1 200px", minWidth: 200,
+                    padding: isCurrentMember ? "10px 12px" : 0,
+                    borderRadius: isCurrentMember ? 12 : 0,
+                    background: isCurrentMember ? "#f0fdf4" : "transparent",
+                    border: isCurrentMember ? "1px solid #86efac" : "none",
                   }}>
                     <div style={{
                       width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
@@ -2448,7 +2547,7 @@ export default function App() {
                     }}>{String.fromCharCode(65 + sel.memberIdx)}</div>
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>
-                        {member.member_name || MEMBER_NAMES[sel.memberIdx]}
+                        {isCurrentMember ? `你（${member.member_name || MEMBER_NAMES[sel.memberIdx]}）` : (member.member_name || MEMBER_NAMES[sel.memberIdx])}
                       </div>
                       <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>
                         目标市场：{formatUiCellCn(sel.cell)}
@@ -3013,7 +3112,7 @@ export default function App() {
               border: "1.5px solid #e5e7eb",
               marginBottom: 16
             }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#374151", marginBottom: 10 }}>价值主张复盘</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#374151", marginBottom: 10 }}>价值主张</div>
               <div style={{
                 padding: "16px 18px",
                 borderRadius: 10,
@@ -3024,8 +3123,43 @@ export default function App() {
                 lineHeight: 1.9,
                 fontWeight: 600
               }}>
-                {vpRecapSentence}
+                {finalVpText || "未生成最终价值主张。"}
               </div>
+              {(vpSummary?.who || vpSummary?.pain || vpSummary?.how || vpSummary?.boundary) && (
+                <div style={{
+                  marginTop: 14,
+                  paddingTop: 14,
+                  borderTop: "1px dashed #d1d5db",
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                  gap: 12
+                }}>
+                  <div>
+                    <div style={{ fontSize: 11, color: "#6b7280", fontWeight: 700, marginBottom: 6 }}>WHO</div>
+                    <div style={{ fontSize: 13, color: "#374151", lineHeight: 1.7 }}>
+                      {vpSummary?.who || "未明确"}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, color: "#6b7280", fontWeight: 700, marginBottom: 6 }}>PAIN</div>
+                    <div style={{ fontSize: 13, color: "#374151", lineHeight: 1.7 }}>
+                      {vpSummary?.pain || "未明确"}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, color: "#6b7280", fontWeight: 700, marginBottom: 6 }}>HOW</div>
+                    <div style={{ fontSize: 13, color: "#374151", lineHeight: 1.7 }}>
+                      {vpSummary?.how || "未明确"}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, color: "#6b7280", fontWeight: 700, marginBottom: 6 }}>BOUNDARY</div>
+                    <div style={{ fontSize: 13, color: "#374151", lineHeight: 1.7 }}>
+                      {vpSummary?.boundary || "未明确"}
+                    </div>
+                  </div>
+                </div>
+              )}
               {(vpSummary?.archConsistency || vpSummary?.coachComment) && (
                 <div style={{
                   marginTop: 14,

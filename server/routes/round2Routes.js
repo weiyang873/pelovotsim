@@ -1092,6 +1092,19 @@ function extractVpField(text, key) {
   return match ? match[1].trim() : "";
 }
 
+function normalizeVpSummary(summary, fallbackText = "") {
+  const src = summary && typeof summary === "object" ? summary : {};
+  const text = String(fallbackText || "").trim();
+  return {
+    who: String(src.who || extractVpField(text, "WHO") || "").trim(),
+    pain: String(src.pain || extractVpField(text, "PAIN") || "").trim(),
+    how: String(src.how || extractVpField(text, "HOW") || "").trim(),
+    boundary: String(src.boundary || extractVpField(text, "BOUNDARY") || "").trim(),
+    archConsistency: String(src.archConsistency || src.arch_consistency || "").trim(),
+    coachComment: String(src.coachComment || src.coach_comment || "").trim()
+  };
+}
+
 function normalizeChannels(c1, c2, share1) {
   const mapChannel = (c) => {
     const u = String(c || "").toUpperCase();
@@ -1159,6 +1172,7 @@ async function buildRound2Recap(teamId, phase4Body) {
   const matchedMarketCount = settleItems.filter((x) => x?.matched && x?.jinang_type === "market").length;
   const matchedTechCount = settleItems.filter((x) => x?.matched && x?.jinang_type === "tech").length;
   const displayedWtpAdj = Number(phase4Body?.wtp_breakdown?.final_result?.WTPadj || team.final_wtp_adj || 0);
+  const vpSummary = normalizeVpSummary(phase4Body?.team?.final_vp_summary || team.final_vp_summary, phase4Body?.team?.final_vp_text || team.final_vp_text || "");
   console.log("[R2 pricing] 显示给学生的 WTPadj:", displayedWtpAdj);
 
   return {
@@ -1174,7 +1188,7 @@ async function buildRound2Recap(teamId, phase4Body) {
       G: Number(vpScores.G || 3),
       E: Number(vpScores.E || 3)
     },
-    vp_summary: String(phase4Body?.team?.final_vp_text || team.final_vp_text || "").trim() || "暂无 VP 摘要",
+    vp_summary: vpSummary,
     wtp_breakdown: phase4Body?.wtp_breakdown || null,
     jinang_tech: tech
       ? { card_id: tech.jinang_id, match_strength: Number(tech.match_strength || 0), name: tech.name || tech.jinang_id }
@@ -3038,16 +3052,16 @@ async function teamStatusApi(query) {
     if (!teamState) return makeResponse(404, { ok: false, error: "team not found" });
     const teamDraft = await readRound2TeamDraft(teamId);
     const round1Context = team
-      ? {
-          grid_id: team.final_grid_id || "",
-          architecture: team.final_architecture || "",
-          vp_text: team.final_vp_text || "",
-          vp_summary: {
-            who: extractVpField(team.final_vp_text, "WHO"),
-            pain: extractVpField(team.final_vp_text, "PAIN"),
-            how: extractVpField(team.final_vp_text, "HOW")
-          }
-        }
+      ? (() => {
+          const vpSummary = normalizeVpSummary(team.final_vp_summary, team.final_vp_text || "");
+          return {
+            grid_id: team.final_grid_id || "",
+            architecture: team.final_architecture || "",
+            vp_text: team.final_vp_text || "",
+            final_vp_summary: vpSummary,
+            vp_summary: vpSummary
+          };
+        })()
       : null;
     const member = memberId
       ? (teamState.members || []).find((item) => item.id === memberId) || null

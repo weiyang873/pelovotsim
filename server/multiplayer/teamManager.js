@@ -28,6 +28,7 @@ async function ensureSchema() {
       final_channel2 TEXT,
       final_channel1_share DOUBLE PRECISION,
       final_vp_text TEXT,
+      final_vp_summary JSONB,
       final_vp_scores TEXT,
       final_gm_max DOUBLE PRECISION,
       final_target_gm DOUBLE PRECISION,
@@ -104,6 +105,7 @@ async function ensureSchema() {
     ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_sam DOUBLE PRECISION;
     ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_wtp_adj DOUBLE PRECISION;
     ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_wtp_ref DOUBLE PRECISION;
+    ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_vp_summary JSONB;
     ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_vp_c DOUBLE PRECISION;
     ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_vp_g DOUBLE PRECISION;
     ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_vp_e_raw DOUBLE PRECISION;
@@ -125,13 +127,23 @@ async function ensureSchema() {
   await ensureVpIterationSchema();
 }
 
+function parseJsonColumn(value) {
+  if (!value) return null;
+  if (typeof value === "object") return value;
+  try {
+    return JSON.parse(String(value));
+  } catch (_) {
+    return null;
+  }
+}
+
 async function getTeamRow(teamId) {
   const rows = await runSql(`
     SELECT t.id, t.team_name, t.team_size, t.status, t.created_at,
       t.leader_member_id,
       leader.member_name AS leader_name,
       t.final_grid_id, t.final_architecture, t.final_architecture_source, t.final_channel1, t.final_channel2,
-      t.final_channel1_share, t.final_vp_text, t.final_vp_scores, t.final_gm_max, t.final_target_gm,
+      t.final_channel1_share, t.final_vp_text, t.final_vp_summary, t.final_vp_scores, t.final_gm_max, t.final_target_gm,
       t.final_sam, t.final_wtp_adj, t.final_wtp_ref, t.final_vp_c, t.final_vp_g, t.final_vp_e_raw, t.final_vp_e_adj,
       t.final_rho_c, t.final_wtp_multiplier
     FROM teams t
@@ -139,7 +151,12 @@ async function getTeamRow(teamId) {
     WHERE t.id = ${sqlQuote(teamId)}
     LIMIT 1;
   `);
-  return rows[0] || null;
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    ...row,
+    final_vp_summary: parseJsonColumn(row.final_vp_summary)
+  };
 }
 
 async function createTeam(teamName, teamSize) {
@@ -159,7 +176,7 @@ async function createTeam(teamName, teamSize) {
     INSERT INTO teams (
       id, team_name, team_size, status, created_at, leader_member_id,
       final_grid_id, final_architecture, final_architecture_source, final_channel1, final_channel2,
-      final_channel1_share, final_vp_text, final_vp_scores, final_gm_max, final_target_gm,
+      final_channel1_share, final_vp_text, final_vp_summary, final_vp_scores, final_gm_max, final_target_gm,
       final_sam, final_wtp_adj, final_wtp_ref, final_vp_c, final_vp_g, final_vp_e_raw, final_vp_e_adj,
       final_rho_c, final_wtp_multiplier
     ) VALUES (
@@ -170,7 +187,7 @@ async function createTeam(teamName, teamSize) {
       ${sqlQuote(createdAt)},
       NULL,
       NULL, NULL, 'player_selected', NULL, NULL,
-      NULL, NULL, NULL, NULL, NULL,
+      NULL, NULL, NULL, NULL, NULL, NULL,
       NULL, NULL, NULL, NULL, NULL, NULL, NULL,
       NULL, NULL
     );

@@ -28,6 +28,19 @@ const STOP_WORDS = new Set([
   "同时", "并且", "还有", "不仅", "而且", "虽然", "然而"
 ]);
 
+const EMPTY_PLACEHOLDERS = new Set([
+  "",
+  "未明确",
+  "待补充",
+  "(待补充)",
+  "（待补充）",
+  "无",
+  "暂无",
+  "N/A",
+  "n/a",
+  "未填写"
+]);
+
 const GRID_TO_PROFILE = {
   "ToB_Differentiation_Elder": { market: "ToB_Elder", strategy: "Differentiation" },
   "ToB_Cost_Elder": { market: "ToB_Elder", strategy: "Cost" },
@@ -51,6 +64,11 @@ function compactParagraph(text) {
     .replace(/\s*\n+\s*/g, " ")
     .replace(/\s{2,}/g, " ")
     .trim();
+}
+
+function isMeaningfulFieldValue(value) {
+  const text = String(value || "").trim();
+  return !EMPTY_PLACEHOLDERS.has(text);
 }
 
 function countChars(text) {
@@ -443,12 +461,12 @@ function scorePreparedVpByWord(prepared, gridId, architecture, options = {}) {
     const EMatch = await wordMatchScore(prepared.howPrepared, painWordData, new Set(), minSim);
     const ESimSum = EMatch.simSum;
     let altBonus = 0;
-    if (prepared.fields.alternative_raw && prepared.fields.alternative_raw !== "未明确") {
+    if (isMeaningfulFieldValue(prepared.fields.alternative_raw)) {
       const altWords = tokenize(prepared.fields.alternative_raw);
       if (altWords.length > 0) altBonus = 0.3;
     }
     let bndBonus = 0;
-    if (prepared.fields.boundary_raw && prepared.fields.boundary_raw !== "未明确") {
+    if (isMeaningfulFieldValue(prepared.fields.boundary_raw)) {
       const bndWords = tokenize(prepared.fields.boundary_raw);
       if (bndWords.length > 0) bndBonus = 0.2;
     }

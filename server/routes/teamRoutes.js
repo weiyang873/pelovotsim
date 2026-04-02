@@ -906,6 +906,54 @@ function buildVpResultScoringText(vpResult) {
   ].filter(Boolean).join("\n");
 }
 
+function normalizeVpSummaryPayload(summary, options = {}) {
+  const src = summary && typeof summary === "object" ? summary : {};
+  const fallbackText = String(options.fallbackText || "").trim();
+  const confirmedFields = options.confirmedFields && typeof options.confirmedFields === "object"
+    ? normalizeConfirmedFieldsPayload(options.confirmedFields)
+    : null;
+  return {
+    who: String(
+      src.who ||
+      src.target_customer ||
+      confirmedFields?.who_raw ||
+      extractTextValue(fallbackText, "WHO") ||
+      extractTextValue(fallbackText, "目标客户") ||
+      ""
+    ).trim(),
+    pain: String(
+      src.pain ||
+      src.scenario_pain ||
+      confirmedFields?.pain_raw ||
+      extractTextValue(fallbackText, "PAIN") ||
+      extractTextValue(fallbackText, "场景痛点") ||
+      ""
+    ).trim(),
+    how: String(
+      src.how ||
+      src.value_creation ||
+      confirmedFields?.how_raw ||
+      extractTextValue(fallbackText, "HOW") ||
+      extractTextValue(fallbackText, "价值创造") ||
+      ""
+    ).trim(),
+    boundary: String(
+      src.boundary ||
+      confirmedFields?.boundary_raw ||
+      extractTextValue(fallbackText, "BOUNDARY") ||
+      extractTextValue(fallbackText, "边界条件") ||
+      ""
+    ).trim(),
+    archConsistency: String(src.archConsistency || src.arch_consistency || "").trim(),
+    coachComment: String(src.coachComment || src.coach_comment || "").trim(),
+    confirmedArchitecture: normalizeConfirmedArchitecture(
+      src.confirmedArchitecture ||
+      src.confirmed_architecture ||
+      ""
+    )
+  };
+}
+
 function normalizeConfirmedFieldValue(value, { emptyAsUndefined = false } = {}) {
   const text = String(value || "").trim();
   if (!text || text === "未明确") {
@@ -966,19 +1014,19 @@ function extractTextValue(src, key) {
 async function summarizeVpFromConversation({ gridId, architecture, sessionMessages, payloadConversation, payloadVpResult }) {
   const directVpResult = payloadVpResult && typeof payloadVpResult === "object" ? payloadVpResult : null;
   if (directVpResult) {
-    const who = String(directVpResult.target_customer || directVpResult.who || "").trim();
-    const pain = String(directVpResult.scenario_pain || directVpResult.pain || "").trim();
-    const how = String(directVpResult.value_creation || directVpResult.how || "").trim();
-    const boundary = String(directVpResult.boundary || "").trim();
+    const normalized = normalizeVpSummaryPayload(directVpResult);
     return {
       text: [
-        `WHO：${who || "未提取到明确目标人群"}`,
-        `PAIN：${pain || "未提取到明确痛点场景"}`,
-        `HOW：${how || "未提取到明确解决机制"}`,
-        `BOUNDARY：${boundary || "未明确"}`,
+        `WHO：${normalized.who || "未提取到明确目标人群"}`,
+        `PAIN：${normalized.pain || "未提取到明确痛点场景"}`,
+        `HOW：${normalized.how || "未提取到明确解决机制"}`,
+        `BOUNDARY：${normalized.boundary || "未明确"}`,
         `架构一致性：${toArchLabel(architecture)}（待确认）`,
         "AI策略顾问点评：已按确认版本写入最终价值主张。"
       ].join("\n"),
+      ...normalized,
+      archConsistency: `${toArchLabel(architecture)}（待确认）`,
+      coachComment: "已按确认版本写入最终价值主张。",
       confirmedArchitecture: null
     };
   }
@@ -1042,27 +1090,33 @@ ${convoText}`;
         parsed = null;
       }
     }
-    const who = String(parsed?.who || "").trim() || extractTextValue(raw, "WHO（目标人群）") || extractTextValue(raw, "WHO");
-    const pain = String(parsed?.pain || "").trim() || extractTextValue(raw, "PAIN（核心痛点\\+触发情境）") || extractTextValue(raw, "PAIN");
-    const how = String(parsed?.how || "").trim() || extractTextValue(raw, "HOW（解决机制）") || extractTextValue(raw, "HOW");
-    const archLine = String(parsed?.arch_consistency || "").trim() || extractTextValue(raw, "架构一致性");
-    const coachLine =
-      String(parsed?.coach_comment || "").trim() ||
-      extractTextValue(raw, "AI策略顾问点评") ||
-      extractTextValue(raw, "Coach 最终评价");
+    const summaryFields = normalizeVpSummaryPayload({
+      who: String(parsed?.who || "").trim() || extractTextValue(raw, "WHO（目标人群）") || extractTextValue(raw, "WHO"),
+      pain: String(parsed?.pain || "").trim() || extractTextValue(raw, "PAIN（核心痛点\\+触发情境）") || extractTextValue(raw, "PAIN"),
+      how: String(parsed?.how || "").trim() || extractTextValue(raw, "HOW（解决机制）") || extractTextValue(raw, "HOW"),
+      archConsistency: String(parsed?.arch_consistency || "").trim() || extractTextValue(raw, "架构一致性"),
+      coachComment:
+        String(parsed?.coach_comment || "").trim() ||
+        extractTextValue(raw, "AI策略顾问点评") ||
+        extractTextValue(raw, "Coach 最终评价")
+    });
     const confirmedArchitecture = normalizeConfirmedArchitecture(
       parsed?.confirmed_architecture ||
       extractTextValue(raw, "confirmed_architecture") ||
       extractTextValue(raw, "确认架构")
     );
-    const normalized = [
-      `WHO：${who || "未提取到明确目标人群"}`,
-      `PAIN：${pain || "未提取到明确痛点场景"}`,
-      `HOW：${how || "未提取到明确解决机制"}`,
-      `架构一致性：${archLine || `${toArchLabel(architecture)}（待确认）`}`,
-      `AI策略顾问点评：${coachLine || "建议继续补充关键细节后再提交。"}`
+    const summaryText = [
+      `WHO：${summaryFields.who || "未提取到明确目标人群"}`,
+      `PAIN：${summaryFields.pain || "未提取到明确痛点场景"}`,
+      `HOW：${summaryFields.how || "未提取到明确解决机制"}`,
+      `架构一致性：${summaryFields.archConsistency || `${toArchLabel(architecture)}（待确认）`}`,
+      `AI策略顾问点评：${summaryFields.coachComment || "建议继续补充关键细节后再提交。"}`
     ].join("\n");
-    return { text: normalized, confirmedArchitecture };
+    return {
+      ...summaryFields,
+      text: summaryText,
+      confirmedArchitecture
+    };
   } catch (_) {
     return {
       text: [
@@ -1072,6 +1126,12 @@ ${convoText}`;
       `架构一致性：${toArchLabel(architecture)}（待确认）`,
       "AI策略顾问点评：AI策略顾问暂不可用，建议手动整理 VP 后重试。"
       ].join("\n"),
+      who: "",
+      pain: "",
+      how: "",
+      boundary: "",
+      archConsistency: `${toArchLabel(architecture)}（待确认）`,
+      coachComment: "AI策略顾问暂不可用，建议手动整理 VP 后重试。",
       confirmedArchitecture: null
     };
   }
@@ -1335,6 +1395,19 @@ async function persistConfirmedVpResult({
   });
 
   return { sessionId, sessionPayload: nextPmfScore };
+}
+
+async function readPersistedPhase3VpText(teamId, memberId) {
+  const tid = String(teamId || "").trim();
+  const mid = String(memberId || "").trim();
+  if (!tid || !mid) return "";
+  const rows = await runSql(`
+    SELECT vp_text
+    FROM team_members
+    WHERE id = ${sqlQuote(mid)} AND team_id = ${sqlQuote(tid)}
+    LIMIT 1;
+  `);
+  return String(rows[0]?.vp_text || "").trim();
 }
 
 async function persistVpFeedback(teamId, feedback) {
@@ -1870,6 +1943,7 @@ async function finalizePhase3(teamId, body) {
     const latestSession = await getLatestPhase3SessionRecord(teamId);
     const sessionId = latestSession?.sessionId || await getOrCreatePhase3Session(teamId);
     const session = latestSession || await getSession(sessionId);
+    const draft = await readRound1TeamDraft(teamId).catch(() => null);
     const vpSummary = await summarizeVpFromConversation({
       gridId,
       architecture: arch,
@@ -1877,6 +1951,15 @@ async function finalizePhase3(teamId, body) {
       payloadConversation: payload.conversation_history || [],
       payloadVpResult: payload.vp_result || null
     });
+    const persistedVpText = await readPersistedPhase3VpText(teamId, memberId).catch(() => "");
+    const finalVpText = String(
+      payload.vp_text ||
+      payload.vpText ||
+      persistedVpText ||
+      session?.pmfScore?._vp_sentence ||
+      draft?.vp_text ||
+      ""
+    ).trim() || vpSummary.text;
     const confirmedArch = normalizeConfirmedArchitecture(vpSummary?.confirmedArchitecture);
     const finalArch = confirmedArch && confirmedArch !== arch ? confirmedArch : arch;
     const archSource = confirmedArch && confirmedArch !== arch ? "coach_confirmed" : "player_selected";
@@ -1889,8 +1972,12 @@ async function finalizePhase3(teamId, body) {
           const normalized = normalizeConfirmedFieldsPayload(payload.confirmed_fields);
           return Object.values(normalized).some((value) => String(value || "").trim()) ? normalized : null;
         })()
-      : vpResultToConfirmedFields(payload.vp_result || null, String(payload.vp_text || payload.vpText || vpSummary.text || "").trim());
+      : vpResultToConfirmedFields(payload.vp_result || null, finalVpText);
     const confirmedAt = confirmedFields ? new Date().toISOString() : null;
+    const finalVpSummary = normalizeVpSummaryPayload(vpSummary, {
+      fallbackText: finalVpText,
+      confirmedFields
+    });
     const vpScores = buildPersistedVpScores(
       finalScores?.coverage,
       finalScores?.generalizability,
@@ -1907,7 +1994,8 @@ async function finalizePhase3(teamId, body) {
       SET final_grid_id = ${sqlQuote(gridId)},
           final_architecture = ${sqlQuote(finalArch)},
           final_architecture_source = ${sqlQuote(archSource)},
-          final_vp_text = ${sqlQuote(vpSummary.text)},
+          final_vp_text = ${sqlQuote(finalVpText)},
+          final_vp_summary = ${sqlQuote(JSON.stringify(finalVpSummary))}::jsonb,
           final_vp_scores = ${sqlQuote(JSON.stringify(vpScores))}
       WHERE id = ${sqlQuote(teamId)};
     `);
@@ -1917,7 +2005,7 @@ async function finalizePhase3(teamId, body) {
     const r1 = buildRound1Outcome(gridId, finalArch, engineVpScores, maxMarketMs, {
       teamId,
       sessionId,
-      vpText: String(payload.vp_text || payload.vpText || vpSummary.text || "").trim()
+      vpText: finalVpText
     });
     scheduleFinalRound1Stages(
       { teamId, sessionId, source: "web" },
@@ -1925,7 +2013,7 @@ async function finalizePhase3(teamId, body) {
       {
         source_iteration: payload.source_iteration,
         used_best_iteration: payload.used_best_iteration === true,
-        vp_text: String(payload.vp_text || payload.vpText || vpSummary.text || "").trim()
+        vp_text: finalVpText
       }
     );
 
@@ -1962,7 +2050,7 @@ async function finalizePhase3(teamId, body) {
           }
         } : {}),
         ...(confirmedFields ? {
-          _vp_sentence: String(payload.vp_text || payload.vpText || vpSummary.text || "").trim(),
+          _vp_sentence: finalVpText,
           _confirmed_fields: confirmedFields,
           _confirmed_at: confirmedAt
         } : {})
@@ -1976,7 +2064,7 @@ async function finalizePhase3(teamId, body) {
       sessionId,
       memberId,
       trigger: "finalize",
-      vpAfter: String(payload.vp_text || payload.vpText || vpSummary.text || "").trim(),
+      vpAfter: finalVpText,
       scores: vpScores,
       sourceIteration: payload.source_iteration,
       usedBestIteration: payload.used_best_iteration === true
@@ -1984,7 +2072,7 @@ async function finalizePhase3(teamId, body) {
     await saveRound1TeamDraft(teamId, memberId, {
       grid_id: gridId,
       architecture: finalArch,
-      vp_text: vpSummary.text
+      vp_text: finalVpText
     }).catch(() => {});
 
     return makeResponse(200, {
@@ -1992,7 +2080,7 @@ async function finalizePhase3(teamId, body) {
       team_id: teamId,
       status: "phase4",
       r1_result: r1,
-      vp_summary: vpSummary,
+      vp_summary: finalVpSummary,
       settle
     });
   } catch (e) {
@@ -2043,6 +2131,13 @@ async function buildPhase4Data(teamId) {
   const sessions = await getTeamSessions(teamId);
   const latestSession = getLatestPhase3Session(sessions);
   const vpText = team.final_vp_text || "";
+  const confirmedFields = latestSession?.pmfScore?._confirmed_fields && typeof latestSession.pmfScore._confirmed_fields === "object"
+    ? latestSession.pmfScore._confirmed_fields
+    : null;
+  const vpSummary = normalizeVpSummaryPayload(team.final_vp_summary, {
+    fallbackText: vpText,
+    confirmedFields
+  });
   const r1Base = buildRound1Outcome(team.final_grid_id, team.final_architecture, engineVpScores, 0);
   const r1 = buildRound1Outcome(team.final_grid_id, team.final_architecture, engineVpScores, maxMarketMs, {
     teamId,
@@ -2079,9 +2174,6 @@ async function buildPhase4Data(teamId) {
 
   let vpFeedback = String(latestSession?.pmfScore?._vp_feedback || "").trim() || null;
   const vpFeedbackVersion = Number(latestSession?.pmfScore?._vp_feedback_version || 0);
-  const confirmedFields = latestSession?.pmfScore?._confirmed_fields && typeof latestSession.pmfScore._confirmed_fields === "object"
-    ? latestSession.pmfScore._confirmed_fields
-    : null;
   if ((!vpFeedback || vpFeedbackVersion < VP_FEEDBACK_VERSION) && confirmedFields) {
     try {
       vpFeedback = await generateVpFeedback({
@@ -2122,7 +2214,8 @@ async function buildPhase4Data(teamId) {
       final_grid_id: team.final_grid_id,
       final_architecture: team.final_architecture,
       final_architecture_source: team.final_architecture_source || "player_selected",
-      final_vp_text: team.final_vp_text
+      final_vp_text: team.final_vp_text,
+      final_vp_summary: vpSummary
     },
     r1_result: r1,
     wtp_breakdown: {
@@ -2145,9 +2238,12 @@ async function buildPhase4Data(teamId) {
       VPscore: clipScore(r1.VPscore, 1, 5)
     },
     vp_summary: {
-      who: extractField(vpText, "WHO"),
-      pain: extractField(vpText, "PAIN"),
-      how: extractField(vpText, "HOW")
+      who: vpSummary.who || extractField(vpText, "WHO"),
+      pain: vpSummary.pain || extractField(vpText, "PAIN"),
+      how: vpSummary.how || extractField(vpText, "HOW"),
+      boundary: vpSummary.boundary || extractField(vpText, "BOUNDARY"),
+      archConsistency: vpSummary.archConsistency || "",
+      coachComment: vpSummary.coachComment || ""
     },
     vp_feedback: vpFeedback,
     jinang: {

@@ -321,6 +321,15 @@ function leaderDisplayName(name) {
   return String(name || "").trim() || "组长";
 }
 
+function formatStudentGroupName(groupLabel, teamName) {
+  const team = String(teamName || "").trim();
+  if (team) return team;
+  const raw = String(groupLabel || "").trim();
+  if (!raw) return "未分组";
+  if (raw.startsWith("第") || raw.endsWith("组")) return raw;
+  return `第${raw}组`;
+}
+
 function round2LeaderErrorMessage(err) {
   if (err?.code === "only_leader") {
     return `当前只有组长 ${leaderDisplayName(err?.leaderName)} 可以操作。`;
@@ -494,6 +503,18 @@ function parseVpSummaryText(text) {
     how: pick("HOW"),
     boundary: pick("BOUNDARY")
   };
+}
+
+function normalizeVpSummaryData(summary, fallbackText = "") {
+  if (summary && typeof summary === "object") {
+    return {
+      who: String(summary.who || "").trim(),
+      pain: String(summary.pain || "").trim(),
+      how: String(summary.how || "").trim(),
+      boundary: String(summary.boundary || "").trim()
+    };
+  }
+  return parseVpSummaryText(fallbackText);
 }
 
 function buildVpRecapSentence(summary, fallbackText) {
@@ -934,8 +955,11 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
   const previewBreakevenQ = previewUnitMargin > 0 ? Math.ceil(teamFixedCost / previewUnitMargin) : null;
   const submittedCalc = teamResultSnapshot?.result || null;
   const positionLabel = `${formatGridLabel(teamInfo?.final_grid_id || teamRecap?.final_grid_id)} · ${formatArchitectureLabel(teamInfo?.final_architecture)}`;
-  const vpRawText = teamInfo?.final_vp_text || teamRecap?.vp_summary || "";
-  const vpSummary = parseVpSummaryText(vpRawText);
+  const vpRawText = String(teamInfo?.final_vp_text || "").trim();
+  const vpSummary = normalizeVpSummaryData(
+    teamInfo?.final_vp_summary || teamInfo?.vp_summary || teamRecap?.vp_summary,
+    vpRawText
+  );
   const vpRecapText = buildVpRecapSentence(vpSummary, summarizeVpText(vpRawText));
   const resultVpScore = normalizeScoreValue(teamRecap?.vp_score);
   const resultFeedbackText = String(teamRecap?.vp_feedback || "").trim();
@@ -970,12 +994,16 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
   const marketHhiLabel = String(submittedCalc?.hhi_label || teamRecap?.hhi_label || getHHILabel(marketHhi));
   const hasMarketReference = Number.isFinite(marketSizeYi) && Number.isFinite(marketHhi);
   const teamTitle = teamInfo?.team_name || "当前团队";
+  const storedStudentSession = readStudentSession() || null;
+  const currentStudentId = String(storedStudentSession?.studentId || "").trim() || "—";
   const memberName = memberState?.name || (isTeamMode ? "当前成员" : "当前学生");
+  const currentGroupName = formatStudentGroupName(storedStudentSession?.groupLabel, teamTitle);
   const hasLeaderLock = Boolean(leaderMemberId);
   const round2TeamControlsLocked = Boolean(isTeamMode && hasLeaderLock && !isLeader && step >= 3 && !submitted);
   const round2LeaderBanner = round2TeamControlsLocked
-    ? `当前由 ${leaderDisplayName(leaderName)} 操作，请口头讨论你的建议`
+    ? `请到组长 ${leaderDisplayName(leaderName)} 的设备上操作`
     : "";
+  const isRound2TeamStage = Boolean(isTeamMode && step >= 3 && step <= 4 && !submitted);
   const memberDims = Array.isArray(memberState?.dims) && memberState.dims.length ? memberState.dims : DEFAULT_MEMBER_DIMS;
   const completedInterviewCount = Number(interviewProgress.completedCount || memberState?.completed_interviews || 0);
   const interviewDimensionGuide = useMemo(
@@ -1715,6 +1743,87 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
       <div style={{fontSize:12,color:"#6b7280",marginBottom:6}}>
         {isTeamMode ? `${teamTitle} · Team ID ${teamId}` : "未连接团队"}
       </div>
+      {teamId && memberId && (
+        <div style={{
+          position: "sticky",
+          top: 12,
+          zIndex: 10,
+          marginBottom: 14,
+          padding: "14px 16px",
+          borderRadius: 14,
+          background: "#fff",
+          border: "1px solid #dbe4ea",
+          boxShadow: "0 10px 24px rgba(15,23,42,0.06)"
+        }}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(140px, 1fr))",gap:12}}>
+            {[
+              { label: "学号", value: currentStudentId },
+              { label: "姓名", value: memberName },
+              { label: "所在组", value: currentGroupName },
+              { label: "身份", value: isLeader ? "组长 ★" : "组员" }
+            ].map((item) => (
+              <div key={item.label}>
+                <div style={{fontSize:11,color:"#64748b",marginBottom:4}}>{item.label}</div>
+                <div style={{fontSize:14,fontWeight:800,color:"#0f172a"}}>{item.value}</div>
+              </div>
+            ))}
+          </div>
+          {isRound2TeamStage && hasLeaderLock && (
+            <div style={{
+              marginTop:12,
+              paddingTop:12,
+              borderTop:"1px solid #e2e8f0",
+              fontSize:12,
+              fontWeight:700,
+              color:isLeader ? "#166534" : "#92400e"
+            }}>
+              {isLeader ? "你是本组操作人" : `请到组长 ${leaderDisplayName(leaderName)} 的设备上操作`}
+            </div>
+          )}
+        </div>
+      )}
+      {Array.isArray(teamInfo?.members) && teamInfo.members.length > 0 && (
+        <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:12}}>
+          {teamInfo.members.map((member, index) => {
+            const isCurrentMember = member.id === memberId;
+            const isLeaderMember = member.id === leaderMemberId;
+            return (
+              <div
+                key={member.id || index}
+                style={{
+                  display:"flex",
+                  alignItems:"center",
+                  gap:8,
+                  padding:"8px 12px",
+                  borderRadius:10,
+                  background:isCurrentMember ? "#ecfdf5" : "#fff",
+                  border:isCurrentMember ? "2px solid #2FAB6E" : "1px solid #d1d5db",
+                  boxShadow:isCurrentMember ? "0 0 0 3px rgba(47,171,110,0.12)" : "none"
+                }}
+              >
+                <div style={{
+                  width:26,
+                  height:26,
+                  borderRadius:"50%",
+                  background:isCurrentMember ? "#1a5c3a" : "#94a3b8",
+                  color:"#fff",
+                  display:"flex",
+                  alignItems:"center",
+                  justifyContent:"center",
+                  fontSize:12,
+                  fontWeight:800
+                }}>
+                  {index + 1}
+                </div>
+                <div style={{fontSize:13,fontWeight:isCurrentMember ? 800 : 600,color:"#334155"}}>
+                  {isCurrentMember ? `你（${member.member_name || "成员"}）` : (member.member_name || "成员")}
+                  {isLeaderMember ? " 👑" : ""}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
       {isLoadingContext && (
         <div style={{padding:"10px 14px",borderRadius:8,background:"#EFF6FF",border:"1px solid #BFDBFE",fontSize:12,color:"#1E40AF",marginBottom:12}}>
           正在同步你们团队的 Round 1 结果和 Round 2 提交状态...
