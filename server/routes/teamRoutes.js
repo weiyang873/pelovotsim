@@ -1537,7 +1537,7 @@ async function confirmAndScoreVp(body) {
     const teamId = String(payload.teamId || "").trim();
     const memberId = String(payload.memberId || "").trim();
     const vpText = String(payload.vpText || "").trim();
-    const gridId = String(payload.gridId || "").trim();
+    const gridId = String(payload.grid_id || payload.gridId || "").trim();
     const architecture = String(payload.architecture || "").trim();
     const confirmedFields = normalizeConfirmedFieldsPayload(payload.confirmedFields);
 

@@ -1912,10 +1912,6 @@ export default function App() {
   const resultFeedbackText = String(results?.vp_feedback || vpFeedbackText || "").trim();
   const resultMarketJinang = results?.jinang?.market_jinang || null;
   const finalVpText = String(results?.team?.final_vp_text || "").trim();
-  const vpSummary = normalizeVpSummaryData(
-    results?.vp_summary || results?.team?.final_vp_summary,
-    finalVpText
-  );
   const finalCell = results?.team?.final_grid_id ? toUiCell(results.team.final_grid_id) : (teamCell || selectedCell);
   const finalArch = results?.team?.final_architecture || teamArch || arch || "Experience";
   const wtpBreakdown = results?.wtp_breakdown || {};
@@ -3126,64 +3122,6 @@ export default function App() {
               }}>
                 {finalVpText || "未生成最终价值主张。"}
               </div>
-              {(vpSummary?.who || vpSummary?.pain || vpSummary?.how || vpSummary?.boundary) && (
-                <div style={{
-                  marginTop: 14,
-                  paddingTop: 14,
-                  borderTop: "1px dashed #d1d5db",
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-                  gap: 12
-                }}>
-                  <div>
-                    <div style={{ fontSize: 11, color: "#6b7280", fontWeight: 700, marginBottom: 6 }}>WHO</div>
-                    <div style={{ fontSize: 13, color: "#374151", lineHeight: 1.7 }}>
-                      {vpSummary?.who || "未明确"}
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 11, color: "#6b7280", fontWeight: 700, marginBottom: 6 }}>PAIN</div>
-                    <div style={{ fontSize: 13, color: "#374151", lineHeight: 1.7 }}>
-                      {vpSummary?.pain || "未明确"}
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 11, color: "#6b7280", fontWeight: 700, marginBottom: 6 }}>HOW</div>
-                    <div style={{ fontSize: 13, color: "#374151", lineHeight: 1.7 }}>
-                      {vpSummary?.how || "未明确"}
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 11, color: "#6b7280", fontWeight: 700, marginBottom: 6 }}>BOUNDARY</div>
-                    <div style={{ fontSize: 13, color: "#374151", lineHeight: 1.7 }}>
-                      {vpSummary?.boundary || "未明确"}
-                    </div>
-                  </div>
-                </div>
-              )}
-              {(vpSummary?.archConsistency || vpSummary?.coachComment) && (
-                <div style={{
-                  marginTop: 14,
-                  paddingTop: 14,
-                  borderTop: "1px dashed #d1d5db",
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-                  gap: 12
-                }}>
-                  <div>
-                    <div style={{ fontSize: 11, color: "#6b7280", fontWeight: 700, marginBottom: 6 }}>定位一致性</div>
-                    <div style={{ fontSize: 13, color: "#374151", lineHeight: 1.7 }}>
-                      {vpSummary?.archConsistency || "未明确"}
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 11, color: "#6b7280", fontWeight: 700, marginBottom: 6 }}>AI策略顾问点评</div>
-                    <div style={{ fontSize: 13, color: "#374151", lineHeight: 1.7 }}>
-                      {vpSummary?.coachComment || "未明确"}
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
 
             <div style={{

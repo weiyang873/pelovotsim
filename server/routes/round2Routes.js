@@ -2554,7 +2554,7 @@ async function interviewReply(body) {
     const speaker = persona?.name || "访谈对象";
     const recapRes = await recap({ teamId: session.team_id });
     const recapData = recapRes?.body?.ok ? recapRes.body : {};
-    const gridDesc = String(recapData.final_grid_id || "ToB_Differentiation_Elder_Experience");
+    const gridDesc = String(recapData.final_grid_id || "ToB_Differentiation_Elder");
     const vpSummary = String(recapData.vp_summary || "围绕陪伴体验与关键安全做取舍");
     const systemPrompt = buildInterviewSystemPrompt({
       persona,
