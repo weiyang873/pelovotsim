@@ -794,9 +794,8 @@ export default function App() {
         }
         if (stateRes?.team_status && !snapshotRes?.submission) {
           const teamStep = mapTeamStatusToStep(stateRes.team_status);
-          const myInterviewDone = Number(stateRes?.member_state?.completedInterviews || stateRes?.member?.completed_interviews || 0) >= 2
-            || stateRes?.member_state?.card_status === "submitted"
-            || stateRes?.member?.card_status === "submitted";
+          const myInterviewDone = Number(stateRes?.member_state?.completedInterviews || stateRes?.member_state?.completed_interviews || 0) >= 2
+            || stateRes?.member_state?.card_status === "submitted";
           const safeStep = (teamStep >= 2 && !myInterviewDone) ? 1 : teamStep;
           setStep((prev) => Math.max(prev, safeStep));
         }
@@ -868,9 +867,8 @@ export default function App() {
         const nextStep = mapTeamStatusToStep(nextStatus);
         const prevStatus = previousStatusRef.current;
         const prevStep = previousStepRef.current;
-        const memberInterviewDone = Number(data?.member_state?.completedInterviews || data?.member?.completed_interviews || 0) >= 2
-          || data?.member_state?.card_status === "submitted"
-          || data?.member?.card_status === "submitted";
+        const memberInterviewDone = Number(data?.member_state?.completedInterviews || data?.member_state?.completed_interviews || 0) >= 2
+          || data?.member_state?.card_status === "submitted";
 
         setSubmitted(nextStatus === "R2_SUBMITTED");
         if (nextStatus !== "R2_SUBMITTED") {
