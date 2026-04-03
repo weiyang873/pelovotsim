@@ -872,7 +872,7 @@ export default function App() {
 
         setStep((prev) => {
           if (nextStatus === "R2_SUBMITTED") return 5;
-          if (nextStep > 0 && nextStep < prev) return nextStep;
+          if (nextStep > 0 && nextStep < prev) return prev;
           return Math.max(prev, nextStep);
         });
 
