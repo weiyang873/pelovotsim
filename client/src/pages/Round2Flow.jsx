@@ -1508,13 +1508,17 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     try {
       setIsSubmittingIndividual(true);
       setIndividualSubmitError("");
-      await saveRound2MemberSelection({
+      const submitResult = await saveRound2MemberSelection({
         teamId,
         memberId,
         selections: selectionsMapToArray(sel)
       });
-      setSystemNotice("个人选卡已提交，等待团队合并。");
-      setStep(3);
+      if (submitResult?.team_status === "R2_TEAM_MERGE") {
+        setSystemNotice("全员已提交，进入团队合并。");
+        setStep(3);
+      } else {
+        setSystemNotice("个人选卡已提交，等待其他成员提交。");
+      }
     } catch (err) {
       setIndividualSubmitError(err.message || "个人选卡提交失败");
     } finally {

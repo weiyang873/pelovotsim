@@ -2808,9 +2808,10 @@ async function saveMemberSelectionApi(body) {
       if (member.id === memberId) return true;
       return member.cardStatus === "submitted";
     });
-    await updateTeamRound2Status(teamId, everyoneSubmitted ? "R2_TEAM_MERGE" : "R2_INDIVIDUAL_CARDS");
+    const finalStatus = everyoneSubmitted ? "R2_TEAM_MERGE" : "R2_INDIVIDUAL_CARDS";
+    await updateTeamRound2Status(teamId, finalStatus);
 
-    return makeResponse(200, { ok: true, teamId, memberId, count: selections.length });
+    return makeResponse(200, { ok: true, teamId, memberId, count: selections.length, team_status: finalStatus });
   } catch (e) {
     return makeResponse(400, { ok: false, error: e.message });
   }
@@ -2860,6 +2861,12 @@ async function mergeApi(body) {
         return sum;
       }
     }, 0);
+
+    const teamState = await getTeamRound2State(teamId);
+    const allSubmitted = (teamState?.members || []).every((m) => m.cardStatus === "submitted");
+    if (!allSubmitted) {
+      return makeResponse(400, { ok: false, error: "not_all_members_submitted", message: "等待所有成员提交个人选卡" });
+    }
 
     await updateTeamRound2Status(teamId, "R2_TEAM_MERGE");
     for (const member of members) {
