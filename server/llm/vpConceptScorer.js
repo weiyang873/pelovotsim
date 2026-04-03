@@ -65,6 +65,7 @@ function normalizeGridId(gridId) {
   }
 
   const normalized = text
+    .replace(/CostLeadership/g, "Cost")
     .replace(/_Diff_/i, "_Differentiation_")
     .replace(/_Diff$/i, "_Differentiation")
     .replace(/^To([BC])_Diff_/i, "To$1_Differentiation_");
