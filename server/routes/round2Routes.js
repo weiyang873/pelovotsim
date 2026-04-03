@@ -3093,6 +3093,22 @@ async function teamStatusApi(query) {
     const member = memberId
       ? (teamState.members || []).find((item) => item.id === memberId) || null
       : null;
+    const memberState = member
+      ? {
+          id: member.id,
+          name: member.name,
+          dims: Array.isArray(member.dims) ? member.dims : [],
+          interview_status: member.interviewStatus,
+          interview_rounds: member.interviewRounds,
+          completed_interviews: Number(member.completedInterviews || 0),
+          completedInterviews: Number(member.completedInterviews || 0),
+          card_status: member.cardStatus,
+          cards_selected: member.cardsSelected,
+          current_step: member.currentStep,
+          forced_by_teacher: member.forcedByTeacher,
+          is_leader: Boolean(memberId && member.id === teamState.leaderMemberId)
+        }
+      : null;
 
     return makeResponse(200, {
       ok: true,
@@ -3104,21 +3120,8 @@ async function teamStatusApi(query) {
       ...buildLeaderMeta(teamState, memberId),
       team_draft: teamDraft,
       round1_context: round1Context,
-      member: member
-        ? {
-            id: member.id,
-            name: member.name,
-            dims: Array.isArray(member.dims) ? member.dims : [],
-            interview_status: member.interviewStatus,
-            interview_rounds: member.interviewRounds,
-            completed_interviews: Number(member.completedInterviews || 0),
-            card_status: member.cardStatus,
-            cards_selected: member.cardsSelected,
-            current_step: member.currentStep,
-            forced_by_teacher: member.forcedByTeacher,
-            is_leader: Boolean(memberId && member.id === teamState.leaderMemberId)
-          }
-        : null,
+      member: memberState,
+      member_state: memberState,
       members: teamState.members.map((item) => ({
         id: item.id,
         name: item.name,
