@@ -86,6 +86,12 @@ function buildPersonaPrompt(context) {
   const gridLabel = String(safeContext.gridLabel || "").trim();
   const whoRaw = String(safeContext.who_raw || "").trim();
   const architectureLabel = String(safeContext.architectureLabel || "").trim();
+  const ageConstraint = (() => {
+    const grid = String(safeContext.gridLabel || "").toLowerCase();
+    if (grid.includes("老人") || grid.includes("elder")) return "60-80岁";
+    if (grid.includes("儿童") || grid.includes("child")) return "30-45岁（作为家长/购买决策者）";
+    return "22-50岁";
+  })();
   const isToB = safeContext.isToB === true;
   const previousPersonas = Array.isArray(safeContext.previousPersonas) ? safeContext.previousPersonas : [];
   const previousSummary = previousPersonas.map((p) => `${p.name || "未命名"}，${p.title || p.occupation || "访谈对象"}`).join("；");
@@ -139,7 +145,7 @@ function buildPersonaPrompt(context) {
 这是 ToC（个人消费者）市场。访谈对象就是目标客户本人。${previousLine}
 生成一个具体的个人画像，包含：
 - 姓名（中文，随机但合理）
-- 年龄（必须跟 who_raw 描述的人群一致）
+- 年龄（必须在 ${ageConstraint} 范围内，这是硬约束，不可违反）
 - 职业和工作状态
 - 家庭结构和居住状态
 - 性格特点
@@ -156,9 +162,9 @@ function buildPersonaPrompt(context) {
 
 输出为 JSON 格式：
 {
-  "name": "林小雨",
-  "age": 28,
-  "occupation": "互联网公司产品经理",
+  "name": "（合理中文姓名）",
+  "age": "（在指定年龄范围内）",
+  "occupation": "（与目标客户一致的职业）",
   "living_situation": "一线城市独居，租住一居室",
   "personality": "外向但社交疲惫，想要陪伴但不想维护关系",
   "daily_routine": "早9晚9到公司，回家点外卖刷手机，周末偶尔跟朋友聚餐",
@@ -177,6 +183,9 @@ function normalizeRound1Persona(persona, context) {
   const isToB = safeContext.isToB === true;
   const name = String(raw.name || "访谈对象").trim();
   const age = Number.isFinite(Number(raw.age)) ? Number(raw.age) : null;
+  const gridLabel = String(safeContext.gridLabel || "").toLowerCase();
+  const isElderGrid = gridLabel.includes("老人") || gridLabel.includes("elder");
+  const isChildGrid = gridLabel.includes("儿童") || gridLabel.includes("child");
 
   if (isToB) {
     const title = String(raw.title || raw.occupation || "机构负责人").trim();
@@ -227,7 +236,11 @@ function normalizeRound1Persona(persona, context) {
   return {
     id: String(raw.id || `${name}_${title}_${age || ""}` || "persona").trim().replace(/\s+/g, "_"),
     name,
-    age: age || 30,
+    age: (() => {
+      if (isElderGrid && (age === null || age < 55)) return 65;
+      if (isChildGrid && (age === null || age > 50)) return 38;
+      return age || 30;
+    })(),
     title,
     occupation: title,
     living_situation: living,

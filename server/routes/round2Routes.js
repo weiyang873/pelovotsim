@@ -209,6 +209,7 @@ async function ensureSchema() {
       personas_json TEXT NOT NULL,
       history_json TEXT NOT NULL,
       result_json TEXT,
+      persona_locked_at TIMESTAMPTZ,
       round_no INTEGER NOT NULL,
       is_complete BOOLEAN NOT NULL DEFAULT FALSE,
       created_at TIMESTAMPTZ NOT NULL,
@@ -259,6 +260,10 @@ async function ensureSchema() {
       updated_by TEXT,
       updated_at TIMESTAMPTZ NOT NULL
     );
+  `);
+  await runSql(`
+    ALTER TABLE round2_interview_sessions
+    ADD COLUMN IF NOT EXISTS persona_locked_at TIMESTAMPTZ;
   `);
   await ensureRound2StateSchema();
 }
@@ -1357,6 +1362,12 @@ async function repairStaleInterviewSessions(team, memberId, sessions, personaPoo
     const persona = enrichPersonas(session.personas)[0] || null;
     if (isPersonaConsistentWithRound1Context(persona, round1Context)) continue;
 
+    // session 创建后 60 秒内锁定 persona，避免首轮输入时被并发请求替换。
+    const lockedAt = session.persona_locked_at || session.created_at;
+    if (lockedAt && (Date.now() - new Date(lockedAt).getTime()) < 60000) {
+      continue;
+    }
+
     const userTurns = (Array.isArray(session.history) ? session.history : []).filter((item) => item?.role === "user").length;
     if (userTurns > 0) continue;
 
@@ -1369,6 +1380,9 @@ async function repairStaleInterviewSessions(team, memberId, sessions, personaPoo
     const updated = {
       ...session,
       personas: [replacement],
+      // 替换 persona 后，清空旧 persona 生成的开场白/历史消息。
+      history: [],
+      messages: [],
       updated_at: nowIso()
     };
     await saveInterviewSession(updated);
@@ -1547,10 +1561,11 @@ async function saveInterviewSession(row) {
   await ensureSchema();
   const createdAt = normalizeTimestamp(row.created_at);
   const updatedAt = normalizeTimestamp(row.updated_at);
+  const personaLockedAt = row.persona_locked_at ? normalizeTimestamp(row.persona_locked_at) : null;
   await runSql(`
     INSERT INTO round2_interview_sessions (
       session_id, team_id, member_id, member_dims_json,
-      personas_json, history_json, result_json,
+      personas_json, history_json, result_json, persona_locked_at,
       round_no, is_complete, created_at, updated_at
     ) VALUES (
       ${sqlQuote(row.session_id)},
@@ -1560,6 +1575,7 @@ async function saveInterviewSession(row) {
       ${sqlQuote(JSON.stringify(row.personas || []))},
       ${sqlQuote(JSON.stringify(row.history || []))},
       ${sqlQuote(row.result ? JSON.stringify(row.result) : null)},
+      ${sqlQuote(personaLockedAt)},
       ${Number.isFinite(Number(row.round_no)) ? Number(row.round_no) : 1},
       ${row.is_complete ? "TRUE" : "FALSE"},
       ${sqlQuote(createdAt)},
@@ -1570,6 +1586,7 @@ async function saveInterviewSession(row) {
       personas_json = excluded.personas_json,
       history_json = excluded.history_json,
       result_json = excluded.result_json,
+      persona_locked_at = COALESCE(excluded.persona_locked_at, round2_interview_sessions.persona_locked_at),
       round_no = excluded.round_no,
       is_complete = excluded.is_complete,
       updated_at = excluded.updated_at;
@@ -1597,6 +1614,7 @@ async function getInterviewSession(sessionId) {
     personas: parse(row.personas_json, []),
     history: parse(row.history_json, []),
     result: row.result_json ? parse(row.result_json, null) : null,
+    persona_locked_at: row.persona_locked_at ? normalizeTimestamp(row.persona_locked_at) : null,
     round_no: Number.isFinite(Number(row.round_no)) ? Number(row.round_no) : 1,
     is_complete: row.is_complete === true || row.is_complete === "t",
     created_at: normalizeTimestamp(row.created_at),
@@ -1857,6 +1875,7 @@ function serializeSession(session) {
     teamId: session.team_id,
     memberId: session.member_id,
     memberDims: Array.isArray(session.member_dims) ? session.member_dims : [],
+    personaLockedAt: session.persona_locked_at || null,
     persona,
     personas,
     history,
@@ -2416,6 +2435,7 @@ async function interviewAuto(body) {
       personas,
       history,
       result,
+      persona_locked_at: nowIso(),
       round_no: 3,
       is_complete: true,
       created_at: nowIso(),
@@ -2502,6 +2522,7 @@ async function interviewStart(body) {
       personas,
       history,
       result: null,
+      persona_locked_at: nowIso(),
       round_no: 0,
       is_complete: false,
       created_at: nowIso(),
@@ -2759,7 +2780,6 @@ async function interviewSessionApi(query) {
     let sessions = await listInterviewSessionsForMember(teamId, memberId);
     const completedSessions = sessions.filter((item) => item.is_complete);
     const { personaPool } = await ensureMemberPersonaPool(team, member?.id || memberId, Math.min(MAX_INTERVIEWS_PER_MEMBER, completedSessions.length + 1));
-    sessions = await repairStaleInterviewSessions(team, member?.id || memberId, sessions, personaPool);
     const progress = buildMemberInterviewProgress(sessions, personaPool);
     const activeSession = sessions.find((item) => !item.is_complete) || null;
     const latestSession = sessions[sessions.length - 1] || null;
@@ -3073,6 +3093,22 @@ async function teamStatusApi(query) {
     const member = memberId
       ? (teamState.members || []).find((item) => item.id === memberId) || null
       : null;
+    const memberState = member
+      ? {
+          id: member.id,
+          name: member.name,
+          dims: Array.isArray(member.dims) ? member.dims : [],
+          interview_status: member.interviewStatus,
+          interview_rounds: member.interviewRounds,
+          completed_interviews: Number(member.completedInterviews || 0),
+          completedInterviews: Number(member.completedInterviews || 0),
+          card_status: member.cardStatus,
+          cards_selected: member.cardsSelected,
+          current_step: member.currentStep,
+          forced_by_teacher: member.forcedByTeacher,
+          is_leader: Boolean(memberId && member.id === teamState.leaderMemberId)
+        }
+      : null;
 
     return makeResponse(200, {
       ok: true,
@@ -3084,21 +3120,8 @@ async function teamStatusApi(query) {
       ...buildLeaderMeta(teamState, memberId),
       team_draft: teamDraft,
       round1_context: round1Context,
-      member: member
-        ? {
-            id: member.id,
-            name: member.name,
-            dims: Array.isArray(member.dims) ? member.dims : [],
-            interview_status: member.interviewStatus,
-            interview_rounds: member.interviewRounds,
-            completed_interviews: Number(member.completedInterviews || 0),
-            card_status: member.cardStatus,
-            cards_selected: member.cardsSelected,
-            current_step: member.currentStep,
-            forced_by_teacher: member.forcedByTeacher,
-            is_leader: Boolean(memberId && member.id === teamState.leaderMemberId)
-          }
-        : null,
+      member: memberState,
+      member_state: memberState,
       members: teamState.members.map((item) => ({
         id: item.id,
         name: item.name,
