@@ -135,6 +135,16 @@ function computeVpCompositeScore(C, G, EScore) {
   return Math.min(5, Math.round(Math.sqrt(c * avgGE) * 10) / 10);
 }
 
+function toCompressedPercent(multiplier) {
+  return Math.round((compressWtpMult(Number(multiplier || 1)) - 1) * 100);
+}
+
+function toCompressedDeltaPercent(fromMultiplier, toMultiplier) {
+  const from = compressWtpMult(Number(fromMultiplier || 1));
+  const to = compressWtpMult(Number(toMultiplier || 1));
+  return Math.round((to - from) * 100);
+}
+
 async function resolveIterationSpeaker(teamId, memberId) {
   const mid = String(memberId || "").trim();
   if (!mid) return { memberId: null, speakerName: "", speakerPersona: "" };
@@ -1638,7 +1648,7 @@ async function confirmAndScoreVp(body) {
         lambdaG: round1Outcome.lambda_G,
         lambdaE: round1Outcome.lambda_E,
         rhoC: round1Outcome.rho_C,
-        percentChange: Math.round((Number(round1Outcome.wtp_multiplier || 1) - 1) * 100)
+        percentChange: toCompressedPercent(round1Outcome.wtp_multiplier)
       }
     });
   } catch (e) {
@@ -2226,9 +2236,9 @@ async function buildPhase4Data(teamId) {
       vp_effect: r1.wtp_vp_effect,
       jinang_bonus: r1.jinang_wtp_bonus,
       multiplier: r1.wtp_multiplier,
-      base_pct: Math.round((Number(r1.wtp_vp_effect || 1) - 1) * 100),
-      final_pct: Math.round((Number(r1.wtp_multiplier || 1) - 1) * 100),
-      jinang_delta_pct: Math.round(Number(r1.jinang_wtp_bonus || 0) * 100)
+      base_pct: toCompressedPercent(r1.wtp_vp_effect),
+      final_pct: toCompressedPercent(r1.wtp_multiplier),
+      jinang_delta_pct: toCompressedDeltaPercent(r1.wtp_vp_effect, r1.wtp_multiplier)
     },
     vp_scores: {
       C: clipScore(rawScores.C ?? vpScores.C, 1, 5),

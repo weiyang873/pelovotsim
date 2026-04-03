@@ -1681,6 +1681,7 @@ export default function App() {
       const nextVp = String(out?.vp_text || "").trim();
       const feedbackText = String(out?.feedback || "").trim();
       setCoachVpText(nextVp);
+      if (nextVp) round1VpDraftTouchedRef.current = true;
       if (!out?.cached && feedbackText) {
         const last = coachHistoryRef.current[coachHistoryRef.current.length - 1];
         if (!(last?.role === "coach" && String(last?.text || "").trim() === feedbackText)) {
