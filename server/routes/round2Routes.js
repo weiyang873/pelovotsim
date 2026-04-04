@@ -1715,7 +1715,7 @@ function aggregateInterviewByOwner({ assignments, memberMap, interviewByMember }
       if (confidence === "high") highCandidates.push(row);
 
       (item.result?.tags || []).forEach((t) => {
-        const tag = String(t?.tag || "").trim();
+        const tag = String(typeof t === "string" ? t : (t?.tag || "")).trim();
         if (tag) tagSet.add(tag);
       });
       if (Number.isFinite(Number(item.result?.evi))) {
@@ -2998,7 +2998,7 @@ async function teamSubmitApi(body) {
       return makeResponse(400, { ok: false, error: "valid price required" });
     }
 
-    const radar = normalizeRadarPayload(body?.radar || body?.mergedInterview?.radar || {});
+    const radar = normalizeRadarPayload(body?.mergedInterview?.radar || body?.radar || {});
     const tags = Array.isArray(body?.tags)
       ? body.tags
       : Array.isArray(body?.mergedInterview?.tags)

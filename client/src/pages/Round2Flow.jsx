@@ -1539,11 +1539,15 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
       return;
     }
     if (!teamId || isSubmittingFinal || round2TeamControlsLocked) return;
+    if (!mergeData?.mergedInterview || !Array.isArray(mergeData.mergedInterview.tags) || mergeData.mergedInterview.tags.length === 0) {
+      setSystemNotice("团队合并数据未就绪，请等待加载完成后再提交。");
+      return;
+    }
 
     try {
       setIsSubmittingFinal(true);
       setSubmitError("");
-      const radar = buildRadarFromSelections(teamSel);
+      const radar = mergeData?.mergedInterview?.radar || buildRadarFromSelections(teamSel);
       const submitSelections = toSubmitSelectionsMap(teamSel);
       const out = await submitRound2TeamDecision({
         team_id: teamId,
@@ -1564,7 +1568,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     } finally {
       setIsSubmittingFinal(false);
     }
-  }, [isTeamMode, isSubmittingFinal, memberId, mergeData?.mergedInterview, round2TeamControlsLocked, sessionId, teamId, teamPrice, teamSel]);
+  }, [isTeamMode, isSubmittingFinal, memberId, mergeData, round2TeamControlsLocked, sessionId, teamId, teamPrice, teamSel]);
 
   // ── Render card (individual mode: no cost numbers) ──
   const renderCard = (card, dim, sels, showCost, mode) => {
@@ -2856,7 +2860,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
             >
               ← 返回修改
             </button>
-            <button data-testid="r2-final-submit" onClick={handleFinalSubmit} disabled={isSubmittingFinal || round2TeamControlsLocked} style={{...BS,flex:1,opacity:isSubmittingFinal||round2TeamControlsLocked?0.7:1,cursor:isSubmittingFinal?"wait":(round2TeamControlsLocked?"not-allowed":"pointer")}}>
+            <button data-testid="r2-final-submit" onClick={handleFinalSubmit} disabled={isSubmittingFinal || round2TeamControlsLocked || !mergeData?.mergedInterview || !Array.isArray(mergeData?.mergedInterview?.tags) || mergeData.mergedInterview.tags.length === 0} style={{...BS,flex:1,opacity:isSubmittingFinal||round2TeamControlsLocked||!mergeData?.mergedInterview||!Array.isArray(mergeData?.mergedInterview?.tags)||mergeData.mergedInterview.tags.length===0?0.7:1,cursor:isSubmittingFinal?"wait":((round2TeamControlsLocked||!mergeData?.mergedInterview||!Array.isArray(mergeData?.mergedInterview?.tags)||mergeData.mergedInterview.tags.length===0)?"not-allowed":"pointer")}}>
               {round2TeamControlsLocked ? `仅组长 ${leaderDisplayName(leaderName)} 可提交` : (isSubmittingFinal ? "提交中..." : "确认提交 ✓")}
             </button>
           </div>
