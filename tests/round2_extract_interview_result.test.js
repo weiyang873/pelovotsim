@@ -127,12 +127,61 @@ function testMissingEvidenceFallsBackToRealPriorInsteadOfFlatFour() {
   assert.equal(result.scoreSource.safety, "grid_prior");
 }
 
+function testIncompatibleTagsAreFilteredAndGridPriorBackfills() {
+  const normalized = __test.normalizeExtractedTags(
+    ["儿童安全"],
+    ["safety", "ops"],
+    {},
+    {
+      gridId: "ToB_Differentiation_Elder",
+      architecture: "Experience",
+      gridLabel: "ToB·差异化·老人"
+    }
+  );
+
+  assert.ok(normalized.length >= 3);
+  assert.equal(normalized.some((item) => item.tag === "儿童安全"), false);
+  assert.equal(normalized.some((item) => item.source === "grid_prior"), true);
+}
+
+function testMapEvidenceToResultUsesGridPriorFallbackTags() {
+  const result = __test.mapEvidenceToResult({
+    gridId: "ToB_Differentiation_Elder",
+    architecture: "Experience",
+    memberDims: ["safety", "ops"],
+    extracted: {
+      dimension_evidence: {
+        safety: { mentioned: false, evidence: [], needs: [], scenarios: [], pain_points: [] },
+        ops: { mentioned: false, evidence: [], needs: [], scenarios: [], pain_points: [] }
+      },
+      other_dimensions: {},
+      tags: ["儿童安全"],
+      interview_quality: {
+        specificity: "low",
+        consistency: "medium",
+        actionability: "low"
+      }
+    },
+    history: [
+      { role: "user", text: "嗯" },
+      { role: "assistant", speaker: "用户", text: "还行吧。" }
+    ],
+    conversation: "学生：嗯\n用户：还行吧。"
+  });
+
+  assert.ok(result.tags.length >= 3);
+  assert.equal(result.tags.some((item) => item.tag === "儿童安全"), false);
+  assert.equal(result.tags.some((item) => item.source === "grid_prior"), true);
+}
+
 function main() {
   testPromptSchemaHasNoNumericAnchors();
   testPayloadCleanerRemovesReplacementChars();
   testFocusedDimsFallbackToWeakEvidence();
   testGridPriorUsesArchitectureAwareId();
   testMissingEvidenceFallsBackToRealPriorInsteadOfFlatFour();
+  testIncompatibleTagsAreFilteredAndGridPriorBackfills();
+  testMapEvidenceToResultUsesGridPriorFallbackTags();
   console.log("round2_extract_interview_result.test.js: all tests passed");
 }
 

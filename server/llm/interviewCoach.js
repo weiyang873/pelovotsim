@@ -56,15 +56,8 @@ function isPersonaLeakage(reply, persona) {
     "决策压力说清楚",
     "所在机构是",
     "我现在负责"
-  ].filter(Boolean);
-
-  let hitCount = 0;
-  for (const marker of markers) {
-    if (marker.length >= 4 && text.includes(marker)) {
-      hitCount++;
-    }
-  }
-  return hitCount >= 2;
+  ].filter((marker) => marker && String(marker).length >= 4);
+  return markers.filter((marker) => text.includes(marker)).length >= 2;
 }
 
 async function assessInfoCompleteness(messages, persona) {
@@ -132,7 +125,7 @@ async function conductInterview(session, userMessage) {
   }
 
   if (isPersonaLeakage(reply, persona)) {
-    reply = "（思考了一下）这个问题...你能说得更具体一点吗？比如你们具体想解决什么问题？";
+    reply = "（想了想）这个问题……你能说得更具体一点吗？";
   }
 
   let assessment = null;

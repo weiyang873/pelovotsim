@@ -24,6 +24,7 @@ const {
   getTeamRound2State
 } = require("../multiplayer/round2State");
 const CAP_GROUPS = require("../../data/capability_groups_v2.json");
+const TAG_MAP = require("../../data/tag_map_v2_1.json");
 
 const ROOT = path.join(__dirname, "..", "..");
 const CONFIG_DIR = path.join(ROOT, "game_config_v0.1");
@@ -68,11 +69,7 @@ const DIM_PROMPT_MAP = {
   extend: { name: "可扩展与连接", tags: "手机联动、智能家居、第三方插件、多设备协同、离线模式" },
   ops: { name: "可运营与可维护", tags: "OTA更新、远程诊断、质量体系、成本工程、客服SLA" }
 };
-const ALLOWED_INTERVIEW_TAGS = [
-  "安全与信任", "便携版", "表情显示", "场景感知", "穿搭评价", "搭配建议", "多轮对话", "儿童安全",
-  "个性化推荐", "跟随陪伴", "记忆回溯", "家庭版", "拍照功能", "碰撞保护", "情感陪伴", "情绪识别",
-  "室内导航", "音乐播放", "隐私保护", "语音交互", "远程控制", "智能家居", "自动充电", "自主移动", "OTA更新"
-];
+const ALLOWED_INTERVIEW_TAGS = Object.keys(TAG_MAP.need_tag_to_dim || {});
 const ALLOWED_INTERVIEW_TAG_SET = new Set(ALLOWED_INTERVIEW_TAGS);
 const TAG_TO_DIM_SHORT = (() => {
   const map = new Map();
@@ -605,6 +602,7 @@ function buildExtractInterviewMessages({ gridId, memberDims, conversation }) {
   if (exampleFocused.length < 2) exampleFocused.push(exampleFocused[0] === "interaction" ? "safety" : "interaction");
   const [exampleDim1, exampleDim2] = exampleFocused;
   const allowedTagsText = ALLOWED_INTERVIEW_TAGS.join("、");
+  const gridLabel = inferBestGridLabel(gridId);
   return [
     {
       role: "system",
@@ -627,7 +625,9 @@ function buildExtractInterviewMessages({ gridId, memberDims, conversation }) {
         "13. 不要把“没有明确说产品功能”误判为“没有维度证据”。",
         "14. tags 只能从给定的合法标签列表中选择，不要自创标签。",
         "15. 每个 tag 都必须有访谈证据支持，不能因为常识或联想就输出。",
-        "16. 如果访谈内容无法匹配合法标签列表中的任何标签，该需求写进 evidence/needs/scenarios/pain_points，但不要输出 tag。"
+        "16. 如果访谈内容无法匹配合法标签列表中的任何标签，该需求写进 evidence/needs/scenarios/pain_points，但不要输出 tag。",
+        "17. 只输出访谈中有明确证据支撑的标签。如果访谈内容不足，宁可输出少量标签，不要凑数。",
+        `18. 不要输出与当前市场（${gridLabel || String(gridId || "")}）明显无关的标签。`
       ].join("\n")
     },
     {
@@ -637,6 +637,7 @@ function buildExtractInterviewMessages({ gridId, memberDims, conversation }) {
         "",
         `背景：`,
         `- grid_id: ${String(gridId || "")}`,
+        `- 当前市场: ${gridLabel || String(gridId || "")}`,
         `- 本成员负责维度: ${focused.join(", ")}`,
         "- 只重点分析这些负责维度，但如果对其他维度也有明确证据，可以记录在 other_dimensions 中",
         "- 维度定义：",
@@ -653,9 +654,11 @@ function buildExtractInterviewMessages({ gridId, memberDims, conversation }) {
         allowedTagsText,
         "- tags 输出规则：",
         "  - tags 只能从上面的列表中选取，不要自创标签",
-        "  - 从对话中提取 4-8 个需求标签（不少于 4 个），覆盖尽量多的维度方向",
+        "  - 只能输出访谈中有明确证据支撑的标签",
+        "  - 从对话中提取 0-8 个需求标签，证据不足时宁可少量，不要凑数",
         "  - 每个标签必须有访谈证据支持",
         "  - 如果访谈内容无法匹配列表中的任何标签，该需求记录在 evidence 中但不输出 tag",
+        `  - 不要输出与当前市场（${gridLabel || String(gridId || "")}）明显无关的标签`,
         "",
         "访谈记录：",
         conversation,
@@ -816,56 +819,91 @@ function buildTagCandidatesForDims(dims, currentTags) {
   return candidates;
 }
 
-function normalizeExtractedTags(tags, memberDims, dimensionEvidence = {}) {
-  const normalized = normalizeTextList(tags)
-    .filter((tag) => ALLOWED_INTERVIEW_TAG_SET.has(tag))
-    .slice(0, 8);
+function toTagEntry(tag, source = "interview") {
+  const text = typeof tag === "string" ? tag : tag?.tag;
+  const normalizedTag = String(text || "").trim();
+  if (!normalizedTag) return null;
+  const entry = tag && typeof tag === "object" ? { ...tag } : {};
+  entry.tag = normalizedTag;
+  if (!entry.source) entry.source = source;
+  return entry;
+}
+
+function dedupeTagEntries(tags, limit = 8) {
   const result = [];
   const seen = new Set();
-  normalized.forEach((tag) => {
-    if (seen.has(tag)) return;
+  for (const item of Array.isArray(tags) ? tags : []) {
+    const entry = toTagEntry(item);
+    const tag = String(entry?.tag || "").trim();
+    if (!tag || !ALLOWED_INTERVIEW_TAG_SET.has(tag) || seen.has(tag)) continue;
     seen.add(tag);
-    result.push(tag);
-  });
-
-  const currentDimSet = new Set(result.map((tag) => TAG_TO_DIM_SHORT.get(tag)).filter(Boolean));
-  const ownedDims = Array.isArray(memberDims) ? uniqueStrings(memberDims) : [];
-  const mentionedDims = DIM_KEYS_SHORT.filter((dim) => dimensionEvidence?.[dim]?.mentioned);
-  const uncoveredMentionedDims = mentionedDims.filter((dim) => !currentDimSet.has(dim));
-  const uncoveredOwnedDims = ownedDims.filter((dim) => !currentDimSet.has(dim));
-  const remainingDims = DIM_KEYS_SHORT.filter((dim) => !currentDimSet.has(dim) && !mentionedDims.includes(dim) && !ownedDims.includes(dim));
-
-  const dimExpansionOrder = [
-    ...uncoveredMentionedDims,
-    ...uncoveredOwnedDims,
-    ...remainingDims
-  ];
-
-  if (currentDimSet.size < 3) {
-    buildTagCandidatesForDims(dimExpansionOrder, result).forEach((tag) => {
-      if (result.length >= 8 || currentDimSet.size >= 3) return;
-      result.push(tag);
-      const dim = TAG_TO_DIM_SHORT.get(tag);
-      if (dim) currentDimSet.add(dim);
-    });
+    result.push(entry);
+    if (result.length >= limit) break;
   }
+  return result;
+}
 
-  if (result.length < 4) {
-    const fillOrder = [
-      ...mentionedDims,
-      ...ownedDims,
-      ...DIM_KEYS_SHORT
-    ];
-    buildTagCandidatesForDims(fillOrder, result).forEach((tag) => {
-      if (result.length >= 4 || result.length >= 8) return;
-      result.push(tag);
-      const dim = TAG_TO_DIM_SHORT.get(tag);
-      if (dim) currentDimSet.add(dim);
-    });
+function getGridDefaultTags(gridId, architecture) {
+  const normalizedGridId = /^B2[BC]_/.test(String(gridId || "").trim())
+    ? String(gridId || "").trim()
+    : toCalcGridId(gridId, architecture);
+  const priors = getGridPriors();
+  const grid = (priors.grids || []).find((item) => item.id === normalizedGridId);
+  return uniqueStrings(grid?.recommended_core_tags || []).filter((tag) => ALLOWED_INTERVIEW_TAG_SET.has(tag));
+}
+
+function filterIncompatibleTags(tags, gridLabel) {
+  const grid = String(gridLabel || "").toLowerCase();
+  return (Array.isArray(tags) ? tags : []).filter((item) => {
+    const tag = String((typeof item === "string" ? item : item?.tag) || "").toLowerCase();
+    if (!tag) return false;
+    if (grid.includes("老人") && (tag.includes("儿童") || tag.includes("幼儿"))) return false;
+    if (grid.includes("儿童") && (tag.includes("退休") || tag.includes("养老") || tag.includes("失智"))) return false;
+    return true;
+  });
+}
+
+function normalizeExtractedTags(tags, memberDims, dimensionEvidence = {}, options = {}) {
+  const gridLabel = String(options.gridLabel || inferBestGridLabel(options.gridId || "") || "").trim();
+  let result = dedupeTagEntries(
+    filterIncompatibleTags(
+      normalizeTextList(tags).map((tag) => ({ tag, source: "interview" })),
+      gridLabel
+    ),
+    8
+  );
+
+  if (result.length < 3) {
+    console.warn(`[tag_layering] 访谈标签不足(${result.length}), 用格子先验补充`);
+    const existing = new Set(result.map((item) => item.tag));
+    const gridDefaultTags = filterIncompatibleTags(
+      getGridDefaultTags(options.gridId, options.architecture),
+      gridLabel
+    );
+    for (const tag of gridDefaultTags) {
+      if (result.length >= 6) break;
+      if (existing.has(tag)) continue;
+      existing.add(tag);
+      result.push({ tag, polarity: 1, source: "grid_prior" });
+    }
   }
 
   if (result.length > 0) return result.slice(0, 8);
-  return buildTagCandidatesForDims(ownedDims.length > 0 ? ownedDims : DIM_KEYS_SHORT, []).slice(0, 6);
+
+  const ownedDims = Array.isArray(memberDims) ? uniqueStrings(memberDims) : [];
+  const mentionedDims = DIM_KEYS_SHORT.filter((dim) => dimensionEvidence?.[dim]?.mentioned);
+  const fillOrder = [
+    ...mentionedDims,
+    ...ownedDims,
+    ...DIM_KEYS_SHORT
+  ];
+  return dedupeTagEntries(
+    filterIncompatibleTags(
+      buildTagCandidatesForDims(fillOrder, []).map((tag) => ({ tag, source: "dim_fallback" })),
+      gridLabel
+    ),
+    6
+  );
 }
 
 function mapEvidenceToResult({ gridId, architecture, memberDims, extracted, history, conversation }) {
@@ -949,8 +987,15 @@ function mapEvidenceToResult({ gridId, architecture, memberDims, extracted, hist
     );
     dimensionEvidence[dim] = evidenceBlock;
   });
-  const extractedTags = normalizeExtractedTags(extracted?.tags, memberDims, dimensionEvidence)
-    .map((tag) => ({ tag, polarity: 1 }));
+  const extractedTags = normalizeExtractedTags(extracted?.tags, memberDims, dimensionEvidence, {
+    gridId,
+    architecture,
+    gridLabel: inferBestGridLabel(gridId)
+  }).map((item) => ({
+    tag: item.tag,
+    polarity: Number.isFinite(Number(item.polarity)) ? Number(item.polarity) : 1,
+    source: item.source || "interview"
+  }));
   const ownedDims = Array.isArray(memberDims) ? memberDims : [];
   const mentionedOwnedDims = ownedDims.filter((dim) => dimensionEvidence[dim]?.mentioned).length;
   const interviewQuality = normalizeInterviewQuality(extracted?.interview_quality);
@@ -1812,25 +1857,39 @@ function hasStudentIntroducedProduct(history, latestMessage = "") {
 function buildLifeAnchoredReply(persona) {
   const safePersona = enrichPersona(persona);
   const occupation = safePersona.title || safePersona.occupation || "普通上班族";
-  const org = [safePersona.org_type, safePersona.org_scale].filter(Boolean).join("，");
-  const living = safePersona.living_situation || org || "平时主要在家和工作两头跑";
+  const living = safePersona.living_situation || "平时主要在家和工作两头跑";
   const pressures = Array.isArray(safePersona.pressures) ? safePersona.pressures.filter(Boolean) : [];
 
   if (safePersona.org_type || safePersona.title) {
-    const pressureText = pressures[0] ? `最近最头疼的是${pressures[0]}。` : "最近手上的运营压力一直在堆。";
-    return `我现在负责${occupation}，所在机构是${living}。${pressureText} 比起先谈产品，我更愿意先把真实场景和决策压力说清楚。`;
+    const pressureText = pressures[0] ? `最近最头疼的是${pressures[0]}。` : "最近手上的压力一直在堆。";
+    return `${pressureText} 我会更在意真实使用场景、出问题时谁来处理，以及后续是不是会增加额外负担。你可以先问我平时最麻烦的时刻。`;
   }
 
   if (occupation.includes("护工")) {
-    return `我平时做${occupation}，${living}。白天经常要在几个照护对象之间来回跑，最怕临时有状况撞在一起。对我来说，先把日常照看里的麻烦和压力聊清楚会更有意义。`;
+    return "白天经常要在几个照护对象之间来回跑，最怕临时有状况撞在一起。对我来说，先把日常照看里的麻烦和压力聊清楚会更有意义。";
   }
   if (occupation.includes("财务") || living.includes("孩子")) {
-    return `我平时做${occupation}，${living}。工作和家里的事情常常挤在一起，最头疼的是一忙起来就顾不过来。比起先谈产品，我更想先说说哪些时刻最容易手忙脚乱。`;
+    return "工作和家里的事情常常挤在一起，最头疼的是一忙起来就顾不过来。你可以先问我哪些时刻最容易手忙脚乱。";
   }
   if (occupation.includes("退休") || living.includes("独居")) {
-    return `我现在是${occupation}，${living}。平时生活节奏比较固定，但真碰到一个人不太方便的时候，会特别在意安心和别太折腾。要不我先和你说说我平常最在意的几个场景。`;
+    return "平时生活节奏比较固定，但真碰到一个人不太方便的时候，会特别在意安心和别太折腾。你可以先问我平常最在意的几个场景。";
   }
-  return `我平时是${occupation}，${living}。日常里最在意的是别给自己添太多负担，真有事的时候也能稳得住。我们可以先从我平常怎么生活、哪些时候最麻烦开始聊。`;
+  return "日常里我最在意的是别给自己添太多负担，真有事的时候也能稳得住。我们可以先从我平常怎么生活、哪些时候最麻烦开始聊。";
+}
+
+function isPersonaLeakage(reply, persona) {
+  const text = String(reply || "");
+  const markers = [
+    persona?.org_type,
+    persona?.org_scale,
+    persona?.budget,
+    "比起先谈产品",
+    "我更愿意先把真实场景",
+    "决策压力说清楚",
+    "所在机构是",
+    "我现在负责"
+  ].filter((marker) => marker && String(marker).length >= 4);
+  return markers.filter((marker) => text.includes(marker)).length >= 2;
 }
 
 function enforceLifeFirstReply(reply, persona, productIntroduced) {
@@ -2615,6 +2674,23 @@ async function interviewReply(body) {
       }, () => chatCompletion(llmMessages, { temperature: 0.7, max_tokens: 300 }));
       if (String(out || "").trim()) reply = String(out).trim();
     } catch (_) {}
+    for (let retry = 0; retry < 2 && isPersonaLeakage(reply, persona); retry += 1) {
+      console.warn(`[round2Routes.interviewReply] persona leakage detected, retry ${retry + 1}`);
+      llmMessages.push({ role: "assistant", content: reply });
+      llmMessages.push({ role: "user", content: "请用自然对话回答，不要介绍自己的背景信息。" });
+      try {
+        const out = await withLlmLogging({
+          caller: "round2Routes.interviewReply",
+          teamId: session?.team_id || session?.teamId || null,
+          memberId: session?.member_id || session?.memberId || null,
+          messages: llmMessages
+        }, () => chatCompletion(llmMessages, { temperature: 0.9, max_tokens: 300 }));
+        if (String(out || "").trim()) reply = String(out).trim();
+      } catch (_) {}
+    }
+    if (isPersonaLeakage(reply, persona)) {
+      reply = "（想了想）这个问题……你能说得更具体一点吗？";
+    }
     reply = enforceLifeFirstReply(reply, persona, productIntroduced);
 
     const history = [...historyBase, { role: "user", speaker: "学生", text: message }, { role: "assistant", speaker, text: reply }];
@@ -3249,8 +3325,12 @@ module.exports = {
     buildAssignments,
     buildExtractInterviewMessages,
     cleanExtractedPayload,
+    filterIncompatibleTags,
+    getGridDefaultTags,
     inferWeakEvidenceFromConversation,
     mapEvidenceToResult,
+    normalizeExtractedTags,
+    isPersonaLeakage,
     isPersonaConsistentWithRound1Context
   }
 };
