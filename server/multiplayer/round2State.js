@@ -315,7 +315,6 @@ async function clearMemberRound2Artifacts(teamId, memberId, resetTo) {
 }
 
 function deriveMemberCardStatus(memberRow, selectionRow) {
-  console.log(`[round2State] deriveMemberCardStatus input=${JSON.stringify({ memberRow, selectionRow })}`);
   const stored = String(memberRow.cardStatusStored || memberRow.card_status || "").trim();
   if (stored === "submitted" || stored === "selecting" || stored === "not_started") {
     if (stored === "submitted") return "submitted";
@@ -327,21 +326,19 @@ function deriveMemberCardStatus(memberRow, selectionRow) {
 }
 
 function deriveInterviewStatus(memberRow, interviewRow, interviewStats = null) {
-  console.log(`[round2State] deriveInterviewStatus input=${JSON.stringify({ memberRow, interviewRow, interviewStats })}`);
-  const stored = String(memberRow.interviewStatusStored || memberRow.interview_status || "").trim();
+  const stored = String(memberRow.interview_status || "").trim();
   const completedCount = Math.max(0, toNumber(interviewStats?.completedCount, 0));
   const activeCount = Math.max(0, toNumber(interviewStats?.activeCount, 0));
   if (completedCount >= 2) return "completed";
   if (activeCount > 0 || completedCount > 0) return "in_progress";
   if (stored === "completed" || stored === "in_progress") return stored;
-  if (interviewRow?.isComplete || interviewRow?.is_complete) return "in_progress";
+  if (interviewRow?.is_complete) return "in_progress";
   if (interviewRow) return "in_progress";
   return "not_started";
 }
 
 function deriveCurrentStep(teamStatus, memberRow, interviewStatus, cardStatus) {
-  console.log(`[round2State] deriveCurrentStep input=${JSON.stringify({ teamStatus, memberRow, interviewStatus, cardStatus })}`);
-  const stored = String(memberRow.currentStepStored || memberRow.current_step || "").trim();
+  const stored = String(memberRow.current_step || "").trim();
   if (stored) return stored;
 
   if (teamStatus === "R2_SUBMITTED") return "done";
@@ -356,7 +353,6 @@ function deriveCurrentStep(teamStatus, memberRow, interviewStatus, cardStatus) {
 }
 
 function deriveTeamStatus(teamRow, members, teamSubmission) {
-  console.log(`[round2State] deriveTeamStatus input=${JSON.stringify({ teamRow, members, teamSubmission })}`);
   const stored = clampStatus(teamRow.r2Status || teamRow.r2_status);
   let derived = (teamRow.teamStatus || teamRow.status) === "frozen" ? stored : "R2_NOT_STARTED";
 
@@ -376,15 +372,10 @@ function deriveTeamStatus(teamRow, members, teamSubmission) {
 }
 
 function deriveTeamEnteredAt(teamRow, members, teamSubmission, effectiveStatus) {
-  console.log(`[round2State] deriveTeamEnteredAt input=${JSON.stringify({ teamRow, members, teamSubmission, effectiveStatus })}`);
-  const storedStatus = clampStatus(teamRow.r2Status || teamRow.r2_status);
-  const storedEnteredAt = teamRow.r2StatusEnteredAt || teamRow.r2_status_entered_at || null;
-  if (storedStatus === effectiveStatus && storedEnteredAt) {
-    return storedEnteredAt;
+  if (clampStatus(teamRow.r2_status) === effectiveStatus && teamRow.r2_status_entered_at) {
+    return teamRow.r2_status_entered_at;
   }
-  if (effectiveStatus === "R2_SUBMITTED") {
-    return teamSubmission?.submittedAt || teamSubmission?.submitted_at || storedEnteredAt || null;
-  }
+  if (effectiveStatus === "R2_SUBMITTED") return teamSubmission?.submitted_at || teamRow.r2_status_entered_at || null;
 
   const lastMemberAt = members
     .map((member) => member.lastActivityAt)
@@ -392,7 +383,7 @@ function deriveTeamEnteredAt(teamRow, members, teamSubmission, effectiveStatus) 
     .sort()
     .slice(-1)[0];
 
-  return lastMemberAt || storedEnteredAt || teamRow.createdAt || teamRow.created_at || null;
+  return lastMemberAt || teamRow.r2_status_entered_at || teamRow.created_at || null;
 }
 
 async function loadRound2State(teamIds = null) {
