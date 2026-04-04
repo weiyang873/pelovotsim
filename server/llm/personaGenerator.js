@@ -184,8 +184,8 @@ function normalizeRound1Persona(persona, context) {
   const name = String(raw.name || "访谈对象").trim();
   const age = Number.isFinite(Number(raw.age)) ? Number(raw.age) : null;
   const gridLabel = String(safeContext.gridLabel || "").toLowerCase();
-  const isElderGrid = gridLabel.includes("老人") || gridLabel.includes("elder");
-  const isChildGrid = gridLabel.includes("儿童") || gridLabel.includes("child");
+  const isElderGrid = gridLabel.includes("老人") || gridLabel.includes("老年") || gridLabel.includes("elder");
+  const isChildGrid = gridLabel.includes("儿童") || gridLabel.includes("child") || gridLabel.includes("小孩");
 
   if (isToB) {
     const title = String(raw.title || raw.occupation || "机构负责人").trim();
@@ -237,8 +237,8 @@ function normalizeRound1Persona(persona, context) {
     id: String(raw.id || `${name}_${title}_${age || ""}` || "persona").trim().replace(/\s+/g, "_"),
     name,
     age: (() => {
-      if (isElderGrid && (age === null || age < 55)) return 65;
-      if (isChildGrid && (age === null || age > 50)) return 38;
+      if (isElderGrid && (age === null || age < 60)) return 60 + Math.floor(Math.random() * 16);
+      if (isChildGrid && (age === null || age > 50)) return 30 + Math.floor(Math.random() * 11);
       return age || 30;
     })(),
     title,
