@@ -56,8 +56,8 @@ const DIM_TAGS = {
   interaction: ["语音交互", "情感陪伴", "多轮对话"],
   perception: ["情绪识别", "场景感知", "个性化推荐"],
   motion: ["自主移动", "自动充电", "碰撞保护"],
-  safety: ["隐私保护", "儿童安全", "远程控制"],
-  extend: ["智能家居", "家庭版", "OTA更新"],
+  safety: ["隐私保护", "儿童安全", "安全与信任"],
+  extend: ["智能家居", "远程控制", "OTA更新"],
   ops: ["OTA更新", "搭配建议", "便携版"]
 };
 
@@ -92,6 +92,7 @@ const MAX_INTERVIEW_TURNS = 10;
 const MIN_TURNS_TO_END = 5;
 const MIN_INTERVIEWS_REQUIRED = 2;
 const MAX_INTERVIEWS_PER_MEMBER = 3;
+const MIN_NORMALIZED_TAG_COUNT = 6;
 const PERSONA_SEEDS_BY_GROUP = {
   ELDER: [
     { id: "elder_zhou", name: "周阿姨", age: 67, occupation: "退休教师", living_situation: "独居，女儿住在同城", desc: "退休教师，独居，重视安全感" },
@@ -849,7 +850,10 @@ function getGridDefaultTags(gridId, architecture) {
     : toCalcGridId(gridId, architecture);
   const priors = getGridPriors();
   const grid = (priors.grids || []).find((item) => item.id === normalizedGridId);
-  return uniqueStrings(grid?.recommended_core_tags || []).filter((tag) => ALLOWED_INTERVIEW_TAG_SET.has(tag));
+  return uniqueStrings([
+    ...(grid?.recommended_core_tags || []),
+    ...(grid?.recommended_nice_tags || [])
+  ]).filter((tag) => ALLOWED_INTERVIEW_TAG_SET.has(tag));
 }
 
 function filterIncompatibleTags(tags, gridLabel) {
@@ -872,19 +876,39 @@ function normalizeExtractedTags(tags, memberDims, dimensionEvidence = {}, option
     ),
     8
   );
+  const existing = new Set(result.map((item) => item.tag));
 
-  if (result.length < 3) {
+  if (result.length < MIN_NORMALIZED_TAG_COUNT) {
     console.warn(`[tag_layering] 访谈标签不足(${result.length}), 用格子先验补充`);
-    const existing = new Set(result.map((item) => item.tag));
     const gridDefaultTags = filterIncompatibleTags(
       getGridDefaultTags(options.gridId, options.architecture),
       gridLabel
     );
     for (const tag of gridDefaultTags) {
-      if (result.length >= 6) break;
+      if (result.length >= MIN_NORMALIZED_TAG_COUNT) break;
       if (existing.has(tag)) continue;
       existing.add(tag);
       result.push({ tag, polarity: 1, source: "grid_prior" });
+    }
+  }
+
+  if (result.length < MIN_NORMALIZED_TAG_COUNT) {
+    const ownedDims = Array.isArray(memberDims) ? uniqueStrings(memberDims) : [];
+    const mentionedDims = DIM_KEYS_SHORT.filter((dim) => dimensionEvidence?.[dim]?.mentioned);
+    const fillOrder = [
+      ...mentionedDims,
+      ...ownedDims,
+      ...DIM_KEYS_SHORT
+    ];
+    const dimFallbackTags = filterIncompatibleTags(
+      buildTagCandidatesForDims(fillOrder, Array.from(existing)),
+      gridLabel
+    );
+    for (const tag of dimFallbackTags) {
+      if (result.length >= MIN_NORMALIZED_TAG_COUNT) break;
+      if (existing.has(tag)) continue;
+      existing.add(tag);
+      result.push({ tag, polarity: 1, source: "dim_fallback" });
     }
   }
 

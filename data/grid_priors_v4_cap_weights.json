@@ -32,9 +32,16 @@
       },
       "recommended_core_tags": [
         "个性化推荐",
-        "家庭版",
+        "场景感知",
+        "语音交互",
+        "多轮对话",
+        "安全与信任",
+        "智能家居"
+      ],
+      "recommended_nice_tags": [
+        "隐私保护",
         "自动充电",
-        "语音交互"
+        "OTA更新"
       ],
       "recommended_capabilities": [
         "persona_dialog",
@@ -108,9 +115,16 @@
       },
       "recommended_core_tags": [
         "个性化推荐",
-        "家庭版",
+        "场景感知",
+        "语音交互",
+        "多轮对话",
+        "安全与信任",
+        "智能家居"
+      ],
+      "recommended_nice_tags": [
+        "隐私保护",
         "自动充电",
-        "语音交互"
+        "OTA更新"
       ],
       "recommended_capabilities": [
         "persona_dialog",
@@ -184,10 +198,17 @@
       },
       "recommended_core_tags": [
         "个性化推荐",
-        "家庭版",
         "情绪识别",
+        "场景感知",
+        "语音交互",
+        "安全与信任",
+        "智能家居",
+        "多轮对话"
+      ],
+      "recommended_nice_tags": [
+        "隐私保护",
         "自动充电",
-        "语音交互"
+        "OTA更新"
       ],
       "recommended_capabilities": [
         "persona_dialog",
@@ -260,8 +281,17 @@
         "可运营与可维护": 0.21782178217821785
       },
       "recommended_core_tags": [
-        "家庭版",
+        "场景感知",
+        "安全与信任",
+        "隐私保护",
+        "智能家居",
+        "OTA更新",
         "自动充电"
+      ],
+      "recommended_nice_tags": [
+        "碰撞保护",
+        "自主移动",
+        "远程控制"
       ],
       "recommended_capabilities": [
         "auto_dock_charge",
@@ -324,8 +354,17 @@
         "可运营与可维护": 0.30000000000000004
       },
       "recommended_core_tags": [
-        "家庭版",
+        "场景感知",
+        "安全与信任",
+        "隐私保护",
+        "智能家居",
+        "OTA更新",
         "自动充电"
+      ],
+      "recommended_nice_tags": [
+        "碰撞保护",
+        "自主移动",
+        "远程控制"
       ],
       "recommended_capabilities": [
         "auto_dock_charge",
@@ -388,9 +427,18 @@
         "可运营与可维护": 0.21000000000000002
       },
       "recommended_core_tags": [
-        "家庭版",
         "情绪识别",
+        "场景感知",
+        "安全与信任",
+        "隐私保护",
+        "智能家居",
+        "OTA更新",
         "自动充电"
+      ],
+      "recommended_nice_tags": [
+        "碰撞保护",
+        "自主移动",
+        "远程控制"
       ],
       "recommended_capabilities": [
         "emotion_recognition",
@@ -457,8 +505,15 @@
       "recommended_core_tags": [
         "个性化推荐",
         "情感陪伴",
+        "语音交互",
+        "多轮对话",
+        "场景感知",
+        "记忆回溯"
+      ],
+      "recommended_nice_tags": [
         "自动充电",
-        "语音交互"
+        "表情显示",
+        "音乐播放"
       ],
       "recommended_capabilities": [
         "persona_dialog",
@@ -521,8 +576,15 @@
       "recommended_core_tags": [
         "个性化推荐",
         "情感陪伴",
+        "语音交互",
+        "多轮对话",
+        "场景感知",
+        "表情显示"
+      ],
+      "recommended_nice_tags": [
         "自动充电",
-        "语音交互"
+        "记忆回溯",
+        "音乐播放"
       ],
       "recommended_capabilities": [
         "persona_dialog",
@@ -585,8 +647,15 @@
       "recommended_core_tags": [
         "情感陪伴",
         "情绪识别",
+        "语音交互",
+        "场景感知",
+        "表情显示",
+        "记忆回溯"
+      ],
+      "recommended_nice_tags": [
         "自动充电",
-        "语音交互"
+        "多轮对话",
+        "音乐播放"
       ],
       "recommended_capabilities": [
         "voice_basic",
@@ -647,10 +716,17 @@
         "可运营与可维护": 0.2376237623762376
       },
       "recommended_core_tags": [
-        "个性化推荐",
         "情感陪伴",
+        "语音交互",
+        "场景感知",
+        "安全与信任",
         "自动充电",
-        "语音交互"
+        "智能家居"
+      ],
+      "recommended_nice_tags": [
+        "个性化推荐",
+        "音乐播放",
+        "隐私保护"
       ],
       "recommended_capabilities": [
         "persona_dialog",
@@ -711,10 +787,18 @@
         "可运营与可维护": 0.32
       },
       "recommended_core_tags": [
-        "个性化推荐",
         "情感陪伴",
+        "语音交互",
+        "场景感知",
+        "安全与信任",
         "自动充电",
-        "语音交互"
+        "智能家居"
+      ],
+      "recommended_nice_tags": [
+        "个性化推荐",
+        "音乐播放",
+        "隐私保护",
+        "OTA更新"
       ],
       "recommended_capabilities": [
         "persona_dialog",
@@ -777,8 +861,16 @@
       "recommended_core_tags": [
         "情感陪伴",
         "情绪识别",
+        "场景感知",
+        "安全与信任",
         "自动充电",
+        "智能家居",
         "语音交互"
+      ],
+      "recommended_nice_tags": [
+        "隐私保护",
+        "OTA更新",
+        "音乐播放"
       ],
       "recommended_capabilities": [
         "voice_basic",

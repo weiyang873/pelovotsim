@@ -158,6 +158,15 @@ const DIMS = ["感知与理解", "运动与导航", "交互与表达", "安全�
 const DIM_KEYS = ["perception", "mobility", "interaction", "safety_privacy", "integration", "operations"];
 const DIM_KEY_TO_CN = Object.fromEntries(DIM_KEYS.map((key, index) => [key, DIMS[index]]));
 const DIM_CN_TO_KEY = Object.fromEntries(DIMS.map((label, index) => [label, DIM_KEYS[index]]));
+const MIN_CALC_TAG_COUNT = 6;
+const DIM_FALLBACK_TAGS = {
+  perception: ["场景感知", "个性化推荐", "情绪识别"],
+  mobility: ["自主移动", "碰撞保护", "自动充电"],
+  interaction: ["语音交互", "多轮对话", "情感陪伴"],
+  safety_privacy: ["安全与信任", "隐私保护", "儿童安全"],
+  integration: ["智能家居", "远程控制", "OTA更新"],
+  operations: ["OTA更新", "自动充电", "便携版"]
+};
 
 let embeddingReadyPromise = null;
 
@@ -654,6 +663,69 @@ function getGridPrior(gridId) {
   return grid;
 }
 
+function normalizeTagList(tags, limit = 8) {
+  const result = [];
+  const seen = new Set();
+  for (const item of Array.isArray(tags) ? tags : []) {
+    const tag = String((typeof item === "string" ? item : item?.tag) || "").trim();
+    if (!tag || seen.has(tag) || !(TAG_MAP.need_tag_to_dim || {})[tag]) continue;
+    seen.add(tag);
+    result.push(tag);
+    if (result.length >= limit) break;
+  }
+  return result;
+}
+
+function getGridPriorTags(gridId) {
+  const grid = getGridPrior(gridId);
+  return normalizeTagList([
+    ...(grid.recommended_core_tags || []),
+    ...(grid.recommended_nice_tags || [])
+  ]);
+}
+
+function inferRadarFallbackTags(radarScores, currentTags = [], limit = 8) {
+  const result = normalizeTagList(currentTags, limit);
+  const seen = new Set(result);
+  const sortedDims = DIM_KEYS
+    .slice()
+    .sort((a, b) => Number(radarScores?.[b] || 0) - Number(radarScores?.[a] || 0));
+  for (const dimKey of sortedDims) {
+    for (const tag of DIM_FALLBACK_TAGS[dimKey] || []) {
+      if (result.length >= limit) return result;
+      if (seen.has(tag)) continue;
+      seen.add(tag);
+      result.push(tag);
+    }
+  }
+  return result;
+}
+
+function ensureSufficientTags(tags, gridId, radarScores) {
+  const result = normalizeTagList(tags);
+  if (result.length >= MIN_CALC_TAG_COUNT) return result;
+
+  const seen = new Set(result);
+  for (const tag of getGridPriorTags(gridId)) {
+    if (result.length >= MIN_CALC_TAG_COUNT) break;
+    if (seen.has(tag)) continue;
+    seen.add(tag);
+    result.push(tag);
+  }
+
+  if (result.length >= MIN_CALC_TAG_COUNT) return result;
+
+  const radarFallback = inferRadarFallbackTags(radarScores, result);
+  for (const tag of radarFallback) {
+    if (result.length >= MIN_CALC_TAG_COUNT) break;
+    if (seen.has(tag)) continue;
+    seen.add(tag);
+    result.push(tag);
+  }
+
+  return result.slice(0, 8);
+}
+
 async function getTagDim(tag) {
   const exact = (TAG_MAP.need_tag_to_dim || {})[tag];
   if (exact) return exact;
@@ -972,7 +1044,7 @@ async function calculate(input, overrideParams = DEFAULT_PARAMS) {
   const computationContext = getComputationContext(input);
   const gridId = String(input.gridId || "").trim();
   const selections = normalizeSelections(input);
-  const tags = Array.isArray(input.tags) ? input.tags : [];
+  const rawTags = Array.isArray(input.tags) ? input.tags : [];
 
   if (!gridId) throw new Error("gridId required");
   if (!Array.isArray(selections) || selections.length === 0) throw new Error("selections required");
@@ -986,6 +1058,7 @@ async function calculate(input, overrideParams = DEFAULT_PARAMS) {
     integration: Number(radarInput.integration != null ? radarInput.integration : radarInput.extend != null ? radarInput.extend : 5),
     operations: Number(radarInput.operations != null ? radarInput.operations : radarInput.ops != null ? radarInput.ops : 5)
   };
+  const tags = ensureSufficientTags(rawTags, gridId, radarScores);
 
   const baseWtpParams = computeWTPParams(gridId, { ...input, requireRound1Age: true });
   const hasWtpRefOverride = input && input.WTPref_override != null && Number.isFinite(Number(input.WTPref_override));
@@ -1065,25 +1138,28 @@ async function calculate(input, overrideParams = DEFAULT_PARAMS) {
   }));
   let coreTags = tagObjects.filter((t) => t.tier === "core");
   let niceTags = tagObjects.filter((t) => t.tier === "nice");
-  if (coreTags.length === 0 && tagObjects.length > 0) {
+  const distinctTagDims = new Set(tagObjects.map((item) => String(item.dimKey || item.dimCN || "").trim()).filter(Boolean));
+  const minCoreDims = Math.min(2, distinctTagDims.size);
+  const coreDims = new Set(coreTags.map((item) => String(item.dimKey || item.dimCN || "").trim()).filter(Boolean));
+  if (coreDims.size < minCoreDims && tagObjects.length > 0) {
     const sortedTags = tagObjects
       .slice()
       .sort((a, b) => Number(b.w || 0) - Number(a.w || 0));
-    const topDimensions = new Set();
+    const topDimensions = new Set(coreDims);
     sortedTags.forEach((item) => {
-      if (topDimensions.size >= 2) return;
+      if (topDimensions.size >= minCoreDims) return;
       const dim = String(item.dimKey || item.dimCN || "").trim();
       if (!dim) return;
       topDimensions.add(dim);
     });
-    if (topDimensions.size > 0) {
+    if (topDimensions.size >= minCoreDims) {
       tagObjects.forEach((item) => {
         const dim = String(item.dimKey || item.dimCN || "").trim();
         item.tier = topDimensions.has(dim) ? "core" : "nice";
       });
       coreTags = tagObjects.filter((t) => t.tier === "core");
       niceTags = tagObjects.filter((t) => t.tier === "nice");
-      console.log("[tag_layering] core_tags was empty, forced top-2 dims:", Array.from(topDimensions));
+      console.log("[tag_layering] core_tags coverage was narrow, forced top dims:", Array.from(topDimensions));
     }
   }
   const tagLayeringLog = {
