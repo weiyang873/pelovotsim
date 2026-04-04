@@ -2888,7 +2888,12 @@ async function mergeApi(body) {
     }, 0);
 
     const teamState = await getTeamRound2State(teamId);
-    const allSubmitted = (teamState?.members || []).every((m) => m.cardStatus === "submitted");
+    console.log("[mergeApi] member card statuses:", (teamState?.members || []).map((m) => ({
+      id: m.id,
+      cardStatus: m.cardStatus,
+      card_status: m.card_status
+    })));
+    const allSubmitted = (teamState?.members || []).every((m) => (m.cardStatus || m.card_status) === "submitted");
     if (!allSubmitted) {
       return makeResponse(400, { ok: false, error: "not_all_members_submitted", message: "等待所有成员提交个人选卡" });
     }
