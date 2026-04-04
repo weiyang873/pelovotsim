@@ -14,7 +14,7 @@ function assert(label, cond) {
 }
 
 const R1 = {
-  gridId: "B2C_Cost_Experience",
+  gridId: "B2C_Cost_Elder",
   WTP: 5500,
   e: 1.2,
   f: 0.12,

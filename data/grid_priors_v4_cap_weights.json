@@ -16,11 +16,11 @@
   },
   "grids": [
     {
-      "id": "B2B_Differentiation_Experience",
+      "id": "B2B_Differentiation_Elder",
       "axes": {
         "segment": "B2B",
         "strategy": "Differentiation",
-        "focus": "Experience"
+        "focus": "Elder"
       },
       "radar_weight_prior": {
         "感知与理解": 0.21904761904761905,
@@ -31,17 +31,17 @@
         "可运营与可维护": 0.11428571428571428
       },
       "recommended_core_tags": [
-        "个性化推荐",
+        "情绪识别",
+        "安全与信任",
         "场景感知",
         "语音交互",
-        "多轮对话",
-        "安全与信任",
-        "智能家居"
+        "隐私保护",
+        "远程控制"
       ],
       "recommended_nice_tags": [
-        "隐私保护",
-        "自动充电",
-        "OTA更新"
+        "OTA更新",
+        "智能家居",
+        "多轮对话"
       ],
       "recommended_capabilities": [
         "persona_dialog",
@@ -99,11 +99,11 @@
       }
     },
     {
-      "id": "B2B_Differentiation_Mixed",
+      "id": "B2B_Differentiation_Adult",
       "axes": {
         "segment": "B2B",
         "strategy": "Differentiation",
-        "focus": "Mixed"
+        "focus": "Adult"
       },
       "radar_weight_prior": {
         "感知与理解": 0.18269230769230768,
@@ -115,16 +115,16 @@
       },
       "recommended_core_tags": [
         "个性化推荐",
-        "场景感知",
+        "情感陪伴",
+        "智能家居",
         "语音交互",
         "多轮对话",
-        "安全与信任",
-        "智能家居"
+        "场景感知"
       ],
       "recommended_nice_tags": [
-        "隐私保护",
-        "自动充电",
-        "OTA更新"
+        "OTA更新",
+        "远程控制",
+        "隐私保护"
       ],
       "recommended_capabilities": [
         "persona_dialog",
@@ -182,11 +182,11 @@
       }
     },
     {
-      "id": "B2B_Differentiation_Function",
+      "id": "B2B_Differentiation_Child",
       "axes": {
         "segment": "B2B",
         "strategy": "Differentiation",
-        "focus": "Function"
+        "focus": "Child"
       },
       "radar_weight_prior": {
         "感知与理解": 0.24038461538461536,
@@ -197,18 +197,17 @@
         "可运营与可维护": 0.10576923076923075
       },
       "recommended_core_tags": [
-        "个性化推荐",
-        "情绪识别",
-        "场景感知",
+        "儿童安全",
+        "表情显示",
+        "情感陪伴",
         "语音交互",
-        "安全与信任",
-        "智能家居",
-        "多轮对话"
+        "跟随陪伴",
+        "场景感知"
       ],
       "recommended_nice_tags": [
-        "隐私保护",
-        "自动充电",
-        "OTA更新"
+        "音乐播放",
+        "OTA更新",
+        "远程控制"
       ],
       "recommended_capabilities": [
         "persona_dialog",
@@ -266,11 +265,11 @@
       }
     },
     {
-      "id": "B2B_Cost_Experience",
+      "id": "B2B_Cost_Elder",
       "axes": {
         "segment": "B2B",
         "strategy": "Cost",
-        "focus": "Experience"
+        "focus": "Elder"
       },
       "radar_weight_prior": {
         "感知与理解": 0.15841584158415842,
@@ -281,17 +280,17 @@
         "可运营与可维护": 0.21782178217821785
       },
       "recommended_core_tags": [
-        "场景感知",
         "安全与信任",
         "隐私保护",
-        "智能家居",
-        "OTA更新",
-        "自动充电"
+        "场景感知",
+        "语音交互",
+        "远程控制",
+        "OTA更新"
       ],
       "recommended_nice_tags": [
-        "碰撞保护",
-        "自主移动",
-        "远程控制"
+        "情绪识别",
+        "智能家居",
+        "自动充电"
       ],
       "recommended_capabilities": [
         "auto_dock_charge",
@@ -339,11 +338,11 @@
       }
     },
     {
-      "id": "B2B_Cost_Mixed",
+      "id": "B2B_Cost_Adult",
       "axes": {
         "segment": "B2B",
         "strategy": "Cost",
-        "focus": "Mixed"
+        "focus": "Adult"
       },
       "radar_weight_prior": {
         "感知与理解": 0.12000000000000001,
@@ -354,17 +353,18 @@
         "可运营与可维护": 0.30000000000000004
       },
       "recommended_core_tags": [
-        "场景感知",
-        "安全与信任",
-        "隐私保护",
+        "个性化推荐",
+        "情感陪伴",
         "智能家居",
+        "语音交互",
+        "场景感知",
         "OTA更新",
         "自动充电"
       ],
       "recommended_nice_tags": [
-        "碰撞保护",
-        "自主移动",
-        "远程控制"
+        "多轮对话",
+        "远程控制",
+        "隐私保护"
       ],
       "recommended_capabilities": [
         "auto_dock_charge",
@@ -412,11 +412,11 @@
       }
     },
     {
-      "id": "B2B_Cost_Function",
+      "id": "B2B_Cost_Child",
       "axes": {
         "segment": "B2B",
         "strategy": "Cost",
-        "focus": "Function"
+        "focus": "Child"
       },
       "radar_weight_prior": {
         "感知与理解": 0.18,
@@ -427,17 +427,16 @@
         "可运营与可维护": 0.21000000000000002
       },
       "recommended_core_tags": [
-        "情绪识别",
+        "儿童安全",
+        "情感陪伴",
+        "语音交互",
         "场景感知",
-        "安全与信任",
-        "隐私保护",
-        "智能家居",
         "OTA更新",
         "自动充电"
       ],
       "recommended_nice_tags": [
-        "碰撞保护",
-        "自主移动",
+        "表情显示",
+        "音乐播放",
         "远程控制"
       ],
       "recommended_capabilities": [
@@ -488,11 +487,11 @@
       }
     },
     {
-      "id": "B2C_Differentiation_Experience",
+      "id": "B2C_Differentiation_Elder",
       "axes": {
         "segment": "B2C",
         "strategy": "Differentiation",
-        "focus": "Experience"
+        "focus": "Elder"
       },
       "radar_weight_prior": {
         "感知与理解": 0.23809523809523814,
@@ -503,17 +502,17 @@
         "可运营与可维护": 0.13333333333333333
       },
       "recommended_core_tags": [
-        "个性化推荐",
-        "情感陪伴",
-        "语音交互",
-        "多轮对话",
+        "情绪识别",
+        "安全与信任",
         "场景感知",
+        "语音交互",
+        "情感陪伴",
         "记忆回溯"
       ],
       "recommended_nice_tags": [
-        "自动充电",
-        "表情显示",
-        "音乐播放"
+        "隐私保护",
+        "音乐播放",
+        "多轮对话"
       ],
       "recommended_capabilities": [
         "persona_dialog",
@@ -559,11 +558,11 @@
       }
     },
     {
-      "id": "B2C_Differentiation_Mixed",
+      "id": "B2C_Differentiation_Adult",
       "axes": {
         "segment": "B2C",
         "strategy": "Differentiation",
-        "focus": "Mixed"
+        "focus": "Adult"
       },
       "radar_weight_prior": {
         "感知与理解": 0.2019230769230769,
@@ -576,15 +575,15 @@
       "recommended_core_tags": [
         "个性化推荐",
         "情感陪伴",
+        "智能家居",
         "语音交互",
-        "多轮对话",
         "场景感知",
-        "表情显示"
+        "多轮对话"
       ],
       "recommended_nice_tags": [
-        "自动充电",
         "记忆回溯",
-        "音乐播放"
+        "音乐播放",
+        "隐私保护"
       ],
       "recommended_capabilities": [
         "persona_dialog",
@@ -630,11 +629,11 @@
       }
     },
     {
-      "id": "B2C_Differentiation_Function",
+      "id": "B2C_Differentiation_Child",
       "axes": {
         "segment": "B2C",
         "strategy": "Differentiation",
-        "focus": "Function"
+        "focus": "Child"
       },
       "radar_weight_prior": {
         "感知与理解": 0.25961538461538464,
@@ -645,17 +644,18 @@
         "可运营与可维护": 0.12499999999999997
       },
       "recommended_core_tags": [
+        "儿童安全",
+        "表情显示",
         "情感陪伴",
-        "情绪识别",
         "语音交互",
         "场景感知",
-        "表情显示",
-        "记忆回溯"
+        "音乐播放"
       ],
       "recommended_nice_tags": [
-        "自动充电",
+        "跟随陪伴",
+        "记忆回溯",
         "多轮对话",
-        "音乐播放"
+        "自动充电"
       ],
       "recommended_capabilities": [
         "voice_basic",
@@ -701,11 +701,11 @@
       }
     },
     {
-      "id": "B2C_Cost_Experience",
+      "id": "B2C_Cost_Elder",
       "axes": {
         "segment": "B2C",
         "strategy": "Cost",
-        "focus": "Experience"
+        "focus": "Elder"
       },
       "radar_weight_prior": {
         "感知与理解": 0.1782178217821782,
@@ -716,17 +716,17 @@
         "可运营与可维护": 0.2376237623762376
       },
       "recommended_core_tags": [
-        "情感陪伴",
-        "语音交互",
-        "场景感知",
+        "情绪识别",
         "安全与信任",
-        "自动充电",
-        "智能家居"
+        "场景感知",
+        "语音交互",
+        "情感陪伴",
+        "隐私保护"
       ],
       "recommended_nice_tags": [
-        "个性化推荐",
+        "记忆回溯",
         "音乐播放",
-        "隐私保护"
+        "自动充电"
       ],
       "recommended_capabilities": [
         "persona_dialog",
@@ -772,11 +772,11 @@
       }
     },
     {
-      "id": "B2C_Cost_Mixed",
+      "id": "B2C_Cost_Adult",
       "axes": {
         "segment": "B2C",
         "strategy": "Cost",
-        "focus": "Mixed"
+        "focus": "Adult"
       },
       "radar_weight_prior": {
         "感知与理解": 0.13999999999999999,
@@ -788,17 +788,16 @@
       },
       "recommended_core_tags": [
         "情感陪伴",
+        "个性化推荐",
         "语音交互",
         "场景感知",
-        "安全与信任",
-        "自动充电",
-        "智能家居"
+        "智能家居",
+        "多轮对话"
       ],
       "recommended_nice_tags": [
-        "个性化推荐",
+        "记忆回溯",
         "音乐播放",
-        "隐私保护",
-        "OTA更新"
+        "自动充电"
       ],
       "recommended_capabilities": [
         "persona_dialog",
@@ -844,11 +843,11 @@
       }
     },
     {
-      "id": "B2C_Cost_Function",
+      "id": "B2C_Cost_Child",
       "axes": {
         "segment": "B2C",
         "strategy": "Cost",
-        "focus": "Function"
+        "focus": "Child"
       },
       "radar_weight_prior": {
         "感知与理解": 0.2,
@@ -859,18 +858,17 @@
         "可运营与可维护": 0.22999999999999998
       },
       "recommended_core_tags": [
+        "儿童安全",
+        "表情显示",
         "情感陪伴",
-        "情绪识别",
-        "场景感知",
-        "安全与信任",
-        "自动充电",
-        "智能家居",
-        "语音交互"
+        "语音交互",
+        "音乐播放",
+        "场景感知"
       ],
       "recommended_nice_tags": [
-        "隐私保护",
-        "OTA更新",
-        "音乐播放"
+        "跟随陪伴",
+        "记忆回溯",
+        "自动充电"
       ],
       "recommended_capabilities": [
         "voice_basic",

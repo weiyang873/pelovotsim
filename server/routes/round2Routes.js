@@ -2174,14 +2174,13 @@ function toCalcGridId(gridId, architecture) {
   const parts = rawGrid.split("_");
   const channelRaw = String(parts[0] || "").toUpperCase();
   const strategyRaw = String(parts[1] || "").toUpperCase();
+  const ageRaw = String(parts[2] || "").toUpperCase();
   const channel = channelRaw === "TOB" ? "B2B" : "B2C";
   const strategy = strategyRaw.includes("COST") ? "Cost" : "Differentiation";
-
-  const archRaw = String(architecture || "").trim().toLowerCase();
-  let focus = "Experience";
-  if (archRaw === "hybrid") focus = "Mixed";
-  if (archRaw === "function") focus = "Function";
-  return `${channel}_${strategy}_${focus}`;
+  let age = "Adult";
+  if (ageRaw.includes("ELDER")) age = "Elder";
+  if (ageRaw.includes("CHILD")) age = "Child";
+  return `${channel}_${strategy}_${age}`;
 }
 
 async function getStoredSubmission(teamId, sessionId) {
@@ -2504,7 +2503,7 @@ async function interviewAuto(body) {
     const personas = [personaPool[0] || null].filter(Boolean);
     const history = generateAutoHistory(personas, memberDims);
     const recapRes = await recap({ teamId });
-    const gridId = recapRes?.body?.final_grid_id || "B2B_Differentiation_Experience";
+    const gridId = recapRes?.body?.final_grid_id || "ToB_Differentiation_Adult";
     const result = await extractInterviewResult({
       gridId,
       architecture: String(recapRes?.body?.architecture || ""),
@@ -2721,7 +2720,7 @@ async function interviewReply(body) {
     const isComplete = round >= MAX_INTERVIEW_TURNS;
     const result = isComplete
       ? await extractInterviewResult({
-          gridId: String(recapData.final_grid_id || "B2B_Differentiation_Experience"),
+          gridId: String(recapData.final_grid_id || "ToB_Differentiation_Adult"),
           architecture: String(recapData.architecture || ""),
           memberDims: session.member_dims,
           history
@@ -2800,7 +2799,7 @@ async function interviewEnd(body) {
     const recapRes = await recap({ teamId: session.team_id });
     const recapData = recapRes?.body?.ok ? recapRes.body : {};
     const result = await extractInterviewResult({
-      gridId: String(recapData.final_grid_id || "B2B_Differentiation_Experience"),
+      gridId: String(recapData.final_grid_id || "ToB_Differentiation_Adult"),
       architecture: String(recapData.architecture || ""),
       memberDims: session.member_dims,
       history

@@ -117,22 +117,22 @@ function computeGmMax({ WTP, e, crowding, archTag, customerType, strategy, ageGr
 
 // ============ 12 格测试数据 ============
 
-// 注意：grid_priors 的 key = B2B/B2C × Differentiation/Cost × Experience/Mixed/Function
+// 注意：grid_priors 的 key = B2B/B2C × Differentiation/Cost × Elder/Adult/Child
 // 这也是 final_grid_id 的格式
 const GRIDS = [
   // gridId (= final_grid_id format), WTP, e, crowding, archTag, customerType, strategy, ageGroup
-  { gridId: "B2B_Differentiation_Experience", WTP: 14000, e: 0.8,  crowding: "LOW",  archTag: "Experience",  customerType: "ToB", strategy: "DIFF", ageGroup: "ELDER" },
-  { gridId: "B2B_Differentiation_Mixed",      WTP: 12000, e: 0.9,  crowding: "LOW",  archTag: "Hybrid",     customerType: "ToB", strategy: "DIFF", ageGroup: "ADULT" },
-  { gridId: "B2B_Differentiation_Function",   WTP: 10000, e: 1.0,  crowding: "MED",  archTag: "Function",   customerType: "ToB", strategy: "DIFF", ageGroup: "CHILD" },
-  { gridId: "B2B_Cost_Experience",            WTP: 9000,  e: 1.0,  crowding: "MED",  archTag: "Experience",  customerType: "ToB", strategy: "COST", ageGroup: "ELDER" },
-  { gridId: "B2B_Cost_Mixed",                 WTP: 7500,  e: 1.1,  crowding: "MED",  archTag: "Hybrid",     customerType: "ToB", strategy: "COST", ageGroup: "ADULT" },
-  { gridId: "B2B_Cost_Function",              WTP: 6500,  e: 1.2,  crowding: "MED",  archTag: "Function",   customerType: "ToB", strategy: "COST", ageGroup: "CHILD" },
-  { gridId: "B2C_Differentiation_Experience", WTP: 9500,  e: 1.1,  crowding: "LOW",  archTag: "Experience",  customerType: "ToC", strategy: "DIFF", ageGroup: "ELDER" },
-  { gridId: "B2C_Differentiation_Mixed",      WTP: 8000,  e: 1.2,  crowding: "MED",  archTag: "Hybrid",     customerType: "ToC", strategy: "DIFF", ageGroup: "ADULT" },
-  { gridId: "B2C_Differentiation_Function",   WTP: 7000,  e: 1.3,  crowding: "MED",  archTag: "Function",   customerType: "ToC", strategy: "DIFF", ageGroup: "CHILD" },
-  { gridId: "B2C_Cost_Experience",            WTP: 5500,  e: 1.4,  crowding: "MED",  archTag: "Experience",  customerType: "ToC", strategy: "COST", ageGroup: "ELDER" },
-  { gridId: "B2C_Cost_Mixed",                 WTP: 4500,  e: 1.6,  crowding: "HIGH", archTag: "Hybrid",     customerType: "ToC", strategy: "COST", ageGroup: "ADULT" },
-  { gridId: "B2C_Cost_Function",              WTP: 4000,  e: 1.8,  crowding: "HIGH", archTag: "Function",   customerType: "ToC", strategy: "COST", ageGroup: "CHILD" },
+  { gridId: "B2B_Differentiation_Elder", WTP: 14000, e: 0.8,  crowding: "LOW",  archTag: "Experience",  customerType: "ToB", strategy: "DIFF", ageGroup: "ELDER" },
+  { gridId: "B2B_Differentiation_Adult", WTP: 12000, e: 0.9,  crowding: "LOW",  archTag: "Hybrid",     customerType: "ToB", strategy: "DIFF", ageGroup: "ADULT" },
+  { gridId: "B2B_Differentiation_Child", WTP: 10000, e: 1.0,  crowding: "MED",  archTag: "Function",   customerType: "ToB", strategy: "DIFF", ageGroup: "CHILD" },
+  { gridId: "B2B_Cost_Elder",            WTP: 9000,  e: 1.0,  crowding: "MED",  archTag: "Experience",  customerType: "ToB", strategy: "COST", ageGroup: "ELDER" },
+  { gridId: "B2B_Cost_Adult",            WTP: 7500,  e: 1.1,  crowding: "MED",  archTag: "Hybrid",     customerType: "ToB", strategy: "COST", ageGroup: "ADULT" },
+  { gridId: "B2B_Cost_Child",            WTP: 6500,  e: 1.2,  crowding: "MED",  archTag: "Function",   customerType: "ToB", strategy: "COST", ageGroup: "CHILD" },
+  { gridId: "B2C_Differentiation_Elder", WTP: 9500,  e: 1.1,  crowding: "LOW",  archTag: "Experience",  customerType: "ToC", strategy: "DIFF", ageGroup: "ELDER" },
+  { gridId: "B2C_Differentiation_Adult", WTP: 8000,  e: 1.2,  crowding: "MED",  archTag: "Hybrid",     customerType: "ToC", strategy: "DIFF", ageGroup: "ADULT" },
+  { gridId: "B2C_Differentiation_Child", WTP: 7000,  e: 1.3,  crowding: "MED",  archTag: "Function",   customerType: "ToC", strategy: "DIFF", ageGroup: "CHILD" },
+  { gridId: "B2C_Cost_Elder",            WTP: 5500,  e: 1.4,  crowding: "MED",  archTag: "Experience",  customerType: "ToC", strategy: "COST", ageGroup: "ELDER" },
+  { gridId: "B2C_Cost_Adult",            WTP: 4500,  e: 1.6,  crowding: "HIGH", archTag: "Hybrid",     customerType: "ToC", strategy: "COST", ageGroup: "ADULT" },
+  { gridId: "B2C_Cost_Child",            WTP: 4000,  e: 1.8,  crowding: "HIGH", archTag: "Function",   customerType: "ToC", strategy: "COST", ageGroup: "CHILD" },
 ];
 
 // ============ 加载参数文件 ============
@@ -246,7 +246,7 @@ if (r1) {
   console.log(`  旧版: ${ok1 ? "✅ PASS" : "❌ FAIL"} — ${r1.fail} trade-off violations, ${r1.keyMisses} key misses`);
   if (r1.keyMisses > 0) {
     console.log(`         ⚠ ${r1.keyMisses}/12 个 gridId 在 base_size 里找不到 → fallback=1`);
-    console.log(`         原因：旧版用 ToB_Differentiation_Elder 格式，代码传入 B2B_Differentiation_Experience 格式`);
+    console.log(`         原因：旧版 grid_priors key 与当前代码 gridId 不一致`);
   }
 }
 
