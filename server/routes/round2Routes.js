@@ -3098,7 +3098,28 @@ async function teamStatusApi(query) {
     const member = memberId
       ? (teamState.members || []).find((item) => item.id === memberId) || null
       : null;
-    const memberState = member
+    let memberRow = null;
+    let completedInterviewCount = 0;
+    if (memberId) {
+      const memberRows = await runSql(`
+        SELECT id, card_status
+        FROM team_members
+        WHERE team_id = ${sqlQuote(teamId)}
+          AND id = ${sqlQuote(memberId)}
+        LIMIT 1;
+      `);
+      memberRow = memberRows[0] || null;
+
+      const countRows = await runSql(`
+        SELECT COUNT(*)::int AS completed_count
+        FROM round2_interview_sessions
+        WHERE team_id = ${sqlQuote(teamId)}
+          AND member_id = ${sqlQuote(memberId)}
+          AND is_complete = TRUE;
+      `);
+      completedInterviewCount = Number(countRows[0]?.completed_count || 0);
+    }
+    const existingMemberState = member
       ? {
           id: member.id,
           name: member.name,
@@ -3106,14 +3127,24 @@ async function teamStatusApi(query) {
           interview_status: member.interviewStatus,
           interview_rounds: member.interviewRounds,
           completed_interviews: Number(member.completedInterviews || 0),
-          completedInterviews: Number(member.completedInterviews || 0),
-          card_status: member.cardStatus,
           cards_selected: member.cardsSelected,
           current_step: member.currentStep,
           forced_by_teacher: member.forcedByTeacher,
           is_leader: Boolean(memberId && member.id === teamState.leaderMemberId)
         }
       : null;
+    const memberState = existingMemberState
+      ? {
+          ...existingMemberState,
+          card_status: memberRow?.card_status || null,
+          completedInterviews: completedInterviewCount
+        }
+      : null;
+    console.log("[round2/state] member_state:", {
+      memberId,
+      card_status: memberRow?.card_status || null,
+      completedInterviews: completedInterviewCount
+    });
 
     return makeResponse(200, {
       ok: true,
