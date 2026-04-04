@@ -353,8 +353,8 @@ function deriveCurrentStep(teamStatus, memberRow, interviewStatus, cardStatus) {
 }
 
 function deriveTeamStatus(teamRow, members, teamSubmission) {
-  const stored = clampStatus(teamRow.r2_status);
-  let derived = teamRow.status === "frozen" ? stored : "R2_NOT_STARTED";
+  const stored = clampStatus(teamRow.r2Status || teamRow.r2_status);
+  let derived = (teamRow.teamStatus || teamRow.status) === "frozen" ? stored : "R2_NOT_STARTED";
 
   if (teamSubmission) {
     derived = maxStatus(derived, "R2_SUBMITTED");
