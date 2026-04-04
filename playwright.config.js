@@ -5,7 +5,7 @@ module.exports = defineConfig({
   timeout: 120000,
   retries: 0,
   use: {
-    baseURL: process.env.TEST_URL || "https://app.praxisengine.xyz",
+    baseURL: process.env.BASE_URL || process.env.TEST_URL || "http://localhost:8787",
     headless: true,
     screenshot: "only-on-failure",
     video: "retain-on-failure",

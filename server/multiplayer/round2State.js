@@ -359,11 +359,14 @@ function deriveTeamStatus(teamRow, members, teamSubmission) {
   console.log(`[round2State] deriveTeamStatus input=${JSON.stringify({ teamRow, members, teamSubmission })}`);
   const stored = clampStatus(teamRow.r2Status || teamRow.r2_status);
   let derived = (teamRow.teamStatus || teamRow.status) === "frozen" ? stored : "R2_NOT_STARTED";
+  const allCardsSubmitted = members.length > 0 && members.every((member) => member.cardStatus === "submitted");
 
   if (teamSubmission) {
     derived = maxStatus(derived, "R2_SUBMITTED");
   } else if (members.some((member) => member.currentStep === "in_discussion" || member.currentStep === "done")) {
     derived = maxStatus(derived, "R2_TEAM_DISCUSSION");
+  } else if (allCardsSubmitted) {
+    derived = maxStatus(derived, "R2_TEAM_MERGE");
   } else if (members.some((member) => member.cardStatus === "submitted")) {
     derived = maxStatus(derived, "R2_INDIVIDUAL_CARDS");
   } else if (members.some((member) => member.cardStatus === "selecting")) {

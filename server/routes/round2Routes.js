@@ -282,9 +282,12 @@ async function readRound2TeamDraft(teamId) {
   `);
   const row = rows[0];
   if (!row) return null;
+  const rawPrice = row.price;
   return {
     team_id: row.team_id,
-    price: Number.isFinite(Number(row.price)) ? Number(row.price) : null,
+    price: rawPrice === null || rawPrice === undefined || rawPrice === ""
+      ? null
+      : (Number.isFinite(Number(rawPrice)) ? Number(rawPrice) : null),
     selections: safeJsonParse(row.selections_json, []),
     updated_by: row.updated_by || "",
     updated_at: row.updated_at || null

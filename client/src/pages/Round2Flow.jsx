@@ -384,6 +384,17 @@ function toSubmitSelectionsMap(sels) {
   }, {});
 }
 
+function parseFiniteNumberOrNull(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+}
+
+function parsePositiveNumberOrNull(value) {
+  const num = parseFiniteNumberOrNull(value);
+  return num != null && num > 0 ? num : null;
+}
+
 function buildRadarFromSelections(sels) {
   return DIMS.reduce((acc, dim) => {
     const cards = CC[dim.id] || [];
@@ -774,8 +785,9 @@ export default function App() {
         if (stateRes?.team_draft && !snapshotRes?.submission) {
           const mappedDraft = selectionsToMap(stateRes.team_draft.selections);
           setTeamDraftSelections(mappedDraft);
-          if (Number.isFinite(Number(stateRes.team_draft.price))) {
-            setTeamPrice(Number(stateRes.team_draft.price));
+          const draftPrice = parsePositiveNumberOrNull(stateRes?.team_draft?.price);
+          if (draftPrice != null) {
+            setTeamPrice(draftPrice);
           }
         }
 
@@ -784,13 +796,17 @@ export default function App() {
           setServerSelections(mappedSelections);
           setTeamDraftSelections(mappedSelections);
           setTeamResultSnapshot(snapshotRes.result || null);
-          if (Number.isFinite(Number(snapshotRes.submission.price))) {
-            setTeamPrice(Number(snapshotRes.submission.price));
+          const submittedPrice = parsePositiveNumberOrNull(snapshotRes?.submission?.price);
+          if (submittedPrice != null) {
+            setTeamPrice(submittedPrice);
           }
           setStep(5);
           setSubmitted(true);
-        } else if (Number.isFinite(Number(recapRes?.P))) {
-          setTeamPrice(Number(recapRes.P));
+        } else {
+          const recapPrice = parsePositiveNumberOrNull(recapRes?.P);
+          if (recapPrice != null) {
+            setTeamPrice(recapPrice);
+          }
         }
         if (stateRes?.team_status && !snapshotRes?.submission) {
           const teamStep = mapTeamStatusToStep(stateRes.team_status);
@@ -856,8 +872,9 @@ export default function App() {
           const mappedDraft = selectionsToMap(data.team_draft.selections);
           if (!round2DraftTouchedRef.current || !data?.is_leader) {
             setTeamDraftSelections(mappedDraft);
-            if (Number.isFinite(Number(data.team_draft.price))) {
-              setTeamPrice(Number(data.team_draft.price));
+            const draftPrice = parsePositiveNumberOrNull(data?.team_draft?.price);
+            if (draftPrice != null) {
+              setTeamPrice(draftPrice);
             }
           }
         }
@@ -1422,8 +1439,9 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
         if (!serverSelections) {
           setTeamDraftSelections(mapped);
         }
-        if (Number.isFinite(Number(out?.team_draft?.price))) {
-          setTeamPrice(Number(out.team_draft.price));
+        const draftPrice = parsePositiveNumberOrNull(out?.team_draft?.price);
+        if (draftPrice != null) {
+          setTeamPrice(draftPrice);
         }
       } catch (err) {
         if (err?.name === "AbortError") return;
@@ -1441,10 +1459,11 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     if (!isTeamMode || !teamId || !memberId || submitted || !isLeader || !round2DraftTouchedRef.current) return undefined;
     if (step < 3) return undefined;
     const timer = window.setTimeout(() => {
+      const draftPrice = parsePositiveNumberOrNull(teamPrice);
       saveRound2TeamDraft({
         team_id: teamId,
         member_id: memberId,
-        price: teamPrice,
+        price: draftPrice,
         selections: toSubmitSelectionsMap(teamDraftSelections)
       }).catch(() => {});
     }, 350);
@@ -1549,15 +1568,19 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
       setSubmitError("");
       const radar = mergeData?.mergedInterview?.radar || buildRadarFromSelections(teamSel);
       const submitSelections = toSubmitSelectionsMap(teamSel);
+      const finalPrice = parsePositiveNumberOrNull(teamPrice)
+        || parsePositiveNumberOrNull(teamRecap?.P)
+        || F_PRICE;
       const out = await submitRound2TeamDecision({
         team_id: teamId,
         member_id: memberId,
         session_id: sessionId,
-        price: teamPrice,
+        price: finalPrice,
         selections: submitSelections,
         radar,
         mergedInterview: mergeData?.mergedInterview || null
       });
+      setTeamPrice(finalPrice);
       const mappedSelections = selectionsToMap(out?.submission?.selections);
       setServerSelections(mappedSelections);
       setTeamDraftSelections(mappedSelections);
@@ -1568,7 +1591,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     } finally {
       setIsSubmittingFinal(false);
     }
-  }, [isTeamMode, isSubmittingFinal, memberId, mergeData, round2TeamControlsLocked, sessionId, teamId, teamPrice, teamSel]);
+  }, [isTeamMode, isSubmittingFinal, memberId, mergeData, round2TeamControlsLocked, sessionId, teamId, teamPrice, teamRecap, teamSel]);
 
   // ── Render card (individual mode: no cost numbers) ──
   const renderCard = (card, dim, sels, showCost, mode) => {
@@ -2709,6 +2732,10 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                 max={20000}
                 step={100}
                 value={teamPrice}
+                onInput={e => {
+                  round2DraftTouchedRef.current = true;
+                  setTeamPrice(+e.target.value);
+                }}
                 onChange={e => {
                   round2DraftTouchedRef.current = true;
                   setTeamPrice(+e.target.value);

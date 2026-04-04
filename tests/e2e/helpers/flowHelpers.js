@@ -20,7 +20,7 @@ const ROUND2_INTERVIEW_SCRIPT = [
 ];
 
 function resolveBaseUrl() {
-  return process.env.TEST_URL || "https://app.praxisengine.xyz";
+  return process.env.BASE_URL || process.env.TEST_URL || "http://localhost:8787";
 }
 
 function pushStepResult(stepResults, name, startedAt, passed, monitor, tracker, extra = {}, error = null) {
