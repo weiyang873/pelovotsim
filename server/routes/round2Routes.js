@@ -2824,9 +2824,14 @@ async function saveMemberSelectionApi(body) {
     });
 
     const teamState = await getTeamRound2State(teamId);
+    console.log("[saveMemberSelection] members card status:", (teamState?.members || []).map((m) => ({
+      id: m.id,
+      cardStatus: m.cardStatus,
+      card_status: m.card_status
+    })));
     const everyoneSubmitted = (teamState?.members || []).every((member) => {
       if (member.id === memberId) return true;
-      return member.cardStatus === "submitted";
+      return (member.cardStatus || member.card_status) === "submitted";
     });
     const finalStatus = everyoneSubmitted ? "R2_TEAM_MERGE" : "R2_INDIVIDUAL_CARDS";
     await updateTeamRound2Status(teamId, finalStatus);
