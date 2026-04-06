@@ -41,11 +41,11 @@ const MEMBER_SELECTIONS = [
   ],
   [
     { cap_id: "basic_avoidance", tier: "mid" },
-    { cap_id: "connect_base", tier: "mid" }
+    { cap_id: "api_iot", tier: "mid" }
   ],
   [
     { cap_id: "cloud_update", tier: "mid" },
-    { cap_id: "remote_diagnostics", tier: "low" }
+    { cap_id: "remote_monitor", tier: "low" }
   ]
 ];
 
@@ -97,6 +97,10 @@ function get(pathname, label) {
 
 function post(pathname, body, label) {
   return request("POST", pathname, body, label);
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function parseVpSummary(vpText) {
@@ -164,6 +168,8 @@ async function createRound1CompletedTeam() {
   const members = Array.isArray(createRes.team?.members) ? createRes.team.members : [];
   check(teamId, "Round1 建组缺少 teamId");
   check(members.length === TEAM_SIZE, `Round1 team members=${members.length}，期望 ${TEAM_SIZE}`);
+  const leaderMemberId = String(members[0]?.id || "").trim();
+  check(leaderMemberId, "Round1 leader 缺少 id");
 
   for (let i = 0; i < members.length; i += 1) {
     const memberId = members[i]?.id;
@@ -186,6 +192,7 @@ async function createRound1CompletedTeam() {
   const finalizeRes = await post(
     `/api/team/${encodeURIComponent(teamId)}/phase3/finalize`,
     {
+      memberId: leaderMemberId,
       grid_id: ROUND1_GRID_ID,
       architecture: ROUND1_ARCHITECTURE,
       scores: {
@@ -205,17 +212,40 @@ async function createRound1CompletedTeam() {
   check(finalizeRes.ok === true, "Round1 finalize 返回 ok=false");
   check(finalizeRes.status === "phase4", `Round1 finalize status=${finalizeRes.status}，期望 phase4`);
 
-  const freezeRes = await post(`/api/team/${encodeURIComponent(teamId)}/freeze`, {}, "Round1 freeze");
+  const freezeRes = await post(
+    `/api/team/${encodeURIComponent(teamId)}/freeze`,
+    { memberId: leaderMemberId },
+    "Round1 freeze"
+  );
   check(freezeRes.ok === true, "Round1 freeze 返回 ok=false");
   check(freezeRes.status === "frozen", `Round1 freeze status=${freezeRes.status}，期望 frozen`);
 
-  return { teamId, members };
+  return { teamId, members, leaderMemberId };
+}
+
+async function getTeamMergeWithRetry(teamId, memberId) {
+  let lastError = null;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      return await get(
+        `/api/round2/team-merge?teamId=${encodeURIComponent(teamId)}&memberId=${encodeURIComponent(memberId)}`,
+        "Round2 team-merge"
+      );
+    } catch (error) {
+      lastError = error;
+      if (!/not_all_members_submitted|HTTP 400/.test(String(error.message || ""))) {
+        throw error;
+      }
+      await sleep(500 * (attempt + 1));
+    }
+  }
+  throw lastError || new Error("Round2 team-merge failed");
 }
 
 async function main() {
   await get("/api/health", "健康检查");
 
-  const { teamId, members } = await createRound1CompletedTeam();
+  const { teamId, members, leaderMemberId } = await createRound1CompletedTeam();
 
   console.log("[1/8] GET /api/round2/state");
   const state = await get(
@@ -307,10 +337,7 @@ async function main() {
   }
 
   console.log("[7/8] GET /api/round2/team-merge");
-  const teamMerge = await get(
-    `/api/round2/team-merge?teamId=${encodeURIComponent(teamId)}`,
-    "Round2 team-merge"
-  );
+  const teamMerge = await getTeamMergeWithRetry(teamId, leaderMemberId);
   check(teamMerge.ok === true, "Round2 team-merge 返回 ok=false");
   check(Array.isArray(teamMerge.teamSelections), "Round2 team-merge 缺少 teamSelections");
   check(Number(teamMerge.card_count) >= 8 && Number(teamMerge.card_count) <= 10, `合并后卡数=${teamMerge.card_count}，期望 8-10`);
@@ -322,6 +349,7 @@ async function main() {
     "/api/round2/team-submit",
     {
       teamId,
+      memberId: leaderMemberId,
       price: FINAL_PRICE,
       selections: teamMerge.teamSelections,
       radar: teamSummary.mergedScores,

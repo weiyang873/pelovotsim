@@ -140,7 +140,7 @@ class DeepSeekStudent {
     this.teamIndex = Number(options.teamProfile?.teamIndex ?? options.teamIndex ?? 0);
     this.memberIndex = Number(options.teamProfile?.memberIndex ?? options.memberIndex ?? 0);
     this.memberName = String(options.teamProfile?.memberName || options.memberName || `成员${this.memberIndex + 1}`);
-    this.primaryStrategy = strategyForTeam(this.teamIndex);
+    this.primaryStrategy = options.teamStrategy || strategyForTeam(this.teamIndex);
   }
 
   logStudentLLM(entry) {

@@ -126,6 +126,22 @@ function getStudentProfile(options, memberIndex) {
   return Array.isArray(options.students) ? options.students[memberIndex] || null : null;
 }
 
+function resolveTeamStrategy(options, teamIndex) {
+  if (options.teamStrategy && typeof options.teamStrategy === "object") {
+    return options.teamStrategy;
+  }
+  if (Array.isArray(options.teamStrategies)) {
+    return options.teamStrategies[teamIndex] || null;
+  }
+  return null;
+}
+
+function resolvePhase1GridChoice(options, teamIndex, memberIndex, student) {
+  const teamStrategy = resolveTeamStrategy(options, teamIndex);
+  if (teamStrategy) return teamStrategy;
+  return getStudentGridChoice(teamIndex, memberIndex, student);
+}
+
 function getSpeakerMeta(options, members, memberIndex) {
   const student = getStudentProfile(options, memberIndex);
   const member = Array.isArray(members) ? members[memberIndex] : null;
@@ -447,6 +463,7 @@ async function chatWithVpCoach(api, teamId, payload, options = {}) {
 function createStudentActor(options, teamIndex, memberIndex, teamId, memberId, fallbackMemberName) {
   const studentProfile = getStudentProfile(options, memberIndex);
   const memberName = studentProfile?.name || fallbackMemberName || `成员${memberIndex + 1}`;
+  const teamStrategy = resolveTeamStrategy(options, teamIndex);
   if (studentProfile) {
     return new PersonaStudent({
       apiKey: process.env.DEEPSEEK_API_KEY,
@@ -465,6 +482,7 @@ function createStudentActor(options, teamIndex, memberIndex, teamId, memberId, f
     logger: options.logger,
     teamId,
     memberId,
+    teamStrategy,
     teamProfile: {
       teamIndex,
       memberIndex,
@@ -657,7 +675,7 @@ async function runRound1(result, api, teamSize, teamIndex, options, tracker) {
   await runStep(result, "r1_submit_phase1", async () => {
     const responses = await Promise.all(members.map(async (member, memberIndex) => {
       const choice = await memberActors[memberIndex].generatePhase1Choice(
-        getStudentGridChoice(teamIndex, memberIndex, getStudentProfile(options, memberIndex))
+        resolvePhase1GridChoice(options, teamIndex, memberIndex, getStudentProfile(options, memberIndex))
       );
       const data = await stepApi(api, "R1.3_phase1_submit", member.id).submitPhase1(teamId, member.id, choice);
       assert(data.ok === true, `phase1 submit failed for member ${memberIndex + 1}`);

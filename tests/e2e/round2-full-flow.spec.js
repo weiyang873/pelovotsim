@@ -4,7 +4,14 @@ const { createNetworkTracker } = require("./helpers/networkTracker");
 const { generateReport } = require("./helpers/reportGenerator");
 const { resolveBaseUrl, runRound1Flow, runRound2Flow } = require("./helpers/flowHelpers");
 
+const ROUND1_CONFIRMED_FIELD_FALLBACKS = {
+  who_raw: "独居城市白领",
+  pain_raw: "下班回家后感到孤独和情绪低落",
+  how_raw: "通过主动迎接、情感交互和情绪陪伴，缓解独居人群回家后的孤独感"
+};
+
 test.describe.serial("Round 2 Full Flow E2E", () => {
+  test.describe.configure({ timeout: 20 * 60 * 1000 });
   let context;
   let page;
   let monitor;
@@ -40,7 +47,8 @@ test.describe.serial("Round 2 Full Flow E2E", () => {
       monitor,
       tracker,
       stepResults,
-      freezeAtEnd: true
+      freezeAtEnd: true,
+      confirmedFieldFallbacks: ROUND1_CONFIRMED_FIELD_FALLBACKS
     });
     await runRound2Flow({
       page,

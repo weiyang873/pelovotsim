@@ -22,6 +22,8 @@ const checks = [
   ["node", ["--check", "scripts/sim/logger.js"]],
   ["node", ["--check", "scripts/sim/report.js"]],
   ["node", ["--check", "scripts/sim/team_runner.js"]],
+  ["node", ["--check", "scripts/test_full_12grid_sim.js"]],
+  ["node", ["--check", "scripts/test_full_12grid_ui_sim.js"]],
   ["node", ["tests/round2_extract_interview_result.test.js"]],
   ["node", ["tests/teacher_debrief_csv.test.js"]]
 ];

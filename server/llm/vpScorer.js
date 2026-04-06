@@ -403,45 +403,79 @@ function summarizeLatestVpText(conversation) {
   return lines.slice(-8).join("\n") || "（暂无有效摘要）";
 }
 
-function buildFeedbackPrompt(scores, features, latestVpText) {
-  return `你是价值主张教练。以下是学生价值主张的评分结果，请为每个维度写一两句自然语言反馈，说明当前水平和怎么能更好。末尾指出最容易提分的方向。
+function buildFeedbackPrompt(scores, features, latestVpText, cellLabel) {
+  return `你是 EMBA 商业模拟的评分系统。学生已提交锁定了最终版价值主张，你需要写一段评语。
 
-评分结果：
-C = ${scores.C}/5.0（目标客户与场景痛点）
-G = ${scores.G}/5.0（可泛化度）
-E = ${scores.E}/5.0（价值创造说服力）
+## 学生选择的市场
+${cellLabel || "未提供"}
 
-抽取的特征：
-${JSON.stringify(features, null, 2)}
+## 学生的价值主张
+"${latestVpText}"
 
-学生的价值主张：
-${latestVpText}
+## 评分结果（不要在评语中出现这些维度名称或数值）
+C=${scores.C}  G=${scores.G}  E=${scores.E}
 
-要求：
-- 用自然语言写，不用“好在/缺/补”模板
-- 每个维度一两句话
-- 末尾指出最容易提分的方向
-- 不要自我否定分数的可靠性
-- 不给 LOVOT 的具体写法示例
-- 总字数不超过 250 字`;
+## 评语规则
+- 全程用"你们"称呼学生
+- 从最大的失分点讲起，不要先说优点
+- 不要逐条检查要素是否存在（禁止出现"已经写出""也已交代""对应关系成立"这类打勾式表述）
+- 不要引用VP原文超过8个字；要概括而不是复述
+- 不要提C/G/E名称或数值
+- 不要给改进建议（VP已锁定）
+- 写成一整段，150-200字
+- 语气：直接、专业、有判断。说"客户太宽"而不是"客户描述偏宽"，说"因果链没打通"而不是"对应关系有待加强"
+
+## 示例
+
+### 示例1（C偏低）
+你们当前锁定的是ToB·差异·老人市场。最大的问题在客户——"高端私立养老院"听起来具体，但其实什么类型的机构都能套进去，没有说清是连锁还是单体、床位规模多大、谁来拍板采购。客户越模糊，后面的痛点和解法再好也缺一个锚点。痛点本身方向对了，老人退住风险确实是机构的核心焦虑，解法也给出了机制——用主动互动替代被动看护，因果链是通的。替代方案和边界条件都有，框架完整。拉分的就是客户这一项：收窄到一种具体的机构类型，整个VP的可信度会上一个台阶。
+
+### 示例2（各项均衡高分）
+你们这版VP结构扎实。客户锁定了200床以上的民营连锁养老机构的运营总监，一读就知道要打谁、谁签字。痛点指向夜间巡检的人力刚性成本，这是行业公认的结构性难题，不是个别机构的特殊情况。解法用离床监测替代部分人工巡检，从功能到效果到财务价值一层层递进，跟痛点咬得很紧。替代方案对比和边界条件都到位。唯一可以更锐利的是痛点可以再加一层数据——比如夜间巡检占总人力成本的比例——但这不影响整体判断。
+
+### 示例3（G和E都低）
+你们选的是ToC·差异·成人市场。目前最大的短板是痛点和解法都太空——"现代人压力大需要陪伴"是一个普遍情绪，不是一个可以建产品的痛点，因为它没有指向任何具体场景：什么时候需要陪伴？在哪？替代什么？解法说"提供情感陪伴"，但没有说机器人具体做什么动作、怎么触发、效果怎么衡量，跟痛点之间缺少因果链。客户写了"25-35岁独居白领"，这一项反而是相对清晰的。
+
+现在写评语：`;
 }
 
 function buildFallbackFeedback(scores, features) {
-  const weakest = [
-    ["C", scores?.C, readLevel(features, "has_clear_customer") < 1 || readLevel(features, "has_scenario") < 1 || readLevel(features, "pain_has_specificity") < 1],
-    ["G", scores?.G, readLevel(features, "pain_transferable") < 1 || readLevel(features, "gain_not_niche") < 1],
-    ["E", scores?.E, readLevel(features, "has_mechanism") < 1 || readLevel(features, "has_alternative_comparison") < 1 || readLevel(features, "has_boundary") < 1]
-  ].sort((a, b) => Number(a[1] || 0) - Number(b[1] || 0))[0]?.[0] || "C";
+  const parts = [];
+  const C = scores?.C || 1;
+  const G = scores?.G || 1;
+  const E = scores?.E || 1;
 
-  return [
-    `C ${scores.C}/5.0：目标客户和场景已经有一定基础，但还需要把触发情境与痛点画面说得更具体，最好能看出这件事为何会反复发生。`,
-    `G ${scores.G}/5.0：目前的表达还需要证明这不是个别人的特殊问题，而是同类用户会反复遇到、也愿意为之买单的普遍困扰。`,
-    `E ${scores.E}/5.0：价值创造逻辑需要更清楚地说明产品如何起作用，并补上现有替代方案为什么不够好、什么时候不适用。`,
-    `最容易提分的方向：先补 ${weakest} 维度里最缺的那一条关键证据。`
-  ].join("\n");
+  const dims = [
+    { name: "客户", score: C, desc: getCFallback(features) },
+    { name: "痛点", score: G, desc: getGFallback(features) },
+    { name: "解法", score: E, desc: getEFallback(features) }
+  ].sort((a, b) => a.score - b.score);
+
+  for (const dim of dims) {
+    parts.push(dim.desc);
+  }
+  return parts.join("");
 }
 
-async function generateFeedbackDetailed(scores, features, latestVpText) {
+function getCFallback(features) {
+  if (readLevel(features, "has_clear_customer") < 1) return "你们的客户没有写清楚是谁。";
+  if (readLevel(features, "has_clear_customer") < 2) return "你们的客户有方向但限定不够，还不够具体。";
+  return "你们的客户描述清晰。";
+}
+
+function getGFallback(features) {
+  if (readLevel(features, "pain_transferable") < 1) return "你们的痛点只对个别人成立，普遍性不足。";
+  if (readLevel(features, "pain_has_structural_cause") < 1) return "你们的痛点缺少结构性原因，说服力有限。";
+  return "你们的痛点有普遍性。";
+}
+
+function getEFallback(features) {
+  if (readLevel(features, "has_mechanism") < 1) return "你们的解法只有口号，没有说清机制。";
+  if (readLevel(features, "has_alternative_comparison") < 1) return "你们缺少替代方案对比。";
+  return "你们的解法机制清晰。";
+}
+
+async function generateFeedbackDetailed(scores, features, latestVpText, cellLabel) {
   const raw = await withLlmLogging({
     caller: "vpScorer.generateFeedback",
     teamId: null,
@@ -453,7 +487,7 @@ async function generateFeedbackDetailed(scores, features, latestVpText) {
       },
       {
         role: "user",
-        content: buildFeedbackPrompt(scores, features, latestVpText)
+        content: buildFeedbackPrompt(scores, features, latestVpText, cellLabel)
       }
     ]
   }, () => chatCompletion(
@@ -464,20 +498,20 @@ async function generateFeedbackDetailed(scores, features, latestVpText) {
       },
       {
         role: "user",
-        content: buildFeedbackPrompt(scores, features, latestVpText)
+        content: buildFeedbackPrompt(scores, features, latestVpText, cellLabel)
       }
     ],
     { temperature: 0.4, max_tokens: 320 }
   ));
 
   return {
-    feedback: String(raw || "").trim(),
+    feedback: String(raw || "").replace(/\s*\n+\s*/g, " ").trim(),
     raw
   };
 }
 
-async function generateFeedback(scores, features, latestVpText) {
-  const result = await generateFeedbackDetailed(scores, features, latestVpText);
+async function generateFeedback(scores, features, latestVpText, cellLabel) {
+  const result = await generateFeedbackDetailed(scores, features, latestVpText, cellLabel);
   return result.feedback;
 }
 
@@ -515,7 +549,7 @@ async function scoreVpText(vpText, cellLabel, architectureLabel) {
   const scores = calculateScores(features);
 
   try {
-    const feedbackResult = await generateFeedbackDetailed(scores, features, vpText);
+    const feedbackResult = await generateFeedbackDetailed(scores, features, vpText, cellLabel);
     return {
       features,
       scores,
@@ -550,7 +584,7 @@ async function scoreVp(conversation, cellLabel, architectureLabel) {
   const latestVpText = summarizeLatestVpText(conversation);
 
   try {
-    const feedbackResult = await generateFeedbackDetailed(scores, extracted.features, latestVpText);
+    const feedbackResult = await generateFeedbackDetailed(scores, extracted.features, latestVpText, cellLabel);
     return {
       features: extracted.features,
       scores,

@@ -12,6 +12,14 @@ const DIMENSION_IDS = [
   "ops_maintenance"
 ];
 
+const LEGACY_DCOGS_CARD_IDS = {
+  touch_hug: ["touch_hug_interaction"],
+  visual_expression: ["visual_oled_expression"],
+  lidar_nav: ["autonomous_navigation"],
+  child_safety: ["child_safety_module"],
+  privacy_trust: ["data_privacy_compliance"]
+};
+
 function assignDimensions(memberCount = 4) {
   const count = Math.max(1, Number(memberCount) || 1);
   if (count === 1) {
@@ -85,18 +93,34 @@ function mergeTeamSelections(memberSelections) {
   };
 }
 
-function resolveDiscount(capId, techJinnang, matchStrength) {
-  if (!techJinnang || typeof techJinnang !== "object") return 0;
+function resolveCardScopedValue(values, capId) {
+  const scoped = values && typeof values === "object" ? values : {};
+  const candidateIds = [capId, ...(LEGACY_DCOGS_CARD_IDS[capId] || [])];
+  for (const candidateId of candidateIds) {
+    if (scoped[candidateId] != null) {
+      return Number(scoped[candidateId]);
+    }
+  }
+  return null;
+}
+
+function resolveConfiguredDiscount(capId, techJinnang, matchStrength) {
+  if (!techJinnang || typeof techJinnang !== "object") return null;
 
   const explicitByCard = techJinnang.card_discounts || techJinnang.capability_discounts || {};
-  if (explicitByCard[capId] != null) return Number(explicitByCard[capId]) * matchStrength;
+  const explicitDiscount = resolveCardScopedValue(explicitByCard, capId);
+  if (explicitDiscount != null) return explicitDiscount * matchStrength;
 
   const effect = techJinnang.effect_applied || techJinnang.effect || {};
   const cardDiscounts = effect.r2_dCOGS_discount_for_cards || {};
-  if (cardDiscounts[capId] != null) return Number(cardDiscounts[capId]) * matchStrength;
+  const effectDiscount = resolveCardScopedValue(cardDiscounts, capId);
+  if (effectDiscount != null) return effectDiscount * matchStrength;
 
-  const globalDiscount = techJinnang.dCOGS_discount || effect.r2_total_dCOGS_discount || 0;
-  return Number(globalDiscount || 0) * matchStrength;
+  if (techJinnang.dCOGS_discount != null) return Number(techJinnang.dCOGS_discount) * matchStrength;
+  if (effect.r2_dCOGS_discount != null) return Number(effect.r2_dCOGS_discount) * matchStrength;
+  if (effect.r2_total_dCOGS_discount != null) return Number(effect.r2_total_dCOGS_discount) * matchStrength;
+
+  return null;
 }
 
 function resolveRiskReduction(capId, groupId, techJinnang, matchStrength) {
@@ -119,8 +143,14 @@ function applyTechJinnang(selections, techJinnang) {
 
   return selList.map((sel) => {
     const base = getCapabilityParams(sel.cap_id, sel.tier);
-    const discount = Math.max(0, Math.min(1, resolveDiscount(sel.cap_id, techJinnang, matchStrength)));
     const riskReduction = Math.max(0, resolveRiskReduction(sel.cap_id, base.group_id, techJinnang, matchStrength));
+    const configuredDiscount = resolveConfiguredDiscount(sel.cap_id, techJinnang, matchStrength);
+    // Older tech jinang entries only define risk reduction, but the design expects
+    // the matched card's dCOGS to improve alongside risk when no explicit dCOGS rule exists.
+    const discount = Math.max(
+      0,
+      Math.min(1, configuredDiscount != null ? configuredDiscount : riskReduction)
+    );
 
     return {
       ...sel,

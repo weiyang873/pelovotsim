@@ -57,13 +57,50 @@ function createNetworkTracker(page) {
     lastActivityAt = 0;
   }
 
-  async function waitForSettled(ms) {
+  function isIgnoredUrl(url, ignoreUrls) {
+    return ignoreUrls.some((pattern) => {
+      if (!pattern) return false;
+      if (pattern instanceof RegExp) return pattern.test(url);
+      return String(url || "").includes(String(pattern));
+    });
+  }
+
+  function getLastRelevantActivity(ignoreUrls) {
+    return getCalls().reduce((latest, call) => {
+      if (isIgnoredUrl(call.url, ignoreUrls)) {
+        return latest;
+      }
+      const completedAt = call.duration_ms == null
+        ? call.timestamp
+        : call.timestamp + Math.max(0, Number(call.duration_ms || 0));
+      return Math.max(latest, completedAt);
+    }, captureStartedAt || Date.now());
+  }
+
+  async function waitForSettled(ms, options = {}) {
     if (!captureStartedAt) {
       startCapture();
     }
+    const ignoreUrls = Array.isArray(options.ignoreUrls) ? options.ignoreUrls : [];
+    const timeoutMs = Math.max(ms, Number(options.timeoutMs || Math.max(ms * 4, 10000)));
+    const startedAt = Date.now();
     while (true) {
-      const idleFor = Date.now() - lastActivityAt;
+      const lastRelevantActivityAt = ignoreUrls.length
+        ? getLastRelevantActivity(ignoreUrls)
+        : lastActivityAt;
+      const idleFor = Date.now() - lastRelevantActivityAt;
       if (idleFor >= ms) return;
+      if (Date.now() - startedAt >= timeoutMs) {
+        const recentCalls = getCalls()
+          .filter((call) => !isIgnoredUrl(call.url, ignoreUrls))
+          .slice(-5)
+          .map((call) => `${call.method} ${call.url} -> ${call.status}`)
+          .join(", ");
+        throw new Error(
+          `Network did not settle within ${timeoutMs}ms` +
+          (recentCalls ? `; recent calls: ${recentCalls}` : "")
+        );
+      }
       await page.waitForTimeout(Math.min(100, ms - idleFor));
     }
   }
@@ -83,8 +120,9 @@ function createNetworkTracker(page) {
     }
   }
 
-  function assertNoCancelled() {
-    const cancelled = getCalls().filter((call) => call.cancelled);
+  function assertNoCancelled(options = {}) {
+    const ignoreUrls = Array.isArray(options.ignoreUrls) ? options.ignoreUrls : [];
+    const cancelled = getCalls().filter((call) => !isIgnoredUrl(call.url, ignoreUrls) && call.cancelled);
     if (cancelled.length) {
       throw new Error(
         `Cancelled requests detected: ${cancelled.map((call) => call.url).join(", ")}`
@@ -92,8 +130,14 @@ function createNetworkTracker(page) {
     }
   }
 
-  function assertAllSucceeded() {
-    const failed = getCalls().filter((call) => call.status == null || call.status < 200 || call.status >= 300);
+  function assertAllSucceeded(options = {}) {
+    const ignoreUrls = Array.isArray(options.ignoreUrls) ? options.ignoreUrls : [];
+    const failed = getCalls().filter((call) => {
+      if (isIgnoredUrl(call.url, ignoreUrls)) {
+        return false;
+      }
+      return call.status == null || call.status < 200 || call.status >= 300;
+    });
     if (failed.length) {
       throw new Error(
         `Non-2xx requests detected: ${failed.map((call) => `${call.method} ${call.url} -> ${call.status}`).join(", ")}`

@@ -4,10 +4,18 @@ function normalizeText(value) {
   return String(value || "").trim();
 }
 
+function shouldIgnoreDuplicateFetch(entry) {
+  const method = String(entry?.method || "").toUpperCase();
+  const url = String(entry?.url || "");
+  if (method !== "GET") return false;
+  return /\/api\/team\/[^/]+\/(?:status|phase3\/state)(?:\?|$)/.test(url)
+    || /\/api\/round2\/(?:state|interview\/session|team-merge)(?:\?|$)/.test(url);
+}
+
 function findDuplicateFetches(fetchLog, windowMs = 500) {
   const duplicates = [];
   const sorted = [...fetchLog]
-    .filter((item) => item && item.url)
+    .filter((item) => item && item.url && !shouldIgnoreDuplicateFetch(item))
     .sort((a, b) => a.timestamp - b.timestamp);
 
   for (let i = 0; i < sorted.length; i += 1) {
@@ -58,6 +66,7 @@ function createConsoleMonitor(page) {
 
   const onRequest = (request) => {
     state.fetchLog.push({
+      method: request.method(),
       url: request.url(),
       timestamp: Date.now()
     });

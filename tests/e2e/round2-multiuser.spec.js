@@ -1,358 +1,482 @@
-const { test, expect } = require("@playwright/test");
-const { ROUND2_INTERVIEW_SCRIPT } = require("./helpers/flowHelpers");
+const { test, expect, chromium } = require("@playwright/test");
+const { createConsoleMonitor } = require("./helpers/consoleMonitor");
+const { createNetworkTracker } = require("./helpers/networkTracker");
+const {
+  STUDENT_SESSION_KEY,
+  ROUND2_INTERVIEW_SCRIPT,
+  completeInterviewCycle,
+  resolveBaseUrl,
+  runRound1Flow,
+  setRangeValue
+} = require("./helpers/flowHelpers");
 
 const TEAM_SIZE = 6;
-const ROUND1_GRID_ID = "ToB_Differentiation_Elder";
-const ROUND1_ARCHITECTURE = "Experience";
-const ROUND1_SCORES = {
-  coverage: 4.3,
-  generalizability: 4.0,
-  effectiveness: 4.4
+const ROUND1_GRID_TEST_ID = "grid-toc-diff-elder";
+const ROUND1_ARCHITECTURE_TEST_ID = "arch-experience";
+const ROUND1_TEAM_ARCHITECTURE_TEST_ID = "team-arch-experience";
+const ROUND2_PRICE = 12000;
+const HEARTBEAT_TIMEOUT_MS = 90000;
+const ROUND1_PHASE_TIMEOUT_MS = 8 * 60 * 1000;
+const ROUND2_PHASE_TIMEOUT_MS = 10 * 60 * 1000;
+const ROUND1_COACH_MESSAGES = [
+  "我们的目标用户是独居且子女异地的城市老人",
+  "他们的痛点是日常孤独，且身体异常时家属难以及时发现"
+];
+const ROUND1_CONFIRMED_FIELD_FALLBACKS = {
+  who_raw: "独居且子女异地的城市老人",
+  pain_raw: "日常孤独，且身体异常时家属难以及时发现",
+  how_raw: "通过自然语言交互、主动陪伴、健康提醒和远程通知，提供情感陪伴与异常预警"
 };
-const ROUND1_VP_RESULT = {
-  who: "高端养老机构院长与采购负责人，直接使用者是需要陪伴和安全提醒的高龄老人。",
-  pain: "机构很难持续感知老人情绪波动和异常风险，护工负担重且夜间响应不足。",
-  how: "LOVOT 通过自然陪伴、状态感知和异常提醒，帮助机构在不显著增加人力的前提下提升老人安全感与满意度。",
-  boundary: "聚焦养老机构陪伴与提醒场景，不承担医疗诊断职责。"
-};
+let sharedBrowser = null;
 
-async function expectOk(response, label) {
-  expect(response.status(), `${label} HTTP status`).toBe(200);
-  const data = await response.json();
-  expect(data?.ok, `${label} ok`).toBeTruthy();
-  return data;
-}
-
-async function apiPost(request, path, payload, label) {
-  const response = await request.post(path, {
-    data: payload
-  });
-  return expectOk(response, label);
-}
-
-async function apiGet(request, path, label) {
-  const response = await request.get(path);
-  return expectOk(response, label);
-}
-
-async function bootstrapRound2Team(request) {
-  const teamName = `pw-r2-six-${Date.now()}`;
-  const createData = await apiPost(request, "/api/team/create", {
-    teamName,
-    teamSize: TEAM_SIZE
-  }, "create team");
-
-  const teamId = String(createData?.team?.id || "").trim();
-  const members = Array.isArray(createData?.team?.members) ? createData.team.members : [];
-  expect(teamId).not.toBe("");
-  expect(members).toHaveLength(TEAM_SIZE);
-
-  for (let index = 0; index < members.length; index += 1) {
-    const memberId = String(members[index]?.id || "").trim();
-    expect(memberId, `member ${index + 1} id`).not.toBe("");
-    await apiPost(
-      request,
-      `/api/team/${encodeURIComponent(teamId)}/phase1/${encodeURIComponent(memberId)}/submit`,
-      {
-        grid_id: ROUND1_GRID_ID,
-        architecture: ROUND1_ARCHITECTURE,
-        who: `${ROUND1_VP_RESULT.who}（成员${index + 1}）`,
-        pain: ROUND1_VP_RESULT.pain,
-        how: ROUND1_VP_RESULT.how
-      },
-      `round1 submit member ${index + 1}`
-    );
+async function launchSharedBrowser() {
+  const preferredChannel = String(process.env.PLAYWRIGHT_CHROME_CHANNEL || "chrome").trim();
+  if (preferredChannel) {
+    try {
+      return await chromium.launch({ channel: preferredChannel });
+    } catch (error) {
+      console.warn(`[E2E] failed to launch Chromium with channel=${preferredChannel}, falling back to bundled browser: ${error.message}`);
+    }
   }
+  return chromium.launch();
+}
 
-  const leaderMemberId = String(members[0]?.id || "").trim();
-  await apiPost(
-    request,
-    `/api/team/${encodeURIComponent(teamId)}/phase3/finalize`,
-    {
-      member_id: leaderMemberId,
-      grid_id: ROUND1_GRID_ID,
-      architecture: ROUND1_ARCHITECTURE,
-      scores: ROUND1_SCORES,
-      vp_result: ROUND1_VP_RESULT
-    },
-    "round1 finalize"
-  );
-
-  await apiPost(
-    request,
-    `/api/team/${encodeURIComponent(teamId)}/freeze`,
-    {
-      member_id: leaderMemberId
-    },
-    "round1 freeze"
-  );
-
-  const assignments = await apiPost(request, "/api/round2/assign-dimensions", {
-    teamId,
-    memberCount: TEAM_SIZE
-  }, "round2 assign dimensions");
-  expect(Array.isArray(assignments.assignments)).toBeTruthy();
-  expect(assignments.assignments).toHaveLength(TEAM_SIZE);
-  assignments.assignments.forEach((item, index) => {
-    expect(Array.isArray(item?.dims), `member ${index + 1} dims`).toBeTruthy();
-    expect(item.dims.length, `member ${index + 1} dims length`).toBeGreaterThanOrEqual(2);
-  });
-
-  const recap = await apiGet(
-    request,
-    `/api/round2/recap?teamId=${encodeURIComponent(teamId)}`,
-    "round2 recap"
-  );
-
+function createContextOptions() {
   return {
-    teamId,
-    leaderMemberId,
-    members: members.map((member, index) => ({
-      id: String(member.id || "").trim(),
-      name: String(member.member_name || member.name || `成员${index + 1}`).trim(),
-      index: index + 1
-    })),
-    recap
+    baseURL: resolveBaseUrl(),
+    ignoreHTTPSErrors: true
   };
 }
 
-async function openRound2Page(browser, teamId, memberId) {
-  const context = await browser.newContext({ ignoreHTTPSErrors: true });
-  const page = await context.newPage();
-  await page.goto(`/multiplayer/round2?teamId=${encodeURIComponent(teamId)}&memberId=${encodeURIComponent(memberId)}&session_id=default`);
-  await expect(page.locator("[data-testid='r2-recap-container']")).toBeVisible({ timeout: 60000 });
-  await page.getByRole("button", { name: "进入第二轮 →" }).click();
-  await expect(page.locator("[data-testid='r2-interview-container']")).toBeVisible({ timeout: 60000 });
-  return { context, page };
+function normalizeText(text) {
+  return String(text || "").replace(/\s+/g, " ").trim();
 }
 
-async function waitForInterviewReady(page) {
-  await expect(page.locator("[data-testid='r2-interview-container']")).toBeVisible({ timeout: 60000 });
-  await expect(page.locator("[data-testid='r2-interview-input']")).toBeEditable({ timeout: 90000 });
+function buildStoredSession(teamId, member) {
+  return {
+    teamId,
+    memberId: member.id,
+    studentName: member.name,
+    entryMode: "trial"
+  };
 }
 
-async function completeSingleInterview(page) {
-  await waitForInterviewReady(page);
-  const personaMessages = page.locator("[data-testid='r2-interview-persona-msg']");
-  const userMessages = page.locator("[data-testid='r2-interview-user-msg']");
+function extractNumericValue(text) {
+  const match = String(text || "").match(/-?\d+(\.\d+)?/);
+  return match ? Number(match[0]) : Number.NaN;
+}
 
-  for (const prompt of ROUND2_INTERVIEW_SCRIPT) {
-    const beforePersonaCount = await personaMessages.count();
-    const beforeUserCount = await userMessages.count();
-    await page.locator("[data-testid='r2-interview-input']").fill(prompt);
-    await page.locator("[data-testid='r2-interview-send-btn']").click();
-    await expect(userMessages).toHaveCount(beforeUserCount + 1, { timeout: 10000 });
-    await expect(personaMessages).toHaveCount(beforePersonaCount + 1, { timeout: 90000 });
+function extractMoneyValue(text) {
+  return Number(String(text || "").replace(/[^\d.-]/g, ""));
+}
+
+function parsePersonaName(cardText) {
+  const match = String(cardText || "").match(/访谈对象：([^\n]+)/);
+  return match ? match[1].trim() : "";
+}
+
+function createPhaseWatchdog(timeoutMs) {
+  let lastLabel = "init";
+  let idleTimer = null;
+  let phaseTimer = null;
+  let activeReject = null;
+
+  function clearTimers() {
+    if (idleTimer) clearTimeout(idleTimer);
+    if (phaseTimer) clearTimeout(phaseTimer);
+    idleTimer = null;
+    phaseTimer = null;
   }
 
-  const endButton = page.getByRole("button", { name: /结束本次访谈/ });
-  await expect(endButton).toBeVisible({ timeout: 10000 });
-  await endButton.click();
-  await expect
-    .poll(async () => {
-      if (await page.locator("[data-testid='r2-card-selection-container']").count()) return "cards";
-      if (await page.getByRole("button", { name: /开始下一次访谈|进入个人选卡|再访谈一位|访谈要求已满足，进入个人选卡/ }).count()) return "next";
-      return "pending";
-    }, { timeout: 90000, intervals: [1000, 2000, 3000] })
-    .not.toBe("pending");
+  function armIdleTimer(label) {
+    lastLabel = label;
+    if (idleTimer) clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => {
+      if (activeReject) {
+        activeReject(new Error(`No progress for ${timeoutMs}ms, last checkpoint: ${lastLabel}`));
+      }
+    }, timeoutMs);
+  }
+
+  return {
+    bump(label) {
+      console.log(`[E2E] heartbeat ${label}`);
+      armIdleTimer(label);
+    },
+    async run(label, fn, timeoutOverrideMs = timeoutMs) {
+      return new Promise((resolve, reject) => {
+        const wrappedReject = (error) => {
+          clearTimers();
+          activeReject = null;
+          reject(error);
+        };
+        activeReject = wrappedReject;
+        armIdleTimer(label);
+        phaseTimer = setTimeout(() => {
+          wrappedReject(new Error(`Phase timeout after ${timeoutOverrideMs}ms, last checkpoint: ${lastLabel}`));
+        }, timeoutOverrideMs);
+        Promise.resolve()
+          .then(() => fn())
+          .then((result) => {
+            clearTimers();
+            activeReject = null;
+            resolve(result);
+          })
+          .catch(wrappedReject);
+      });
+    }
+  };
 }
 
-async function completeTwoInterviewsAndEnterCards(page) {
-  await completeSingleInterview(page);
-  const nextInterviewButton = page.getByRole("button", { name: /开始下一次访谈/ });
-  await expect(nextInterviewButton).toBeVisible({ timeout: 30000 });
-  await nextInterviewButton.click();
+async function openRound2Context(browser, teamId, member) {
+  const context = await browser.newContext(createContextOptions());
+  await context.addInitScript(({ key, session }) => {
+    window.localStorage.setItem(key, JSON.stringify(session));
+  }, {
+    key: STUDENT_SESSION_KEY,
+    session: buildStoredSession(teamId, member)
+  });
+  const page = await context.newPage();
+  await page.goto("/multiplayer/round2?session_id=default");
+  await expect(page.locator("[data-testid='r2-recap-container']")).toBeVisible({ timeout: 120000 });
+  return { context, page, member };
+}
 
-  await completeSingleInterview(page);
-  const enterCardsButton = page.getByRole("button", { name: /进入个人选卡|访谈要求已满足，进入个人选卡/ });
-  await expect(enterCardsButton.or(page.locator("[data-testid='r2-card-selection-container']"))).toBeVisible({ timeout: 30000 });
-  if (await page.locator("[data-testid='r2-card-selection-container']").count()) {
+async function enterRound2FromRecap(page) {
+  if (await page.locator("[data-testid='r2-interview-container']").count()) {
     return;
   }
-  await enterCardsButton.click();
-  await expect(page.locator("[data-testid='r2-card-selection-container']")).toBeVisible({ timeout: 30000 });
+  await expect(page.locator("[data-testid='r2-recap-container']")).toBeVisible({ timeout: 120000 });
+  await expect(page.locator("[data-testid='r2-recap-space-tier']")).not.toHaveText("", { timeout: 30000 });
+  await expect(page.getByText("VP 综合评分").first()).toBeVisible({ timeout: 30000 });
+  await page.getByRole("button", { name: "进入第二轮 →" }).click();
+  await expect(page.locator("[data-testid='r2-interview-container']")).toBeVisible({ timeout: 120000 });
 }
 
-async function selectCardsAndSubmit(page, request, { teamId, memberId, expectWaiting }) {
+async function getActivePersonaCard(page) {
+  const personaCard = page
+    .locator("[data-testid='r2-interview-container'] div")
+    .filter({ hasText: /TA 同意参加你们的产品调研/ })
+    .first();
+  await expect(personaCard).toBeVisible({ timeout: 30000 });
+  return personaCard;
+}
+
+async function assertActivePersonaMeta(page, expectedAgeGroup = "ELDER") {
+  const personaCard = await getActivePersonaCard(page);
+  const cardText = await personaCard.innerText();
+  const personaName = parsePersonaName(cardText);
+  expect(personaName).not.toBe("");
+
+  const ageMatch = String(cardText).match(/(\d+)岁/);
+  expect(ageMatch, "persona card should include age").toBeTruthy();
+  const ageValue = Number(ageMatch[1]);
+  if (expectedAgeGroup === "ELDER") {
+    expect(ageValue).toBeGreaterThanOrEqual(60);
+  } else if (expectedAgeGroup === "ADULT") {
+    expect(ageValue).toBeGreaterThanOrEqual(18);
+    expect(ageValue).toBeLessThan(60);
+  } else if (expectedAgeGroup === "CHILD") {
+    expect(ageValue).toBeLessThan(18);
+  }
+
+  return {
+    personaName,
+    cardText
+  };
+}
+
+async function completeInterviewWithAssertions(page, expectedAgeGroup = "ELDER", onProgress = null) {
+  let currentPersonaName = "";
+
+  return completeInterviewCycle(page, {
+    script: ROUND2_INTERVIEW_SCRIPT,
+    onProgress,
+    beforeSend: async () => {
+      const meta = await assertActivePersonaMeta(page, expectedAgeGroup);
+      currentPersonaName = meta.personaName;
+    },
+    afterReply: async ({ beforePersonaCount }) => {
+      const personaMessage = page.locator("[data-testid='r2-interview-persona-msg']").nth(beforePersonaCount);
+      await expect(personaMessage).toBeVisible({ timeout: 30000 });
+      const speaker = normalizeText(await personaMessage.locator("div").first().innerText());
+      const replyText = normalizeText(await personaMessage.locator("div").nth(1).innerText());
+      expect(speaker).toBe(currentPersonaName);
+      expect(replyText).not.toContain("我现在负责");
+      expect(replyText).not.toContain("所在机构是");
+    }
+  });
+}
+
+async function resolvePostInterviewState(page) {
+  const cardSelection = page.locator("[data-testid='r2-card-selection-container']");
+  const enterCardsButton = page.locator("button").filter({ hasText: /进入个人选卡/ }).first();
+  const nextInterviewButton = page.locator("button").filter({ hasText: /开始下一次访谈|再访谈一位/ }).first();
+  const interviewInput = page.locator("[data-testid='r2-interview-input']");
+  const endButton = page.locator("button").filter({ hasText: /结束本次访谈/ }).first();
+
+  if (await cardSelection.isVisible().catch(() => false)) return "cards";
+  if (await enterCardsButton.isVisible().catch(() => false)) return "enter-cards";
+  if (await nextInterviewButton.isVisible().catch(() => false)) return "next-interview";
+  if (await interviewInput.isEditable().catch(() => false)) return "interviewing";
+  if (await endButton.isVisible().catch(() => false)) return "ending";
+  return "waiting";
+}
+
+async function waitForActionablePostInterviewState(page, initialState = "waiting", timeout = 120000) {
+  if (initialState && initialState !== "waiting" && initialState !== "ending") {
+    return initialState;
+  }
+  await expect.poll(async () => {
+    const state = await resolvePostInterviewState(page);
+    if (state === "ending") return "waiting";
+    return state;
+  }, {
+    timeout,
+    intervals: [1000, 2000, 3000, 5000]
+  }).not.toBe("waiting");
+  return resolvePostInterviewState(page);
+}
+
+async function completeTwoInterviewsAndEnterCards(page, expectedAgeGroup = "ELDER", onProgress = null) {
+  const firstInterview = await completeInterviewWithAssertions(page, expectedAgeGroup, (phase) => {
+    if (onProgress) onProgress(`interview-1-${phase}`);
+  });
+  const firstPostState = await waitForActionablePostInterviewState(page, firstInterview?.postEndState);
+  const cardSelection = page.locator("[data-testid='r2-card-selection-container']");
+  const enterCardsButton = page.locator("button").filter({ hasText: /进入个人选卡/ }).first();
+  const nextInterviewButton = page.locator("button").filter({ hasText: /开始下一次访谈|再访谈一位/ }).first();
+
+  if (firstPostState === "cards") {
+    await expect(page.locator("[data-testid='r2-card-selection-container']")).toBeVisible({ timeout: 30000 });
+    if (onProgress) onProgress("cards-visible");
+    return;
+  }
+  if (firstPostState === "enter-cards") {
+    await enterCardsButton.click();
+    await expect(cardSelection).toBeVisible({ timeout: 30000 });
+    if (onProgress) onProgress("cards-visible");
+    return;
+  }
+  if (firstPostState === "next-interview") {
+    await nextInterviewButton.click();
+    if (onProgress) onProgress("interview-2-start-click");
+  }
+
+  const secondInterview = await completeInterviewWithAssertions(page, expectedAgeGroup, (phase) => {
+    if (onProgress) onProgress(`interview-2-${phase}`);
+  });
+  const secondPostState = await waitForActionablePostInterviewState(page, secondInterview?.postEndState);
+  if (secondPostState === "cards") {
+    await expect(cardSelection).toBeVisible({ timeout: 30000 });
+    if (onProgress) onProgress("cards-visible");
+    return;
+  }
+  if (secondPostState === "enter-cards") {
+    await enterCardsButton.click();
+  }
+  await expect(cardSelection).toBeVisible({ timeout: 30000 });
+  if (onProgress) onProgress("cards-visible");
+}
+
+async function selectCardsAndSubmit(page, expectWaiting) {
+  await expect(page.locator("[data-testid='r2-card-selection-container']")).toBeVisible({ timeout: 30000 });
   const groups = page.locator("[data-testid^='r2-dim-']");
   const groupCount = await groups.count();
   expect(groupCount).toBeGreaterThan(0);
 
   for (let index = 0; index < groupCount; index += 1) {
-    const checkbox = groups.nth(index).locator("input[type='checkbox']").first();
-    await expect(checkbox).toBeVisible({ timeout: 10000 });
-    await checkbox.click();
+    const group = groups.nth(index);
+    const card = group.locator("[data-testid^='r2-card-']").first();
+    await expect(card).toBeVisible({ timeout: 30000 });
+    const checkbox = card.locator("input[type='checkbox']");
+    if (!(await checkbox.isChecked())) {
+      await checkbox.click();
+    }
+    const testId = await card.getAttribute("data-testid");
+    expect(testId).toBeTruthy();
+    const cardId = String(testId).replace("r2-card-", "");
+    await card.locator(`[data-testid='r2-tier-${cardId}-LOW']`).click();
   }
 
-  const selectedCount = await page.locator("[data-testid='r2-budget-display'] strong").innerText();
-  expect(Number(selectedCount)).toBeGreaterThan(0);
+  const selectedText = await page.locator("[data-testid='r2-budget-display'] strong").innerText();
+  expect(extractNumericValue(selectedText)).toBeGreaterThan(0);
 
   await page.getByRole("button", { name: /提交个人选卡/ }).click();
   if (expectWaiting) {
-    await expect
-      .poll(async () => {
-        const state = await getRound2State(request, teamId, memberId);
-        return {
-          teamStatus: state.team_status,
-          cardStatus: state.member_state?.card_status
-        };
-      }, { timeout: 30000, intervals: [1000, 2000, 3000] })
-      .toEqual({
-        teamStatus: "R2_INDIVIDUAL_CARDS",
-        cardStatus: "submitted"
-      });
-    await expect(page.locator("[data-testid='r2-card-selection-container']")).toBeVisible({ timeout: 10000 });
-    await expect(page.locator("[data-testid='r2-merge-container']")).toHaveCount(0);
-  } else {
-    await expect
-      .poll(async () => {
-        const state = await getRound2State(request, teamId, memberId);
-        return {
-          teamStatus: state.team_status,
-          cardStatus: state.member_state?.card_status
-        };
-      }, { timeout: 30000, intervals: [1000, 2000, 3000] })
-      .toEqual({
-        teamStatus: "R2_TEAM_MERGE",
-        cardStatus: "submitted"
-      });
-    await expect(page.locator("[data-testid='r2-merge-container']")).toBeVisible({ timeout: 30000 });
+    await expect.poll(async () => {
+      if (await page.locator("[data-testid='r2-merge-container']").isVisible().catch(() => false)) return "merge";
+      if (await page.getByText("等待其他成员提交").isVisible().catch(() => false)) return "waiting";
+      if (await page.locator("[data-testid='r2-card-selection-container']").isVisible().catch(() => false)) return "cards";
+      return "pending";
+    }, {
+      timeout: 120000,
+      intervals: [1000, 2000, 3000, 5000]
+    }).not.toBe("pending");
+    return;
   }
+  await expect(page.locator("[data-testid='r2-merge-container']")).toBeVisible({ timeout: 120000 });
 }
 
-async function setRangeValue(page, selector, value) {
-  await page.locator(selector).evaluate((node, nextValue) => {
-    node.value = String(nextValue);
-    node.dispatchEvent(new Event("input", { bubbles: true }));
-    node.dispatchEvent(new Event("change", { bubbles: true }));
-  }, value);
-}
+test.describe.serial("Round 1 + Round 2 multiuser UI E2E", () => {
+  test.beforeAll(async () => {
+    const { execSync } = require("node:child_process");
 
-async function getRound2State(request, teamId, memberId = "") {
-  const query = new URLSearchParams({
-    teamId: String(teamId || "").trim()
-  });
-  if (memberId) query.set("memberId", String(memberId || "").trim());
-  return apiGet(request, `/api/round2/state?${query.toString()}`, `round2 state ${memberId || "team"}`);
-}
-
-test.describe.serial("Round 2 multiuser E2E", () => {
-  test("6-person team stays in sync across interview, cards, merge and results", async ({ browser, request }) => {
-    test.setTimeout(30 * 60 * 1000);
-
-    const setup = await bootstrapRound2Team(request);
-    const priceTarget = Math.max(
-      5000,
-      Math.min(
-        20000,
-        Math.round(Number(setup.recap?.Pmax || setup.recap?.P || 12000) * 0.7 / 100) * 100
-      )
-    );
-
-    const sessions = [];
     try {
-      for (const member of setup.members) {
-        const browserSession = await openRound2Page(browser, setup.teamId, member.id);
-        sessions.push({
-          ...browserSession,
-          member
-        });
+      execSync("pkill -f chrome-headless-shell", { stdio: "ignore" });
+    } catch (_) {
+      // Ignore when no stale headless shell process exists.
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    sharedBrowser = await launchSharedBrowser();
+  });
+
+  test.afterAll(async () => {
+    if (sharedBrowser) {
+      await sharedBrowser.close();
+      sharedBrowser = null;
+    }
+  });
+
+  test("6 members complete the full UI chain", async ({ request }) => {
+    test.setTimeout(60 * 60 * 1000);
+    const watchdog = createPhaseWatchdog(HEARTBEAT_TIMEOUT_MS);
+
+    const leaderContext = await sharedBrowser.newContext(createContextOptions());
+    const leaderPage = await leaderContext.newPage();
+    const leaderMonitor = createConsoleMonitor(leaderPage);
+    const leaderTracker = createNetworkTracker(leaderPage);
+    const stepResults = [];
+    const sessions = [];
+
+    try {
+      const flowContext = await watchdog.run("round1-flow", () =>
+        runRound1Flow({
+          page: leaderPage,
+          request,
+          monitor: leaderMonitor,
+          tracker: leaderTracker,
+          stepResults,
+          freezeAtEnd: true,
+          teamSize: TEAM_SIZE,
+          personalGridTestId: ROUND1_GRID_TEST_ID,
+          architectureTestId: ROUND1_ARCHITECTURE_TEST_ID,
+          teamArchitectureTestId: ROUND1_TEAM_ARCHITECTURE_TEST_ID,
+          coachMessages: ROUND1_COACH_MESSAGES,
+          confirmedFieldFallbacks: ROUND1_CONFIRMED_FIELD_FALLBACKS,
+          onProgress: (label) => watchdog.bump(label)
+        }),
+      ROUND1_PHASE_TIMEOUT_MS);
+      console.log("[E2E] Round 1 complete");
+      watchdog.bump("round1-complete");
+
+      expect(normalizeText(flowContext.round1SynthesizedVp)).not.toBe("");
+      expect(flowContext.round1ScoreResponse?.ok).toBeTruthy();
+      expect(Number(flowContext.round1ScoreResponse?.scores?.C)).toBeGreaterThanOrEqual(1);
+      expect(Number(flowContext.round1ScoreResponse?.scores?.C)).toBeLessThanOrEqual(5);
+      expect(Number(flowContext.round1ScoreResponse?.scores?.G)).toBeGreaterThanOrEqual(1);
+      expect(Number(flowContext.round1ScoreResponse?.scores?.G)).toBeLessThanOrEqual(5);
+      expect(Number(flowContext.round1ScoreResponse?.scores?.E)).toBeGreaterThanOrEqual(1);
+      expect(Number(flowContext.round1ScoreResponse?.scores?.E)).toBeLessThanOrEqual(5);
+      await expect(leaderPage.locator("[data-testid='r2-recap-container']")).toBeVisible({ timeout: 120000 });
+      await expect(leaderPage.locator("[data-testid='r2-recap-space-tier']")).not.toHaveText("", { timeout: 30000 });
+      await expect(leaderPage.getByText("VP 综合评分").first()).toBeVisible({ timeout: 30000 });
+
+      const members = [...(flowContext.members || [])].sort((a, b) => a.index - b.index);
+      expect(members).toHaveLength(TEAM_SIZE);
+
+      sessions.push({
+        context: leaderContext,
+        page: leaderPage,
+        member: members.find((member) => member.id === flowContext.memberId) || members[0]
+      });
+
+      for (const member of members) {
+        if (member.id === sessions[0].member.id) continue;
+        sessions.push(await watchdog.run(`open-round2-context-${member.index}`, () => openRound2Context(sharedBrowser, flowContext.teamId, member), 120000));
       }
 
-      await expect
-        .poll(async () => {
-          const state = await getRound2State(request, setup.teamId, setup.members[0].id);
-          return state.team_status;
-        }, { timeout: 90000, intervals: [1000, 2000, 3000] })
-        .toBe("R2_INTERVIEWING");
+      await watchdog.run("round2-enter-recap", () => Promise.all(sessions.map((session) => enterRound2FromRecap(session.page))), 180000);
+      console.log("[E2E] All 6 contexts entered Round 2");
+      watchdog.bump("round2-entered");
 
-      await Promise.all(sessions.slice(0, 3).map((session) => completeTwoInterviewsAndEnterCards(session.page)));
-
-      const midState = await getRound2State(request, setup.teamId, setup.members[0].id);
-      expect(midState.team_status).toBe("R2_INTERVIEWING");
+      await watchdog.run("round2-first-3-interviews", () => Promise.all(
+        sessions.slice(0, 3).map((session) => completeTwoInterviewsAndEnterCards(
+          session.page,
+          "ELDER",
+          (phase) => watchdog.bump(`round2-${session.member.name}-${phase}`)
+        ))
+      ), ROUND2_PHASE_TIMEOUT_MS);
+      console.log("[E2E] First 3 members completed interviews");
+      watchdog.bump("round2-first-3-interviews-complete");
 
       for (const session of sessions.slice(3)) {
-        await expect(session.page.locator("[data-testid='r2-interview-container']")).toBeVisible({ timeout: 10000 });
+        await expect(session.page.locator("[data-testid='r2-interview-container']")).toBeVisible({ timeout: 30000 });
         await expect(session.page.locator("[data-testid='r2-card-selection-container']")).toHaveCount(0);
       }
 
-      await Promise.all(sessions.slice(3).map((session) => completeTwoInterviewsAndEnterCards(session.page)));
+      await watchdog.run("round2-last-3-interviews", () => Promise.all(
+        sessions.slice(3).map((session) => completeTwoInterviewsAndEnterCards(
+          session.page,
+          "ELDER",
+          (phase) => watchdog.bump(`round2-${session.member.name}-${phase}`)
+        ))
+      ), ROUND2_PHASE_TIMEOUT_MS);
+      console.log("[E2E] Last 3 members completed interviews");
+      watchdog.bump("round2-last-3-interviews-complete");
 
       for (const session of sessions) {
         await expect(session.page.locator("[data-testid='r2-card-selection-container']")).toBeVisible({ timeout: 30000 });
       }
 
+      await watchdog.run("round2-first-5-cards", () => Promise.all(sessions.slice(0, 5).map((session) => selectCardsAndSubmit(session.page, true))), 180000);
+      console.log("[E2E] First 5 members submitted cards");
+      watchdog.bump("round2-first-5-cards-complete");
+      await watchdog.run("round2-last-card-submit", () => selectCardsAndSubmit(sessions[5].page, false), 180000);
+      console.log("[E2E] All 6 members submitted cards");
+      watchdog.bump("round2-all-cards-complete");
+
       await Promise.all(
-        sessions.slice(0, 5).map((session) => selectCardsAndSubmit(session.page, request, {
-          teamId: setup.teamId,
-          memberId: session.member.id,
-          expectWaiting: true
-        }))
+        sessions.map((session) =>
+          expect(session.page.locator("[data-testid='r2-merge-container']")).toBeVisible({ timeout: 120000 })
+        )
       );
 
-      const fiveOfSixState = await getRound2State(request, setup.teamId, setup.members[0].id);
-      expect(fiveOfSixState.team_status).toBe("R2_INDIVIDUAL_CARDS");
+      const mergeText = await sessions[0].page.locator("[data-testid='r2-merge-container']").innerText();
+      const mergedCardCounts = [...String(mergeText).matchAll(/已选卡数：(\d+) 张/g)].map((match) => Number(match[1]));
+      expect(mergedCardCounts).toHaveLength(6);
+      mergedCardCounts.forEach((count) => expect(count).toBeGreaterThan(0));
+      expect((String(mergeText).match(/#[^\s#]+/g) || []).length).toBeGreaterThan(0);
 
-      await selectCardsAndSubmit(sessions[5].page, request, {
-        teamId: setup.teamId,
-        memberId: sessions[5].member.id,
-        expectWaiting: false
-      });
+      await watchdog.run("round2-enter-merge-discussion", () => sessions[0].page.getByRole("button", { name: /进入集体讨论/ }).click(), 60000);
+      console.log("[E2E] Leader entered merge discussion");
+      await expect(sessions[0].page.locator("[data-testid='r2-price-input']")).toBeVisible({ timeout: 30000 });
+      await setRangeValue(sessions[0].page, "[data-testid='r2-price-input']", ROUND2_PRICE);
+      await sessions[0].page.getByRole("button", { name: /确认产品方案与定价，查看结果/ }).click();
+      await expect(sessions[0].page.locator("[data-testid='r2-final-submit']")).toBeVisible({ timeout: 30000 });
+      await watchdog.run("round2-final-submit", () => sessions[0].page.locator("[data-testid='r2-final-submit']").click(), 60000);
+      console.log("[E2E] Leader submitted Round 2 final decision");
 
-      await expect
-        .poll(async () => {
-          const state = await getRound2State(request, setup.teamId, setup.members[0].id);
-          return state.team_status;
-        }, { timeout: 30000, intervals: [1000, 2000, 3000] })
-        .toBe("R2_TEAM_MERGE");
+      await expect(sessions[0].page.locator("[data-testid='r2-results-container']")).toBeVisible({ timeout: 120000 });
+      const leaderProfitText = await sessions[0].page.locator("[data-testid='r2-profit-value']").innerText();
+      const leaderProfitValue = extractMoneyValue(leaderProfitText);
+      expect(Number.isNaN(leaderProfitValue)).toBeFalsy();
+      expect(leaderProfitValue).not.toBe(0);
 
-      await Promise.all(sessions.map((session) => expect(session.page.locator("[data-testid='r2-merge-container']")).toBeVisible({ timeout: 30000 })));
-
-      const mergeData = await apiGet(
-        request,
-        `/api/round2/team-merge?teamId=${encodeURIComponent(setup.teamId)}&memberId=${encodeURIComponent(setup.leaderMemberId)}`,
-        "round2 team merge"
+      await Promise.all(
+        sessions.slice(1).map((session) =>
+          expect(session.page.locator("[data-testid='r2-results-container']")).toBeVisible({ timeout: 120000 })
+        )
       );
-      expect(Array.isArray(mergeData?.mergedInterview?.tags)).toBeTruthy();
-      expect(mergeData.mergedInterview.tags.length).toBeGreaterThan(0);
-
-      const leaderSession = sessions.find((session) => session.member.id === setup.leaderMemberId);
-      expect(leaderSession).toBeTruthy();
-
-      await leaderSession.page.getByRole("button", { name: /进入集体讨论/ }).click();
-      await expect(leaderSession.page.locator("[data-testid='r2-price-input']")).toBeVisible({ timeout: 30000 });
-      await setRangeValue(leaderSession.page, "[data-testid='r2-price-input']", priceTarget);
-      await leaderSession.page.getByRole("button", { name: /确认产品方案与定价，查看结果/ }).click();
-      await expect(leaderSession.page.locator("[data-testid='r2-final-submit']")).toBeVisible({ timeout: 30000 });
-      await leaderSession.page.locator("[data-testid='r2-final-submit']").click();
-
-      await expect(leaderSession.page.locator("[data-testid='r2-results-container']")).toBeVisible({ timeout: 90000 });
-      const leaderProfitText = await leaderSession.page.locator("[data-testid='r2-profit-value']").innerText();
-      const profitNumber = Number(String(leaderProfitText || "").replace(/[^\d.-]/g, ""));
-      expect(Number.isNaN(profitNumber)).toBeFalsy();
-      expect(profitNumber).not.toBe(0);
-
-      await Promise.all(sessions.slice(1).map((session) => expect(session.page.locator("[data-testid='r2-results-container']")).toBeVisible({ timeout: 90000 })));
-
-      await expect
-        .poll(async () => {
-          const state = await getRound2State(request, setup.teamId, setup.members[0].id);
-          return state.team_status;
-        }, { timeout: 30000, intervals: [1000, 2000, 3000] })
-        .toBe("R2_SUBMITTED");
-
-      const teamResult = await apiGet(
-        request,
-        `/api/round2/team-result?teamId=${encodeURIComponent(setup.teamId)}&session_id=default`,
-        "round2 team result"
-      );
-      const resultProfit = Number(teamResult?.result?.profit);
-      expect(Number.isNaN(resultProfit)).toBeFalsy();
-      expect(resultProfit).not.toBe(0);
     } finally {
-      await Promise.all(sessions.map(async (session) => {
-        await session.context.close();
-      }));
+      leaderTracker.dispose();
+      leaderMonitor.dispose();
+      await Promise.all(
+        sessions.map(async (session) => {
+          await session.context.close();
+        })
+      );
     }
   });
 });

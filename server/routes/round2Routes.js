@@ -31,7 +31,7 @@ const CONFIG_DIR = path.join(ROOT, "game_config_v0.1");
 const GRID_PRIOR_PATH = path.join(ROOT, "data", "grid_priors_v4_cap_weights.json");
 let cachedEngineConfig = null;
 let cachedGridPriors = null;
-const ROUND2_PERSONA_POOL_VERSION = 4;
+const ROUND2_PERSONA_POOL_VERSION = 5;
 
 const DIM_KEYS_SHORT = ["interaction", "perception", "motion", "safety", "extend", "ops"];
 const DIM_SHORT_TO_GROUP = {
@@ -93,26 +93,6 @@ const MIN_TURNS_TO_END = 5;
 const MIN_INTERVIEWS_REQUIRED = 2;
 const MAX_INTERVIEWS_PER_MEMBER = 3;
 const MIN_NORMALIZED_TAG_COUNT = 6;
-const PERSONA_SEEDS_BY_GROUP = {
-  ELDER: [
-    { id: "elder_zhou", name: "周阿姨", age: 67, occupation: "退休教师", living_situation: "独居，女儿住在同城", desc: "退休教师，独居，重视安全感" },
-    { id: "elder_liu", name: "刘先生", age: 45, occupation: "社区护工", living_situation: "和爱人一起住，经常往返多个老人家庭", desc: "社区护工，关注跌倒风险" },
-    { id: "elder_wang", name: "王女士", age: 39, occupation: "财务经理", living_situation: "与丈夫和上小学的孩子同住", desc: "家属决策者，关注远程看护" },
-    { id: "elder_zhang", name: "张奶奶", age: 72, occupation: "退休工人", living_situation: "和老伴住在老小区，白天常常两个人在家", desc: "老年用户，想要温和陪伴" }
-  ],
-  CHILD: [
-    { id: "child_chen", name: "陈女士", age: 36, occupation: "市场经理", living_situation: "和丈夫、8岁女儿同住", desc: "双职工家长，关注放学后陪伴与安全" },
-    { id: "child_sun", name: "孙先生", age: 41, occupation: "销售主管", living_situation: "和爱人、两个孩子一起生活", desc: "家长，最头疼孩子放学后的安排" },
-    { id: "child_lin", name: "林妈妈", age: 34, occupation: "自由职业者", living_situation: "和6岁儿子住在一起，白天一边工作一边带娃", desc: "居家带娃，担心孩子独处时太无聊或不安全" },
-    { id: "child_he", name: "何女士", age: 38, occupation: "小学老师", living_situation: "和丈夫、上三年级的孩子同住", desc: "注重孩子作息和情绪陪伴" }
-  ],
-  ADULT: [
-    { id: "adult_lin", name: "林先生", age: 32, occupation: "产品经理", living_situation: "和伴侣住在城市公寓", desc: "工作忙，希望回家后轻松一点" },
-    { id: "adult_gao", name: "高女士", age: 29, occupation: "品牌策划", living_situation: "独自租房，作息不太规律", desc: "独居上班族，回家后偶尔会觉得空落落的" },
-    { id: "adult_xie", name: "谢先生", age: 35, occupation: "程序员", living_situation: "和妻子住在新婚小家，常常加班", desc: "晚归较多，想减少家务和精神负担" },
-    { id: "adult_deng", name: "邓女士", age: 31, occupation: "咨询顾问", living_situation: "经常出差，周末才有完整休息时间", desc: "节奏快，希望生活里的琐事更省心" }
-  ]
-};
 const DIMENSION_GUIDE = {
   perception: {
     label: "感知与理解",
@@ -1346,15 +1326,31 @@ async function buildRound1PersonaContext(team) {
   };
 }
 
-function createLegacyPersonaPool(memberName, gridId) {
-  const group = getPersonaGroup(gridId);
-  const seeds = PERSONA_SEEDS_BY_GROUP[group] || PERSONA_SEEDS_BY_GROUP.ADULT;
-  const start = Math.abs(String(memberName || "").split("").reduce((a, c) => a + c.charCodeAt(0), 0)) % seeds.length;
-  const pool = [];
-  for (let index = 0; index < Math.min(MAX_INTERVIEWS_PER_MEMBER, seeds.length); index += 1) {
-    pool.push({ ...seeds[(start + index) % seeds.length], group });
-  }
-  return pool;
+function hasNonEmptyText(value) {
+  return String(value || "").trim().length > 0;
+}
+
+function hasNonEmptyList(value) {
+  return Array.isArray(value) && value.some((item) => hasNonEmptyText(item));
+}
+
+function isLegacySeedPersona(persona) {
+  const id = String(persona?.id || "").trim();
+  return /^(elder|adult|child)_[a-z0-9_]+$/i.test(id);
+}
+
+function hasCompletePersonaProfile(persona) {
+  if (!persona || typeof persona !== "object") return false;
+  return hasNonEmptyText(persona.daily_routine)
+    && hasNonEmptyList(persona.desires)
+    && hasNonEmptyList(persona.pains)
+    && hasNonEmptyText(persona.hidden_pain)
+    && hasNonEmptyList(persona.contradictions);
+}
+
+function isReusableGeneratedPersona(persona, round1Context) {
+  if (!persona || isLegacySeedPersona(persona) || !hasCompletePersonaProfile(persona)) return false;
+  return isPersonaConsistentWithRound1Context(persona, round1Context);
 }
 
 async function generatePersonaVariant(round1Context, previousPersonas) {
@@ -1369,15 +1365,31 @@ async function generatePersonaVariant(round1Context, previousPersonas) {
       title: String(item?.title || item?.occupation || "").trim() || null
     }))
   });
-  if (!round1Context?.who_raw) return null;
-  return generatePersona(null, {
-    teamId: round1Context.teamId,
-    gridLabel: round1Context.gridLabel,
-    who_raw: round1Context.who_raw,
-    architectureLabel: round1Context.architectureLabel,
-    isToB: round1Context.isToB,
-    previousPersonas
-  });
+  if (!round1Context?.who_raw || !round1Context?.gridLabel) {
+    throw new Error("缺少 Round 1 who_raw/gridLabel，无法生成访谈对象");
+  }
+
+  let lastError = null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const persona = await generatePersona(null, {
+        teamId: round1Context.teamId,
+        gridLabel: round1Context.gridLabel,
+        who_raw: round1Context.who_raw,
+        architectureLabel: round1Context.architectureLabel,
+        isToB: round1Context.isToB,
+        previousPersonas
+      });
+      if (hasCompletePersonaProfile(persona)) {
+        return persona;
+      }
+      lastError = new Error("Persona 缺少必要字段");
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError || new Error("Persona 生成失败，请重试");
 }
 
 function isDecisionMakerTitle(title) {
@@ -1412,7 +1424,7 @@ function isPersonaConsistentWithRound1Context(persona, round1Context) {
 function isPersonaPoolConsistent(personaPool, round1Context) {
   const list = Array.isArray(personaPool) ? personaPool : [];
   if (!list.length) return false;
-  return list.every((item) => isPersonaConsistentWithRound1Context(item, round1Context));
+  return list.every((item) => isReusableGeneratedPersona(item, round1Context));
 }
 
 async function repairStaleInterviewSessions(team, memberId, sessions, personaPool) {
@@ -1432,7 +1444,7 @@ async function repairStaleInterviewSessions(team, memberId, sessions, personaPoo
     if (!session || session.is_complete || session.member_id !== memberId) continue;
 
     const persona = enrichPersonas(session.personas)[0] || null;
-    if (isPersonaConsistentWithRound1Context(persona, round1Context)) continue;
+    if (isReusableGeneratedPersona(persona, round1Context)) continue;
 
     // session 创建后 60 秒内锁定 persona，避免首轮输入时被并发请求替换。
     const lockedAt = session.persona_locked_at || session.created_at;
@@ -1444,7 +1456,7 @@ async function repairStaleInterviewSessions(team, memberId, sessions, personaPoo
     if (userTurns > 0) continue;
 
     const replacement = (Array.isArray(personaPool) ? personaPool : []).find((item) => {
-      if (!isPersonaConsistentWithRound1Context(item, round1Context)) return false;
+      if (!isReusableGeneratedPersona(item, round1Context)) return false;
       return !completedIds.has(item.id);
     });
     if (!replacement) continue;
@@ -1475,9 +1487,7 @@ async function ensureAssignmentPersonaPool({ assignments, assignmentIndex, team,
   const existingPool = existingVersion >= ROUND2_PERSONA_POOL_VERSION && Array.isArray(row.personaPool)
     ? row.personaPool.slice()
     : [];
-  const existingPoolValid = round1Context
-    ? isPersonaPoolConsistent(existingPool, round1Context)
-    : existingPool.length > 0;
+  const existingPoolValid = round1Context ? isPersonaPoolConsistent(existingPool, round1Context) : false;
   const seedPool = existingPoolValid ? existingPool.slice() : [];
   if (seedPool.length >= targetCount) {
     return { assignments: nextAssignments, personaPool: seedPool };
@@ -1490,29 +1500,17 @@ async function ensureAssignmentPersonaPool({ assignments, assignmentIndex, team,
     };
   }
   if (!round1Context) {
-    const fallbackPool = createLegacyPersonaPool(row.memberName || row.memberId, team?.final_grid_id).slice(0, Math.max(targetCount, 1));
-    nextAssignments[assignmentIndex] = { ...row, personaPool: fallbackPool, personaVersion: ROUND2_PERSONA_POOL_VERSION };
-    return { assignments: nextAssignments, personaPool: fallbackPool };
+    throw new Error("缺少 Round 1 who_raw/gridLabel，无法生成访谈对象");
   }
 
   const personaPool = seedPool.slice();
   while (personaPool.length < targetCount) {
-    let nextPersona = null;
-    try {
-      nextPersona = await generatePersonaVariant(round1Context, personaPool);
-    } catch (_) {
-      nextPersona = null;
-    }
-    if (!nextPersona) break;
+    const nextPersona = await generatePersonaVariant(round1Context, personaPool);
     const nextId = String(nextPersona.id || "").trim();
-    if (nextId && personaPool.some((item) => String(item?.id || "").trim() === nextId)) break;
+    if (nextId && personaPool.some((item) => String(item?.id || "").trim() === nextId)) {
+      throw new Error(`Persona 生成重复：${nextId}`);
+    }
     personaPool.push(nextPersona);
-  }
-
-  if (personaPool.length === 0) {
-    const fallbackPool = createLegacyPersonaPool(row.memberName || row.memberId, team?.final_grid_id).slice(0, Math.max(targetCount, 1));
-    nextAssignments[assignmentIndex] = { ...row, personaPool: fallbackPool, personaVersion: ROUND2_PERSONA_POOL_VERSION };
-    return { assignments: nextAssignments, personaPool: fallbackPool };
   }
 
   nextAssignments[assignmentIndex] = { ...row, personaPool, personaVersion: ROUND2_PERSONA_POOL_VERSION };
@@ -1576,7 +1574,7 @@ async function ensureMemberPersonaPool(team, memberId, minCount = 1) {
   let assignments = await ensureAssignments(team);
   const assignmentIndex = assignments.findIndex((item) => item.memberId === memberId);
   if (assignmentIndex < 0) {
-    return { assignments, personaPool: createLegacyPersonaPool(memberId, team?.final_grid_id).slice(0, Math.max(minCount, 1)) };
+    throw new Error(`member assignment not found: ${memberId}`);
   }
 
   const ensured = await ensureAssignmentPersonaPool({
@@ -1822,26 +1820,20 @@ function aggregateInterviewByOwner({ assignments, memberMap, interviewByMember }
   return merged;
 }
 
-function pickPersonaNames(memberName, gridId) {
-  return createLegacyPersonaPool(memberName, gridId);
-}
-
 function enrichPersona(persona) {
   const raw = persona && typeof persona === "object" ? persona : {};
-  const allSeeds = Object.values(PERSONA_SEEDS_BY_GROUP).flat();
-  const seed = allSeeds.find((item) => item.id === raw.id || item.name === raw.name) || null;
-  const title = String(raw.title || raw.occupation || seed?.title || seed?.occupation || "").trim();
+  const title = String(raw.title || raw.occupation || "").trim();
   const orgType = String(raw.org_type || "").trim();
   const orgScale = String(raw.org_scale || "").trim();
-  const livingSituation = String(raw.living_situation || seed?.living_situation || [orgType, orgScale].filter(Boolean).join("，")).trim();
-  const desc = String(raw.desc || seed?.desc || [title, orgType, raw.personality].filter(Boolean).join("，")).trim();
+  const livingSituation = String(raw.living_situation || [orgType, orgScale].filter(Boolean).join("，")).trim();
+  const inferredGridLabel = String(raw?.constraints?.gridLabel || raw.gridLabel || "").trim();
+  const desc = String(raw.desc || [title, orgType, raw.personality].filter(Boolean).join("，")).trim();
   return {
-    ...(seed || {}),
     ...raw,
-    id: String(raw.id || seed?.id || raw.name || "persona").trim(),
-    group: String(raw.group || seed?.group || "").trim(),
-    name: String(raw.name || seed?.name || "访谈对象").trim(),
-    age: Number(raw.age || seed?.age || 0),
+    id: String(raw.id || raw.name || "persona").trim(),
+    group: String(raw.group || getPersonaGroup(inferredGridLabel, raw.age)).trim(),
+    name: String(raw.name || "访谈对象").trim(),
+    age: Number(raw.age || 0),
     title,
     occupation: title,
     org_type: orgType,
