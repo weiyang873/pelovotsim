@@ -137,7 +137,7 @@ async function openRound2Context(browser, teamId, member) {
     session: buildStoredSession(teamId, member)
   });
   const page = await context.newPage();
-  await page.goto("/multiplayer/round2?session_id=default");
+  await page.goto("/multiplayer");
   await expect(page.locator("[data-testid='r2-recap-container']")).toBeVisible({ timeout: 120000 });
   return { context, page, member };
 }
