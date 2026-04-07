@@ -1230,6 +1230,9 @@ async function buildRound2Recap(teamId, phase4Body) {
   const matchedTechCount = settleItems.filter((x) => x?.matched && x?.jinang_type === "tech").length;
   const displayedWtpAdj = Number(phase4Body?.wtp_breakdown?.final_result?.WTPadj || team.final_wtp_adj || 0);
   const vpSummary = normalizeVpSummary(phase4Body?.team?.final_vp_summary || team.final_vp_summary, phase4Body?.team?.final_vp_text || team.final_vp_text || "");
+  const marketJinangList = Array.isArray(phase4Body?.jinang?.market_jinangs)
+    ? phase4Body.jinang.market_jinangs
+    : [];
   console.log("[R2 pricing] 显示给学生的 WTPadj:", displayedWtpAdj);
 
   return {
@@ -1251,8 +1254,21 @@ async function buildRound2Recap(teamId, phase4Body) {
       ? { card_id: tech.jinang_id, match_strength: Number(tech.match_strength || 0), name: tech.name || tech.jinang_id }
       : null,
     jinang_market: market
-      ? { card_id: market.jinang_id, match_strength: Number(market.match_strength || 0), name: market.name || market.jinang_id }
+      ? {
+          card_id: market.jinang_id,
+          match_strength: Number(market.match_strength || 0),
+          name: market.name || market.jinang_id,
+          bonus: Number(market.bonus || 0)
+        }
       : null,
+    jinang_market_list: marketJinangList.map((item) => ({
+      card_id: item.id,
+      name: item.name,
+      member_id: item.member_id,
+      member_name: item.member_name,
+      match_strength: Number(item.match_strength || 0),
+      bonus: Number(item.bonus || 0)
+    })),
     jinang_summary: {
       total_count: settleItems.length,
       matched_count: settleItems.filter((x) => Boolean(x?.matched)).length,
@@ -2328,7 +2344,7 @@ async function persistTeamSnapshot(teamId, sessionId, submission, radar, result)
   `);
 }
 
-async function computeStoredTeamResult(teamId, sessionId, submissionInput, radarInput) {
+async function buildComputedTeamSnapshot(teamId, sessionId, submissionInput, radarInput, options = {}) {
   const submission = submissionInput || await getStoredSubmission(teamId, sessionId);
   if (!submission) return null;
 
@@ -2421,11 +2437,70 @@ async function computeStoredTeamResult(teamId, sessionId, submissionInput, radar
     updated_at: radar.updated_at || nowIso()
   };
 
-  await persistTeamSnapshot(teamId, sessionId, nextSubmission, nextRadar, result);
+  if (options.persist !== false) {
+    await persistTeamSnapshot(teamId, sessionId, nextSubmission, nextRadar, result);
+  }
   return {
     submission: nextSubmission,
     radar: nextRadar,
     result
+  };
+}
+
+async function computeStoredTeamResult(teamId, sessionId, submissionInput, radarInput) {
+  return buildComputedTeamSnapshot(teamId, sessionId, submissionInput, radarInput, { persist: true });
+}
+
+async function computeCounterfactualAtPrice(teamId, sessionIdInput, priceInput) {
+  const sessionId = normalizeSessionId(sessionIdInput);
+  const price = Number(priceInput);
+  if (!Number.isFinite(price) || price <= 0) {
+    return null;
+  }
+
+  const submission = await getStoredSubmission(teamId, sessionId);
+  if (!submission) return null;
+  const radar = await getStoredRadar(teamId, sessionId);
+
+  return buildComputedTeamSnapshot(
+    teamId,
+    sessionId,
+    {
+      ...submission,
+      price
+    },
+    radar,
+    { persist: false }
+  );
+}
+
+async function computeProfitAtPrice(teamId, sessionIdInput, priceInput) {
+  const price = Number(priceInput);
+  if (!Number.isFinite(price) || price <= 0) {
+    return null;
+  }
+
+  const snapshot = await computeCounterfactualAtPrice(teamId, sessionIdInput, price);
+  if (!snapshot) return null;
+
+  const summary = snapshot?.result || {};
+  const detail = summary?.result || {};
+  const units = Number.isFinite(Number(summary.units))
+    ? Number(summary.units)
+    : (Number.isFinite(Number(detail.units)) ? Number(detail.units) : null);
+  const profit = Number.isFinite(Number(summary.profit))
+    ? Number(summary.profit)
+    : (Number.isFinite(Number(detail.profit)) ? Number(detail.profit) : null);
+  const unitMargin = Number.isFinite(Number(detail.unitMargin))
+    ? Number(detail.unitMargin)
+    : (Number.isFinite(Number(detail.unitProfitHW)) ? Number(detail.unitProfitHW) : null);
+
+  return {
+    price,
+    units,
+    profit,
+    unitMargin,
+    snapshot
   };
 }
 
@@ -3324,6 +3399,8 @@ module.exports = {
   teamResultApi,
   teamStatusApi,
   getTeamResultSnapshot,
+  computeProfitAtPrice,
+  computeCounterfactualAtPrice,
   recap,
   assignDimensionsApi,
   interviewAuto,

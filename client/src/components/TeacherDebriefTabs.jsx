@@ -76,8 +76,10 @@ function formatMoney(value) {
 
 function formatWan(value) {
   const n = Number(value);
-  if (!Number.isFinite(n)) return "-";
-  return `${Math.round(n / 10000).toLocaleString()}万`;
+  if (!Number.isFinite(n)) return "—";
+  const wan = n / 10000;
+  const sign = wan >= 0 ? "" : "-";
+  return `${sign}${Math.abs(wan).toFixed(0)}万`;
 }
 
 function formatPercent(value, digits = 0) {
@@ -97,6 +99,48 @@ function formatScore(value) {
   const n = Number(value);
   if (!Number.isFinite(n)) return "-";
   return n.toFixed(1);
+}
+
+function getVpScoreValue(team) {
+  const candidates = [
+    team?.r1?.vpFinalScore,
+    team?.r1?.VPscore,
+    team?.r2?.vpScore,
+    team?.r2?.VPscore
+  ];
+  for (const value of candidates) {
+    const n = Number(value);
+    if (Number.isFinite(n) && n > 1) return n;
+  }
+  return null;
+}
+
+function getProductVValue(team) {
+  const candidates = [
+    team?.r2?.vscore,
+    team?.r2?.Vscore,
+    team?.r2?.productV,
+    team?.r2?.product_v
+  ];
+  for (const value of candidates) {
+    const n = Number(value);
+    if (Number.isFinite(n) && n >= 0 && n <= 1) return n;
+  }
+  const fallbackCandidates = [
+    team?.r2?.vpScore,
+    team?.r2?.VPscore,
+    team?.r1?.vpFinalScore,
+    team?.r1?.VPscore
+  ];
+  for (const value of fallbackCandidates) {
+    const n = Number(value);
+    if (Number.isFinite(n) && n >= 0 && n <= 1) return n;
+  }
+  return null;
+}
+
+function formatProductV(value) {
+  return formatPercent(value, 0);
 }
 
 function getRadarScore(scores, key, fallback = 0) {
@@ -257,7 +301,7 @@ function getPricingQuality(ratio) {
 function computePricingBreakdown(team) {
   const price = Number(team?.r2?.price);
   const dCOGS = Number(team?.r2?.dCOGS);
-  const wtpAdj = Number(team?.r1?.wtpAdj);
+  const wtpAdj = Number(team?.r2?.wtpAdj ?? team?.r1?.wtpAdj);
   if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(dCOGS)) return null;
 
   const feeRate = getChannelFeeRate(team);
@@ -268,9 +312,16 @@ function computePricingBreakdown(team) {
   const marginPct = 100 - channelPct - vPct - dcogsPct;
   const actualMargin = price * (1 - feeRate) - V - dCOGS;
   const ratio = wtpAdj > 0 ? price / wtpAdj : null;
-  const wtp72Price = Number.isFinite(wtpAdj) ? wtpAdj * 0.72 : null;
-  const wtp72Margin = Number.isFinite(wtp72Price) ? wtp72Price * (1 - feeRate) - V - dCOGS : null;
-  const diff = Number.isFinite(wtp72Margin) ? wtp72Margin - actualMargin : null;
+  const counterfactual = team?.r2?.counterfactual || null;
+  const wtp72Price = Number.isFinite(Number(counterfactual?.price))
+    ? Number(counterfactual.price)
+    : null;
+  const wtp72Margin = Number.isFinite(Number(counterfactual?.unitMargin))
+    ? Number(counterfactual.unitMargin)
+    : null;
+  const diff = Number.isFinite(Number(counterfactual?.profitDelta))
+    ? Number(counterfactual.profitDelta)
+    : null;
   const netPrice = price * (1 - feeRate);
   const channel = feeRate === 0.15 ? "ToB" : "ToC";
   const totalForBar = marginPct >= 0
@@ -294,19 +345,40 @@ function computePricingBreakdown(team) {
     wtp72Price,
     wtp72Margin,
     diff,
+    currentUnits: Number.isFinite(Number(team?.r2?.units)) ? Number(team.r2.units) : null,
+    currentProfit: Number.isFinite(Number(team?.r2?.profit)) ? Number(team.r2.profit) : null,
+    counterfactualUnits: Number(counterfactual?.units),
+    counterfactualProfit: Number(counterfactual?.profit),
     netPrice,
     totalForBar
   };
 }
 
-function getPricingCounterfactualLabel(ratio) {
-  const value = Number(ratio);
-  if (!Number.isFinite(value)) return { label: "—", color: "#64748b" };
-  if (value < 0.5) return { label: "⚠ 严重低定", color: "#EF4444" };
-  if (value < 0.65) return { label: "偏低——有提价空间", color: "#F59E0B" };
-  if (value <= 0.85) return { label: "✓ 甜点区间", color: "#10B981" };
-  if (value <= 1.1) return { label: "偏高", color: "#F59E0B" };
-  return { label: "超WTP（靠尾部用户）", color: "#EF4444" };
+function getPricingCounterfactualLabel(row) {
+  const ratio = Number(row?.ratio);
+  const profitDelta = Number(row?.diff);
+  const currentProfit = Number(row?.currentProfit);
+  const inSweet = Number.isFinite(ratio) && ratio >= 0.65 && ratio <= 0.85;
+
+  if (inSweet) {
+    return { label: "✓ 甜点区间", color: "#166534" };
+  }
+
+  if (Number.isFinite(profitDelta)) {
+    const absDelta = Math.abs(profitDelta);
+    const relDelta = Number.isFinite(currentProfit) && currentProfit !== 0
+      ? absDelta / Math.abs(currentProfit)
+      : 0;
+    if (profitDelta > 0 && relDelta > 0.05) {
+      return { label: "💰 有提价空间", color: "#1D9E75" };
+    }
+    if (profitDelta < 0 && relDelta > 0.05) {
+      return { label: "✓ 当前更优", color: "#475569" };
+    }
+    return { label: "≈ 差异不大", color: "#64748b" };
+  }
+
+  return { label: "—", color: "#64748b" };
 }
 
 function buildPriceGroups(teams) {
@@ -387,6 +459,36 @@ function sectionTitle(title, detail) {
     <div style={{ marginBottom: 14 }}>
       <div style={{ fontSize: 16, fontWeight: 900, color: "#0f172a" }}>{title}</div>
       {detail ? <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>{detail}</div> : null}
+    </div>
+  );
+}
+
+function CollapsibleCard({ title, subtitle, defaultOpen = false, children }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div style={CARD_STYLE}>
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        style={{
+          width: "100%",
+          border: "none",
+          background: "transparent",
+          padding: 0,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 12,
+          cursor: "pointer"
+        }}
+      >
+        <div style={{ textAlign: "left" }}>
+          <div style={{ fontSize: 16, fontWeight: 900, color: "#0f172a" }}>{title}</div>
+          {subtitle ? <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>{subtitle}</div> : null}
+        </div>
+        <div style={{ fontSize: 12, color: "#1a5c3a", fontWeight: 800 }}>{open ? "收起" : "展开"}</div>
+      </button>
+      {open ? <div style={{ marginTop: 14 }}>{children}</div> : null}
     </div>
   );
 }
@@ -930,6 +1032,41 @@ function WinnersCard({ teams }) {
   );
 }
 
+function DebriefGuideCard({ teams }) {
+  const n = teams.length;
+  const winner = teams[0];
+  const profitableCount = teams.filter((team) => Number(team?.r2?.profit || 0) > 0).length;
+
+  return (
+    <CollapsibleCard
+      title="课堂复盘建议流程"
+      subtitle="默认收起，展开后可按下面顺序带全班走完 Round 2 复盘。"
+      defaultOpen={false}
+    >
+      <ol style={{ margin: 0, paddingLeft: 18, lineHeight: 1.9, fontSize: 14, color: "#334155" }}>
+        <li>
+          <strong style={{ color: "#0f172a" }}>开场（2分钟）</strong>：{n}个组完成了产品研发，{profitableCount}个组盈利，{n - profitableCount}个组亏损。先看冠军卡片。
+        </li>
+        <li>
+          <strong style={{ color: "#0f172a" }}>利润排名（3分钟）</strong>：对照“利润排名”，提问为什么{winner ? getTeamLabel(winner) : "冠军组"}赚得最多。
+        </li>
+        <li>
+          <strong style={{ color: "#0f172a" }}>单台经济性（5分钟）</strong>：对照“单台经济性拆解”，讨论每一元售价最后去了哪里。
+        </li>
+        <li>
+          <strong style={{ color: "#0f172a" }}>定价决策（5分钟）</strong>：对照“定价决策质量”和“视图 C：定价反事实”，看谁定价偏低或偏高。
+        </li>
+        <li>
+          <strong style={{ color: "#0f172a" }}>因果链（5分钟）</strong>：对照“因果链：访谈 → 选卡 → 产品力 → 利润”，串起访谈、选卡、产品力和利润。
+        </li>
+        <li>
+          <strong style={{ color: "#0f172a" }}>总结（2分钟）</strong>：VP影响的是支付意愿天花板，但真正的利润还取决于成本、渠道和定价执行。
+        </li>
+      </ol>
+    </CollapsibleCard>
+  );
+}
+
 function StrategicMapCard({ teams }) {
   const cellMap = {};
   teams.forEach((team) => {
@@ -1113,11 +1250,12 @@ function ReviewAccordion({ teams, reviews, reviewLoading, expandedTeamId, onTogg
                           { label: "定价", value: formatMoney(team?.r2?.price) },
                           { label: "销量", value: Number(team?.r2?.units || 0).toLocaleString() },
                           { label: "利润", value: formatWan(team?.r2?.profit) },
+                          { label: "VP分", value: formatScore(getVpScoreValue(team)) },
+                          { label: "产品力 V", value: formatProductV(getProductVValue(team)) },
                           { label: "硬件利润", value: formatWan(team?.r2?.profitHw) },
                           { label: "订阅利润", value: formatWan(team?.r2?.profitSub) },
                           { label: "dCOGS", value: formatMoney(team?.r2?.dCOGS) },
-                          { label: "Q", value: Number(team?.r2?.Q || team?.r2?.units || 0).toLocaleString() },
-                          { label: "Vscore", value: formatPercent(team?.r2?.vscore) }
+                          { label: "Q", value: Number(team?.r2?.Q || team?.r2?.units || 0).toLocaleString() }
                         ].map((item) => (
                           <div key={item.label} style={{ padding: "8px 10px", borderRadius: 10, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
                             <div style={{ fontSize: 10, color: "#94a3b8" }}>{item.label}</div>
@@ -1338,63 +1476,73 @@ function ProfitMixCard({ teams }) {
       const hwProfit = Number(team?.r2?.profitHw || 0);
       const subProfit = Number(team?.r2?.profitSub || 0);
       const totalProfit = Number(team?.r2?.profit || 0);
+      const fixedCost = hwProfit + subProfit - totalProfit;
+      const positiveBase = Math.max(1, Math.max(hwProfit, 0) + Math.max(subProfit, 0));
       return {
         team,
         hwProfit,
         subProfit,
         totalProfit,
+        fixedCost,
+        positiveBase,
+        hwShare: hwProfit > 0 ? (hwProfit / positiveBase) * 100 : null,
+        subShare: subProfit > 0 ? (subProfit / positiveBase) * 100 : null,
+        fixedCostShare: fixedCost > 0 ? (fixedCost / positiveBase) * 100 : null,
         type: getProfitMixType(hwProfit, subProfit, totalProfit)
       };
     })
     .sort((a, b) => b.totalProfit - a.totalProfit);
 
-  const scaleMax = Math.max(1, ...rows.map((row) => Math.abs(row.hwProfit) + Math.abs(row.subProfit)));
+  const scaleMax = Math.max(1, ...rows.map((row) => row.positiveBase));
 
   return (
     <div style={CARD_STYLE}>
-      {sectionTitle("利润来源拆分", "硬件赚的还是订阅赚的？")}
+      {sectionTitle("利润来源拆分", "把硬件毛利、订阅收入和固定成本拆开后，总利润的来龙去脉会更清楚。")}
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {rows.map(({ team, hwProfit, subProfit, totalProfit, type }) => {
-          const hwWidth = Math.abs(hwProfit) / scaleMax * 50;
-          const subWidth = Math.abs(subProfit) / scaleMax * 50;
-          const hwShare = Math.abs(totalProfit) > 0 && hwProfit >= 0 ? (hwProfit / Math.abs(totalProfit)) * 100 : null;
-          const subShare = Math.abs(totalProfit) > 0 && subProfit >= 0 ? (subProfit / Math.abs(totalProfit)) * 100 : null;
+        {rows.map(({ team, hwProfit, subProfit, totalProfit, fixedCost, positiveBase, hwShare, subShare, fixedCostShare, type }) => {
+          const hwWidth = Math.max(hwProfit, 0) / scaleMax * 100;
+          const subWidth = Math.max(subProfit, 0) / scaleMax * 100;
+          const fixedCostWidth = Math.max(fixedCost, 0) / scaleMax * 100;
           return (
             <div key={team.id} style={{ border: "1px solid #e2e8f0", borderRadius: 14, padding: "12px 14px" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "120px 1fr auto", gap: 12, alignItems: "center" }}>
-                <div style={{ fontSize: 13, fontWeight: 900, color: team.color }}>{getTeamLabel(team)}</div>
+              <div style={{ display: "grid", gridTemplateColumns: "120px 1fr auto", gap: 12, alignItems: "start" }}>
+                <div style={{ fontSize: 13, fontWeight: 900, color: team.color, marginTop: 4 }}>{getTeamLabel(team)}</div>
                 <div>
-                  <div style={{ height: 16, borderRadius: 999, background: "#f1f5f9", position: "relative", overflow: "hidden" }}>
-                    <div style={{ position: "absolute", left: "50%", top: 0, bottom: 0, width: 1, background: "#cbd5e1" }} />
-                    {hwProfit < 0 ? (
-                      <div style={{ position: "absolute", right: "50%", top: 0, bottom: 0, width: `${hwWidth}%`, background: "#dc2626" }} />
-                    ) : (
-                      <div style={{ position: "absolute", left: "50%", top: 0, bottom: 0, width: `${hwWidth}%`, background: "#2563eb" }} />
-                    )}
-                    {subProfit > 0 ? (
-                      <div
-                        style={{
-                          position: "absolute",
-                          left: `calc(50% + ${hwProfit > 0 ? hwWidth : 0}%)`,
-                          top: 0,
-                          bottom: 0,
-                          width: `${subWidth}%`,
-                          background: "#7c3aed"
-                        }}
-                      />
-                    ) : null}
+                  <div style={{ height: 16, borderRadius: 999, background: "#f1f5f9", overflow: "hidden", display: "flex" }}>
+                    {hwWidth > 0 ? <div style={{ width: `${hwWidth}%`, background: "#2563eb" }} /> : null}
+                    {subWidth > 0 ? <div style={{ width: `${subWidth}%`, background: "#7c3aed" }} /> : null}
+                    {fixedCostWidth > 0 ? <div style={{ width: `${fixedCostWidth}%`, background: "#ef4444" }} /> : null}
                   </div>
-                  <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 6, fontSize: 11 }}>
-                    <span style={{ color: hwProfit >= 0 ? "#2563eb" : "#dc2626", fontWeight: 800 }}>
-                      硬件 {formatWan(hwProfit)}{Number.isFinite(hwShare) ? ` (${formatPercentNumber(hwShare, 0)})` : ""}
-                    </span>
-                    <span style={{ color: "#7c3aed", fontWeight: 800 }}>
-                      订阅 {formatWan(subProfit)}{Number.isFinite(subShare) ? ` (${formatPercentNumber(subShare, 0)})` : ""}
-                    </span>
+                  <div style={{ display: "grid", gap: 6, marginTop: 8, fontSize: 11 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                      <span style={{ color: hwProfit >= 0 ? "#2563eb" : "#dc2626", fontWeight: 800 }}>
+                        {hwProfit >= 0 ? "硬件毛利" : "硬件亏损"}
+                      </span>
+                      <span style={{ color: hwProfit >= 0 ? "#2563eb" : "#dc2626", fontWeight: 800 }}>
+                        {formatWan(hwProfit)}{Number.isFinite(hwShare) ? ` (${formatPercentNumber(hwShare, 0)})` : ""}
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                      <span style={{ color: "#7c3aed", fontWeight: 800 }}>订阅收入</span>
+                      <span style={{ color: "#7c3aed", fontWeight: 800 }}>
+                        {formatWan(subProfit)}{Number.isFinite(subShare) ? ` (${formatPercentNumber(subShare, 0)})` : ""}
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                      <span style={{ color: "#dc2626", fontWeight: 800 }}>固定成本</span>
+                      <span style={{ color: "#dc2626", fontWeight: 800 }}>
+                        -{formatWan(Math.abs(fixedCost))}{Number.isFinite(fixedCostShare) ? ` (${formatPercentNumber(fixedCostShare, 0)})` : ""}
+                      </span>
+                    </div>
+                    <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 6, display: "flex", justifyContent: "space-between", gap: 12 }}>
+                      <span style={{ color: "#0f172a", fontWeight: 900 }}>总利润</span>
+                      <span style={{ color: Number(totalProfit) >= 0 ? "#166534" : "#dc2626", fontWeight: 900 }}>{formatWan(totalProfit)}</span>
+                    </div>
                   </div>
                 </div>
                 <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: 12, fontWeight: 900, color: Number(totalProfit) >= 0 ? "#166534" : "#dc2626" }}>{formatWan(totalProfit)}</div>
+                  <div style={{ fontSize: 11, color: "#94a3b8" }}>占比基数</div>
+                  <div style={{ fontSize: 12, fontWeight: 900, color: "#0f172a" }}>{formatWan(positiveBase)}</div>
                   <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>{type}</div>
                 </div>
               </div>
@@ -1407,6 +1555,8 @@ function ProfitMixCard({ teams }) {
 }
 
 function ChannelFeeErosionCard({ teams }) {
+  if (teams.length < 3) return null;
+
   const rows = teams
     .map((team) => {
       const feeRate = getChannelFeeRate(team);
@@ -1457,6 +1607,7 @@ function ChannelFeeErosionCard({ teams }) {
 }
 
 function PricingDeepDebriefSection({ teams }) {
+  const showClassCommentary = teams.length >= 3;
   const priceGroups = buildPriceGroups(teams);
   const maxGroupCount = Math.max(1, ...priceGroups.map((item) => item.count));
   const pricingRows = teams
@@ -1504,9 +1655,11 @@ function PricingDeepDebriefSection({ teams }) {
   const maxSharedDcogs = Math.max(-Infinity, ...sharedPriceTeams.map((row) => Number(row?.breakdown?.dCOGS)));
   const maxSharedUnitMargin = Math.max(-Infinity, ...sharedPriceTeams.map((row) => Number(row?.unitMargin)));
   const minSharedUnits = Math.min(Infinity, ...sharedPriceTeams.map((row) => Number(row?.units)));
-  const dynamicSubtitle = priceGroups.length === 3
-    ? "全班只用了3个价格档位——你们真的做了定价决策吗？"
-    : `全班只用了${priceGroups.length}个价格档位——你们真的做了定价决策吗？`;
+  const dynamicSubtitle = !showClassCommentary
+    ? "先看各组的价格分布与反事实结果。"
+    : (priceGroups.length === 3
+        ? "全班只用了3个价格档位——你们真的做了定价决策吗？"
+        : `全班只用了${priceGroups.length}个价格档位——你们真的做了定价决策吗？`);
   const tableHeadStyle = {
     padding: "10px 12px",
     textAlign: "left",
@@ -1567,9 +1720,11 @@ function PricingDeepDebriefSection({ teams }) {
             </div>
           ))}
         </div>
-        <div style={{ marginTop: 14, fontSize: 12, color: "#475569", lineHeight: 1.8 }}>
-          {`${teams.length}组只用了${priceGroups.length}个价格档位。定价是模拟中最自由的决策，但大多数团队选了默认值而非深思熟虑。`}
-        </div>
+        {showClassCommentary ? (
+          <div style={{ marginTop: 14, fontSize: 12, color: "#475569", lineHeight: 1.8 }}>
+            {`${teams.length}组只用了${priceGroups.length}个价格档位。定价是模拟中最自由的决策，但大多数团队选了默认值而非深思熟虑。`}
+          </div>
+        ) : null}
       </div>
 
       <div style={CARD_STYLE}>
@@ -1641,23 +1796,36 @@ function PricingDeepDebriefSection({ teams }) {
           <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0 }}>
             <thead>
               <tr>
-                {["组", "当前定价", "P/WTP", "单台毛利", "@72%WTP定价", "@72%毛利", "差额", "判断"].map((label) => (
+                {["组", "当前定价", "P/WTP", "销量", "总利润", "@72%WTP定价", "@72%销量", "@72%总利润", "利润差额", "判断"].map((label) => (
                   <th key={label} style={tableHeadStyle}>{label}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {counterfactualRows.map((row, index) => {
-                const label = getPricingCounterfactualLabel(row.ratio);
+                const label = getPricingCounterfactualLabel(row);
+                const currentUnits = Number.isFinite(Number(row.currentUnits)) ? Number(row.currentUnits) : null;
+                const currentProfit = Number.isFinite(Number(row.currentProfit)) ? Number(row.currentProfit) : null;
+                const counterfactualUnits = Number.isFinite(Number(row.counterfactualUnits)) ? Number(row.counterfactualUnits) : null;
+                const counterfactualProfit = Number.isFinite(Number(row.counterfactualProfit)) ? Number(row.counterfactualProfit) : null;
+                const diff = Number.isFinite(Number(row.diff)) ? Number(row.diff) : null;
                 return (
                   <tr key={row.team.id} style={{ background: index % 2 === 0 ? "#ffffff" : "#f8fafc" }}>
                     <td style={{ ...tableCellBaseStyle, fontWeight: 800, color: row.team.color }}>{getTeamLabel(row.team)}</td>
                     <td style={tableCellBaseStyle}>{formatMoney(row.price)}</td>
                     <td style={tableCellBaseStyle}>{formatPercent(row.ratio, 0)}</td>
-                    <td style={{ ...tableCellBaseStyle, color: row.actualMargin >= 0 ? "#166534" : "#dc2626", fontWeight: 800 }}>{formatMoney(row.actualMargin)}</td>
-                    <td style={tableCellBaseStyle}>{formatMoney(row.wtp72Price)}</td>
-                    <td style={{ ...tableCellBaseStyle, color: Number(row.wtp72Margin) >= 0 ? "#166534" : "#dc2626", fontWeight: 800 }}>{formatMoney(row.wtp72Margin)}</td>
-                    <td style={{ ...tableCellBaseStyle, color: Number(row.diff) > 0 ? "#10B981" : "#64748b", fontWeight: 800 }}>{formatMoney(row.diff)}</td>
+                    <td style={tableCellBaseStyle}>{currentUnits != null ? currentUnits.toLocaleString() : "—"}</td>
+                    <td style={{ ...tableCellBaseStyle, color: currentProfit != null && currentProfit >= 0 ? "#166534" : (currentProfit != null ? "#dc2626" : "#334155"), fontWeight: 800 }}>
+                      {currentProfit != null ? formatWan(currentProfit) : "—"}
+                    </td>
+                    <td style={tableCellBaseStyle}>{Number.isFinite(Number(row.wtp72Price)) ? formatMoney(row.wtp72Price) : "—"}</td>
+                    <td style={tableCellBaseStyle}>{counterfactualUnits != null ? counterfactualUnits.toLocaleString() : "—"}</td>
+                    <td style={{ ...tableCellBaseStyle, color: counterfactualProfit != null && counterfactualProfit >= 0 ? "#166534" : (counterfactualProfit != null ? "#dc2626" : "#334155"), fontWeight: 800 }}>
+                      {counterfactualProfit != null ? formatWan(counterfactualProfit) : "—"}
+                    </td>
+                    <td style={{ ...tableCellBaseStyle, color: diff != null && diff > 0 ? "#1D9E75" : "inherit", fontWeight: 800 }}>
+                      {diff != null ? `${diff > 0 ? "+" : ""}${formatWan(diff)}` : "—"}
+                    </td>
                     <td style={{ ...tableCellBaseStyle, color: label.color, fontWeight: 900 }}>{label.label}</td>
                   </tr>
                 );
@@ -1798,6 +1966,8 @@ function Round1DivergenceCard({ teams }) {
 }
 
 function VpVsProfitCard({ teams }) {
+  if (teams.length < 3) return null;
+
   const profitSorted = teams.slice().sort((a, b) => Number(b?.r2?.profit || 0) - Number(a?.r2?.profit || 0));
   const profitRankMap = Object.fromEntries(profitSorted.map((team, index) => [team.id, index + 1]));
   const maxVp = Math.max(0, ...teams.map((team) => Number(team?.r1?.vpFinalScore ?? team?.r1?.VPscore ?? 0)));
@@ -1860,19 +2030,20 @@ function InterviewToProfitChainCard({ teams }) {
     .map((team) => {
       const avgEvi = computeAverageMemberEvi(team);
       const coverCore = Number(team?.r2?.coverCore);
-      const roi = computeRdRoiPct(team);
+      const productV = getProductVValue(team);
       let label = "持续优化";
       if (Number.isFinite(avgEvi) && avgEvi < 0.65) label = "⚠ 访谈薄弱";
       else if (Number.isFinite(coverCore) && coverCore < 0.8) label = "⚠ 选卡偏移";
-      else if (Number.isFinite(roi) && roi <= 0) label = "⚠ 定价断裂";
-      else if (Number.isFinite(avgEvi) && Number.isFinite(coverCore) && Number.isFinite(roi) && avgEvi >= 0.8 && coverCore >= 0.8 && roi >= 80) label = "✓ 全链路健康";
+      else if (Number.isFinite(productV) && productV < 0.25) label = "⚠ 产品力不足";
+      else if (Number.isFinite(avgEvi) && Number.isFinite(coverCore) && Number.isFinite(productV) && avgEvi >= 0.8 && coverCore >= 0.8 && productV >= 0.5) label = "✓ 全链路健康";
       return {
         team,
         avgEvi,
         coverCore: Number.isFinite(coverCore) ? coverCore : null,
-        roi,
+        productV: Number.isFinite(productV) ? productV : null,
         profit: Number(team?.r2?.profit || 0),
-        label
+        label,
+        causalDetail: team?.causalDetail || null
       };
     })
     .sort((a, b) => b.profit - a.profit);
@@ -1892,41 +2063,103 @@ function InterviewToProfitChainCard({ teams }) {
   });
   const toneForEvi = (value) => !Number.isFinite(value) ? null : (value >= 0.8 ? "green" : (value >= 0.65 ? "orange" : "red"));
   const toneForCover = (value) => !Number.isFinite(value) ? null : (value >= 0.8 ? "green" : (value >= 0.6 ? "orange" : "red"));
-  const toneForRoi = (value) => !Number.isFinite(value) ? null : (value >= 80 ? "green" : (value >= 30 ? "orange" : (value > 0 ? "yellow" : "red")));
+  const toneForProductV = (value) => !Number.isFinite(value) ? null : (value >= 0.5 ? "green" : (value >= 0.25 ? "orange" : "red"));
 
   return (
     <div style={CARD_STYLE}>
-      {sectionTitle("因果链：访谈 → 选卡 → 利润", "访谈做得好的组，选卡更精准，利润更高")}
+      {sectionTitle("因果链：访谈 → 选卡 → 产品力 → 利润", "访谈质量影响需求判断，需求判断再影响产品力和最终利润。")}
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {rows.map(({ team, avgEvi, coverCore, roi, profit, label }) => (
-          <div key={team.id} style={{ border: "1px solid #e2e8f0", borderRadius: 14, padding: "12px 14px" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "90px 1fr auto", gap: 12, alignItems: "center" }}>
-              <div style={{ fontSize: 13, fontWeight: 900, color: team.color }}>{getTeamLabel(team)}</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                <span style={Number.isFinite(avgEvi) ? pillStyle(toneForEvi(avgEvi)) : { ...pillStyle("orange"), background: "#f1f5f9", color: "#64748b" }}>
-                  evi={Number.isFinite(avgEvi) ? avgEvi.toFixed(2) : "—"}
-                </span>
-                <span style={{ color: "#94a3b8", fontWeight: 800 }}>→</span>
-                <span style={Number.isFinite(coverCore) ? pillStyle(toneForCover(coverCore)) : { ...pillStyle("orange"), background: "#f1f5f9", color: "#64748b" }}>
-                  coverCore={Number.isFinite(coverCore) ? formatPercent(coverCore, 0) : "—"}
-                </span>
-                <span style={{ color: "#94a3b8", fontWeight: 800 }}>→</span>
-                <span style={Number.isFinite(roi) ? pillStyle(toneForRoi(roi)) : { ...pillStyle("orange"), background: "#f1f5f9", color: "#64748b" }}>
-                  dCOGS效率 {Number.isFinite(roi) ? formatPercentNumber(roi, 0) : "—"}
-                </span>
-                <span style={{ color: "#94a3b8", fontWeight: 800 }}>→</span>
-                <span style={{ ...pillStyle(profit >= 0 ? "green" : "red"), background: profit >= 0 ? "#dcfce7" : "#fee2e2" }}>
-                  利润 {formatWan(profit)}
-                </span>
+        {rows.map(({ team, avgEvi, coverCore, productV, profit, label, causalDetail }) => {
+          const hasUncoveredCore = Array.isArray(causalDetail?.uncoveredCoreTags) && causalDetail.uncoveredCoreTags.length > 0;
+          const hasUncoveredNice = Array.isArray(causalDetail?.uncoveredNiceTags) && causalDetail.uncoveredNiceTags.length > 0;
+          const showDetail = Boolean(causalDetail);
+          return (
+            <div key={team.id} style={{ border: "1px solid #e2e8f0", borderRadius: 14, padding: "12px 14px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "90px 1fr auto", gap: 12, alignItems: "center" }}>
+                <div style={{ fontSize: 13, fontWeight: 900, color: team.color }}>{getTeamLabel(team)}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <span style={Number.isFinite(avgEvi) ? pillStyle(toneForEvi(avgEvi)) : { ...pillStyle("orange"), background: "#f1f5f9", color: "#64748b" }}>
+                    evi={Number.isFinite(avgEvi) ? avgEvi.toFixed(2) : "—"}
+                  </span>
+                  <span style={{ color: "#94a3b8", fontWeight: 800 }}>→</span>
+                  <span style={Number.isFinite(coverCore) ? pillStyle(toneForCover(coverCore)) : { ...pillStyle("orange"), background: "#f1f5f9", color: "#64748b" }}>
+                    coverCore={Number.isFinite(coverCore) ? formatPercent(coverCore, 0) : "—"}
+                  </span>
+                  <span style={{ color: "#94a3b8", fontWeight: 800 }}>→</span>
+                  <span style={Number.isFinite(productV) ? pillStyle(toneForProductV(productV)) : { ...pillStyle("orange"), background: "#f1f5f9", color: "#64748b" }}>
+                    产品力V {Number.isFinite(productV) ? formatProductV(productV) : "—"}
+                  </span>
+                  <span style={{ color: "#94a3b8", fontWeight: 800 }}>→</span>
+                  <span style={{ ...pillStyle(profit >= 0 ? "green" : "red"), background: profit >= 0 ? "#dcfce7" : "#fee2e2" }}>
+                    利润 {formatWan(profit)}
+                  </span>
+                </div>
+                <div style={{ fontSize: 11, fontWeight: 800, color: label.includes("✓") ? "#166534" : (label.includes("⚠") ? "#b45309" : "#64748b") }}>{label}</div>
               </div>
-              <div style={{ fontSize: 11, fontWeight: 800, color: label.includes("✓") ? "#166534" : (label.includes("⚠") ? "#b45309" : "#64748b") }}>{label}</div>
+              {showDetail ? (
+                <div style={{
+                  marginTop: 10,
+                  padding: "4px 0 0",
+                  fontSize: 12,
+                  color: "#888",
+                  lineHeight: 1.6,
+                  borderTop: "1px solid #f0f0f0"
+                }}>
+                  {(hasUncoveredCore || hasUncoveredNice) && (
+                    <div>
+                      {hasUncoveredCore && (
+                        <span>
+                          未覆盖核心需求：
+                          <span style={{ color: "#E24B4A" }}>
+                            {causalDetail.uncoveredCoreTags.join("、")}
+                          </span>
+                        </span>
+                      )}
+                      {hasUncoveredCore && hasUncoveredNice && (
+                        <span> | </span>
+                      )}
+                      {hasUncoveredNice && (
+                        <span>
+                          未覆盖亮点需求：
+                          <span style={{ color: "#999" }}>
+                            {causalDetail.uncoveredNiceTags.join("、")}
+                          </span>
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {!hasUncoveredCore && !hasUncoveredNice && (
+                    <div>
+                      <span>
+                        未覆盖核心需求：
+                        <span style={{ color: "#E24B4A" }}>无</span>
+                      </span>
+                      <span> | </span>
+                      <span>
+                        未覆盖亮点需求：
+                        <span style={{ color: "#999" }}>无</span>
+                      </span>
+                    </div>
+                  )}
+                  {causalDetail?.warningExplain && (
+                    <div style={{ marginTop: 2 }}>
+                      <span style={{ color: "#E89A3C" }}>
+                        {causalDetail.warningLabel || "提示"}
+                      </span>
+                      ：{causalDetail.warningExplain}
+                    </div>
+                  )}
+                </div>
+              ) : null}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
-      <div style={{ marginTop: 10, fontSize: 12, color: "#475569", lineHeight: 1.8 }}>
-        coverCore &gt;= 80% 的组平均利润 {avgHealthyProfit == null ? "—" : formatWan(avgHealthyProfit)}，coverCore &lt; 80% 的组平均利润 {avgWeakerProfit == null ? "—" : formatWan(avgWeakerProfit)}。访谈质量影响选卡方向，选卡方向影响产品-市场匹配度。
-      </div>
+      {teams.length >= 4 ? (
+        <div style={{ marginTop: 10, fontSize: 12, color: "#475569", lineHeight: 1.8 }}>
+          coverCore &gt;= 80% 的组平均利润 {avgHealthyProfit == null ? "—" : formatWan(avgHealthyProfit)}，coverCore &lt; 80% 的组平均利润 {avgWeakerProfit == null ? "—" : formatWan(avgWeakerProfit)}。访谈质量影响选卡方向，选卡方向影响产品力和利润表现。
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -2018,6 +2251,7 @@ function Round2Tab({ teams, reviews, reviewLoading, expandedTeamId, onToggle, ra
   }
   return (
     <div style={{ display: "grid", gap: 16 }}>
+      <DebriefGuideCard teams={teams} />
       <WinnersCard teams={teams} />
       <div style={{ display: "grid", gridTemplateColumns: "1.05fr 0.95fr", gap: 16 }}>
         <StrategicMapCard teams={teams} />
@@ -2031,7 +2265,7 @@ function Round2Tab({ teams, reviews, reviewLoading, expandedTeamId, onToggle, ra
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
               <thead>
                 <tr style={{ background: "#f8fafc", color: "#64748b" }}>
-                  {["组别", "dCOGS", "风险", "Q", "Vscore", "实际毛利率", "硬件利润", "订阅利润", "总利润"].map((label) => (
+                  {["组别", "VP分", "产品力 V", "dCOGS", "风险", "Q", "实际毛利率", "硬件利润", "订阅利润", "总利润"].map((label) => (
                     <th key={label} style={{ padding: "9px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0" }}>{label}</th>
                   ))}
                 </tr>
@@ -2039,13 +2273,16 @@ function Round2Tab({ teams, reviews, reviewLoading, expandedTeamId, onToggle, ra
               <tbody>
                 {teams.map((team) => {
                   const gm = computeActualGm(team);
+                  const vpScore = getVpScoreValue(team);
+                  const productV = getProductVValue(team);
                   return (
                     <tr key={team.id}>
                       <td style={{ padding: "10px", borderBottom: "1px solid #e2e8f0", fontWeight: 800, color: team.color }}>{team.displayName}</td>
+                      <td style={{ padding: "10px", borderBottom: "1px solid #e2e8f0" }}>{formatScore(vpScore)}</td>
+                      <td style={{ padding: "10px", borderBottom: "1px solid #e2e8f0" }}>{formatProductV(productV)}</td>
                       <td style={{ padding: "10px", borderBottom: "1px solid #e2e8f0" }}>{formatMoney(team?.r2?.dCOGS)}</td>
                       <td style={{ padding: "10px", borderBottom: "1px solid #e2e8f0" }}>{formatPercent(team?.r2?.riskTotal)}</td>
                       <td style={{ padding: "10px", borderBottom: "1px solid #e2e8f0" }}>{Number(team?.r2?.Q || team?.r2?.units || 0).toLocaleString()}</td>
-                      <td style={{ padding: "10px", borderBottom: "1px solid #e2e8f0" }}>{formatPercent(team?.r2?.vscore)}</td>
                       <td style={{ padding: "10px", borderBottom: "1px solid #e2e8f0", color: metricColor(gm, { good: 0.3, warn: 0.2 }), fontWeight: 800 }}>{formatPercent(gm)}</td>
                       <td style={{ padding: "10px", borderBottom: "1px solid #e2e8f0" }}>{formatWan(team?.r2?.profitHw)}</td>
                       <td style={{ padding: "10px", borderBottom: "1px solid #e2e8f0" }}>{formatWan(team?.r2?.profitSub)}</td>
@@ -2229,7 +2466,6 @@ export default function TeacherDebriefTabs({ activeTab, teacherCode, onExportJso
   const loadDebriefData = async (force = false) => {
     if (!teacherCode) return;
     if (loading) return;
-    if (debriefData && !force) return;
     if (!mountedRef.current) return;
     setLoading(true);
     setError("");
@@ -2255,7 +2491,7 @@ export default function TeacherDebriefTabs({ activeTab, teacherCode, onExportJso
 
   useEffect(() => {
     if (!teacherCode || !debriefTabs.includes(activeTab)) return;
-    loadDebriefData();
+    loadDebriefData(true);
   }, [activeTab, teacherCode]);
 
   const round1Teams = useMemo(

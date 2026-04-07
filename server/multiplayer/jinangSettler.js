@@ -36,6 +36,10 @@ function clamp01(v) {
   return Math.max(0, Math.min(1, Number(v || 0)));
 }
 
+function computeJinangBonus(matchStrength) {
+  return toFixedSafe(clamp01(matchStrength) * 0.05, 4);
+}
+
 function strengthLabel(matchStrength) {
   if (matchStrength > 0.7) return "高度契合";
   if (matchStrength >= 0.5) return "部分契合";
@@ -164,6 +168,9 @@ async function settleAllJinang(teamId) {
 
     const matchStrength = clamp01(rawStrength);
     const matched = matchStrength >= 0.5;
+    const bonus = jinangType === "market" && matched
+      ? computeJinangBonus(matchStrength)
+      : 0;
     const effectScaled = matched
       ? scaleEffectNumbers(card.effect_at_full_match || {}, matchStrength)
       : {};
@@ -172,7 +179,8 @@ async function settleAllJinang(teamId) {
       ? {
           apply_to: "round1",
           match_strength: toFixedSafe(matchStrength, 4),
-          E_boost_eligible: matched
+          E_boost_eligible: matched,
+          bonus
         }
       : (matched
         ? {
@@ -210,6 +218,7 @@ async function settleAllJinang(teamId) {
       name: card.name,
       matched,
       match_strength: toFixedSafe(matchStrength, 4),
+      bonus,
       match_reason: reason,
       effect_applied: effectApplied
     });

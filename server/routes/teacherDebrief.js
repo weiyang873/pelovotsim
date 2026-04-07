@@ -494,12 +494,15 @@ async function getLatestRound2Logs(teamId, sessionId) {
     FROM computation_log
     WHERE team_id = ${sqlQuote(teamId)}
       AND session_id = ${sqlQuote(normalizeSessionId(sessionId))}
-      AND stage IN ('r2_profit', 'r2_volume')
+      AND stage IN ('r2_profit', 'r2_volume', 'r2_tag_layering', 'r2_card_selection', 'r2_coverage')
     ORDER BY timestamp DESC, id DESC;
   `);
   const picked = {
     r2_profit: null,
-    r2_volume: null
+    r2_volume: null,
+    r2_tag_layering: null,
+    r2_card_selection: null,
+    r2_coverage: null
   };
   rows.forEach((row) => {
     if (!picked[row.stage]) {
@@ -509,6 +512,103 @@ async function getLatestRound2Logs(teamId, sessionId) {
     }
   });
   return picked;
+}
+
+function normalizeTagList(list) {
+  return Array.from(new Set(
+    (Array.isArray(list) ? list : [])
+      .map((item) => String(item || "").trim())
+      .filter(Boolean)
+  ));
+}
+
+function getCausalWarning(coverCore, vscore) {
+  const coreCoverage = Number(coverCore);
+  const productV = Number(vscore);
+  if (Number.isFinite(coreCoverage) && coreCoverage < 0.5) {
+    const missPct = ((1 - coreCoverage) * 100).toFixed(0);
+    return {
+      type: "card_drift",
+      label: "选卡偏移",
+      explain: `访谈发现的核心需求有${missPct}%未被选卡覆盖，产品与用户需求脱节`
+    };
+  }
+  if (Number.isFinite(productV) && productV < 0.25) {
+    return {
+      type: "low_v",
+      label: "产品力不足",
+      explain: "选卡覆盖了核心需求但档位偏低或亮点需求缺失，产品整体竞争力不足"
+    };
+  }
+  return { type: null, label: null, explain: null };
+}
+
+function buildCausalDetail(result, logs, coverCore, vscore) {
+  const coverageLog = logs?.r2_coverage || {};
+  const tagLayeringLog = logs?.r2_tag_layering || {};
+  const cardSelectionLog = logs?.r2_card_selection || {};
+  const tagBreakdown = Array.isArray(coverageLog.tag_breakdown)
+    ? coverageLog.tag_breakdown
+    : [];
+
+  let coreTags = normalizeTagList(
+    tagBreakdown.filter((item) => item?.tier === "core").map((item) => item.tag)
+  );
+  let niceTags = normalizeTagList(
+    tagBreakdown.filter((item) => item?.tier === "nice").map((item) => item.tag)
+  );
+
+  if (!coreTags.length && !niceTags.length) {
+    coreTags = normalizeTagList(tagLayeringLog.core_tags);
+    niceTags = normalizeTagList(tagLayeringLog.nice_tags);
+  }
+
+  if (!coreTags.length && !niceTags.length && Array.isArray(result?.tagBreakdown)) {
+    coreTags = normalizeTagList(
+      result.tagBreakdown.filter((item) => item?.tier === "core").map((item) => item.tag)
+    );
+    niceTags = normalizeTagList(
+      result.tagBreakdown.filter((item) => item?.tier === "nice").map((item) => item.tag)
+    );
+  }
+
+  let coveredTagSet = new Set(
+    tagBreakdown
+      .filter((item) => Number(item?.covered || 0) > 0)
+      .map((item) => String(item.tag || "").trim())
+      .filter(Boolean)
+  );
+
+  if (coveredTagSet.size === 0) {
+    coveredTagSet = new Set(
+      (Array.isArray(cardSelectionLog.selections) ? cardSelectionLog.selections : [])
+        .flatMap((item) => Array.isArray(item?.covers) ? item.covers : [])
+        .map((item) => String(item || "").trim())
+        .filter(Boolean)
+    );
+  }
+
+  if (!coreTags.length && !niceTags.length) {
+    return null;
+  }
+
+  const coveredCoreTags = coreTags.filter((tag) => coveredTagSet.has(tag));
+  const uncoveredCoreTags = coreTags.filter((tag) => !coveredTagSet.has(tag));
+  const coveredNiceTags = niceTags.filter((tag) => coveredTagSet.has(tag));
+  const uncoveredNiceTags = niceTags.filter((tag) => !coveredTagSet.has(tag));
+  const warning = getCausalWarning(coverCore, vscore);
+
+  return {
+    coreTags,
+    coveredCoreTags,
+    uncoveredCoreTags,
+    niceTags,
+    coveredNiceTags,
+    uncoveredNiceTags,
+    warningType: warning.type,
+    warningLabel: warning.label,
+    warningExplain: warning.explain
+  };
 }
 
 async function getRound1VpLogs(teamId, sessionId) {
@@ -681,9 +781,11 @@ async function buildTeamRecord(teamRow, sessionId, teamIndex) {
     : (snapshot?.result?.profit_per_unit ?? null);
   const vscore = toFiniteNumber(volumeLog.Vscore, snapshot?.result?.vscore);
   const evi = toFiniteNumber(snapshot?.radar?.evi, result.evi);
+  const effectiveWtpAdj = toFiniteNumber(result.wtpPrime, result.WTP, r1.wtpAdj);
 
   const r2 = {
     price: toFiniteNumber(profitLog.P, snapshot?.submission?.price),
+    wtpAdj: effectiveWtpAdj,
     dCOGS: toFiniteNumber(profitLog.dCOGS, snapshot?.submission?.dcogs),
     cardCount: snapshot?.submission?.card_count ?? 0,
     riskTotal: snapshot?.submission?.risk_total ?? toFiniteNumber(result.risk, null),
@@ -708,6 +810,30 @@ async function buildTeamRecord(teamRow, sessionId, teamIndex) {
     gm: actualGm,
     actualGm
   };
+  const causalDetail = buildCausalDetail(result, logs, r2.coverCore, r2.vscore);
+
+  const counterfactualPrice = Number.isFinite(Number(r2.wtpAdj)) && Number(r2.wtpAdj) > 0
+    ? Math.round(Number(r2.wtpAdj) * 0.72)
+    : null;
+
+  if (snapshot?.submission && Number.isFinite(counterfactualPrice) && counterfactualPrice > 0) {
+    try {
+      const counterfactual = await Round2.computeProfitAtPrice(teamRow.id, sessionId, counterfactualPrice);
+      r2.counterfactual = {
+        price: counterfactualPrice,
+        units: toFiniteNumber(counterfactual?.units, null),
+        profit: toFiniteNumber(counterfactual?.profit, null),
+        unitMargin: toFiniteNumber(counterfactual?.unitMargin, null),
+        profitDelta: Number.isFinite(Number(counterfactual?.profit)) && Number.isFinite(Number(r2.profit))
+          ? Number(counterfactual.profit) - Number(r2.profit)
+          : null
+      };
+    } catch (_) {
+      r2.counterfactual = null;
+    }
+  } else {
+    r2.counterfactual = null;
+  }
 
   return {
     id: teamRow.id,
@@ -719,6 +845,7 @@ async function buildTeamRecord(teamRow, sessionId, teamIndex) {
     memberCount: Number(teamRow.team_size || members.length || 0),
     r1,
     r2,
+    causalDetail,
     vpTimeline: vpJourney.iterations
   };
 }

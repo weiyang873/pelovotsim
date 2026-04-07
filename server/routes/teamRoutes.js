@@ -145,6 +145,10 @@ function toCompressedDeltaPercent(fromMultiplier, toMultiplier) {
   return Math.round((to - from) * 100);
 }
 
+function toRawBonusPercent(bonus) {
+  return Math.round(Number(bonus || 0) * 100);
+}
+
 async function resolveIterationSpeaker(teamId, memberId) {
   const mid = String(memberId || "").trim();
   if (!mid) return { memberId: null, speakerName: "", speakerPersona: "" };
@@ -217,6 +221,64 @@ function computeJinangWtpBonus(matchStrength) {
   return Number((clamp01(matchStrength) * 0.05).toFixed(4));
 }
 
+function roundJinangBonus(value) {
+  return Number(Number(value || 0).toFixed(4));
+}
+
+function normalizeMarketJinangEffect(input) {
+  if (input && typeof input === "object" && !Array.isArray(input)) {
+    return {
+      topMatchStrength: clamp01(input.topMatchStrength),
+      totalBonus: roundJinangBonus(Math.max(0, Number(input.totalBonus || 0)))
+    };
+  }
+  const topMatchStrength = clamp01(input);
+  return {
+    topMatchStrength,
+    totalBonus: computeJinangWtpBonus(topMatchStrength)
+  };
+}
+
+function parseSettlementEffect(item) {
+  try {
+    return item?.effect_applied && typeof item.effect_applied === "object"
+      ? item.effect_applied
+      : JSON.parse(item?.effect_applied || "{}");
+  } catch (_) {
+    return {};
+  }
+}
+
+function summarizeEligibleMarketSettlements(settlements) {
+  const list = Array.isArray(settlements) ? settlements : [];
+  const items = list
+    .filter((item) => item && item.jinang_type === "market" && item.matched)
+    .map((item) => {
+      const effect = parseSettlementEffect(item);
+      if (!effect.E_boost_eligible) return null;
+      const matchStrength = clamp01(effect.match_strength ?? item.match_strength ?? 0);
+      const bonus = roundJinangBonus(
+        Number.isFinite(Number(effect.bonus))
+          ? Number(effect.bonus)
+          : computeJinangWtpBonus(matchStrength)
+      );
+      return {
+        ...item,
+        match_strength: matchStrength,
+        bonus
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => Number(b.match_strength || 0) - Number(a.match_strength || 0));
+
+  return {
+    items,
+    topItem: items[0] || null,
+    topMatchStrength: items[0] ? Number(items[0].match_strength || 0) : 0,
+    totalBonus: roundJinangBonus(items.reduce((sum, item) => sum + Number(item.bonus || 0), 0))
+  };
+}
+
 function scoreMarketCardPreview(card, decision) {
   const weights = card?.affinity_weights || {};
   const dims = [];
@@ -248,25 +310,30 @@ async function getPreviewMarketJinang(teamId, gridId, architecture) {
   const marketMap = Object.fromEntries((cfg.market || []).map((card) => [card.id, card]));
   const members = Array.isArray(team.members) ? team.members : [];
 
-  let best = null;
-  members.forEach((member) => {
+  const matchedItems = members.map((member) => {
     const card = marketMap[member.jinang_market_id];
-    if (!card) return;
+    if (!card) return null;
     const matchStrength = roundToTenth(scoreMarketCardPreview(card, decision), 0);
     const matched = matchStrength >= 0.5;
-    if (!best || matchStrength > best.match_strength) {
-      best = {
-        id: card.id,
-        name: card.name,
-        member_id: member.id,
-        member_name: member.member_name,
-        match_strength: matchStrength,
-        matched
-      };
-    }
-  });
+    return matched ? {
+      id: card.id,
+      name: card.name,
+      member_id: member.id,
+      member_name: member.member_name,
+      match_strength: matchStrength,
+      matched,
+      bonus: computeJinangWtpBonus(matchStrength)
+    } : null;
+  })
+    .filter(Boolean)
+    .sort((a, b) => Number(b.match_strength || 0) - Number(a.match_strength || 0));
 
-  return best;
+  return {
+    items: matchedItems,
+    top: matchedItems[0] || null,
+    topMatchStrength: matchedItems[0] ? Number(matchedItems[0].match_strength || 0) : 0,
+    totalBonus: roundJinangBonus(matchedItems.reduce((sum, item) => sum + Number(item.bonus || 0), 0))
+  };
 }
 
 function buildRound1Outcome(gridId, architecture, rawScores, marketMatchStrength, options = {}) {
@@ -275,12 +342,13 @@ function buildRound1Outcome(gridId, architecture, rawScores, marketMatchStrength
   const G = clipScore(rawScores?.G ?? base?.G, 1, 5) ?? 3;
   const ERaw = clipScore(rawScores?.E ?? base?.E_raw, 1, 5) ?? 3;
   const Eadj = ERaw;
-  const jinangMatchStrength = clamp01(marketMatchStrength);
+  const marketJinang = normalizeMarketJinangEffect(marketMatchStrength);
+  const jinangMatchStrength = marketJinang.topMatchStrength;
   const lambdaG = lambdaMap(G);
   const lambdaE = lambdaMap(ERaw);
   const rhoC = rhoDiscount(C);
   const vpEffect = Number((lambdaG * lambdaE * rhoC).toFixed(4));
-  const jinangWtpBonus = computeJinangWtpBonus(jinangMatchStrength);
+  const jinangWtpBonus = marketJinang.totalBonus;
   const wtpMultiplier = Number((vpEffect * (1 + jinangWtpBonus)).toFixed(4));
   const compressedMult = compressWtpMult(wtpMultiplier);
   const WTPref = Math.round(Number(base?.WTPref || 0));
@@ -422,25 +490,6 @@ function scheduleFinalRound1Stages(context, outcome, options = {}) {
       }
     }
   ]);
-}
-
-function getEligibleMarketMatchStrength(settlements) {
-  const list = Array.isArray(settlements) ? settlements : [];
-  return list.reduce((mx, item) => {
-    if (!item || item.jinang_type !== "market" || !item.matched) return mx;
-    let effect = {};
-    try {
-      effect = item.effect_applied && typeof item.effect_applied === "object"
-        ? item.effect_applied
-        : JSON.parse(item.effect_applied || "{}");
-    } catch (_) {
-      effect = {};
-    }
-    if (!effect.E_boost_eligible) return mx;
-    const strength = Number(effect.match_strength ?? item.match_strength ?? 0);
-    if (!Number.isFinite(strength)) return mx;
-    return Math.max(mx, strength);
-  }, 0);
 }
 
 function hasAnyScore(scores) {
@@ -1562,10 +1611,10 @@ async function confirmAndScoreVp(body) {
 
     const result = await scoreVpByWord(confirmedFields, gridId, architecture);
     const previewMarketJinang = await getPreviewMarketJinang(teamId, gridId, architecture).catch(() => null);
-    const marketMatchStrength = previewMarketJinang?.matched
-      ? Number(previewMarketJinang.match_strength || 0)
-      : 0;
-    const round1Outcome = buildRound1Outcome(gridId, architecture, result?.scores || {}, marketMatchStrength, {
+    const round1Outcome = buildRound1Outcome(gridId, architecture, result?.scores || {}, {
+      topMatchStrength: previewMarketJinang?.topMatchStrength || 0,
+      totalBonus: previewMarketJinang?.totalBonus || 0
+    }, {
       teamId,
       sessionId: `confirm:${teamId}:${memberId || "member"}`,
       memberId,
@@ -1632,14 +1681,25 @@ async function confirmAndScoreVp(body) {
       session_id: persisted.sessionId,
       vp_result: buildConfirmedVpResult(confirmedFields, normalizedScores),
       jinang: {
-        marketJinang: previewMarketJinang ? {
-          id: previewMarketJinang.id,
-          name: previewMarketJinang.name,
-          member_id: previewMarketJinang.member_id,
-          member_name: previewMarketJinang.member_name,
-          match_strength: Number(previewMarketJinang.match_strength || 0),
-          bonus: round1Outcome.jinang_wtp_bonus
-        } : null
+        marketJinang: previewMarketJinang?.top ? {
+          id: previewMarketJinang.top.id,
+          name: previewMarketJinang.top.name,
+          member_id: previewMarketJinang.top.member_id,
+          member_name: previewMarketJinang.top.member_name,
+          match_strength: Number(previewMarketJinang.top.match_strength || 0),
+          bonus: Number(previewMarketJinang.top.bonus || 0)
+        } : null,
+        marketJinangs: Array.isArray(previewMarketJinang?.items)
+          ? previewMarketJinang.items.map((item) => ({
+              id: item.id,
+              name: item.name,
+              member_id: item.member_id,
+              member_name: item.member_name,
+              match_strength: Number(item.match_strength || 0),
+              bonus: Number(item.bonus || 0)
+            }))
+          : [],
+        marketJinangBonusTotal: round1Outcome.jinang_wtp_bonus
       },
       wtp: {
         vpEffect: round1Outcome.wtp_vp_effect,
@@ -1747,14 +1807,14 @@ async function submitPhase3Vp(teamId, body) {
       };
       const scoreValid = scores.coverage != null && scores.generalizability != null && scores.effectiveness != null;
       const previewMarketJinang = await getPreviewMarketJinang(teamId, gridId, architecture).catch(() => null);
-      const marketMatchStrength = previewMarketJinang?.matched
-        ? Number(previewMarketJinang.match_strength || 0)
-        : 0;
       const round1Outcome = buildRound1Outcome(gridId, architecture, {
         C: scores.coverage,
         G: scores.generalizability,
         E: scores.effectiveness
-      }, marketMatchStrength, {
+      }, {
+        topMatchStrength: previewMarketJinang?.topMatchStrength || 0,
+        totalBonus: previewMarketJinang?.totalBonus || 0
+      }, {
         teamId,
         sessionId,
         vpText
@@ -2011,8 +2071,8 @@ async function finalizePhase3(teamId, body) {
     `);
 
     const settle = await settleAllJinang(teamId);
-    const maxMarketMs = getEligibleMarketMatchStrength(settle?.settlements || []);
-    const r1 = buildRound1Outcome(gridId, finalArch, engineVpScores, maxMarketMs, {
+    const marketJinangSummary = summarizeEligibleMarketSettlements(settle?.settlements || []);
+    const r1 = buildRound1Outcome(gridId, finalArch, engineVpScores, marketJinangSummary, {
       teamId,
       sessionId,
       vpText: finalVpText
@@ -2137,7 +2197,7 @@ async function buildPhase4Data(teamId) {
   };
 
   const settle = await settleAllJinang(teamId);
-  const maxMarketMs = getEligibleMarketMatchStrength(settle?.settlements || []);
+  const marketJinangSummary = summarizeEligibleMarketSettlements(settle?.settlements || []);
   const sessions = await getTeamSessions(teamId);
   const latestSession = getLatestPhase3Session(sessions);
   const vpText = team.final_vp_text || "";
@@ -2148,8 +2208,11 @@ async function buildPhase4Data(teamId) {
     fallbackText: vpText,
     confirmedFields
   });
-  const r1Base = buildRound1Outcome(team.final_grid_id, team.final_architecture, engineVpScores, 0);
-  const r1 = buildRound1Outcome(team.final_grid_id, team.final_architecture, engineVpScores, maxMarketMs, {
+  const r1Base = buildRound1Outcome(team.final_grid_id, team.final_architecture, engineVpScores, {
+    topMatchStrength: 0,
+    totalBonus: 0
+  });
+  const r1 = buildRound1Outcome(team.final_grid_id, team.final_architecture, engineVpScores, marketJinangSummary, {
     teamId,
     sessionId: latestSession?.sessionId || `phase4:${teamId}`,
     vpText
@@ -2208,12 +2271,7 @@ async function buildPhase4Data(teamId) {
       vpFeedback = null;
     }
   }
-  const marketSettlements = Array.isArray(settle?.settlements)
-    ? settle.settlements
-        .filter((item) => item && item.jinang_type === "market")
-        .sort((a, b) => Number(b.match_strength || 0) - Number(a.match_strength || 0))
-    : [];
-  const topMarketJinang = marketSettlements[0] || null;
+  const topMarketJinang = marketJinangSummary.topItem;
 
   return {
     ok: true,
@@ -2231,14 +2289,16 @@ async function buildPhase4Data(teamId) {
     wtp_breakdown: {
       base_result: r1Base,
       final_result: r1,
-      market_jinang_match_strength: maxMarketMs,
+      market_jinang_match_strength: marketJinangSummary.topMatchStrength,
       rho_discount: r1.rho_C,
       vp_effect: r1.wtp_vp_effect,
       jinang_bonus: r1.jinang_wtp_bonus,
+      market_jinang_bonus_total: marketJinangSummary.totalBonus,
       multiplier: r1.wtp_multiplier,
       base_pct: toCompressedPercent(r1.wtp_vp_effect),
       final_pct: toCompressedPercent(r1.wtp_multiplier),
-      jinang_delta_pct: toCompressedDeltaPercent(r1.wtp_vp_effect, r1.wtp_multiplier)
+      jinang_delta_pct: toRawBonusPercent(r1.jinang_wtp_bonus),
+      compressed_jinang_delta_pct: toCompressedDeltaPercent(r1.wtp_vp_effect, r1.wtp_multiplier)
     },
     vp_scores: {
       C: clipScore(rawScores.C ?? vpScores.C, 1, 5),
@@ -2263,8 +2323,17 @@ async function buildPhase4Data(teamId) {
         member_id: topMarketJinang.member_id,
         member_name: topMarketJinang.member_name,
         match_strength: Number(topMarketJinang.match_strength || 0),
-        bonus: r1.jinang_wtp_bonus
-      } : null
+        bonus: Number(topMarketJinang.bonus || 0)
+      } : null,
+      market_jinangs: marketJinangSummary.items.map((item) => ({
+        id: item.jinang_id,
+        name: item.name,
+        member_id: item.member_id,
+        member_name: item.member_name,
+        match_strength: Number(item.match_strength || 0),
+        bonus: Number(item.bonus || 0)
+      })),
+      market_jinang_bonus_total: marketJinangSummary.totalBonus
     },
     settle
   };

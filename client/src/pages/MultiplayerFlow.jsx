@@ -1923,14 +1923,14 @@ export default function App() {
     : wtpPct;
   const wtpJinangDeltaPct = Number.isFinite(Number(wtpBreakdown?.jinang_delta_pct))
     ? Number(wtpBreakdown.jinang_delta_pct)
-    : 0;
+    : Math.round(Number(wtpBreakdown?.market_jinang_bonus_total ?? wtpBreakdown?.jinang_bonus ?? 0) * 100);
   const rhoDiscountValue = Number.isFinite(Number(wtpBreakdown?.rho_discount))
     ? Number(wtpBreakdown.rho_discount)
     : null;
   const wtpHasJinangBoost = Math.abs(wtpJinangDeltaPct) > 0;
   const resultMarketJinangBonusPct = Number.isFinite(Number(resultMarketJinang?.bonus))
     ? Math.round(Number(resultMarketJinang.bonus) * 100)
-    : Math.round(Number(resultMarketJinang?.match_strength || 0) * 5);
+    : Math.round(Number(resultMarketJinang?.match_strength || 0) * 0.05 * 100);
   const matchedJinangCount = settleItems.filter((s) => Boolean(s?.matched)).length;
   const matchedMarketJinangCount = settleItems.filter((s) => Boolean(s?.matched) && s?.jinang_type === "market").length;
   const matchedTechJinangCount = settleItems.filter((s) => Boolean(s?.matched) && s?.jinang_type === "tech").length;
@@ -1943,7 +1943,9 @@ export default function App() {
       const rawJinangId = String(s?.jinang_id || "").trim();
       const normalizedJinangId = rawJinangId.replace("-", "");
       const card = getCard(rawJinangId) || getCard(normalizedJinangId) || { icon: "🎴", title: s?.name || rawJinangId || "锦囊" };
-      const bonusPct = Math.round(strength * 5);
+      const bonusPct = Number.isFinite(Number(s?.bonus))
+        ? Math.round(Number(s.bonus) * 100)
+        : Math.round(strength * 0.05 * 100);
       return {
         id: s?.id || `${s?.member_id}-${s?.jinang_id}`,
         card,

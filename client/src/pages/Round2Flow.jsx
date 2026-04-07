@@ -995,7 +995,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     : 0;
   const wtpJinangDeltaPct = Number.isFinite(Number(teamRecap?.wtp_breakdown?.jinang_delta_pct))
     ? Number(teamRecap.wtp_breakdown.jinang_delta_pct)
-    : 0;
+    : Math.round(Number(teamRecap?.wtp_breakdown?.market_jinang_bonus_total ?? teamRecap?.wtp_breakdown?.jinang_bonus ?? 0) * 100);
   const matchedJinangCount = Number(teamRecap?.jinang_summary?.matched_count || 0);
   const matchedMarketJinangCount = Number(teamRecap?.jinang_summary?.matched_market_count || 0);
   const matchedTechJinangCount = Number(teamRecap?.jinang_summary?.matched_tech_count || 0);
@@ -1004,7 +1004,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
   const resultTechJinang = teamRecap?.jinang_tech || null;
   const resultMarketJinangBonusPct = Number.isFinite(Number(resultMarketJinang?.bonus))
     ? Math.round(Number(resultMarketJinang.bonus) * 100)
-    : Math.round(Number(resultMarketJinang?.match_strength || 0) * 5);
+    : Math.round(Number(resultMarketJinang?.match_strength || 0) * 0.05 * 100);
   const marketSizeYi = Number.isFinite(Number(submittedCalc?.market_size_yi))
     ? Number(submittedCalc.market_size_yi)
     : Number.isFinite(Number(teamRecap?.market_size_yi))
