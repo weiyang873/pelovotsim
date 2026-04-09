@@ -49,6 +49,16 @@ function readRequesterMemberId(body = {}, fallback = "") {
   ).trim();
 }
 
+function parseJsonColumnValue(value) {
+  if (value == null || value === "") return null;
+  if (typeof value === "object") return value;
+  try {
+    return JSON.parse(String(value));
+  } catch (_) {
+    return null;
+  }
+}
+
 function buildLeaderMeta(team, requesterMemberId = "") {
   const leaderMemberId = String(team?.leader_member_id || "").trim();
   const leaderName = String(team?.leader_name || "").trim();
@@ -831,6 +841,17 @@ function vpResultToApiScores(vpResult) {
   return { coverage, generalizability, effectiveness };
 }
 
+function readPreviewScoresFromSession(pmfScore) {
+  const preview = pmfScore?.preview_scores;
+  if (!preview || typeof preview !== "object") return null;
+  const scores = {
+    coverage: clipScore(preview.coverage, 1, 5),
+    generalizability: clipScore(preview.generalizability, 1, 5),
+    effectiveness: clipScore(preview.effectiveness, 1, 5)
+  };
+  return areApiScoresEmpty(scores) ? null : scores;
+}
+
 function areApiScoresEmpty(scores) {
   if (!scores || typeof scores !== "object") return true;
   return ["coverage", "generalizability", "effectiveness"].every((key) => scores[key] == null);
@@ -1420,7 +1441,8 @@ async function persistConfirmedVpResult({
   vpText,
   confirmedFields,
   scores,
-  confirmedAt
+  confirmedAt,
+  feedback
 }) {
   console.log("[confirm-and-score] 写入数据库:", "PostgreSQL", teamId);
   if (teamId && memberId) {
@@ -1430,7 +1452,8 @@ async function persistConfirmedVpResult({
       SET vp_text = ${sqlQuote(String(vpText || "").trim())},
           vp_confirmed_fields = ${sqlQuote(JSON.stringify(confirmedFields || {}))}::jsonb,
           vp_scores = ${sqlQuote(JSON.stringify(scores || {}))}::jsonb,
-          vp_confirmed_at = ${sqlQuote(confirmedAt)}
+          vp_confirmed_at = ${sqlQuote(confirmedAt)},
+          vp_feedback = ${sqlQuote(String(feedback || "").trim() || null)}
       WHERE id = ${sqlQuote(memberId)} AND team_id = ${sqlQuote(teamId)};
     `);
   }
@@ -1445,6 +1468,8 @@ async function persistConfirmedVpResult({
     _confirmed_fields: confirmedFields,
     _confirmed_at: confirmedAt,
     _vp_word_scores: scores,
+    _vp_feedback: String(feedback || "").trim(),
+    _vp_feedback_version: VP_FEEDBACK_VERSION,
     _scorer: "vpWordScorer"
   };
 
@@ -1469,7 +1494,47 @@ async function readPersistedPhase3VpText(teamId, memberId) {
   return String(rows[0]?.vp_text || "").trim();
 }
 
-async function persistVpFeedback(teamId, feedback) {
+async function readPersistedPhase3Confirmation(teamId, requesterMemberId = "", leaderMemberId = "") {
+  const tid = String(teamId || "").trim();
+  if (!tid) return null;
+  const requesterId = String(requesterMemberId || "").trim() || "__requester__";
+  const leaderId = String(leaderMemberId || "").trim() || "__leader__";
+  const rows = await runSql(`
+    SELECT id, vp_text, vp_confirmed_fields, vp_scores, vp_confirmed_at, vp_feedback, joined_at
+    FROM team_members
+    WHERE team_id = ${sqlQuote(tid)}
+      AND (
+        vp_confirmed_fields IS NOT NULL
+        OR vp_scores IS NOT NULL
+        OR vp_confirmed_at IS NOT NULL
+        OR NULLIF(BTRIM(COALESCE(vp_text, '')), '') IS NOT NULL
+        OR NULLIF(BTRIM(COALESCE(vp_feedback, '')), '') IS NOT NULL
+      )
+    ORDER BY
+      CASE
+        WHEN id = ${sqlQuote(leaderId)} THEN 0
+        WHEN id = ${sqlQuote(requesterId)} THEN 1
+        WHEN vp_confirmed_at IS NOT NULL THEN 2
+        ELSE 3
+      END,
+      vp_confirmed_at DESC NULLS LAST,
+      joined_at ASC NULLS LAST,
+      id ASC
+    LIMIT 1;
+  `);
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    member_id: String(row.id || "").trim() || null,
+    vp_text: String(row.vp_text || "").trim(),
+    fields: parseJsonColumnValue(row.vp_confirmed_fields),
+    scores: parseJsonColumnValue(row.vp_scores),
+    confirmed_at: String(row.vp_confirmed_at || "").trim() || "",
+    feedback: String(row.vp_feedback || "").trim()
+  };
+}
+
+async function persistVpFeedback(teamId, feedback, memberId = "") {
   const latestSession = await getLatestPhase3SessionRecord(teamId);
   if (!latestSession?.sessionId) return null;
   const nextPmfScore = {
@@ -1478,6 +1543,16 @@ async function persistVpFeedback(teamId, feedback) {
     _vp_feedback_version: VP_FEEDBACK_VERSION
   };
   await updateSession(latestSession.sessionId, { pmfScore: nextPmfScore });
+
+  const targetMemberId = String(memberId || "").trim() || String((await getTeam(teamId).catch(() => null))?.leader_member_id || "").trim();
+  if (teamId && targetMemberId) {
+    await runSql(`
+      UPDATE team_members
+      SET vp_feedback = ${sqlQuote(String(feedback || "").trim() || null)}
+      WHERE id = ${sqlQuote(targetMemberId)} AND team_id = ${sqlQuote(String(teamId || "").trim())};
+    `).catch(() => {});
+  }
+
   return latestSession.sessionId;
 }
 
@@ -1653,11 +1728,9 @@ async function confirmAndScoreVp(body) {
       vpText,
       confirmedFields,
       scores: normalizedScores,
-      confirmedAt
+      confirmedAt,
+      feedback
     });
-    if (feedback) {
-      await persistVpFeedback(teamId, feedback).catch(() => {});
-    }
     await recordVpIteration({
       teamId,
       sessionId: persisted.sessionId,
@@ -1675,7 +1748,7 @@ async function confirmAndScoreVp(body) {
     return makeResponse(200, {
       ok: true,
       scores: normalizedScores,
-      feedback: feedback || null,
+      feedback: feedback || "",
       confirmedAt,
       fields: confirmedFields,
       session_id: persisted.sessionId,
@@ -1759,13 +1832,22 @@ async function generateVpFeedbackApi(body) {
 
 
 async function submitPhase3Vp(teamId, body) {
+  const payload = body || {};
+  const mode = String(payload.mode || payload.action || "score").toLowerCase();
+  const isSubmit = payload.isSubmit === true || String(payload.isSubmit || "").toLowerCase() === "true";
+  if (mode === "confirm" || isSubmit) {
+    console.warn("[submitPhase3Vp] DEPRECATED: confirm 模式已迁移到 /api/vp/confirm-and-score，请使用新 endpoint");
+    return makeResponse(410, {
+      ok: false,
+      error: "此确认入口已停用，请使用 /api/vp/confirm-and-score"
+    });
+  }
+
   try {
     const team = await getTeam(teamId);
     if (!team) return makeResponse(404, { ok: false, error: "team not found" });
 
-    const payload = body || {};
     const memberId = String(payload.memberId || payload.member_id || "").trim();
-    const mode = String(payload.mode || payload.action || "score").toLowerCase();
     const requestedGridId = String(payload.grid_id || "").trim();
     const requestedArch = String(payload.architecture || "").trim();
     const gridId = requestedGridId || String(team.final_grid_id || "").trim();
@@ -2389,20 +2471,44 @@ async function phase3State(teamId, requesterMemberId = "") {
 
     const messages = Array.isArray(session.messages) ? session.messages : [];
     const coachHistory = restoreCoachHistory(messages);
-    const scoreFromSession = vpResultToApiScores(session.pmfScore || null);
-    const vpDraft = String(session?.pmfScore?._vp_sentence || draft?.vp_text || "").trim();
-    const confirmedFields = session?.pmfScore?._confirmed_fields && typeof session.pmfScore._confirmed_fields === "object"
-      ? session.pmfScore._confirmed_fields
-      : null;
-    const confirmedAt = String(session?.pmfScore?._confirmed_at || "").trim() || null;
-    const scores = scoreFromSession || {
+    const persistedConfirmation = await readPersistedPhase3Confirmation(
+      teamId,
+      requesterMemberId,
+      String(team?.leader_member_id || "").trim()
+    ).catch(() => null);
+    const previewScores = readPreviewScoresFromSession(session.pmfScore || null);
+    const vpDraft = String(
+      persistedConfirmation?.vp_text ||
+      session?.pmfScore?._vp_sentence ||
+      draft?.vp_text ||
+      ""
+    ).trim();
+    const confirmedFields = persistedConfirmation?.fields
+      || (session?.pmfScore?._confirmed_fields && typeof session.pmfScore._confirmed_fields === "object"
+        ? session.pmfScore._confirmed_fields
+        : null);
+    const confirmedAt = String(
+      persistedConfirmation?.confirmed_at ||
+      session?.pmfScore?._confirmed_at ||
+      ""
+    ).trim();
+    const confirmationScores = persistedConfirmation?.scores
+      || (session?.pmfScore?._vp_word_scores && typeof session.pmfScore._vp_word_scores === "object"
+        ? session.pmfScore._vp_word_scores
+        : null);
+    const feedback = String(
+      persistedConfirmation?.feedback ||
+      session?.pmfScore?._vp_feedback ||
+      ""
+    ).trim();
+    const scores = previewScores || {
       coverage: null,
       generalizability: null,
       effectiveness: null
     };
     const scoreValid = Object.values(scores).some((v) => v != null);
     const status = String(session.status || "chatting");
-    const hasScorePreview = status === "scored" || status === "submitted" || scoreFromSession != null;
+    const hasScorePreview = status === "scored" || status === "submitted" || previewScores != null;
 
     return makeResponse(200, {
       ok: true,
@@ -2416,12 +2522,12 @@ async function phase3State(teamId, requesterMemberId = "") {
         : null),
       coach_history: coachHistory,
       vp_confirmation: confirmedFields ? {
-        status: scoreValid ? "scored" : "confirming",
+        status: confirmedAt ? "scored" : "confirming",
         vp_text: vpDraft || "",
         fields: confirmedFields,
-        scores: session?.pmfScore?._vp_word_scores || null,
-        confirmed_at: confirmedAt,
-        feedback: String(session?.pmfScore?._vp_feedback || "").trim() || null
+        scores: confirmationScores || null,
+        confirmed_at: confirmedAt || "",
+        feedback: feedback || ""
       } : null,
       score_state: {
         has_score_preview: hasScorePreview,

@@ -565,7 +565,8 @@ function ensureJinangMention(text, marketJinang, techJinang) {
 
 async function chat(session, userMessage, options = {}) {
   const requestedMode = options.mode || (options.isSubmit ? "score" : "chat");
-  const mode = requestedMode === "score" ? "chat" : requestedMode;
+  const mode = requestedMode;
+  console.log("[vpCoach] mode:", mode);
   const existingAssistantMsgs = (Array.isArray(session?.messages) ? session.messages : [])
     .filter((m) => m && m.role === "assistant");
   if (mode === "chat" && existingAssistantMsgs.length === 0) {

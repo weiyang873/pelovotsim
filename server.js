@@ -2203,7 +2203,21 @@ function handleApi(req, res) {
     const parts = String(req.url || "").split("/");
     const teamId = decodeURIComponent(parts[3] || "");
     return readBody(req)
-      .then((p) => TeamRoutes.submitPhase3Vp(teamId, p))
+      .then((p) => {
+        const payload = p || {};
+        const mode = String(payload.mode || payload.action || "score").toLowerCase();
+        const isSubmit = payload.isSubmit === true || String(payload.isSubmit || "").toLowerCase() === "true";
+        if (mode === "confirm" || isSubmit) {
+          return {
+            status: 410,
+            body: {
+              ok: false,
+              error: "此确认入口已停用，请使用 POST /api/vp/confirm-and-score"
+            }
+          };
+        }
+        return TeamRoutes.submitPhase3Vp(teamId, payload);
+      })
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "phase3 submit-vp failed" }));
   }

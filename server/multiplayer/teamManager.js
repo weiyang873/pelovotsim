@@ -55,7 +55,8 @@ async function ensureSchema() {
       vp_text TEXT,
       vp_confirmed_fields JSONB,
       vp_scores JSONB,
-      vp_confirmed_at TIMESTAMPTZ
+      vp_confirmed_at TIMESTAMPTZ,
+      vp_feedback TEXT
     );
 
     CREATE TABLE IF NOT EXISTS member_submissions (
@@ -122,6 +123,7 @@ async function ensureSchema() {
     ALTER TABLE team_members ADD COLUMN IF NOT EXISTS vp_confirmed_fields JSONB;
     ALTER TABLE team_members ADD COLUMN IF NOT EXISTS vp_scores JSONB;
     ALTER TABLE team_members ADD COLUMN IF NOT EXISTS vp_confirmed_at TIMESTAMPTZ;
+    ALTER TABLE team_members ADD COLUMN IF NOT EXISTS vp_feedback TEXT;
   `);
   await ensureComputationLogSchema();
   await ensureVpIterationSchema();

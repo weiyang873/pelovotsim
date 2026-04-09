@@ -6,6 +6,7 @@ const path = require("path");
 const fs = require("fs");
 
 const CACHE_PATH = path.join(__dirname, "..", "..", "data", "tag_cache.json");
+const PROMPT_VERSION = "v2";
 
 function readCache() {
   try {
@@ -37,7 +38,7 @@ async function extractTags(messages) {
   }
 
   const normalized = normalizeText(conversationText);
-  const cacheKey = crypto.createHash("md5").update(normalized).digest("hex");
+  const cacheKey = crypto.createHash("md5").update(PROMPT_VERSION + ":" + normalized).digest("hex");
 
   // 查 Level 1 缓存
   const cache = readCache();
