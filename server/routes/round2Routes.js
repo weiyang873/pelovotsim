@@ -119,7 +119,7 @@ const DIMENSION_GUIDE = {
     hint: "聊聊日常使用的顾虑：充电麻烦吗？坏了谁修？需要经常更新吗？用着用着会不会淘汰？"
   }
 };
-const PRODUCT_TERMS_RE = /LOVOT|机器人|智能家居|家用机器人|产品|功能|设备|机器人类/iu;
+const PRODUCT_TERMS_RE = /LOVOT|机器人|智能家居|家用机器人|产品|功能|设备|机器人类|认得|识别|提醒|报警|跟随|充电|联动|传感|监测|摄像|语音|屏幕|APP|远程/iu;
 
 const CAPABILITY_MAP = (() => {
   const map = new Map();
@@ -1894,19 +1894,19 @@ function buildLifeAnchoredReply(persona) {
 
   if (safePersona.org_type || safePersona.title) {
     const pressureText = pressures[0] ? `最近最头疼的是${pressures[0]}。` : "最近手上的压力一直在堆。";
-    return `${pressureText} 我会更在意真实使用场景、出问题时谁来处理，以及后续是不是会增加额外负担。你可以先问我平时最麻烦的时刻。`;
+    return `${pressureText} 我比较在意真实使用场景、出问题时谁来处理，以及后续会不会增加额外负担。`;
   }
 
   if (occupation.includes("护工")) {
-    return "白天经常要在几个照护对象之间来回跑，最怕临时有状况撞在一起。对我来说，先把日常照看里的麻烦和压力聊清楚会更有意义。";
+    return "白天经常要在几个照护对象之间来回跑，最怕临时有状况撞在一起。日常照看里的麻烦和压力确实不少。";
   }
   if (occupation.includes("财务") || living.includes("孩子")) {
-    return "工作和家里的事情常常挤在一起，最头疼的是一忙起来就顾不过来。你可以先问我哪些时刻最容易手忙脚乱。";
+    return "工作和家里的事情常常挤在一起，一忙起来就顾不过来。";
   }
   if (occupation.includes("退休") || living.includes("独居")) {
-    return "平时生活节奏比较固定，但真碰到一个人不太方便的时候，会特别在意安心和别太折腾。你可以先问我平常最在意的几个场景。";
+    return "平时生活节奏比较固定，但真碰到一个人不太方便的时候，会特别在意安心和别太折腾。";
   }
-  return "日常里我最在意的是别给自己添太多负担，真有事的时候也能稳得住。我们可以先从我平常怎么生活、哪些时候最麻烦开始聊。";
+  return "日常里我最在意的是别给自己添太多负担，真有事的时候也能稳得住。";
 }
 
 function isPersonaLeakage(reply, persona) {
@@ -1929,7 +1929,6 @@ function enforceLifeFirstReply(reply, persona, productIntroduced) {
   const text = String(reply || "").trim();
   if (!text) return buildLifeAnchoredReply(persona);
   if (PRODUCT_TERMS_RE.test(text)) return buildLifeAnchoredReply(persona);
-  if (/[？?]/.test(text)) return buildLifeAnchoredReply(persona);
   return text;
 }
 
@@ -2766,15 +2765,18 @@ async function interviewReply(body) {
     } catch (_) {}
     for (let retry = 0; retry < 2 && isPersonaLeakage(reply, persona); retry += 1) {
       console.warn(`[round2Routes.interviewReply] persona leakage detected, retry ${retry + 1}`);
-      llmMessages.push({ role: "assistant", content: reply });
-      llmMessages.push({ role: "user", content: "请用自然对话回答，不要介绍自己的背景信息。" });
+      const retryMessages = [
+        ...llmMessages,
+        { role: "assistant", content: reply },
+        { role: "user", content: "请用自然对话回答，不要介绍自己的背景信息。" }
+      ];
       try {
         const out = await withLlmLogging({
           caller: "round2Routes.interviewReply",
           teamId: session?.team_id || session?.teamId || null,
           memberId: session?.member_id || session?.memberId || null,
-          messages: llmMessages
-        }, () => chatCompletion(llmMessages, { temperature: 0.9, max_tokens: 300 }));
+          messages: retryMessages
+        }, () => chatCompletion(retryMessages, { temperature: 0.9, max_tokens: 300 }));
         if (String(out || "").trim()) reply = String(out).trim();
       } catch (_) {}
     }
