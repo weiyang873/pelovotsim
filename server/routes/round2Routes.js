@@ -1519,12 +1519,26 @@ async function ensureAssignmentPersonaPool({ assignments, assignmentIndex, team,
     throw new Error("缺少 Round 1 who_raw/gridLabel，无法生成访谈对象");
   }
 
+  const otherMemberPersonas = nextAssignments
+    .filter((_, idx) => idx !== assignmentIndex)
+    .flatMap((item) => Array.isArray(item.personaPool) ? item.personaPool : []);
   const personaPool = seedPool.slice();
+  let skipCount = 0;
   while (personaPool.length < targetCount) {
-    const nextPersona = await generatePersonaVariant(round1Context, personaPool);
+    if (skipCount >= 5) {
+      console.warn("[ensureAssignmentPersonaPool] 跨成员去重重试超过 5 次，接受当前 persona");
+    }
+    const allPrevious = [...personaPool, ...otherMemberPersonas];
+    const nextPersona = await generatePersonaVariant(round1Context, allPrevious);
     const nextId = String(nextPersona.id || "").trim();
+    const nextName = String(nextPersona.name || "").trim();
     if (nextId && personaPool.some((item) => String(item?.id || "").trim() === nextId)) {
       throw new Error(`Persona 生成重复：${nextId}`);
+    }
+    if (skipCount < 5 && nextName && otherMemberPersonas.some((item) => String(item?.name || "").trim() === nextName)) {
+      console.warn(`[ensureAssignmentPersonaPool] 跳过与其他成员重复的 persona: ${nextName}`);
+      skipCount += 1;
+      continue;
     }
     personaPool.push(nextPersona);
   }
