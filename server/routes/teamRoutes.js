@@ -2377,8 +2377,8 @@ async function buildPhase4Data(teamId) {
       jinang_bonus: r1.jinang_wtp_bonus,
       market_jinang_bonus_total: marketJinangSummary.totalBonus,
       multiplier: r1.wtp_multiplier,
-      base_pct: toCompressedPercent(r1.wtp_vp_effect),
-      final_pct: toCompressedPercent(r1.wtp_multiplier),
+      base_pct: Math.round((Number(r1.wtp_vp_effect || 1) - 1) * 100),
+      final_pct: Math.round((Number(r1.wtp_multiplier || 1) - 1) * 100),
       jinang_delta_pct: toRawBonusPercent(r1.jinang_wtp_bonus),
       compressed_jinang_delta_pct: toCompressedDeltaPercent(r1.wtp_vp_effect, r1.wtp_multiplier)
     },
