@@ -1939,28 +1939,13 @@ function isPersonaLeakage(reply, persona) {
 }
 
 function enforceLifeFirstReply(reply, persona, productIntroduced) {
-  if (productIntroduced) return String(reply || "").trim();
   const text = String(reply || "").trim();
   if (!text) return buildLifeAnchoredReply(persona);
-  if (PRODUCT_TERMS_RE.test(text)) return buildLifeAnchoredReply(persona);
   return text;
 }
 
 function sanitizeInterviewHistory(history, persona) {
-  const list = normalizeInterviewHistory(history);
-  let productIntroduced = false;
-  return list.map((item) => {
-    if (item?.role === "user") {
-      if (PRODUCT_TERMS_RE.test(String(item?.text || ""))) {
-        productIntroduced = true;
-      }
-      return item;
-    }
-    return {
-      ...item,
-      text: enforceLifeFirstReply(item?.text, persona, productIntroduced)
-    };
-  });
+  return normalizeInterviewHistory(history);
 }
 
 function toConversationMessages(history) {
