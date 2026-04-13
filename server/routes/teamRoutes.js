@@ -1717,6 +1717,7 @@ async function confirmAndScoreVp(body) {
       vpText,
       confirmedFields,
       scores: normalizedScores,
+      details: result?.details || null,
       gridLabel: resolvePhase3Strategy(gridId, architecture).cell_label,
       archLabel: toArchitecturePromptLabel(architecture),
       teamId,
@@ -1820,6 +1821,9 @@ async function generateVpFeedbackApi(body) {
     const scores = payload.scores && typeof payload.scores === "object"
       ? payload.scores
       : null;
+    const details = payload.details && typeof payload.details === "object"
+      ? payload.details
+      : null;
 
     if (!confirmedFields || !scores) {
       return makeResponse(400, { ok: false, error: "缺少必要参数" });
@@ -1829,6 +1833,7 @@ async function generateVpFeedbackApi(body) {
       vpText,
       confirmedFields,
       scores,
+      details,
       gridLabel,
       archLabel,
       teamId,
@@ -2393,6 +2398,7 @@ async function buildPhase4Data(teamId) {
           Eadj: clipScore(r1.Eadj, 1, 5),
           VPscore: clipScore(r1.VPscore, 1, 5)
         },
+        details: null,
         gridLabel: resolvePhase3Strategy(team.final_grid_id, team.final_architecture).cell_label,
         archLabel: toArchitecturePromptLabel(team.final_architecture),
         teamId,

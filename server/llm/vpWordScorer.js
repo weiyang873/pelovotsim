@@ -76,10 +76,9 @@ function countChars(text) {
 }
 
 function isAcceptableFeedback(text) {
-  const content = compactParagraph(text);
+  const content = String(text || "").replace(/\s+/g, " ").trim();
   const len = countChars(content);
-  if (len < 150 || len > 200) return false;
-  if (/[\n\r]/.test(String(text || ""))) return false;
+  if (len < 180 || len > 350) return false;
   if (/客户覆盖面|人群覆盖面|痛点典型性|解法说服力|综合评分|C\s*[：:()]|G\s*[：:()]|E\s*[：:()]/i.test(content)) return false;
   if (/\d(\.\d)?\s*\/\s*5/.test(content)) return false;
   return true;
@@ -108,12 +107,32 @@ function sanitizeGeneratedFeedback(text) {
     .trim();
 }
 
-function fitFeedbackLength(text, min = 150, max = 250) {
-  const normalized = compactParagraph(text);
-  if (!normalized) return normalized;
-  if (countChars(normalized) <= max && countChars(normalized) >= min) return normalized;
+function fitFeedbackLength(text, min = 180, max = 350) {
+  const raw = String(text || "").replace(/\r/g, "").trim();
+  const normalized = raw.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n");
+  const plain = normalized.replace(/\s+/g, " ").trim();
+  if (!plain) return plain;
+  if (countChars(plain) <= max && countChars(plain) >= min) return normalized;
 
-  const sentences = normalized.match(/[^。！？]*[。！？]?/g) || [];
+  const sentences = plain.match(/[^。！？]*[。！？]?/g) || [];
+  const parts = sentences.map((sentence) => sentence.trim()).filter(Boolean);
+  const lastPart = parts[parts.length - 1] || "";
+  if (parts.length >= 2 && lastPart) {
+    let withEnding = "";
+    for (let i = 0; i < parts.length - 1; i += 1) {
+      const part = parts[i];
+      const candidate = withEnding + part;
+      const needsEnding = !candidate.includes(lastPart);
+      const combined = needsEnding ? candidate + lastPart : candidate;
+      if (countChars(combined) > max) break;
+      withEnding = candidate;
+    }
+    const finalWithEnding = withEnding.includes(lastPart) ? withEnding : withEnding + lastPart;
+    if (countChars(finalWithEnding) >= min && countChars(finalWithEnding) <= max) {
+      return finalWithEnding;
+    }
+  }
+
   let fitted = "";
   for (const sentence of sentences) {
     const part = sentence.trim();
@@ -123,10 +142,10 @@ function fitFeedbackLength(text, min = 150, max = 250) {
   }
 
   if (countChars(fitted) >= min) {
-    return compactParagraph(fitted);
+    return fitted;
   }
 
-  const clipped = sliceChars(normalized, max);
+  const clipped = sliceChars(plain, max);
   return /[。！？]$/.test(clipped) ? clipped : `${clipped}。`;
 }
 
@@ -154,10 +173,15 @@ function buildFallbackVpFeedback({ vpText, confirmedFields, scores }) {
     strengths.push("边界条件也已交代，方案适用范围不是无限外推。");
   }
   if (customerNeedsNarrower) {
-    weaknesses.push(`客户描述偏宽，${quoteSnippet(who, "目标客户")}还不足以说明具体机构类型、使用场景或采购角色，可信度会被压低。`);
+    const isToB = /ToB/i.test(gridLabel);
+    if (isToB) {
+      weaknesses.push(`客户描述偏宽，${quoteSnippet(who, "目标客户")}还不足以说明具体机构类型、规模或采购决策者，可信度会被压低。`);
+    } else {
+      weaknesses.push(`客户描述偏宽，${quoteSnippet(who, "目标客户")}还不足以说明年龄段、生活形态或使用场景，可信度会被压低。`);
+    }
   }
   if (solutionNeedsDetail) {
-    weaknesses.push("解法描述还不够扎实，关键动作没有落到可理解的执行层，因果链会显得偏虚。");
+    weaknesses.push("解法描述还不够扎实，关键动作没有落到可理解的执行层，因果链会显得偏虚。好的写法需要把动作词、触发场景和结果变化说完整。");
   }
   if (!alt) {
     weaknesses.push("替代方案对比缺失，现有流程为什么不够好没有被明确写出来。");
@@ -172,13 +196,47 @@ function buildFallbackVpFeedback({ vpText, confirmedFields, scores }) {
     weaknesses.push("主要问题不在结构缺口，而在客户定义和场景力度仍有进一步压实空间。");
   }
 
-  const mismatchLine = gridLabel ? `你们当前锁定的是${gridLabel}市场，最终评语按这个格子对应的客户画像来判断。` : "";
-  return fitFeedbackLength(`${mismatchLine}${strengths.join("")}${weaknesses.join("")}`);
+  const mismatchLine = gridLabel ? `你们当前锁定的是${gridLabel}，最终评语按这个格子对应的客户画像来判断。` : "";
+  const direction = customerNeedsNarrower
+    ? "最关键的改进方向，是把客户再收窄一层，写出谁在什么场景下做决定。"
+    : "最关键的改进方向，是把解法写成动作和因果链，而不是停留在结果承诺。";
+  return fitFeedbackLength(`${mismatchLine}\n\n${strengths.join("")}\n\n${weaknesses.join("")}${direction}`);
 }
 
-async function generateVpFeedback({ vpText, confirmedFields, scores, gridLabel, archLabel, teamId = null, memberId = null }) {
+async function generateVpFeedback({ vpText, confirmedFields, scores, details = null, gridLabel, archLabel, teamId = null, memberId = null }) {
   const fields = confirmedFields && typeof confirmedFields === "object" ? confirmedFields : {};
   const scoreSet = scores && typeof scores === "object" ? scores : {};
+  function buildDiagnosisSummary(detailSet) {
+    if (!detailSet) return "";
+    const lines = [];
+
+    const cMatch = detailSet.C_match || {};
+    const whoCov = detailSet.who_coverage ?? -1;
+    if (whoCov >= 0) lines.push(`客户词与目标市场锚词的语义覆盖度: ${Math.round(whoCov * 100)}%`);
+    if (cMatch.qualifiedCount !== undefined) lines.push(`客户描述中命中目标市场的关键词数: ${cMatch.qualifiedCount}`);
+    if (Array.isArray(cMatch.matchDetails)) {
+      const matched = cMatch.matchDetails
+        .filter((d) => Number(d?.sim || 0) >= 0.55)
+        .map((d) => `"${d.vpWord}"→"${d.anchorWord}"(${Math.round(Number(d.sim || 0) * 100)}%)`);
+      const unmatched = cMatch.matchDetails
+        .filter((d) => Number(d?.sim || 0) < 0.55)
+        .map((d) => `"${d.vpWord}"`);
+      if (matched.length) lines.push(`命中的客户词: ${matched.join("、")}`);
+      if (unmatched.length) lines.push(`未命中的客户词: ${unmatched.join("、")}`);
+    }
+
+    const gMatch = detailSet.G_match || {};
+    if (gMatch.qualifiedCount !== undefined) lines.push(`痛点词命中目标市场锚词数: ${gMatch.qualifiedCount}`);
+
+    const eMatch = detailSet.E_match || {};
+    if (eMatch.qualifiedCount !== undefined) lines.push(`解法词回应痛点词的命中数: ${eMatch.qualifiedCount}`);
+    if (detailSet.alt_bonus !== undefined) lines.push(`替代方案加分: ${detailSet.alt_bonus > 0 ? `有（+${detailSet.alt_bonus}）` : "无（未提及替代方案）"}`);
+    if (detailSet.bnd_bonus !== undefined) lines.push(`边界条件加分: ${detailSet.bnd_bonus > 0 ? `有（+${detailSet.bnd_bonus}）` : "无（未提及边界条件）"}`);
+
+    return lines.length ? `\n评分引擎诊断（请基于这些证据写评语，不要自行编造证据）：\n${lines.join("\n")}` : "";
+  }
+
+  const diagnosisSummary = buildDiagnosisSummary(details);
   const prompt = `你是 EMBA 商业模拟的评分系统。学生已提交锁定了最终版价值主张，你需要写一段评语。
 
 学生选择的市场：${gridLabel}
@@ -196,31 +254,42 @@ async function generateVpFeedback({ vpText, confirmedFields, scores, gridLabel, 
 - 痛点典型性：${scoreSet.G}/5
 - 解法说服力：${scoreSet.E}/5
 - 综合评分：${scoreSet.VPscore}/5
+${diagnosisSummary}
 
 写评语的规则：
 
 1. 全程用"你们"称呼学生
 2. 语气像资深商业顾问在董事会复盘——专业、直接、陈述事实
 3. 不要表扬、不要鼓励、不要说"做得好""写得不错"
-4. 优点用陈述句（"痛点抓得准""因果链清晰"），不用"尤其是你们写到..."这种赏析句式
-5. 不足直接指出缺什么、为什么扣分
-6. 不要给改进建议（VP已锁定，改不了了）
-7. 不要提C/G/E维度名称或数值
-8. 不要用列表，写成连贯的段落
-9. 150-200字
+4. 优点用陈述句，1-2 句带过
+5. 低分项（低于 3.5 分的维度）必须展开讲：指出具体缺了什么、为什么这样写不行、好的写法长什么样
+6. 如果有评分引擎诊断数据，用它来支撑你的判断，不要自行编造匹配细节
+7. 最后一句给出最关键的改进方向（即使VP已锁定，也有教学价值），不要用"下一步"这种指示口吻
+8. 不要提C/G/E维度名称或数值
+9. 不要用列表，写成连贯的段落，可以分段
+10. 200-300字
 
 结构：
-- 如果客户类型跟所选格子不匹配，第一段先指出
-- 然后说优点（哪些要素写得好、为什么好）
-- 最后说不足（哪些要素弱、具体弱在哪）
+- 第一句点明格子
+- 高分项（≥3.5）用 1-2 句陈述带过
+- 低分项（<3.5）展开讲：缺什么、为什么不行、好的写法长什么样
+- 最后一句给改进方向
 
-示例（仅供参考风格，不要照抄）：
+示例1（ToB 场景，C 低分，仅供参考风格）：
 
-'你们选的是 ToB·成人市场，但写的客户是养老机构——这属于 ToB·老人市场。评分引擎按 ToB·成人的客户画像匹配，"养老机构"跟成人商业场景相关性低，客户覆盖面得分因此被压低。如果你们确实想做养老场景，应该在格子选择阶段选 ToB·老人。
+你们当前锁定的是ToB·差异化·老人市场，最终评语按这个格子对应的客户画像来判断。
 
-抛开格子错配不谈，你们这版 VP 的结构是完整的。痛点抓得准——"护士巡检人力成本高昂且照护质量不稳定"是机构运营中真实存在的结构性问题，普遍性很强。解法跟痛点之间有清晰的因果链——"替代部分重复性巡检来优化人力配置"直接回应了人力成本的痛点，"而无需持续承受高昂且波动的人力开支"点出了现有方案的短板。边界条件也补上了。
+痛点抓到了真问题。"夜间跌倒发现延迟导致事故责任和家属投诉"是养老机构运营中高频、高后果的结构性痛点。解法跟痛点之间有清晰的因果链，替代方案对比也写出了现有做法的短板。
 
-失分集中在客户描述。"养老机构"四个字太泛——什么规模？什么类型？谁拍板采购？你们写得越具体，VP 的可信度越高。'`;
+失分集中在客户描述。"养老机构"四个字太泛，什么规模、公立还是民营、谁拍板采购都没有落下来。系统没有从你们的客户描述中识别出足够明确的机构类型或采购角色，所以客户界定会显得发虚。写得越具体，VP 的可信度越高。如果把客户收窄到"100-300床位的民营护理型养老院的运营院长"，判断基础会明显不同。最关键的改进方向，是把客户定义压到可识别的组织类型和决策角色。
+
+示例2（ToC 场景，E 低分，仅供参考风格）：
+
+你们当前锁定的是ToC·差异化·成人市场，最终评语按这个格子对应的客户画像来判断。
+
+客户锁得清晰。"25-35岁独居租房的年轻白领"直接指向了一个可识别、可触达的人群。痛点也成立，想养宠物但嫌喂养清洁太麻烦，这是城市独居群体里反复出现的结构性矛盾。
+
+失分集中在解法。你们写的是"提供无负担陪伴、满足即时情感需求"，但这是一个承诺，不是一个机制。机器人通过什么具体交互方式产生陪伴感，是主动迎接、跟随移动，还是情绪识别后回应，都没有写出来。"无负担"相对宠物到底省掉了哪些动作，也没有落成可理解的因果句。最关键的改进方向，是把解法从结果承诺改成动作机制和场景因果。`;
 
   const messages = [{ role: "user", content: prompt }];
 
@@ -231,10 +300,16 @@ async function generateVpFeedback({ vpText, confirmedFields, scores, gridLabel, 
       memberId,
       messages
     }, () => chatCompletion(messages, { temperature: 0.3, max_tokens: 500 }));
-    const cleaned = sanitizeGeneratedFeedback(compactParagraph(raw)
+    const cleaned = String(raw || "")
+      .replace(/\r/g, "")
       .replace(/^[\-\d\.\s]+/, "")
-      .replace(/\s+/g, " "));
-    if (isAcceptableFeedback(cleaned)) return cleaned;
+      .split(/\n{2,}/)
+      .map((part) => sanitizeGeneratedFeedback(part))
+      .filter(Boolean)
+      .join("\n\n")
+      .trim();
+    const fitted = fitFeedbackLength(cleaned);
+    if (isAcceptableFeedback(fitted)) return fitted;
     return buildFallbackVpFeedback({
       vpText,
       confirmedFields: { ...fields, _gridLabel: gridLabel },
