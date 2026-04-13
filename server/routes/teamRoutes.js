@@ -1731,6 +1731,22 @@ async function confirmAndScoreVp(body) {
       confirmedAt,
       feedback
     });
+    // 冻结 WTP 值到 teams 表，后续 phase4 直接读取不重算。
+    await runSql(`
+      UPDATE teams
+      SET final_wtp_multiplier = ${Number(round1Outcome.wtp_multiplier)},
+          final_wtp_adj = ${Number(round1Outcome.WTPadj)},
+          final_wtp_ref = ${Number(round1Outcome.WTPref)},
+          final_wtp_vp_effect = ${Number(round1Outcome.wtp_vp_effect)},
+          final_jinang_wtp_bonus = ${Number(round1Outcome.jinang_wtp_bonus)},
+          final_rho_c = ${Number(round1Outcome.rho_C)},
+          final_vp_c = ${Number(normalizedScores.C)},
+          final_vp_g = ${Number(normalizedScores.G)},
+          final_vp_e_raw = ${Number(normalizedScores.E)},
+          final_vp_e_adj = ${Number(normalizedScores.Eadj)},
+          final_vp_scores = ${sqlQuote(JSON.stringify(normalizedScores))}
+      WHERE id = ${sqlQuote(teamId)};
+    `);
     await recordVpIteration({
       teamId,
       sessionId: persisted.sessionId,
@@ -2290,34 +2306,70 @@ async function buildPhase4Data(teamId) {
     fallbackText: vpText,
     confirmedFields
   });
+  const hasStoredWtp = team.final_wtp_vp_effect != null
+    && team.final_wtp_vp_effect !== ""
+    && team.final_wtp_multiplier != null
+    && team.final_wtp_multiplier !== ""
+    && Number.isFinite(Number(team.final_wtp_vp_effect))
+    && Number.isFinite(Number(team.final_wtp_multiplier));
   const r1Base = buildRound1Outcome(team.final_grid_id, team.final_architecture, engineVpScores, {
     topMatchStrength: 0,
     totalBonus: 0
   });
-  const r1 = buildRound1Outcome(team.final_grid_id, team.final_architecture, engineVpScores, marketJinangSummary, {
-    teamId,
-    sessionId: latestSession?.sessionId || `phase4:${teamId}`,
-    vpText
-  });
+  let r1;
+  if (hasStoredWtp) {
+    const r1Fresh = buildRound1Outcome(team.final_grid_id, team.final_architecture, engineVpScores, marketJinangSummary, {
+      teamId,
+      sessionId: latestSession?.sessionId || `phase4:${teamId}`,
+      vpText
+    });
+    r1 = {
+      ...r1Fresh,
+      wtp_vp_effect: Number(team.final_wtp_vp_effect),
+      jinang_wtp_bonus: team.final_jinang_wtp_bonus != null && team.final_jinang_wtp_bonus !== ""
+        ? Number(team.final_jinang_wtp_bonus)
+        : Number(r1Fresh.jinang_wtp_bonus || 0),
+      wtp_multiplier: Number(team.final_wtp_multiplier),
+      rho_C: team.final_rho_c != null && team.final_rho_c !== ""
+        ? Number(team.final_rho_c)
+        : Number(r1Fresh.rho_C),
+      WTPadj: team.final_wtp_adj != null && team.final_wtp_adj !== ""
+        ? Number(team.final_wtp_adj)
+        : Number(r1Fresh.WTPadj),
+      WTPref: team.final_wtp_ref != null && team.final_wtp_ref !== ""
+        ? Number(team.final_wtp_ref)
+        : Number(r1Fresh.WTPref)
+    };
+  } else {
+    r1 = buildRound1Outcome(team.final_grid_id, team.final_architecture, engineVpScores, marketJinangSummary, {
+      teamId,
+      sessionId: latestSession?.sessionId || `phase4:${teamId}`,
+      vpText
+    });
+  }
   const extractField = (text, key) => {
     const re = new RegExp(key + "\\s*[：:]\\s*([^\\n]+)");
     const match = String(text || "").match(re);
     return match ? match[1].trim() : "";
   };
 
-  await runSql(`
-    UPDATE teams
-    SET final_sam = ${Number(r1.SAM_billion)},
-        final_wtp_adj = ${Number(r1.WTPadj)},
-        final_wtp_ref = ${Number(r1.WTPref)},
-        final_vp_c = ${Number(r1.C)},
-        final_vp_g = ${Number(r1.G)},
-        final_vp_e_raw = ${Number(r1.E_raw)},
-        final_vp_e_adj = ${Number(r1.Eadj)},
-        final_rho_c = ${Number(r1.rho_C)},
-        final_wtp_multiplier = ${Number(r1.wtp_multiplier)}
-    WHERE id = ${sqlQuote(teamId)};
-  `);
+  if (!hasStoredWtp) {
+    await runSql(`
+      UPDATE teams
+      SET final_sam = ${Number(r1.SAM_billion)},
+          final_wtp_adj = ${Number(r1.WTPadj)},
+          final_wtp_ref = ${Number(r1.WTPref)},
+          final_vp_c = ${Number(r1.C)},
+          final_vp_g = ${Number(r1.G)},
+          final_vp_e_raw = ${Number(r1.E_raw)},
+          final_vp_e_adj = ${Number(r1.Eadj)},
+          final_rho_c = ${Number(r1.rho_C)},
+          final_wtp_multiplier = ${Number(r1.wtp_multiplier)},
+          final_wtp_vp_effect = ${Number(r1.wtp_vp_effect)},
+          final_jinang_wtp_bonus = ${Number(r1.jinang_wtp_bonus)}
+      WHERE id = ${sqlQuote(teamId)};
+    `);
+  }
   console.log("[Phase4] 刷新 WTP:", {
     table: "teams",
     final_wtp_adj: Number(r1.WTPadj),

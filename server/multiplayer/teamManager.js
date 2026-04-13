@@ -40,7 +40,9 @@ async function ensureSchema() {
       final_vp_e_raw DOUBLE PRECISION,
       final_vp_e_adj DOUBLE PRECISION,
       final_rho_c DOUBLE PRECISION,
-      final_wtp_multiplier DOUBLE PRECISION
+      final_wtp_multiplier DOUBLE PRECISION,
+      final_wtp_vp_effect DOUBLE PRECISION,
+      final_jinang_wtp_bonus DOUBLE PRECISION
     );
 
     CREATE TABLE IF NOT EXISTS team_members (
@@ -117,6 +119,8 @@ async function ensureSchema() {
     ALTER TABLE teams ALTER COLUMN final_vp_e_adj TYPE DOUBLE PRECISION USING final_vp_e_adj::DOUBLE PRECISION;
     ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_rho_c DOUBLE PRECISION;
     ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_wtp_multiplier DOUBLE PRECISION;
+    ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_wtp_vp_effect DOUBLE PRECISION;
+    ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_jinang_wtp_bonus DOUBLE PRECISION;
     ALTER TABLE teams ADD COLUMN IF NOT EXISTS leader_member_id TEXT;
     ALTER TABLE team_members ADD COLUMN IF NOT EXISTS is_leader BOOLEAN DEFAULT FALSE;
     ALTER TABLE team_members ADD COLUMN IF NOT EXISTS vp_text TEXT;
@@ -147,7 +151,7 @@ async function getTeamRow(teamId) {
       t.final_grid_id, t.final_architecture, t.final_architecture_source, t.final_channel1, t.final_channel2,
       t.final_channel1_share, t.final_vp_text, t.final_vp_summary, t.final_vp_scores, t.final_gm_max, t.final_target_gm,
       t.final_sam, t.final_wtp_adj, t.final_wtp_ref, t.final_vp_c, t.final_vp_g, t.final_vp_e_raw, t.final_vp_e_adj,
-      t.final_rho_c, t.final_wtp_multiplier
+      t.final_rho_c, t.final_wtp_multiplier, t.final_wtp_vp_effect, t.final_jinang_wtp_bonus
     FROM teams t
     LEFT JOIN team_members leader ON leader.id = t.leader_member_id
     WHERE t.id = ${sqlQuote(teamId)}
