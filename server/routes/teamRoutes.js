@@ -2421,8 +2421,9 @@ async function buildPhase4Data(teamId) {
     },
     r1_result: r1,
     wtp_breakdown: (() => {
-      const basePct = Math.round((Number(r1.wtp_vp_effect || 1) - 1) * 100);
       const finalPct = Math.round((Number(r1.wtp_multiplier || 1) - 1) * 100);
+      const jinangDeltaPct = Math.round(Number(r1.jinang_wtp_bonus || 0) * 100);
+      const basePct = finalPct - jinangDeltaPct;
       return {
         base_result: r1Base,
         final_result: r1,
@@ -2434,7 +2435,7 @@ async function buildPhase4Data(teamId) {
         multiplier: r1.wtp_multiplier,
         base_pct: basePct,
         final_pct: finalPct,
-        jinang_delta_pct: finalPct - basePct,
+        jinang_delta_pct: jinangDeltaPct,
         compressed_jinang_delta_pct: toCompressedDeltaPercent(r1.wtp_vp_effect, r1.wtp_multiplier)
       };
     })(),
