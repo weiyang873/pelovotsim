@@ -2420,20 +2420,24 @@ async function buildPhase4Data(teamId) {
       final_vp_summary: vpSummary
     },
     r1_result: r1,
-    wtp_breakdown: {
-      base_result: r1Base,
-      final_result: r1,
-      market_jinang_match_strength: marketJinangSummary.topMatchStrength,
-      rho_discount: r1.rho_C,
-      vp_effect: r1.wtp_vp_effect,
-      jinang_bonus: r1.jinang_wtp_bonus,
-      market_jinang_bonus_total: marketJinangSummary.totalBonus,
-      multiplier: r1.wtp_multiplier,
-      base_pct: Math.round((Number(r1.wtp_vp_effect || 1) - 1) * 100),
-      final_pct: Math.round((Number(r1.wtp_multiplier || 1) - 1) * 100),
-      jinang_delta_pct: toRawBonusPercent(r1.jinang_wtp_bonus),
-      compressed_jinang_delta_pct: toCompressedDeltaPercent(r1.wtp_vp_effect, r1.wtp_multiplier)
-    },
+    wtp_breakdown: (() => {
+      const basePct = Math.round((Number(r1.wtp_vp_effect || 1) - 1) * 100);
+      const finalPct = Math.round((Number(r1.wtp_multiplier || 1) - 1) * 100);
+      return {
+        base_result: r1Base,
+        final_result: r1,
+        market_jinang_match_strength: marketJinangSummary.topMatchStrength,
+        rho_discount: r1.rho_C,
+        vp_effect: r1.wtp_vp_effect,
+        jinang_bonus: r1.jinang_wtp_bonus,
+        market_jinang_bonus_total: marketJinangSummary.totalBonus,
+        multiplier: r1.wtp_multiplier,
+        base_pct: basePct,
+        final_pct: finalPct,
+        jinang_delta_pct: finalPct - basePct,
+        compressed_jinang_delta_pct: toCompressedDeltaPercent(r1.wtp_vp_effect, r1.wtp_multiplier)
+      };
+    })(),
     vp_scores: {
       C: clipScore(rawScores.C ?? vpScores.C, 1, 5),
       G: clipScore(rawScores.G ?? vpScores.G, 1, 5),
