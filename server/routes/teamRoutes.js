@@ -33,7 +33,7 @@ const ROOT = path.join(__dirname, "..", "..");
 const CONFIG_DIR = path.join(ROOT, "game_config_v0.1");
 
 let cachedEngineConfig = null;
-const VP_FEEDBACK_VERSION = 2;
+const VP_FEEDBACK_VERSION = 3;
 
 function makeResponse(status, body) {
   return { status, body };
