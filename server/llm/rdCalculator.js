@@ -39,7 +39,7 @@ const DEFAULT_ENGINE_PARAMS = {
     S_monthly: 99,
     gm_sub: 0.7,
     T: 24,
-    alpha: -9,
+    alpha: -8.0,
     mu: 1.8889
   },
   shape: {
@@ -52,12 +52,12 @@ const DEFAULT_ENGINE_PARAMS = {
     CHILD: 0.97
   },
   grids: {
-    ToC_ELDER: { N_DIFF: 12000000, N_COST: 24000000, Aw: 0.16, friction: 1.0, f: 0.25 },
-    ToC_ADULT: { N_DIFF: 18000000, N_COST: 36000000, Aw: 0.115, friction: 1.0, f: 0.25 },
-    ToC_CHILD: { N_DIFF: 13000000, N_COST: 26000000, Aw: 0.17, friction: 1.0, f: 0.25 },
-    ToB_ELDER: { N_DIFF: 8000000, N_COST: 16000000, Aw: 0.22, friction: 0.8667, f: 0.15 },
-    ToB_ADULT: { N_DIFF: 15000000, N_COST: 30000000, Aw: 0.12, friction: 0.65, f: 0.15 },
-    ToB_CHILD: { N_DIFF: 10000000, N_COST: 20000000, Aw: 0.19, friction: 1.0, f: 0.15 }
+    ToC_ELDER: { N_DIFF: 12000000, N_COST: 24000000, Aw: 0.16, friction: 0.7, f: 0.25 },
+    ToC_ADULT: { N_DIFF: 18000000, N_COST: 36000000, Aw: 0.115, friction: 0.7, f: 0.25 },
+    ToC_CHILD: { N_DIFF: 13000000, N_COST: 26000000, Aw: 0.17, friction: 0.7, f: 0.25 },
+    ToB_ELDER: { N_DIFF: 8000000, N_COST: 16000000, Aw: 0.22, friction: 0.65, f: 0.15 },
+    ToB_ADULT: { N_DIFF: 15000000, N_COST: 30000000, Aw: 0.12, friction: 0.5, f: 0.15 },
+    ToB_CHILD: { N_DIFF: 10000000, N_COST: 20000000, Aw: 0.19, friction: 0.7, f: 0.15 }
   }
 };
 
