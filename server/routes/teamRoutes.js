@@ -129,7 +129,7 @@ function buildComputationContext({ teamId, sessionId, memberId, source = "web" }
 
 function lambdaMap(score) {
   const clamped = clipScore(score, 1, 5) ?? 3;
-  return Number((0.65 + clamped * 0.10).toFixed(2));
+  return Number((0.755 + clamped * 0.07).toFixed(3));
 }
 
 function rhoDiscount(score) {
