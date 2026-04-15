@@ -39,7 +39,7 @@ const DEFAULT_ENGINE_PARAMS = {
     S_monthly: 99,
     gm_sub: 0.7,
     T: 24,
-    alpha: -8.0,
+    alpha: -7.5,
     mu: 1.8889
   },
   shape: {
