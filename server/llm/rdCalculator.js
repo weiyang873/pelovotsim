@@ -108,7 +108,7 @@ const DEFAULT_PARAMS = {
   omega_sub: 0.2,
   omega_risk: 0.15,
   omega_cost: 0.2,
-  cost_ref: 5000,
+  cost_ref: 8000,
 
   // wtpPrime uplift coefficient
   gamma: 0.3,
