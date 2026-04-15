@@ -505,21 +505,22 @@ function TeamCard({ team, expanded, onToggle, onAction, busy, lovotImage, lovotL
 
           {lovotImage && (
             <div style={{ marginTop: 16, padding: 16, background: "#f8fafc", borderRadius: 14, border: "1px solid #e2e8f0", textAlign: "center" }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#334155", marginBottom: 10 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "#334155", marginBottom: 12, textAlign: "center" }}>
                 团队专属 LOVOT
               </div>
-              <img
-                src={lovotImage}
-                alt={`${team.name} LOVOT`}
-                style={{
-                  maxWidth: 300,
-                  maxHeight: 300,
-                  width: "100%",
-                  objectFit: "contain",
-                  borderRadius: 12,
-                  boxShadow: "0 4px 12px rgba(15,23,42,0.12)"
-                }}
-              />
+              <div style={{ display: "flex", justifyContent: "center" }}>
+                <img
+                  src={lovotImage}
+                  alt={`${team.name} LOVOT`}
+                  style={{
+                    maxWidth: 480,
+                    width: "100%",
+                    objectFit: "contain",
+                    borderRadius: 16,
+                    boxShadow: "0 4px 12px rgba(15,23,42,0.12)"
+                  }}
+                />
+              </div>
             </div>
           )}
         </div>
