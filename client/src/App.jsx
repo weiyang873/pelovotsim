@@ -5,7 +5,6 @@ import EntryPage from "./pages/EntryPage";
 import AdminPanel from "./pages/AdminPanel";
 import TestRound2Entry from "./pages/TestRound2Entry";
 import LegalPage from "./pages/LegalPage";
-import { getTeamStatus } from "./api/teamApi";
 import ReferenceDrawer from "./components/ReferenceDrawer";
 import { hasStoredStudentSession, markRound1ReviewIntent, readStudentSession } from "./utils/studentSession";
 
@@ -26,13 +25,6 @@ function goTo(pathname, search = "") {
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
-function getCurrentTeamId() {
-  if (typeof window === "undefined") return "";
-  const url = new URL(window.location.href);
-  const teamId = url.searchParams.get("teamId") || readStudentSession()?.teamId || "";
-  return teamId;
-}
-
 function hasTeamContext() {
   if (typeof window === "undefined") return false;
   return new URL(window.location.href).searchParams.has("teamId") || hasStoredStudentSession();
@@ -45,7 +37,6 @@ function shouldForceEntryPage() {
 
 export default function App() {
   const [pathname, setPathname] = useState(getPathname());
-  const [isFrozen, setIsFrozen] = useState(false);
 
   const isRound2 = useMemo(
     () => pathname === ROUND2_PATH || pathname === "/round2",
@@ -82,38 +73,6 @@ export default function App() {
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
-
-  useEffect(() => {
-    if (isRound2 || isLegal) return undefined;
-    const teamId = getCurrentTeamId();
-    if (!teamId) {
-      setIsFrozen(false);
-      return undefined;
-    }
-
-    let canceled = false;
-    let currentController = null;
-    const tick = async () => {
-      try {
-        currentController?.abort();
-        currentController = new AbortController();
-        const status = await getTeamStatus(teamId, "", { signal: currentController.signal });
-        if (!canceled) {
-          setIsFrozen(status.status === "frozen");
-        }
-      } catch (error) {
-        if (error?.name === "AbortError") return;
-      }
-    };
-
-    tick();
-    const timer = setInterval(tick, 2000);
-    return () => {
-      canceled = true;
-      currentController?.abort();
-      clearInterval(timer);
-    };
-  }, [isLegal, isRound2, pathname]);
 
   let content = null;
 
@@ -156,29 +115,6 @@ export default function App() {
     content = (
       <>
         <MultiplayerFlow />
-        {isFrozen && (
-          <button
-            type="button"
-            onClick={() => goTo(ROUND2_PATH)}
-            style={{
-              position: "fixed",
-              right: 16,
-              bottom: 16,
-              zIndex: 999,
-              border: "none",
-              borderRadius: 999,
-              background: "#1a5c3a",
-              color: "#fff",
-              padding: "12px 18px",
-              fontWeight: 800,
-              fontSize: 13,
-              boxShadow: "0 8px 20px rgba(0,0,0,0.2)",
-              cursor: "pointer"
-            }}
-          >
-            进入 Round 2
-          </button>
-        )}
       </>
     );
   }

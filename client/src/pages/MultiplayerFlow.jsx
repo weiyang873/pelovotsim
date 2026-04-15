@@ -1223,19 +1223,8 @@ export default function App() {
             setTeamArch(String(status.team_draft.architecture || ""));
           }
         }
-        if (
-          entryMode === "trial" &&
-          status.status === "frozen" &&
-          !allowRound1ReviewRef.current &&
-          !autoRound2RedirectRef.current
-        ) {
-          autoRound2RedirectRef.current = true;
-          goToRound2Room();
-          return;
-        }
         const nextR2Status = String(status.r2_status || "R2_NOT_STARTED");
         if (
-          entryMode === "classroom" &&
           previousR2Status &&
           !shouldOpenRound2(previousR2Status) &&
           shouldOpenRound2(nextR2Status) &&
@@ -1796,12 +1785,7 @@ export default function App() {
       setIsFreezing(true);
       await freezeTeam(teamId, memberId);
       setTeamStatus("frozen");
-      if (teamSize === 1 || entryMode === "trial") {
-        setStatusLine("已冻结，正在进入 Round 2...");
-        goToRound2Room();
-        return;
-      }
-      setStatusLine("已冻结。建议先回教室讨论，再进入 Round 2。");
+      setStatusLine("已冻结。等待教师开放 Round 2。");
     } catch (e) {
       setStatusLine(`冻结失败: ${formatLeaderLockMessage(e)}`);
     } finally {
@@ -3312,12 +3296,10 @@ export default function App() {
                   ? (isReadOnlyReview ? "本轮结果已冻结" : `仅组长 ${leaderBannerName(leaderName)} 可冻结`)
                   : isFreezing
                     ? "处理中..."
-                    : (teamSize === 1 || entryMode === "trial"
-                      ? "完成 Round 1 并进入 Round 2"
-                      : "冻结本轮结果")}
+                    : "冻结本轮结果"}
               </button>
               <div style={{ fontSize: 12, opacity: 0.5, textAlign: "center" }}>
-                {teamSize === 1 || entryMode === "trial" ? "单人模式会自动进入第二轮" : "第二轮将由老师统一开启"}
+                第二轮将由老师统一开启
               </div>
             </div>
           </div>

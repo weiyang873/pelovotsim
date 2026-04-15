@@ -129,7 +129,7 @@ function buildComputationContext({ teamId, sessionId, memberId, source = "web" }
 
 function lambdaMap(score) {
   const clamped = clipScore(score, 1, 5) ?? 3;
-  return Number((0.60 + clamped * 0.10).toFixed(2));
+  return Number((0.65 + clamped * 0.10).toFixed(2));
 }
 
 function rhoDiscount(score) {
@@ -228,7 +228,7 @@ function buildPersistedVpScores(C, G, EScore) {
 }
 
 function computeJinangWtpBonus(matchStrength) {
-  return Number((clamp01(matchStrength) * 0.05).toFixed(4));
+  return Number((clamp01(matchStrength) * 0.02).toFixed(4));
 }
 
 function roundJinangBonus(value) {

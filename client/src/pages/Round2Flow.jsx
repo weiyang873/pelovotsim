@@ -1756,6 +1756,17 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     );
   };
 
+  if (teamId && !isLoadingContext && teamStatus === "R2_NOT_STARTED") {
+    return (
+      <div style={{fontFamily:"'Noto Sans SC',-apple-system,sans-serif",background:"#fafaf8",minHeight:"100vh",padding:"16px 14px"}}>
+        <div style={{maxWidth:720,margin:"100px auto 0",padding:"32px 28px",borderRadius:16,background:"#fff",border:"1px solid #e5e7eb",textAlign:"center",boxShadow:"0 10px 24px rgba(15,23,42,0.06)"}}>
+          <div style={{fontSize:22,fontWeight:800,color:"#111827",marginBottom:10}}>教师尚未开放 Round 2</div>
+          <div style={{fontSize:16,lineHeight:1.8,color:"#6b7280"}}>请先返回等待，教师在教师面板开放后，系统会自动允许进入第二轮。</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{fontFamily:"'Noto Sans SC',-apple-system,sans-serif",background:"#fafaf8",minHeight:"100vh",padding:"16px 14px"}}>
     <div style={{maxWidth:1060,margin:"0 auto"}}>

@@ -18,7 +18,7 @@ async function resolveStoredPath(session) {
   if (session.entryMode === "trial") {
     try {
       const status = await getTeamStatus(session.teamId);
-      if (status?.status === "frozen" || shouldOpenRound2(status?.r2_status)) {
+      if (shouldOpenRound2(status?.r2_status)) {
         return "/multiplayer/round2";
       }
     } catch (_) {}
