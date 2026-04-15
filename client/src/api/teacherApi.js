@@ -68,6 +68,31 @@ export async function generateTeacherTeamReview(code, teamId, sessionId = "defau
   return asJson(res);
 }
 
+export async function generateTeacherLovot(code, teamId) {
+  const res = await fetch(`${BASE}/teacher/generate-lovot`, {
+    method: "POST",
+    headers: teacherHeaders(code),
+    body: JSON.stringify({ team_id: teamId })
+  });
+  return asJson(res);
+}
+
+export async function generateTeacherLovotBatch(code) {
+  const res = await fetch(`${BASE}/teacher/generate-lovot-batch`, {
+    method: "POST",
+    headers: teacherHeaders(code),
+    body: JSON.stringify({})
+  });
+  return asJson(res);
+}
+
+export async function getTeacherLovotImage(code, teamId) {
+  const res = await fetch(`${BASE}/teacher/lovot-image/${encodeURIComponent(teamId)}`, {
+    headers: { "x-teacher-code": String(code || "").trim() }
+  });
+  return asJson(res);
+}
+
 export async function downloadTeacherCsv(code, sessionId = "default") {
   const res = await fetch(`${BASE}/teacher/export-csv?session_id=${encodeURIComponent(sessionId)}`, {
     headers: { "x-teacher-code": String(code || "").trim() }

@@ -2028,6 +2028,38 @@ function handleApi(req, res) {
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher generate team review failed" }));
   }
 
+  if (req.method === "POST" && /^\/api\/teacher\/generate-lovot\/?$/.test(reqPath)) {
+    return readBody(req)
+      .then((payload) => {
+        const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: null, body: payload });
+        if (!auth?.body?.ok) return auth;
+        return TeacherDebrief.generateLovotApi(payload);
+      })
+      .then((out) => sendJson(res, out.status, out.body))
+      .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher generate lovot failed" }));
+  }
+
+  if (req.method === "POST" && /^\/api\/teacher\/generate-lovot-batch\/?$/.test(reqPath)) {
+    return readBody(req)
+      .then((payload) => {
+        const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: null, body: payload });
+        if (!auth?.body?.ok) return auth;
+        return TeacherDebrief.generateLovotBatchApi(payload);
+      })
+      .then((out) => sendJson(res, out.status, out.body))
+      .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher batch lovot failed" }));
+  }
+
+  if (req.method === "GET" && /^\/api\/teacher\/lovot-image\/[^/]+\/?$/.test(reqPath)) {
+    const url = new URL(reqUrl, `http://${req.headers.host || "127.0.0.1"}`);
+    const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: url.searchParams, body: null });
+    if (!auth?.body?.ok) return sendJson(res, auth.status, auth.body);
+    const teamId = decodeURIComponent(reqPath.replace(/^\/api\/teacher\/lovot-image\//, "").replace(/\/$/, ""));
+    return TeacherDebrief.getLovotImageApi(teamId)
+      .then((out) => sendJson(res, out.status, out.body))
+      .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher lovot image failed" }));
+  }
+
   if (req.method === "POST" && /^\/api\/teacher\/export-ppt\/?$/.test(reqPath)) {
     return readBody(req)
       .then((payload) => {

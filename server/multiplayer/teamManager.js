@@ -121,6 +121,8 @@ async function ensureSchema() {
     ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_wtp_multiplier DOUBLE PRECISION;
     ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_wtp_vp_effect DOUBLE PRECISION;
     ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_jinang_wtp_bonus DOUBLE PRECISION;
+    ALTER TABLE teams ADD COLUMN IF NOT EXISTS lovot_image TEXT;
+    ALTER TABLE teams ADD COLUMN IF NOT EXISTS lovot_image_mime TEXT DEFAULT 'image/png';
     ALTER TABLE teams ADD COLUMN IF NOT EXISTS leader_member_id TEXT;
     ALTER TABLE team_members ADD COLUMN IF NOT EXISTS is_leader BOOLEAN DEFAULT FALSE;
     ALTER TABLE team_members ADD COLUMN IF NOT EXISTS vp_text TEXT;

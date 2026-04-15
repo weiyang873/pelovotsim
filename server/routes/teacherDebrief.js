@@ -3,6 +3,7 @@ const { runSql, sqlQuote } = require("../db/pgSql");
 const { chatCompletion } = require("../llm/deepseekClient");
 const { withLlmLogging } = require("../llm/llm_logger");
 const { getTeamSessions } = require("../llm/sessions");
+const { buildDataUrl, generateLovotImage } = require("../llm/lovotImageGen");
 const { loadJinangConfig } = require("../multiplayer/jinangDealer");
 const { listTeamIterations } = require("../multiplayer/vpIterationStore");
 const Round2 = require("./round2Routes");
@@ -72,7 +73,13 @@ async function ensureSchema() {
   await Round2.ensureSchema();
   await runSql(`
     ALTER TABLE teams ADD COLUMN IF NOT EXISTS session_id TEXT DEFAULT 'default';
+    ALTER TABLE teams ADD COLUMN IF NOT EXISTS lovot_image TEXT;
+    ALTER TABLE teams ADD COLUMN IF NOT EXISTS lovot_image_mime TEXT DEFAULT 'image/png';
     UPDATE teams SET session_id = 'default' WHERE session_id IS NULL;
+    UPDATE teams
+    SET lovot_image_mime = 'image/png'
+    WHERE (lovot_image_mime IS NULL OR lovot_image_mime = '')
+      AND COALESCE(lovot_image, '') <> '';
 
     CREATE TABLE IF NOT EXISTS debrief_cache (
       id TEXT PRIMARY KEY,
@@ -362,13 +369,15 @@ async function getTeamsForSession(sessionId) {
       final_grid_id,
       final_architecture,
       final_vp_text,
+      final_vp_summary,
       final_vp_c,
       final_vp_g,
       final_vp_e_raw,
       final_vp_e_adj,
       final_sam,
       final_wtp_adj,
-      final_vp_scores
+      final_vp_scores,
+      (COALESCE(lovot_image, '') <> '') AS has_lovot_image
     FROM teams
     WHERE COALESCE(session_id, 'default') = ${sqlQuote(sid)}
     ORDER BY created_at ASC, team_name ASC;
@@ -736,6 +745,7 @@ async function buildVpIterationData(teamId, sessionId, fallbackVpText) {
 
 async function buildTeamRecord(teamRow, sessionId, teamIndex) {
   const rawScores = safeJsonParse(teamRow.final_vp_scores, {}) || {};
+  const vpSummary = safeJsonParse(teamRow.final_vp_summary, {}) || {};
   const members = await buildTeamMembers(teamRow.id);
   const vpJourney = await buildVpIterationData(teamRow.id, sessionId, teamRow.final_vp_text);
   const r1 = {
@@ -745,9 +755,9 @@ async function buildTeamRecord(teamRow, sessionId, teamIndex) {
     archLabel: formatArchitectureLabel(teamRow.final_architecture),
     archMeta: getArchDisplay(teamRow.final_architecture),
     vp: String(teamRow.final_vp_text || "").replace(/\s+/g, " ").trim(),
-    who: extractVpField(teamRow.final_vp_text, "WHO"),
-    pain: extractVpField(teamRow.final_vp_text, "PAIN"),
-    how: extractVpField(teamRow.final_vp_text, "HOW"),
+    who: String(vpSummary.who || vpSummary.WHO || extractVpField(teamRow.final_vp_text, "WHO") || "").trim(),
+    pain: String(vpSummary.pain || vpSummary.PAIN || extractVpField(teamRow.final_vp_text, "PAIN") || "").trim(),
+    how: String(vpSummary.how || vpSummary.HOW || extractVpField(teamRow.final_vp_text, "HOW") || "").trim(),
     C: teamRow.final_vp_c != null ? Number(teamRow.final_vp_c) : Number(rawScores.C || 0),
     G: teamRow.final_vp_g != null ? Number(teamRow.final_vp_g) : Number(rawScores.G || 0),
     E: teamRow.final_vp_e_raw != null ? Number(teamRow.final_vp_e_raw) : Number(rawScores.E || 0),
@@ -841,6 +851,8 @@ async function buildTeamRecord(teamRow, sessionId, teamIndex) {
     displayName: formatDisplayName(teamRow.team_name, teamIndex),
     color: TEAM_COLORS[teamIndex % TEAM_COLORS.length],
     teamIndex,
+    hasLovotImage: Boolean(teamRow.has_lovot_image),
+    has_lovot_image: Boolean(teamRow.has_lovot_image),
     members,
     memberCount: Number(teamRow.team_size || members.length || 0),
     r1,
@@ -848,6 +860,87 @@ async function buildTeamRecord(teamRow, sessionId, teamIndex) {
     causalDetail,
     vpTimeline: vpJourney.iterations
   };
+}
+
+function extractLovotVpData(teamRow) {
+  const summary = safeJsonParse(teamRow?.final_vp_summary, {}) || {};
+  const who = String(summary.who || summary.WHO || extractVpField(teamRow?.final_vp_text, "WHO") || "").trim();
+  const pain = String(summary.pain || summary.PAIN || extractVpField(teamRow?.final_vp_text, "PAIN") || "").trim();
+  const how = String(summary.how || summary.HOW || extractVpField(teamRow?.final_vp_text, "HOW") || "").trim();
+
+  return { who, pain, how };
+}
+
+async function getLovotTeamRow(teamId) {
+  await ensureSchema();
+  const rows = await runSql(`
+    SELECT
+      id,
+      team_name,
+      status,
+      final_grid_id,
+      final_architecture,
+      final_vp_text,
+      final_vp_summary,
+      lovot_image,
+      lovot_image_mime
+    FROM teams
+    WHERE id = ${sqlQuote(teamId)}
+    LIMIT 1;
+  `);
+  return rows[0] || null;
+}
+
+async function generateLovotForTeam(teamId) {
+  const team = await getLovotTeamRow(teamId);
+  if (!team) {
+    const notFound = new Error("Team not found");
+    notFound.status = 404;
+    throw notFound;
+  }
+
+  const { who, pain, how } = extractLovotVpData(team);
+  if (!who && !pain && !how) {
+    const invalid = new Error("该组尚未提交 VP，无法生成形象");
+    invalid.status = 400;
+    throw invalid;
+  }
+
+  const gridLabel = formatGridLabel(team.final_grid_id);
+  const generated = await generateLovotImage({
+    who,
+    pain,
+    how,
+    gridLabel,
+    arch: team.final_architecture
+  });
+
+  await runSql(`
+    UPDATE teams
+    SET lovot_image = ${sqlQuote(generated.base64)},
+        lovot_image_mime = ${sqlQuote(generated.mimeType || "image/png")}
+    WHERE id = ${sqlQuote(teamId)};
+  `);
+
+  return {
+    ok: true,
+    team_id: teamId,
+    mimeType: generated.mimeType || "image/png",
+    image: buildDataUrl(generated.base64, generated.mimeType || "image/png"),
+    modelUsed: generated.modelUsed || ""
+  };
+}
+
+async function getLovotImageApi(teamId) {
+  const team = await getLovotTeamRow(teamId);
+  if (!team || !String(team.lovot_image || "").trim()) {
+    return makeResponse(404, { ok: false, error: "尚未生成" });
+  }
+  return makeResponse(200, {
+    ok: true,
+    team_id: String(team.id || teamId),
+    image: buildDataUrl(team.lovot_image, team.lovot_image_mime || "image/png")
+  });
 }
 
 async function buildDebriefData(sessionId) {
@@ -1185,6 +1278,50 @@ async function generateTeamReviewApi(body) {
   }
 }
 
+async function generateLovotApi(body) {
+  try {
+    const teamId = String(body?.team_id || body?.teamId || "").trim();
+    if (!teamId) return makeResponse(400, { ok: false, error: "team_id required" });
+    const out = await generateLovotForTeam(teamId);
+    return makeResponse(200, out);
+  } catch (e) {
+    const status = Number(e?.status || 0);
+    return makeResponse(status >= 400 && status < 500 ? status : 500, { ok: false, error: e.message });
+  }
+}
+
+async function generateLovotBatchApi() {
+  try {
+    await ensureSchema();
+    const teamRows = await runSql(`
+      SELECT id
+      FROM teams
+      WHERE status IN ('frozen', 'phase4')
+        AND COALESCE(lovot_image, '') = ''
+      ORDER BY created_at ASC, team_name ASC;
+    `);
+
+    const results = [];
+    for (const row of teamRows) {
+      try {
+        await generateLovotForTeam(row.id);
+        results.push({ team_id: row.id, ok: true });
+      } catch (e) {
+        results.push({ team_id: row.id, ok: false, error: e.message || String(e) });
+      }
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+
+    return makeResponse(200, {
+      ok: true,
+      total: teamRows.length,
+      results
+    });
+  } catch (e) {
+    return makeResponse(500, { ok: false, error: e.message });
+  }
+}
+
 async function exportCsv(sessionId) {
   const sid = normalizeSessionId(sessionId);
   const data = await buildDebriefData(sid);
@@ -1210,6 +1347,9 @@ module.exports = {
   vpIterationsApi,
   generateDebriefApi,
   generateTeamReviewApi,
+  generateLovotApi,
+  generateLovotBatchApi,
+  getLovotImageApi,
   exportCsv,
   exportPptApi,
   exportPdfApi,

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   downloadTeacherCsv,
   generateTeacherDebrief,
+  getTeacherLovotImage,
   generateTeacherTeamReview,
   getTeacherDebriefData,
   getTeacherVpIterations
@@ -874,7 +875,7 @@ function VPIterationTimeline({ iterations, loading }) {
   );
 }
 
-function Round1DetailAccordion({ teams, teacherCode, sessionId }) {
+function Round1DetailAccordion({ teams, teacherCode, sessionId, lovotImages, lovotLoading, onLoadLovotImage }) {
   const [expandedTeamId, setExpandedTeamId] = useState("");
   const [iterationsByTeam, setIterationsByTeam] = useState({});
   const [loadingByTeam, setLoadingByTeam] = useState({});
@@ -882,7 +883,12 @@ function Round1DetailAccordion({ teams, teacherCode, sessionId }) {
   const handleToggle = async (teamId) => {
     const next = expandedTeamId === teamId ? "" : teamId;
     setExpandedTeamId(next);
-    if (!next || iterationsByTeam[teamId] || loadingByTeam[teamId]) return;
+    if (!next) return;
+    const targetTeam = teams.find((item) => item.id === teamId);
+    if (targetTeam?.hasLovotImage && !lovotImages[teamId] && !lovotLoading[teamId]) {
+      onLoadLovotImage(teamId);
+    }
+    if (iterationsByTeam[teamId] || loadingByTeam[teamId]) return;
     setLoadingByTeam((prev) => ({ ...prev, [teamId]: true }));
     try {
       const out = await getTeacherVpIterations(teacherCode, teamId, sessionId);
@@ -959,10 +965,25 @@ function Round1DetailAccordion({ teams, teacherCode, sessionId }) {
                     </div>
                     <div style={{ padding: "14px 16px", borderRadius: 14, background: "#fff", border: "1px solid #e2e8f0" }}>
                       <div style={{ fontSize: 13, fontWeight: 900, color: "#0f172a", marginBottom: 10 }}>价值主张摘要</div>
-                      <div style={{ fontSize: 12, color: "#334155", lineHeight: 1.8 }}>
-                        <div><strong>WHO：</strong>{team?.r1?.who || "-"}</div>
-                        <div><strong>PAIN：</strong>{team?.r1?.pain || "-"}</div>
-                        <div><strong>HOW：</strong>{team?.r1?.how || "-"}</div>
+                      <div style={{ display: "grid", gridTemplateColumns: team?.hasLovotImage ? "1fr 92px" : "1fr", gap: 14, alignItems: "start" }}>
+                        <div style={{ fontSize: 12, color: "#334155", lineHeight: 1.8 }}>
+                          <div><strong>WHO：</strong>{team?.r1?.who || "-"}</div>
+                          <div><strong>PAIN：</strong>{team?.r1?.pain || "-"}</div>
+                          <div><strong>HOW：</strong>{team?.r1?.how || "-"}</div>
+                        </div>
+                        {team?.hasLovotImage ? (
+                          lovotImages[team.id] ? (
+                            <img
+                              src={lovotImages[team.id]}
+                              alt={`${team.displayName} LOVOT`}
+                              style={{ width: 80, height: 80, borderRadius: 10, objectFit: "cover", justifySelf: "end", boxShadow: "0 4px 12px rgba(15,23,42,0.12)" }}
+                            />
+                          ) : (
+                            <div style={{ width: 80, height: 80, borderRadius: 10, justifySelf: "end", display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc", border: "1px solid #e2e8f0", fontSize: 11, color: "#64748b", textAlign: "center", padding: 8 }}>
+                              {lovotLoading[team.id] ? "加载中..." : "LOVOT"}
+                            </div>
+                          )
+                        ) : null}
                       </div>
                     </div>
                   </div>
@@ -2218,7 +2239,7 @@ function RdRoiRankingCard({ teams }) {
   );
 }
 
-function Round1Tab({ teams, teacherCode, sessionId }) {
+function Round1Tab({ teams, teacherCode, sessionId, lovotImages, lovotLoading, onLoadLovotImage }) {
   if (!teams.length) {
     return emptyState("Round 1 暂无数据", "等团队完成第一轮后，这里会显示个人分布、团队共识和 VP 迭代。");
   }
@@ -2239,7 +2260,14 @@ function Round1Tab({ teams, teacherCode, sessionId }) {
         <SamWtpCard teams={teams} />
         <VpScoresCard teams={teams} />
       </div>
-      <Round1DetailAccordion teams={teams} teacherCode={teacherCode} sessionId={sessionId} />
+      <Round1DetailAccordion
+        teams={teams}
+        teacherCode={teacherCode}
+        sessionId={sessionId}
+        lovotImages={lovotImages}
+        lovotLoading={lovotLoading}
+        onLoadLovotImage={onLoadLovotImage}
+      />
       <Round1DivergenceCard teams={teams} />
     </div>
   );
@@ -2458,6 +2486,8 @@ export default function TeacherDebriefTabs({ activeTab, teacherCode, onExportJso
   const [debriefRound, setDebriefRound] = useState(2);
   const [scripts, setScripts] = useState({});
   const [scriptLoading, setScriptLoading] = useState(false);
+  const [lovotImages, setLovotImages] = useState({});
+  const [lovotLoading, setLovotLoading] = useState({});
   const mountedRef = useRef(true);
 
   const sessionId = "default";
@@ -2567,6 +2597,22 @@ export default function TeacherDebriefTabs({ activeTab, teacherCode, onExportJso
     }
   };
 
+  const loadLovotImage = async (teamId) => {
+    if (!teacherCode || !teamId || lovotImages[teamId] || lovotLoading[teamId]) return;
+    setLovotLoading((prev) => ({ ...prev, [teamId]: true }));
+    try {
+      const out = await getTeacherLovotImage(teacherCode, teamId);
+      if (!mountedRef.current) return;
+      setLovotImages((prev) => ({ ...prev, [teamId]: out.image }));
+    } catch (_) {
+      // Ignore missing or failed LOVOT fetches in the debrief panel.
+    } finally {
+      if (mountedRef.current) {
+        setLovotLoading((prev) => ({ ...prev, [teamId]: false }));
+      }
+    }
+  };
+
   if (loading && !debriefData) {
     return <div style={{ fontSize: 13, color: "#64748b" }}>正在读取教师复盘数据...</div>;
   }
@@ -2593,7 +2639,16 @@ export default function TeacherDebriefTabs({ activeTab, teacherCode, onExportJso
         </button>
       </div>
 
-      {activeTab === "Round 1 复盘" && <Round1Tab teams={round1Teams} teacherCode={teacherCode} sessionId={sessionId} />}
+      {activeTab === "Round 1 复盘" && (
+        <Round1Tab
+          teams={round1Teams}
+          teacherCode={teacherCode}
+          sessionId={sessionId}
+          lovotImages={lovotImages}
+          lovotLoading={lovotLoading}
+          onLoadLovotImage={loadLovotImage}
+        />
+      )}
       {activeTab === "Round 2 复盘" && (
         <Round2Tab
           teams={round2Teams}

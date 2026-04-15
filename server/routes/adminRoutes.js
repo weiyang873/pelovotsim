@@ -119,7 +119,8 @@ async function listTeams() {
   try {
     const teams = await runSql(`
       SELECT t.id, t.team_name, t.team_size, t.status, t.created_at,
-        t.final_grid_id, t.final_architecture, t.final_sam, t.final_wtp_adj
+        t.final_grid_id, t.final_architecture, t.final_sam, t.final_wtp_adj,
+        (COALESCE(t.lovot_image, '') <> '') AS has_lovot_image
       FROM teams t
       ORDER BY t.created_at ASC;
     `);
@@ -142,6 +143,7 @@ async function listTeams() {
 
       result.push({
         ...team,
+        hasLovotImage: Boolean(team.has_lovot_image),
         members,
         submitted_count: Number(submittedCount[0]?.c || 0)
       });

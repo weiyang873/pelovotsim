@@ -4,6 +4,7 @@ const checks = [
   ["node", ["--check", "server.js"]],
   ["node", ["--check", "server/llm/interviewCoach.js"]],
   ["node", ["--check", "server/llm/llm_logger.js"]],
+  ["node", ["--check", "server/llm/lovotImageGen.js"]],
   ["node", ["--check", "server/llm/personaGenerator.js"]],
   ["node", ["--check", "server/llm/requirementBuilder.js"]],
   ["node", ["--check", "server/llm/tagExtractor.js"]],
