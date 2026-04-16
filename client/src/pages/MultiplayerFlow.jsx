@@ -14,7 +14,8 @@ import {
   finalizeDecision,
   getPhase3State,
   getResults,
-  freezeTeam
+  freezeTeam,
+  leaderStartRound2
 } from "../api/teamApi";
 import {
   consumeRound1ReviewIntent,
@@ -841,6 +842,7 @@ export default function App() {
   const [isExtractingVp, setIsExtractingVp] = useState(false);
   const [isConfirmingVp, setIsConfirmingVp] = useState(false);
   const [isFreezing, setIsFreezing] = useState(false);
+  const [isStartingRound2, setIsStartingRound2] = useState(false);
   const [coachHistory, setCoachHistory] = useState([]);
   const [coachInput, setCoachInput] = useState("");
   const [phase3StateLoaded, setPhase3StateLoaded] = useState(false);
@@ -1790,6 +1792,31 @@ export default function App() {
       setStatusLine(`冻结失败: ${formatLeaderLockMessage(e)}`);
     } finally {
       setIsFreezing(false);
+    }
+  };
+
+  const handleLeaderStartRound2 = async () => {
+    if (!teamId || !memberId || isStartingRound2) return;
+    try {
+      setIsStartingRound2(true);
+      const out = await leaderStartRound2(teamId, memberId);
+      setTeamStatus(String(out?.status || "frozen"));
+      setStatusLine("已进入第二轮。正在跳转...");
+      if (shouldOpenRound2(String(out?.r2_status || "R2_NOT_STARTED"))) {
+        autoRound2RedirectRef.current = true;
+        goToRound2Room();
+        return;
+      }
+      const status = await getTeamStatus(teamId, memberId);
+      setTeamStatus(status.status || "frozen");
+      if (shouldOpenRound2(String(status.r2_status || "R2_NOT_STARTED"))) {
+        autoRound2RedirectRef.current = true;
+        goToRound2Room();
+      }
+    } catch (e) {
+      setStatusLine(`开启第二轮失败: ${formatLeaderLockMessage(e)}`);
+    } finally {
+      setIsStartingRound2(false);
     }
   };
 
@@ -3273,34 +3300,64 @@ export default function App() {
                   老师将带领大家回顾各组的战略选择，讨论不同方向的优劣势。之后再进入第二轮：产品研发决策。
                 </div>
               </div>
-              <button
-                data-testid="r1-freeze-btn"
-                type="button"
-                onClick={handleFreeze}
-                disabled={round1TeamControlsLocked || isFreezing}
-                style={{
-                  width: "100%",
-                  padding: "12px 18px",
-                  borderRadius: 10,
-                  border: "none",
-                  background: "#10b981",
-                  color: "#fff",
-                  fontSize: 14,
-                  fontWeight: 800,
-                  cursor: round1TeamControlsLocked ? "default" : "pointer",
-                  opacity: round1TeamControlsLocked ? 0.5 : 1,
-                  marginBottom: 14
-                }}
-              >
-                {round1TeamControlsLocked
-                  ? (isReadOnlyReview ? "本轮结果已冻结" : `仅组长 ${leaderBannerName(leaderName)} 可冻结`)
-                  : isFreezing
-                    ? "处理中..."
-                    : "冻结本轮结果"}
-              </button>
-              <div style={{ fontSize: 12, opacity: 0.5, textAlign: "center" }}>
-                第二轮将由老师统一开启
-              </div>
+              {teamStatus !== "frozen" ? (
+                <>
+                  <button
+                    data-testid="r1-freeze-btn"
+                    type="button"
+                    onClick={handleFreeze}
+                    disabled={round1TeamControlsLocked || isFreezing}
+                    style={{
+                      width: "100%",
+                      padding: "12px 18px",
+                      borderRadius: 10,
+                      border: "none",
+                      background: "#10b981",
+                      color: "#fff",
+                      fontSize: 14,
+                      fontWeight: 800,
+                      cursor: round1TeamControlsLocked ? "default" : "pointer",
+                      opacity: round1TeamControlsLocked ? 0.5 : 1,
+                      marginBottom: 14
+                    }}
+                  >
+                    {round1TeamControlsLocked
+                      ? (isReadOnlyReview ? "本轮结果已冻结" : `仅组长 ${leaderBannerName(leaderName)} 可冻结`)
+                      : isFreezing
+                        ? "处理中..."
+                        : "冻结本轮结果"}
+                  </button>
+                  <div style={{ fontSize: 12, opacity: 0.5, textAlign: "center" }}>
+                    第二轮将由老师统一开启
+                  </div>
+                </>
+              ) : isLeader ? (
+                <button
+                  data-testid="r1-start-round2-btn"
+                  type="button"
+                  onClick={handleLeaderStartRound2}
+                  disabled={isStartingRound2}
+                  style={{
+                    width: "100%",
+                    padding: "12px 18px",
+                    borderRadius: 10,
+                    border: "none",
+                    background: "#10b981",
+                    color: "#fff",
+                    fontSize: 14,
+                    fontWeight: 800,
+                    cursor: isStartingRound2 ? "default" : "pointer",
+                    opacity: isStartingRound2 ? 0.7 : 1,
+                    marginBottom: 14
+                  }}
+                >
+                  {isStartingRound2 ? "处理中..." : "进入第二轮 →"}
+                </button>
+              ) : (
+                <div style={{ fontSize: 12, opacity: 0.5, textAlign: "center" }}>
+                  等待组长开启第二轮
+                </div>
+              )}
             </div>
           </div>
         )}

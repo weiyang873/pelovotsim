@@ -27,7 +27,10 @@ const {
   joinTeam: joinTeamRow,
   setTeamLeader
 } = require("../multiplayer/teamManager");
-const { getTeamRound2State } = require("../multiplayer/round2State");
+const {
+  getTeamRound2State,
+  updateTeamRound2Status
+} = require("../multiplayer/round2State");
 
 const ROOT = path.join(__dirname, "..", "..");
 const CONFIG_DIR = path.join(ROOT, "game_config_v0.1");
@@ -2666,6 +2669,27 @@ async function freezeTeam(teamId, body = {}) {
   }
 }
 
+async function leaderStartRound2(teamId, body = {}) {
+  try {
+    const memberId = readRequesterMemberId(body);
+    const permission = await ensureLeaderPermission(teamId, memberId);
+    if (!permission.ok) return permission.response;
+    const team = permission.team;
+    if (String(team.status || "").trim() !== "frozen") {
+      return makeResponse(400, { ok: false, error: "team must be frozen before starting round2" });
+    }
+    await updateTeamRound2Status(teamId, "R2_INTERVIEWING");
+    return makeResponse(200, {
+      ok: true,
+      status: "frozen",
+      r2_status: "R2_INTERVIEWING",
+      ...buildLeaderMeta(team, memberId)
+    });
+  } catch (e) {
+    return makeResponse(400, { ok: false, error: e.message });
+  }
+}
+
 async function getTeamStatus(teamId, requesterMemberId = "") {
   try {
     let team = await getTeam(teamId);
@@ -2741,6 +2765,7 @@ module.exports = {
   getPhase3Scores,
   phase4Data,
   freezeTeam,
+  leaderStartRound2,
   getTeamStatus,
   getMemberJinangApi,
   clipScore,

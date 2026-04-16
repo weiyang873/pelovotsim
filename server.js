@@ -2358,6 +2358,15 @@ function handleApi(req, res) {
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "team freeze failed" }));
   }
 
+  if (req.method === "POST" && /^\/api\/team\/[^/]+\/leader-start-round2$/.test(String(req.url || ""))) {
+    const parts = String(req.url || "").split("/");
+    const teamId = decodeURIComponent(parts[3] || "");
+    return readBody(req)
+      .then((p) => TeamRoutes.leaderStartRound2(teamId, p))
+      .then((out) => sendJson(res, out.status, out.body))
+      .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "leader start round2 failed" }));
+  }
+
   if (req.method === "GET" && req.url === "/api/health") {
     return sendJson(res, 200, { ok: true, dbPath: DB_PATH });
   }

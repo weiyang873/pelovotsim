@@ -182,3 +182,12 @@ export async function freezeTeam(teamId, memberId = "") {
   });
   return asJson(res);
 }
+
+export async function leaderStartRound2(teamId, memberId = "") {
+  const res = await fetch(`${BASE}/team/${encodeURIComponent(teamId)}/leader-start-round2`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(memberId ? { memberId } : {})
+  });
+  return asJson(res);
+}
