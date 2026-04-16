@@ -1,5 +1,5 @@
 const { getTeam, setTeamLeader } = require("../multiplayer/teamManager");
-const { runSql } = require("../db/pgSql");
+const { runSql, sqlQuote } = require("../db/pgSql");
 const { ensureSchema: ensureVpIterationSchema } = require("../multiplayer/vpIterationStore");
 const { mergeTeamSelections } = require("../multiplayer/rdTeamAdapter");
 const {
@@ -333,6 +333,44 @@ async function forceSubmitCardsApi(body) {
   }
 }
 
+async function markMemberAbsentApi(body) {
+  try {
+    const teamId = String(body?.teamId || body?.team_id || "").trim();
+    const memberId = String(body?.memberId || body?.member_id || "").trim();
+    if (!teamId || !memberId) {
+      return makeResponse(400, { ok: false, error: "teamId/memberId required" });
+    }
+
+    const { team, member } = await assertMember(teamId, memberId);
+
+    await runSql(`
+      UPDATE team_members
+      SET interview_status = 'completed',
+          card_status = 'submitted',
+          current_step = 'done',
+          forced_by_teacher = TRUE,
+          interview_rounds = GREATEST(COALESCE(interview_rounds, 0), 1),
+          cards_selected = COALESCE(cards_selected, 0),
+          last_activity_at = ${sqlQuote(nowIso())}
+      WHERE id = ${sqlQuote(memberId)} AND team_id = ${sqlQuote(teamId)};
+    `);
+
+    await logTeacherAction({
+      action: "mark_member_absent",
+      teamId,
+      memberId,
+      details: {
+        member_name: member.member_name || member.memberName || "",
+        team_name: team.team_name || ""
+      }
+    });
+
+    return makeResponse(200, { ok: true });
+  } catch (e) {
+    return makeResponse(400, { ok: false, error: e.message });
+  }
+}
+
 async function forceMergeApi(body) {
   try {
     const teamId = String(body?.team_id || body?.teamId || "").trim();
@@ -607,6 +645,7 @@ module.exports = {
   setLeaderApi,
   forceEndInterviewApi,
   forceSubmitCardsApi,
+  markMemberAbsentApi,
   forceMergeApi,
   forceMergeAllApi,
   forceAdvanceApi,

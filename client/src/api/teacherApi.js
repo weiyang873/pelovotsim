@@ -150,6 +150,15 @@ export async function teacherForceSubmitCards(code, payload) {
   return asJson(res);
 }
 
+export async function teacherMarkAbsent(code, payload) {
+  const res = await fetch(`${BASE}/teacher/mark-absent`, {
+    method: "POST",
+    headers: teacherHeaders(code),
+    body: JSON.stringify(payload)
+  });
+  return asJson(res);
+}
+
 export async function teacherForceMerge(code, payload) {
   const res = await fetch(`${BASE}/teacher/force-merge`, {
     method: "POST",

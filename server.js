@@ -2126,6 +2126,17 @@ function handleApi(req, res) {
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher force submit cards failed" }));
   }
 
+  if (req.method === "POST" && /^\/api\/teacher\/mark-absent\/?$/.test(reqPath)) {
+    return readBody(req)
+      .then((payload) => {
+        const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: null, body: payload });
+        if (!auth?.body?.ok) return auth;
+        return TeacherConsole.markMemberAbsentApi(payload);
+      })
+      .then((out) => sendJson(res, out.status, out.body))
+      .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher mark absent failed" }));
+  }
+
   if (req.method === "POST" && /^\/api\/teacher\/force-merge\/?$/.test(reqPath)) {
     return readBody(req)
       .then((payload) => {

@@ -13,6 +13,7 @@ import {
   teacherForceEndInterview,
   teacherForceMerge,
   teacherForceMergeAll,
+  teacherMarkAbsent,
   teacherForceSubmitCards,
   teacherResetMember,
   teacherResetSession,
@@ -177,6 +178,15 @@ function detailCardLabel(member) {
   if (member.cardStatus === "submitted") return "✓ 已提交";
   if (member.cardStatus === "selecting") return "● 选卡中";
   return "— 未开始";
+}
+
+function isMarkedAbsent(member) {
+  return Boolean(
+    member?.forcedByTeacher &&
+    member?.currentStep === "done" &&
+    member?.interviewStatus === "completed" &&
+    member?.cardStatus === "submitted"
+  );
 }
 
 function formatDims(dims) {
@@ -485,6 +495,13 @@ function TeamCard({ team, expanded, onToggle, onAction, busy, lovotImage, lovotL
                             重置选卡
                           </button>
                         )}
+                        <button
+                          onClick={() => onAction("markAbsent", { team_id: team.id, member_id: member.id, member_name: member.name })}
+                          disabled={busy || isMarkedAbsent(member)}
+                          style={ghostButtonStyle(true)}
+                        >
+                          {isMarkedAbsent(member) ? "已标记缺席" : "标记缺席"}
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -652,6 +669,20 @@ export default function AdminPanel() {
     }
     if (type === "forceSubmitCards") {
       await withRefresh("forceSubmitCards", () => teacherForceSubmitCards(teacherCode, payload), "已强制提交该成员选卡");
+      return;
+    }
+    if (type === "markAbsent") {
+      const memberName = String(payload?.member_name || "该成员").trim();
+      const confirmed = window.confirm(`确定将${memberName}标记为缺席？`);
+      if (!confirmed) return;
+      await withRefresh(
+        "markAbsent",
+        () => teacherMarkAbsent(teacherCode, {
+          teamId: payload?.team_id,
+          memberId: payload?.member_id
+        }),
+        "已将该成员标记为缺席"
+      );
       return;
     }
     if (type === "forceMerge") {
