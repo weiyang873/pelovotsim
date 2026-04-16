@@ -783,8 +783,10 @@ async function buildTeamRecord(teamRow, sessionId, teamIndex) {
   const cards = Array.isArray(snapshot?.submission?.cards)
     ? snapshot.submission.cards.map((item) => item.label || `${item.name || item.id}·${item.tierLabel || item.tier || ""}`)
     : [];
-  const units = toFiniteNumber(profitLog.Q, snapshot?.result?.units);
-  const totalProfit = toFiniteNumber(profitLog.total_profit, snapshot?.result?.profit);
+  const submissionPrice = snapshot?.submission?.price;
+  const submissionDcogs = snapshot?.submission?.dcogs;
+  const units = toFiniteNumber(snapshot?.result?.units, profitLog.Q);
+  const totalProfit = toFiniteNumber(snapshot?.result?.profit, profitLog.total_profit);
   const actualGm = toFiniteNumber(profitLog.actual_gm, result.actualGm);
   const profitPerUnit = units > 0
     ? Math.round(Number(totalProfit || 0) / units)
@@ -794,9 +796,10 @@ async function buildTeamRecord(teamRow, sessionId, teamIndex) {
   const effectiveWtpAdj = toFiniteNumber(result.wtpPrime, result.WTP, r1.wtpAdj);
 
   const r2 = {
-    price: toFiniteNumber(profitLog.P, snapshot?.submission?.price),
+    // 优先读 submission / result 快照（学生提交时的固化值），log 仅作 fallback。
+    price: toFiniteNumber(submissionPrice, profitLog.P),
     wtpAdj: effectiveWtpAdj,
-    dCOGS: toFiniteNumber(profitLog.dCOGS, snapshot?.submission?.dcogs),
+    dCOGS: toFiniteNumber(submissionDcogs, profitLog.dCOGS),
     cardCount: snapshot?.submission?.card_count ?? 0,
     riskTotal: snapshot?.submission?.risk_total ?? toFiniteNumber(result.risk, null),
     vscore,
