@@ -965,26 +965,33 @@ function Round1DetailAccordion({ teams, teacherCode, sessionId, lovotImages, lov
                     </div>
                     <div style={{ padding: "14px 16px", borderRadius: 14, background: "#fff", border: "1px solid #e2e8f0" }}>
                       <div style={{ fontSize: 13, fontWeight: 900, color: "#0f172a", marginBottom: 10 }}>价值主张摘要</div>
-                      <div style={{ display: "grid", gridTemplateColumns: team?.hasLovotImage ? "1fr 92px" : "1fr", gap: 14, alignItems: "start" }}>
-                        <div style={{ fontSize: 12, color: "#334155", lineHeight: 1.8 }}>
-                          <div><strong>WHO：</strong>{team?.r1?.who || "-"}</div>
-                          <div><strong>PAIN：</strong>{team?.r1?.pain || "-"}</div>
-                          <div><strong>HOW：</strong>{team?.r1?.how || "-"}</div>
-                        </div>
-                        {team?.hasLovotImage ? (
-                          lovotImages[team.id] ? (
-                            <img
-                              src={lovotImages[team.id]}
-                              alt={`${team.displayName} LOVOT`}
-                              style={{ width: 80, height: 80, borderRadius: 10, objectFit: "cover", justifySelf: "end", boxShadow: "0 4px 12px rgba(15,23,42,0.12)" }}
-                            />
-                          ) : (
-                            <div style={{ width: 80, height: 80, borderRadius: 10, justifySelf: "end", display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc", border: "1px solid #e2e8f0", fontSize: 11, color: "#64748b", textAlign: "center", padding: 8 }}>
-                              {lovotLoading[team.id] ? "加载中..." : "LOVOT"}
-                            </div>
-                          )
-                        ) : null}
+                      <div style={{ fontSize: 12, color: "#334155", lineHeight: 1.8 }}>
+                        <div><strong>WHO：</strong>{team?.r1?.who || "-"}</div>
+                        <div><strong>PAIN：</strong>{team?.r1?.pain || "-"}</div>
+                        <div><strong>HOW：</strong>{team?.r1?.how || "-"}</div>
                       </div>
+                      {team?.hasLovotImage ? (
+                        <div style={{ marginTop: 16, padding: 16, background: "#f8fafc", borderRadius: 14, border: "1px solid #e2e8f0", textAlign: "center" }}>
+                          <div style={{ fontSize: 15, fontWeight: 700, color: "#334155", marginBottom: 12, textAlign: "center" }}>
+                            团队专属 LOVOT
+                          </div>
+                          {lovotImages[team.id] ? (
+                            <div style={{ display: "flex", justifyContent: "center" }}>
+                              <img
+                                src={lovotImages[team.id]}
+                                alt={`${team.displayName} LOVOT`}
+                                style={{ maxWidth: 480, width: "100%", objectFit: "contain", borderRadius: 16, boxShadow: "0 4px 12px rgba(15,23,42,0.12)" }}
+                              />
+                            </div>
+                          ) : (
+                            <div style={{ display: "flex", justifyContent: "center" }}>
+                              <div style={{ width: "100%", maxWidth: 480, minHeight: 120, borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", background: "#fff", border: "1px solid #e2e8f0", fontSize: 12, color: "#64748b", textAlign: "center", padding: 12 }}>
+                                {lovotLoading[team.id] ? "加载中..." : "LOVOT"}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                   <div style={{ overflowX: "auto" }}>
