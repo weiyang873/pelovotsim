@@ -183,7 +183,6 @@ function detailCardLabel(member) {
 function isMarkedAbsent(member) {
   return Boolean(
     member?.forcedByTeacher &&
-    member?.currentStep === "done" &&
     member?.interviewStatus === "completed" &&
     member?.cardStatus === "submitted"
   );
@@ -498,7 +497,11 @@ function TeamCard({ team, expanded, onToggle, onAction, busy, lovotImage, lovotL
                         <button
                           onClick={() => onAction("markAbsent", { team_id: team.id, member_id: member.id, member_name: member.name })}
                           disabled={busy || isMarkedAbsent(member)}
-                          style={ghostButtonStyle(true)}
+                          style={{
+                            ...ghostButtonStyle(true),
+                            opacity: busy || isMarkedAbsent(member) ? 0.55 : 1,
+                            cursor: busy || isMarkedAbsent(member) ? "not-allowed" : "pointer"
+                          }}
                         >
                           {isMarkedAbsent(member) ? "已标记缺席" : "标记缺席"}
                         </button>

@@ -152,6 +152,14 @@ async function forceMergeTeam(teamId, source = "single") {
   };
 }
 
+function getAbsentMemberStep(teamStatus) {
+  if (teamStatus === "R2_SUBMITTED") return "done";
+  if (teamStatus === "R2_TEAM_DISCUSSION") return "in_discussion";
+  if (teamStatus === "R2_TEAM_MERGE" || teamStatus === "R2_INDIVIDUAL_CARDS") return "waiting_merge";
+  if (teamStatus === "R2_INTERVIEWING" || teamStatus === "R2_REVIEW") return "interview_done";
+  return "done";
+}
+
 async function setLeaderApi(body) {
   try {
     const teamId = String(body?.team_id || body?.teamId || "").trim();
@@ -342,18 +350,39 @@ async function markMemberAbsentApi(body) {
     }
 
     const { team, member } = await assertMember(teamId, memberId);
+    const teamStateBefore = await getTeamRound2State(teamId);
+    const teamStatusBefore = teamStateBefore?.r2?.status || "R2_NOT_STARTED";
+    const currentStep = getAbsentMemberStep(teamStatusBefore);
 
     await runSql(`
       UPDATE team_members
       SET interview_status = 'completed',
           card_status = 'submitted',
-          current_step = 'done',
+          current_step = ${sqlQuote(currentStep)},
           forced_by_teacher = TRUE,
           interview_rounds = GREATEST(COALESCE(interview_rounds, 0), 1),
           cards_selected = COALESCE(cards_selected, 0),
           last_activity_at = ${sqlQuote(nowIso())}
       WHERE id = ${sqlQuote(memberId)} AND team_id = ${sqlQuote(teamId)};
     `);
+
+    const teamStateAfter = await getTeamRound2State(teamId);
+    const allInterviewCompleted = (teamStateAfter?.members || []).every((item) => item.interviewStatus === "completed");
+    const allCardsSubmitted = (teamStateAfter?.members || []).every((item) => item.cardStatus === "submitted");
+
+    if (allInterviewCompleted && (teamStatusBefore === "R2_REVIEW" || teamStatusBefore === "R2_INTERVIEWING")) {
+      await updateTeamRound2Status(teamId, "R2_INDIVIDUAL_CARDS");
+      await syncMembersToTeamStatus(teamId, "R2_INDIVIDUAL_CARDS");
+    }
+
+    if (allCardsSubmitted && (teamStatusBefore === "R2_INDIVIDUAL_CARDS" || teamStatusBefore === "R2_TEAM_MERGE")) {
+      await updateTeamRound2Status(teamId, "R2_TEAM_MERGE");
+      try {
+        await forceMergeTeam(teamId, "auto");
+      } catch (_) {
+        // Keep the absence action successful even if there is nothing usable to merge yet.
+      }
+    }
 
     await logTeacherAction({
       action: "mark_member_absent",
