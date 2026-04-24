@@ -2659,6 +2659,15 @@ async function interviewStart(body) {
       });
     }
 
+    // 清理 ghost sessions(0 轮次且未完成的旧 session)
+    const ghostSessions = sessions.filter((s) =>
+      !s.is_complete &&
+      (Number(s.round_no) === 0 || !Array.isArray(s.history) || s.history.length === 0)
+    );
+    for (const ghost of ghostSessions) {
+      await runSql(`DELETE FROM round2_interview_sessions WHERE session_id = ${sqlQuote(ghost.session_id)};`);
+    }
+
     const nextPersona = progress.nextPersona || personaPool[progress.completedCount] || personaPool[0];
     const personas = [nextPersona].filter(Boolean);
 

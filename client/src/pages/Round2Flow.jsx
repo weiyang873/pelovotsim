@@ -84,6 +84,7 @@ const INTERVIEW_MIN_TURNS = 5;
 const INTERVIEW_MAX_TURNS = 10;
 const MIN_INTERVIEWS_REQUIRED = 2;
 const MIN_TEAM_CARDS = 6;
+const INTERVIEW_START_DEBOUNCE_MS = 3000;
 
 function createEmptyInterviewProgress() {
   return {
@@ -743,6 +744,7 @@ export default function App() {
   const previousStatusRef = useRef("");
   const previousStepRef = useRef(0);
   const systemNoticeTimerRef = useRef(null);
+  const interviewStartGateRef = useRef({ memberId: "", startedAt: 0 });
 
   const isTeamMode = Boolean(teamId);
 
@@ -1262,8 +1264,30 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     setInterviewTransition(transition);
   }, [interviewTransition, memberDims]);
 
+  const canStartInterviewForMember = useCallback((targetMemberId, options = {}) => {
+    const normalizedMemberId = String(targetMemberId || "").trim();
+    if (!normalizedMemberId) return false;
+    const now = Date.now();
+    const last = interviewStartGateRef.current;
+    if (
+      last.memberId === normalizedMemberId &&
+      now - Number(last.startedAt || 0) < INTERVIEW_START_DEBOUNCE_MS
+    ) {
+      if (options.showError) {
+        setInterviewError("请勿重复点击，请 3 秒后再试。");
+      }
+      return false;
+    }
+    interviewStartGateRef.current = {
+      memberId: normalizedMemberId,
+      startedAt: now
+    };
+    return true;
+  }, []);
+
   const handleStartAnotherInterview = useCallback(async () => {
     if (!teamId || !memberId || isStartingInterview) return;
+    if (!canStartInterviewForMember(memberId, { showError: true })) return;
     try {
       setIsStartingInterview(true);
       setInterviewError("");
@@ -1289,7 +1313,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     } finally {
       setIsStartingInterview(false);
     }
-  }, [applyInterviewPayload, isStartingInterview, memberDims, memberId, teamId]);
+  }, [applyInterviewPayload, canStartInterviewForMember, isStartingInterview, memberDims, memberId, teamId]);
 
   const handleInterviewEnd = useCallback(async () => {
     if (!interviewSessionId || isSendingInterview) return;
@@ -1387,6 +1411,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     const controller = new AbortController();
     let canceled = false;
     const startInterview = async () => {
+      if (!canStartInterviewForMember(memberId)) return;
       try {
         setIsStartingInterview(true);
         setInterviewError("");
@@ -1420,7 +1445,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
       canceled = true;
       controller.abort();
     };
-  }, [applyInterviewPayload, completedInterviewCount, interviewRestoreChecked, interviewSessionId, interviewTransition, memberDims, memberId, step, teamId]);
+  }, [applyInterviewPayload, canStartInterviewForMember, completedInterviewCount, interviewRestoreChecked, interviewSessionId, interviewTransition, memberDims, memberId, step, teamId]);
 
   useEffect(() => {
     if (step < 3 || !teamId || submitted) return;
