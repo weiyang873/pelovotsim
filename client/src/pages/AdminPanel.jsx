@@ -22,7 +22,7 @@ import {
 } from "../api/teacherApi";
 
 const TEACHER_CODE_KEY = "emba_teacher_code";
-const TABS = ["实时监控", "Round 1 复盘", "Round 2 复盘", "跨轮对比", "AI 讲解稿", "导出"];
+const TABS = ["实时监控", "Round 1 复盘", "Round 2 复盘", "跨轮对比", "AI 讲解稿", "导出", "7关卡诊断", "能力卡生态"];
 const STATUS_ORDER = [
   "R2_NOT_STARTED",
   "R2_REVIEW",

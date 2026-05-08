@@ -7,6 +7,8 @@ import {
   getTeacherDebriefData,
   getTeacherVpIterations
 } from "../api/teacherApi";
+import DiagnosticTab from "./DiagnosticTab";
+import CardEcosystemTab from "./CardEcosystemTab";
 
 const CARD_STYLE = {
   background: "#fff",
@@ -2498,7 +2500,7 @@ export default function TeacherDebriefTabs({ activeTab, teacherCode, onExportJso
   const mountedRef = useRef(true);
 
   const sessionId = "default";
-  const debriefTabs = ["Round 1 复盘", "Round 2 复盘", "跨轮对比", "AI 讲解稿", "导出"];
+  const debriefTabs = ["Round 1 复盘", "Round 2 复盘", "跨轮对比", "AI 讲解稿", "导出", "7关卡诊断", "能力卡生态"];
 
   const loadDebriefData = async (force = false) => {
     if (!teacherCode) return;
@@ -2683,6 +2685,12 @@ export default function TeacherDebriefTabs({ activeTab, teacherCode, onExportJso
           onExportJson={onExportJson}
           teams={debriefData?.teams || []}
         />
+      )}
+      {activeTab === "7关卡诊断" && (
+        <DiagnosticTab teams={round2Teams} />
+      )}
+      {activeTab === "能力卡生态" && (
+        <CardEcosystemTab teams={round2Teams} />
       )}
     </div>
   );

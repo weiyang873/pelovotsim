@@ -48,9 +48,10 @@ export async function submitPersonalChoice(teamId, memberId, choice) {
 }
 
 export async function getTeamStatus(teamId, memberId = "", options = {}) {
-  const query = memberId
-    ? `?memberId=${encodeURIComponent(String(memberId || "").trim())}`
-    : "";
+  const params = new URLSearchParams();
+  if (memberId) params.set("memberId", String(memberId).trim());
+  if (options?.lite === true) params.set("lite", "1");
+  const query = params.toString() ? `?${params.toString()}` : "";
   const res = await fetch(`${BASE}/team/${encodeURIComponent(teamId)}/status${query}`, {
     signal: options.signal
   });

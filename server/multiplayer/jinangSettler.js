@@ -1,7 +1,8 @@
 const path = require("node:path");
-const { runSql, sqlQuote } = require("../db/pgSql");
+const { runSql, runTransaction, sqlQuote } = require("../db/pgSql");
 
 const { loadJinangConfig } = require("./jinangDealer");
+const { computeJinangWtpBonus } = require("./jinangCoeff");
 
 const ROOT = path.join(__dirname, "..", "..");
 
@@ -34,10 +35,6 @@ function mean(values) {
 
 function clamp01(v) {
   return Math.max(0, Math.min(1, Number(v || 0)));
-}
-
-function computeJinangBonus(matchStrength) {
-  return toFixedSafe(clamp01(matchStrength) * 0.05, 4);
 }
 
 function strengthLabel(matchStrength) {
@@ -154,80 +151,83 @@ async function settleAllJinang(teamId) {
   const marketMap = Object.fromEntries((cfg.market || []).map((c) => [c.id, c]));
   const techMap = Object.fromEntries((cfg.tech || []).map((c) => [c.id, c]));
   const decision = makeFinalDecision(team);
+  const settlements = await runTransaction(async (runSqlTxn) => {
+    const localSettlements = [];
 
-  await runSql(`DELETE FROM jinang_settlements WHERE team_id = ${sqlQuote(tid)};`);
+    await runSqlTxn(`DELETE FROM jinang_settlements WHERE team_id = ${sqlQuote(tid)};`);
 
-  const settlements = [];
+    async function settleCard(member, card, jinangType) {
+      if (!card) return;
 
-  async function settleCard(member, card, jinangType) {
-    if (!card) return;
+      const rawStrength = jinangType === "market"
+        ? scoreMarketCard(card, decision)
+        : scoreTechCard(card, decision);
 
-    const rawStrength = jinangType === "market"
-      ? scoreMarketCard(card, decision)
-      : scoreTechCard(card, decision);
+      const matchStrength = clamp01(rawStrength);
+      const matched = matchStrength >= 0.5;
+      const bonus = jinangType === "market" && matched
+        ? computeJinangWtpBonus(matchStrength)
+        : 0;
+      const effectScaled = matched
+        ? scaleEffectNumbers(card.effect_at_full_match || {}, matchStrength)
+        : {};
 
-    const matchStrength = clamp01(rawStrength);
-    const matched = matchStrength >= 0.5;
-    const bonus = jinangType === "market" && matched
-      ? computeJinangBonus(matchStrength)
-      : 0;
-    const effectScaled = matched
-      ? scaleEffectNumbers(card.effect_at_full_match || {}, matchStrength)
-      : {};
-
-    const effectApplied = jinangType === "market"
-      ? {
-          apply_to: "round1",
-          match_strength: toFixedSafe(matchStrength, 4),
-          E_boost_eligible: matched,
-          bonus
-        }
-      : (matched
+      const effectApplied = jinangType === "market"
         ? {
-            ...effectScaled,
-            apply_to: "round2_only",
-            match_strength: toFixedSafe(matchStrength, 4)
+            apply_to: "round1",
+            match_strength: toFixedSafe(matchStrength, 4),
+            E_boost_eligible: matched,
+            bonus
           }
-        : {
-            apply_to: "round2_only",
-            match_strength: toFixedSafe(matchStrength, 4)
-          });
+        : (matched
+          ? {
+              ...effectScaled,
+              apply_to: "round2_only",
+              match_strength: toFixedSafe(matchStrength, 4)
+            }
+          : {
+              apply_to: "round2_only",
+              match_strength: toFixedSafe(matchStrength, 4)
+            });
 
-    const reason = `${strengthLabel(matchStrength)}（契合度 ${toFixedSafe(matchStrength, 2)}）`;
+      const reason = `${strengthLabel(matchStrength)}（契合度 ${toFixedSafe(matchStrength, 2)}）`;
 
-    await runSql(`
-      INSERT INTO jinang_settlements (
-        id, team_id, member_id, jinang_id, jinang_type, matched, match_reason, effect_applied
-      ) VALUES (
-        ${sqlQuote(`${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`)},
-        ${sqlQuote(tid)},
-        ${sqlQuote(member.id)},
-        ${sqlQuote(card.id)},
-        ${sqlQuote(jinangType)},
-        ${matched ? "TRUE" : "FALSE"},
-        ${sqlQuote(reason)},
-        ${sqlQuote(JSON.stringify(effectApplied))}
-      );
-    `);
+      await runSqlTxn(`
+        INSERT INTO jinang_settlements (
+          id, team_id, member_id, jinang_id, jinang_type, matched, match_reason, effect_applied
+        ) VALUES (
+          ${sqlQuote(`${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`)},
+          ${sqlQuote(tid)},
+          ${sqlQuote(member.id)},
+          ${sqlQuote(card.id)},
+          ${sqlQuote(jinangType)},
+          ${matched ? "TRUE" : "FALSE"},
+          ${sqlQuote(reason)},
+          ${sqlQuote(JSON.stringify(effectApplied))}
+        );
+      `);
 
-    settlements.push({
-      member_id: member.id,
-      member_name: member.member_name,
-      jinang_id: card.id,
-      jinang_type: jinangType,
-      name: card.name,
-      matched,
-      match_strength: toFixedSafe(matchStrength, 4),
-      bonus,
-      match_reason: reason,
-      effect_applied: effectApplied
-    });
-  }
+      localSettlements.push({
+        member_id: member.id,
+        member_name: member.member_name,
+        jinang_id: card.id,
+        jinang_type: jinangType,
+        name: card.name,
+        matched,
+        match_strength: toFixedSafe(matchStrength, 4),
+        bonus,
+        match_reason: reason,
+        effect_applied: effectApplied
+      });
+    }
 
-  for (const m of members) {
-    await settleCard(m, marketMap[m.jinang_market_id], "market");
-    await settleCard(m, techMap[m.jinang_tech_id], "tech");
-  }
+    for (const m of members) {
+      await settleCard(m, marketMap[m.jinang_market_id], "market");
+      await settleCard(m, techMap[m.jinang_tech_id], "tech");
+    }
+
+    return localSettlements;
+  });
 
   return {
     team_id: tid,

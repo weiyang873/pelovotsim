@@ -243,6 +243,31 @@ async function ensureSchema() {
     ALTER TABLE round2_interview_sessions
     ADD COLUMN IF NOT EXISTS persona_locked_at TIMESTAMPTZ;
   `);
+  await runSql(`
+    DELETE FROM round2_interview_sessions
+    WHERE is_complete = false
+      AND round_no = 0
+      AND COALESCE(history_json, '[]') IN ('[]', '');
+  `);
+  await runSql(`
+    DELETE FROM round2_interview_sessions a
+    USING round2_interview_sessions b
+    WHERE a.team_id = b.team_id
+      AND a.member_id = b.member_id
+      AND a.session_id <> b.session_id
+      AND a.is_complete = false
+      AND b.is_complete = false
+      AND (
+        a.round_no < b.round_no
+        OR (a.round_no = b.round_no AND a.created_at < b.created_at)
+        OR (a.round_no = b.round_no AND a.created_at = b.created_at AND a.session_id < b.session_id)
+      );
+  `);
+  await runSql(`
+    CREATE UNIQUE INDEX IF NOT EXISTS round2_interview_one_active
+      ON round2_interview_sessions (team_id, member_id)
+      WHERE is_complete = false;
+  `);
   await ensureRound2StateSchema();
 }
 
@@ -1092,14 +1117,19 @@ async function extractInterviewResult({ gridId, architecture, memberDims, histor
       teamId: null,
       memberId: null,
       messages
-    }, () => chatCompletion(messages, { temperature: 0.2, max_tokens: 2500 }));
+    }, () => chatCompletion(messages, { temperature: 0.2, max_tokens: 2500, maxRetries: 3 }));
     const txt = String(raw || "").replace(/```json|```/g, "").trim();
     const start = txt.indexOf("{");
     const end = txt.lastIndexOf("}");
     extracted = cleanExtractedPayload(
       JSON.parse(start >= 0 && end > start ? txt.slice(start, end + 1) : txt)
     );
-  } catch (_) {
+  } catch (err) {
+    console.error("[extractInterviewResult] LLM failed:", err.message, {
+      gridId: String(gridId || ""),
+      architecture: String(architecture || ""),
+      memberDims: Array.isArray(memberDims) ? memberDims : []
+    });
     extracted = null;
   }
 
@@ -2025,6 +2055,30 @@ function buildMemberInterviewProgress(sessions, personaPool) {
   };
 }
 
+function buildMemberInterviewProgressLite(sessions) {
+  const sorted = (Array.isArray(sessions) ? sessions : [])
+    .slice()
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  const activeSession = sorted.find((item) => !item.is_complete) || null;
+  const completedSessions = sorted.filter((item) => item.is_complete);
+  const completedInterviews = completedSessions.map((item) => summarizeCompletedInterview(item));
+
+  return {
+    completedCount: completedSessions.length,
+    totalSessions: sorted.length,
+    minInterviewsRequired: MIN_INTERVIEWS_REQUIRED,
+    maxInterviews: MAX_INTERVIEWS_PER_MEMBER,
+    canProceed: completedSessions.length >= MIN_INTERVIEWS_REQUIRED,
+    canStartAnother: false,
+    reachedInterviewLimit: completedSessions.length >= MAX_INTERVIEWS_PER_MEMBER,
+    personaPool: [],
+    nextPersona: null,
+    activeSessionId: activeSession?.session_id || "",
+    completedInterviews,
+    latestCompletedInterview: completedInterviews[completedInterviews.length - 1] || null
+  };
+}
+
 function buildDimensionGuide(memberDims) {
   return (Array.isArray(memberDims) ? memberDims : [])
     .map((dimId) => {
@@ -2622,19 +2676,20 @@ async function interviewStart(body) {
     if (!teamId || !memberId) return makeResponse(400, { ok: false, error: "teamId/memberId required" });
 
     const team = await getTeam(teamId);
+    if (!team) return makeResponse(404, { ok: false, error: "team not found" });
+
     const member = listTeamMembers(team).find((m) => m.id === memberId);
     const assignments = await ensureAssignments(team);
     const row = assignments.find((x) => x.memberId === memberId);
-    const memberDims = Array.isArray(body?.memberDims) && body.memberDims.length ? body.memberDims : (row?.dims || ["interaction", "safety"]);
+    const memberDims = Array.isArray(body?.memberDims) && body.memberDims.length
+      ? body.memberDims
+      : (row?.dims || ["interaction", "safety"]);
     const forceNew = body?.forceNew === true;
     let sessions = await listInterviewSessionsForMember(teamId, memberId);
-    const completedSessions = sessions.filter((item) => item.is_complete);
-    const { personaPool } = await ensureMemberPersonaPool(team, member?.id || memberId, Math.min(MAX_INTERVIEWS_PER_MEMBER, completedSessions.length + 1));
-    sessions = await repairStaleInterviewSessions(team, member?.id || memberId, sessions, personaPool);
-    const progress = buildMemberInterviewProgress(sessions, personaPool);
     const activeSession = sessions.find((item) => !item.is_complete) || null;
 
     if (activeSession && !forceNew) {
+      const progress = buildMemberInterviewProgressLite(sessions);
       return makeResponse(200, {
         ok: true,
         ...serializeSession(activeSession),
@@ -2645,7 +2700,9 @@ async function interviewStart(body) {
       });
     }
 
-    if (progress.reachedInterviewLimit) {
+    const completedSessions = sessions.filter((item) => item.is_complete);
+    if (completedSessions.length >= MAX_INTERVIEWS_PER_MEMBER) {
+      const progress = buildMemberInterviewProgressLite(sessions);
       return makeResponse(200, {
         ok: true,
         sessionId: "",
@@ -2659,7 +2716,16 @@ async function interviewStart(body) {
       });
     }
 
-    // 清理 ghost sessions(0 轮次且未完成的旧 session)
+    const { personaPool } = await ensureMemberPersonaPool(
+      team,
+      member?.id || memberId,
+      Math.min(MAX_INTERVIEWS_PER_MEMBER, completedSessions.length + 1)
+    );
+    sessions = await repairStaleInterviewSessions(team, member?.id || memberId, sessions, personaPool);
+    const progress = buildMemberInterviewProgress(sessions, personaPool);
+
+    // 清理 ghost sessions（0 轮次且未完成的旧 session）。
+    // 有唯一约束后正常不会命中，但保留对历史脏数据的防御性清理。
     const ghostSessions = sessions.filter((s) =>
       !s.is_complete &&
       (Number(s.round_no) === 0 || !Array.isArray(s.history) || s.history.length === 0)
@@ -2673,20 +2739,38 @@ async function interviewStart(body) {
 
     const sessionId = `r2_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
     const history = [];
-    await saveInterviewSession({
-      session_id: sessionId,
-      team_id: teamId,
-      member_id: memberId,
-      member_dims: memberDims,
-      personas,
-      history,
-      result: null,
-      persona_locked_at: nowIso(),
-      round_no: 0,
-      is_complete: false,
-      created_at: nowIso(),
-      updated_at: nowIso()
-    });
+    try {
+      await saveInterviewSession({
+        session_id: sessionId,
+        team_id: teamId,
+        member_id: memberId,
+        member_dims: memberDims,
+        personas,
+        history,
+        result: null,
+        persona_locked_at: nowIso(),
+        round_no: 0,
+        is_complete: false,
+        created_at: nowIso(),
+        updated_at: nowIso()
+      });
+    } catch (e) {
+      if (e.code === "23505") {
+        const existingSessions = await listInterviewSessionsForMember(teamId, memberId);
+        const existing = existingSessions.find((item) => !item.is_complete);
+        if (existing) {
+          return makeResponse(200, {
+            ok: true,
+            ...serializeSession(existing),
+            maxRounds: MAX_INTERVIEW_TURNS,
+            minTurnsToEnd: MIN_TURNS_TO_END,
+            progress: buildMemberInterviewProgressLite(existingSessions),
+            dimensionGuide: buildDimensionGuide(memberDims)
+          });
+        }
+      }
+      throw e;
+    }
 
     const syncResult = await syncMemberInterviewState(teamId, memberId);
 

@@ -127,13 +127,14 @@ async function chatCompletion(messages, options = {}) {
     max_tokens: options.max_tokens ?? 800,
   });
   const url = new URL("/v1/chat/completions", DEEPSEEK_BASE_URL);
+  const maxRetries = Number.isFinite(options.maxRetries) ? options.maxRetries : MAX_RETRIES;
 
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
+  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
     try {
       return await performChatCompletionRequest(url, DEEPSEEK_API_KEY, body);
     } catch (error) {
       const retryable = isRetryableError(error);
-      const canRetry = retryable && attempt < MAX_RETRIES;
+      const canRetry = retryable && attempt < maxRetries;
 
       if (!canRetry) {
         if (attempt > 0) {
@@ -142,8 +143,9 @@ async function chatCompletion(messages, options = {}) {
         throw error;
       }
 
-      console.warn(`[DeepSeek] Retry ${attempt + 1}/${MAX_RETRIES} after ${RETRY_DELAY_MS}ms, reason:`, error.message);
-      await sleep(RETRY_DELAY_MS);
+      const delay = RETRY_DELAY_MS * Math.pow(2, attempt) + Math.random() * 500;
+      console.warn(`[DeepSeek] Retry ${attempt + 1}/${maxRetries} after ${Math.round(delay)}ms, reason:`, error.message);
+      await sleep(delay);
     }
   }
 

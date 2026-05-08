@@ -31,6 +31,7 @@ const {
   getTeamRound2State,
   updateTeamRound2Status
 } = require("../multiplayer/round2State");
+const { computeJinangWtpBonus } = require("../multiplayer/jinangCoeff");
 
 const ROOT = path.join(__dirname, "..", "..");
 const CONFIG_DIR = path.join(ROOT, "game_config_v0.1");
@@ -228,10 +229,6 @@ function buildPersistedVpScores(C, G, EScore) {
     E: e,
     VPscore: computeVpCompositeScore(c, g, e)
   };
-}
-
-function computeJinangWtpBonus(matchStrength) {
-  return Number((clamp01(matchStrength) * 0.02).toFixed(4));
 }
 
 function roundJinangBonus(value) {
@@ -2663,21 +2660,6 @@ async function freezeTeam(teamId, body = {}) {
       return makeResponse(400, { ok: false, error: "must finalize before freezing" });
     }
     await updateTeamStatus(teamId, "frozen");
-    return makeResponse(200, { ok: true, status: "frozen", ...buildLeaderMeta(team, memberId) });
-  } catch (e) {
-    return makeResponse(400, { ok: false, error: e.message });
-  }
-}
-
-async function leaderStartRound2(teamId, body = {}) {
-  try {
-    const memberId = readRequesterMemberId(body);
-    const permission = await ensureLeaderPermission(teamId, memberId);
-    if (!permission.ok) return permission.response;
-    const team = permission.team;
-    if (String(team.status || "").trim() !== "frozen") {
-      return makeResponse(400, { ok: false, error: "team must be frozen before starting round2" });
-    }
     await updateTeamRound2Status(teamId, "R2_INTERVIEWING");
     return makeResponse(200, {
       ok: true,
@@ -2690,8 +2672,28 @@ async function leaderStartRound2(teamId, body = {}) {
   }
 }
 
-async function getTeamStatus(teamId, requesterMemberId = "") {
+async function leaderStartRound2(teamId, body = {}) {
+  // DEPRECATED: R2 状态已经在 freezeTeam 时自动推进。
+  // 此接口保留为 no-op 仅为了兼容仍在缓存里的老前端代码。
   try {
+    const memberId = readRequesterMemberId(body);
+    const team = await getTeam(teamId);
+    if (!team) return makeResponse(404, { ok: false, error: "team not found" });
+    return makeResponse(200, {
+      ok: true,
+      status: String(team.status || ""),
+      r2_status: "R2_INTERVIEWING",
+      deprecated: true,
+      ...buildLeaderMeta(team, memberId)
+    });
+  } catch (e) {
+    return makeResponse(400, { ok: false, error: e.message });
+  }
+}
+
+async function getTeamStatus(teamId, requesterMemberId = "", options = {}) {
+  try {
+    const lite = options?.lite === true;
     let team = await getTeam(teamId);
     if (!team) return makeResponse(404, { ok: false, error: "team not found" });
     if (!String(team.leader_member_id || "").trim() && ["phase2", "phase3", "phase4", "frozen"].includes(String(team.status || ""))) {
@@ -2700,9 +2702,8 @@ async function getTeamStatus(teamId, requesterMemberId = "") {
     const memberCount = Array.isArray(team.members) ? team.members.length : 0;
     const submittedCount = await countTeamSubmissions(teamId);
     const status = String(team.status || "forming");
-    const round2State = await getTeamRound2State(teamId);
     const draft = await readRound1TeamDraft(teamId);
-    return makeResponse(200, {
+    const body = {
       ok: true,
       status,
       phase: getPhaseByStatus(status),
@@ -2710,10 +2711,14 @@ async function getTeamStatus(teamId, requesterMemberId = "") {
       member_count: memberCount,
       submitted_count: submittedCount,
       ...buildLeaderMeta(team, requesterMemberId),
-      team_draft: draft,
-      r2_status: round2State?.r2?.status || "R2_NOT_STARTED",
-      r2_status_label: round2State?.r2?.statusLabel || "未开始"
-    });
+      team_draft: draft
+    };
+    if (!lite) {
+      const round2State = await getTeamRound2State(teamId);
+      body.r2_status = round2State?.r2?.status || "R2_NOT_STARTED";
+      body.r2_status_label = round2State?.r2?.statusLabel || "未开始";
+    }
+    return makeResponse(200, body);
   } catch (e) {
     return makeResponse(400, { ok: false, error: e.message });
   }

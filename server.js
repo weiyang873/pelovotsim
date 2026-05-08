@@ -2226,7 +2226,9 @@ function handleApi(req, res) {
     try {
       const url = new URL(String(req.url || ""), `http://${req.headers.host || "127.0.0.1"}`);
       const teamId = decodeURIComponent(url.pathname.split("/")[3] || "");
-      return TeamRoutes.getTeamStatus(teamId, url.searchParams.get("memberId") || url.searchParams.get("member_id") || "")
+      const memberId = url.searchParams.get("memberId") || url.searchParams.get("member_id") || "";
+      const lite = url.searchParams.get("lite") === "1" || url.searchParams.get("lite") === "true";
+      return TeamRoutes.getTeamStatus(teamId, memberId, { lite })
         .then((out) => sendJson(res, out.status, out.body))
         .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "team status failed" }));
     } catch (err) {

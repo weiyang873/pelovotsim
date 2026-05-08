@@ -14,15 +14,13 @@ import {
   finalizeDecision,
   getPhase3State,
   getResults,
-  freezeTeam,
-  leaderStartRound2
+  freezeTeam
 } from "../api/teamApi";
 import {
   consumeRound1ReviewIntent,
   clearStudentSession,
   mergeStudentSession,
   readStudentSession,
-  shouldOpenRound2,
   writeStudentSession
 } from "../utils/studentSession";
 import { downloadTxtFile, formatExportTime } from "../utils/txtExport";
@@ -842,7 +840,6 @@ export default function App() {
   const [isExtractingVp, setIsExtractingVp] = useState(false);
   const [isConfirmingVp, setIsConfirmingVp] = useState(false);
   const [isFreezing, setIsFreezing] = useState(false);
-  const [isStartingRound2, setIsStartingRound2] = useState(false);
   const [coachHistory, setCoachHistory] = useState([]);
   const [coachInput, setCoachInput] = useState("");
   const [phase3StateLoaded, setPhase3StateLoaded] = useState(false);
@@ -865,7 +862,6 @@ export default function App() {
   const coachInputDirtyRef = useRef(false);
   const coachInputDraftHydratedRef = useRef(false);
   const coachScrollRef = useRef(null);
-  const autoRound2RedirectRef = useRef(false);
   const allowRound1ReviewRef = useRef(false);
   const round1StrategyDraftTouchedRef = useRef(false);
   const round1VpDraftTouchedRef = useRef(false);
@@ -1204,13 +1200,15 @@ export default function App() {
 
   useEffect(() => {
     if (!teamId) return;
-    let previousR2Status = "";
     let currentController = null;
     const syncStatus = async () => {
       try {
         currentController?.abort();
         currentController = new AbortController();
-        const status = await getTeamStatus(teamId, memberId, { signal: currentController.signal });
+        const status = await getTeamStatus(teamId, memberId, {
+          signal: currentController.signal,
+          lite: true
+        });
         setTeamStatus(status.status || "forming");
         setStatusLine(`已提交 ${status.submitted_count}/${status.member_count}`);
         setLeaderMemberId(String(status.leader_member_id || ""));
@@ -1225,19 +1223,7 @@ export default function App() {
             setTeamArch(String(status.team_draft.architecture || ""));
           }
         }
-        const nextR2Status = String(status.r2_status || "R2_NOT_STARTED");
-        if (
-          previousR2Status &&
-          !shouldOpenRound2(previousR2Status) &&
-          shouldOpenRound2(nextR2Status) &&
-          !autoRound2RedirectRef.current
-        ) {
-          autoRound2RedirectRef.current = true;
-          goToRound2Room();
-          return;
-        }
         allowRound1ReviewRef.current = false;
-        previousR2Status = nextR2Status;
         const url = new URL(window.location.href);
         const requestedStep = normalizeStepValue(url.searchParams.get("step"), 0);
         const statusStep = stepFromTeamStatus(status.status, 0);
@@ -1787,7 +1773,7 @@ export default function App() {
       setIsFreezing(true);
       await freezeTeam(teamId, memberId);
       setTeamStatus("frozen");
-      setStatusLine("已冻结。等待教师开放 Round 2。");
+      setStatusLine("已冻结。所有成员都可自行进入第二轮。");
     } catch (e) {
       setStatusLine(`冻结失败: ${formatLeaderLockMessage(e)}`);
     } finally {
@@ -1795,29 +1781,10 @@ export default function App() {
     }
   };
 
-  const handleLeaderStartRound2 = async () => {
-    if (!teamId || !memberId || isStartingRound2) return;
-    try {
-      setIsStartingRound2(true);
-      const out = await leaderStartRound2(teamId, memberId);
-      setTeamStatus(String(out?.status || "frozen"));
-      setStatusLine("已进入第二轮。正在跳转...");
-      if (shouldOpenRound2(String(out?.r2_status || "R2_NOT_STARTED"))) {
-        autoRound2RedirectRef.current = true;
-        goToRound2Room();
-        return;
-      }
-      const status = await getTeamStatus(teamId, memberId);
-      setTeamStatus(status.status || "frozen");
-      if (shouldOpenRound2(String(status.r2_status || "R2_NOT_STARTED"))) {
-        autoRound2RedirectRef.current = true;
-        goToRound2Room();
-      }
-    } catch (e) {
-      setStatusLine(`开启第二轮失败: ${formatLeaderLockMessage(e)}`);
-    } finally {
-      setIsStartingRound2(false);
-    }
+  const handleEnterRound2 = () => {
+    if (!teamId || !memberId) return;
+    setStatusLine("正在进入第二轮...");
+    goToRound2Room();
   };
 
   const goToRound2Room = () => {
@@ -3285,23 +3252,11 @@ export default function App() {
               <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>
                 🎉 第一轮决策完成
               </div>
-              <div style={{ fontSize: 14, opacity: 0.9, lineHeight: 1.8, marginBottom: 16 }}>
-                你们已经完成了产品战略制定。请先放下手机/电脑，回到课堂参与集体讨论。
-              </div>
-              <div style={{
-                padding: "16px", borderRadius: 10,
-                background: "rgba(255,255,255,0.08)",
-                marginBottom: 16,
-              }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, opacity: 0.7 }}>
-                  接下来的课堂环节
-                </div>
-                <div style={{ fontSize: 13, lineHeight: 1.8, opacity: 0.85 }}>
-                  老师将带领大家回顾各组的战略选择，讨论不同方向的优劣势。之后再进入第二轮：产品研发决策。
-                </div>
-              </div>
               {teamStatus !== "frozen" ? (
                 <>
+                  <div style={{ fontSize: 14, opacity: 0.9, lineHeight: 1.8, marginBottom: 16 }}>
+                    你们已经完成了产品战略制定。请由组长冻结本轮结果。
+                  </div>
                   <button
                     data-testid="r1-freeze-btn"
                     type="button"
@@ -3318,7 +3273,7 @@ export default function App() {
                       fontWeight: 800,
                       cursor: round1TeamControlsLocked ? "default" : "pointer",
                       opacity: round1TeamControlsLocked ? 0.5 : 1,
-                      marginBottom: 14
+                      marginBottom: 10
                     }}
                   >
                     {round1TeamControlsLocked
@@ -3328,35 +3283,34 @@ export default function App() {
                         : "冻结本轮结果"}
                   </button>
                   <div style={{ fontSize: 12, opacity: 0.5, textAlign: "center" }}>
-                    第二轮将由老师统一开启
+                    冻结后所有成员都可自行进入第二轮
                   </div>
                 </>
-              ) : isLeader ? (
-                <button
-                  data-testid="r1-start-round2-btn"
-                  type="button"
-                  onClick={handleLeaderStartRound2}
-                  disabled={isStartingRound2}
-                  style={{
-                    width: "100%",
-                    padding: "12px 18px",
-                    borderRadius: 10,
-                    border: "none",
-                    background: "#10b981",
-                    color: "#fff",
-                    fontSize: 14,
-                    fontWeight: 800,
-                    cursor: isStartingRound2 ? "default" : "pointer",
-                    opacity: isStartingRound2 ? 0.7 : 1,
-                    marginBottom: 14
-                  }}
-                >
-                  {isStartingRound2 ? "处理中..." : "进入第二轮 →"}
-                </button>
               ) : (
-                <div style={{ fontSize: 12, opacity: 0.5, textAlign: "center" }}>
-                  等待组长开启第二轮
-                </div>
+                <>
+                  <div style={{ fontSize: 14, opacity: 0.9, lineHeight: 1.8, marginBottom: 16 }}>
+                    本组第一轮已冻结，可以开始第二轮。
+                  </div>
+                  <button
+                    data-testid="r1-start-round2-btn"
+                    type="button"
+                    onClick={handleEnterRound2}
+                    style={{
+                      width: "100%",
+                      padding: "12px 18px",
+                      borderRadius: 10,
+                      border: "none",
+                      background: "#10b981",
+                      color: "#fff",
+                      fontSize: 14,
+                      fontWeight: 800,
+                      cursor: "pointer",
+                      marginBottom: 14
+                    }}
+                  >
+                    进入第二轮 →
+                  </button>
+                </>
               )}
             </div>
           </div>

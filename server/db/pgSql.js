@@ -61,12 +61,45 @@ async function runSql(sql) {
   return lastRows;
 }
 
+async function runTransaction(callback) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const runSqlTxn = async (sql) => {
+      const statements = splitSqlStatements(sql);
+      let lastRows = [];
+      for (const stmt of statements) {
+        const result = await client.query(stmt);
+        if (result.rows && result.rows.length > 0) {
+          lastRows = result.rows;
+        } else if (/^\s*(SELECT|WITH|SHOW)/i.test(stmt)) {
+          lastRows = result.rows || [];
+        }
+      }
+      return lastRows;
+    };
+    const result = await callback(runSqlTxn);
+    await client.query("COMMIT");
+    return result;
+  } catch (err) {
+    try {
+      await client.query("ROLLBACK");
+    } catch (_) {
+      // Preserve the original transaction error.
+    }
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 async function shutdown() {
   await pool.end();
 }
 
 module.exports = {
   runSql,
+  runTransaction,
   sqlQuote,
   pool,
   shutdown
