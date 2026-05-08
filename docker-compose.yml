@@ -1,6 +1,7 @@
 services:
   db:
     image: postgres:15-alpine
+    command: postgres -c wal_level=logical -c max_replication_slots=5 -c max_wal_senders=5
     restart: unless-stopped
     ports:
       - "5432:5432"
