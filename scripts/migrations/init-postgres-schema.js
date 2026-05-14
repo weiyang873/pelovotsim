@@ -193,6 +193,9 @@ async function main() {
       submitted_at TEXT
     );
 
+    CREATE UNIQUE INDEX IF NOT EXISTS uq_member_submissions_team_member
+      ON member_submissions (team_id, member_id);
+
     CREATE TABLE IF NOT EXISTS jinang_settlements (
       id TEXT PRIMARY KEY,
       team_id TEXT,
@@ -232,6 +235,14 @@ async function main() {
       updated_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS llm_kv_cache (
+      cache_name TEXT NOT NULL,
+      cache_key TEXT NOT NULL,
+      cache_value JSONB NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (cache_name, cache_key)
+    );
+
     CREATE TABLE IF NOT EXISTS computation_log (
       id SERIAL PRIMARY KEY,
       session_id TEXT NOT NULL,
@@ -253,6 +264,8 @@ async function main() {
     CREATE INDEX IF NOT EXISTS idx_llm_metrics_created ON llm_call_metrics(created_at);
     CREATE INDEX IF NOT EXISTS idx_comp_log_team ON computation_log(team_id);
     CREATE INDEX IF NOT EXISTS idx_comp_log_stage ON computation_log(stage);
+    CREATE INDEX IF NOT EXISTS idx_llm_kv_cache_updated
+      ON llm_kv_cache (cache_name, updated_at DESC);
   `);
 
   console.log("PostgreSQL schema initialized");

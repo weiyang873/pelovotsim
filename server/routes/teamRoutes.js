@@ -749,8 +749,20 @@ async function submitPhase1(teamId, memberId, body) {
     const team = await getTeam(teamId);
     if (!team) return makeResponse(404, { ok: false, error: "team not found" });
     await assertMemberInTeam(teamId, memberId);
-    if (await readSubmission(teamId, memberId)) {
-      return makeResponse(400, { ok: false, error: "already submitted" });
+    const existing = await readSubmission(teamId, memberId);
+    if (existing) {
+      const submittedCount = await countTeamSubmissions(teamId);
+      const teamSize = Number(team.team_size || 0);
+      return makeResponse(200, {
+        ok: true,
+        idempotent: true,
+        submission_id: existing.id,
+        personal_gm_max: Number(existing.personal_gm_max),
+        submitted_count: submittedCount,
+        team_size: teamSize,
+        team_status_updated_to_phase2: false,
+        ...buildLeaderMeta(team, memberId)
+      });
     }
 
     const payload = body || {};
@@ -772,7 +784,7 @@ async function submitPhase1(teamId, memberId, body) {
 
     const id = cryptoRandomId();
     const now = new Date().toISOString();
-    await runSql(`
+    const inserted = await runSql(`
       INSERT INTO member_submissions (
         id, member_id, team_id, grid_id, architecture, channel_pref, vp_draft, personal_gm_max, submitted_at
       ) VALUES (
@@ -785,8 +797,24 @@ async function submitPhase1(teamId, memberId, body) {
         ${sqlQuote(vpDraft)},
         ${Number(calc.gmMax)},
         ${sqlQuote(now)}
-      );
+      )
+      ON CONFLICT (team_id, member_id) DO NOTHING
+      RETURNING id, personal_gm_max;
     `);
+
+    let actualId = id;
+    let actualGmMax = Number(calc.gmMax);
+    if (Array.isArray(inserted) && inserted.length > 0) {
+      actualId = inserted[0].id;
+      actualGmMax = Number(inserted[0].personal_gm_max);
+    } else {
+      const winner = await readSubmission(teamId, memberId);
+      if (!winner) {
+        return makeResponse(500, { ok: false, error: "submission lost after conflict" });
+      }
+      actualId = winner.id;
+      actualGmMax = Number(winner.personal_gm_max);
+    }
 
     const submittedCount = await countTeamSubmissions(teamId);
     const teamSize = Number(team.team_size || 0);
@@ -801,8 +829,8 @@ async function submitPhase1(teamId, memberId, body) {
 
     return makeResponse(200, {
       ok: true,
-      submission_id: id,
-      personal_gm_max: Number(calc.gmMax),
+      submission_id: actualId,
+      personal_gm_max: actualGmMax,
       submitted_count: submittedCount,
       team_size: teamSize,
       team_status_updated_to_phase2: statusUpdated,

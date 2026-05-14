@@ -31,7 +31,7 @@ function loadLocalEnvFile() {
 loadLocalEnvFile();
 
 const Engine = require("./engine");
-const { chatCompletion } = require("./server/llm/deepseekClient");
+const { chatCompletion, hasAnyKey } = require("./server/llm/deepseekClient");
 const Sessions = require("./server/llm/sessions");
 const MarketingSessions = require("./server/llm/marketingSessions");
 const VpChat = require("./server/routes/vpChat");
@@ -896,7 +896,7 @@ async function handleRound1Llm(req, res, routeType) {
 }
 
 async function handleLlmHealth(req, res) {
-  const hasKey = Boolean(process.env.DEEPSEEK_API_KEY);
+  const hasKey = hasAnyKey();
   const baseUrl = process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com/v1";
   const model = process.env.DEEPSEEK_MODEL || "deepseek-chat";
   if (!hasKey) {
@@ -1839,7 +1839,7 @@ async function handleRound1VpEvaluate(req, res) {
 async function handleRound1VpHealth(req, res) {
   const baseUrl = process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com/v1";
   const model = process.env.DEEPSEEK_MODEL || "deepseek-chat";
-  const configured = Boolean(process.env.DEEPSEEK_API_KEY);
+  const configured = hasAnyKey();
   return sendJson(res, 200, {
     ok: true,
     configured,
@@ -2612,6 +2612,13 @@ function handleApi(req, res) {
       .then((p) => Round2.interviewReply(p))
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "round2 interview reply failed" }));
+  }
+
+  if (req.method === "POST" && req.url === "/api/round2/interview/rescore") {
+    return readBody(req)
+      .then((p) => Round2.rescoreInterview(p))
+      .then((out) => sendJson(res, out.status, out.body))
+      .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "round2 interview rescore failed" }));
   }
 
   if (req.method === "POST" && req.url === "/api/round2/interview/end") {

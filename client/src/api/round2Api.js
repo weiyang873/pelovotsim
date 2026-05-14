@@ -98,6 +98,15 @@ export async function replyRound2Interview(payload) {
   return asJson(res);
 }
 
+export async function rescoreRound2Interview(sessionId) {
+  const res = await fetch(`${BASE}/round2/interview/rescore`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sessionId })
+  });
+  return asJson(res);
+}
+
 export async function endRound2Interview(payload) {
   const res = await fetch(`${BASE}/round2/interview/end`, {
     method: "POST",

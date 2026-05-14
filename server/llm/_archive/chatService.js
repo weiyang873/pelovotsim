@@ -1,3 +1,9 @@
+// ARCHIVED 2026-05-10: This module was an earlier streaming-aware DeepSeek client
+// with key-pool rotation. Production code migrated to deepseekClient.js (which lost
+// the key-pool feature; restored in R0 fix on this date). This file is kept as a
+// reference implementation for streaming SSE - not currently imported anywhere.
+// Per AGENTS.md deletion discipline, may be deleted in a separate PR after 7 days
+// of stable operation if no streaming use-case emerges.
 // chatService.js - streaming chat completion
 
 const DEEPSEEK_BASE_URL = process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com";

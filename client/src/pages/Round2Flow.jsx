@@ -7,6 +7,7 @@ import {
   getRound2TeamMerge,
   getRound2TeamResult,
   replyRound2Interview,
+  rescoreRound2Interview,
   saveRound2MemberSelection,
   saveRound2TeamDraft,
   startRound2Interview,
@@ -730,6 +731,7 @@ export default function App() {
   const [interviewCanEnd, setInterviewCanEnd] = useState(false);
   const [interviewDimensionOpenId, setInterviewDimensionOpenId] = useState(DEFAULT_MEMBER_DIMS[0]);
   const [interviewError, setInterviewError] = useState("");
+  const [interviewRetryAction, setInterviewRetryAction] = useState(null);
   const [interviewRestoreChecked, setInterviewRestoreChecked] = useState(false);
   const [isStartingInterview, setIsStartingInterview] = useState(false);
   const [isSendingInterview, setIsSendingInterview] = useState(false);
@@ -1075,7 +1077,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     if (nextInterviewTurn >= 2) return "继续提问…";
     return `和 ${personaName} 打个招呼，开始你的访谈吧…`;
   }, [activeInterviewPersona, nextInterviewTurn]);
-  const showInterviewComposer = Boolean(interviewSessionId) && !interviewTransition;
+  const showInterviewComposer = Boolean(interviewSessionId) && !interviewTransition && interviewRetryAction?.type !== "rescore";
   const showInterviewSummary = !showInterviewComposer && Boolean(interviewResult);
   const showInterviewEndButton = showInterviewComposer && interviewCanEnd && interviewRound >= INTERVIEW_MIN_TURNS && interviewRound < INTERVIEW_MAX_TURNS;
   const canEnterCards = Boolean(interviewProgress.canProceed || memberState?.interview_status === "completed");
@@ -1234,6 +1236,15 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     const progress = payload?.progress || createEmptyInterviewProgress();
     const session = payload?.session || null;
     const latestSession = payload?.latestSession || session || null;
+    const activeSessionId = String(session?.sessionId || payload?.sessionId || "");
+    const needsRescore = Boolean(
+      payload?.needsRescore
+      || (
+        activeSessionId &&
+        Number(session?.round || 0) >= INTERVIEW_MAX_TURNS &&
+        !session?.isComplete
+      )
+    );
     const dimensionGuide = Array.isArray(payload?.dimensionGuide) && payload.dimensionGuide.length
       ? payload.dimensionGuide
       : buildDimensionGuideItems(session?.memberDims || memberDims);
@@ -1251,8 +1262,17 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
         .map((message, index) => toInterviewMessage(message, index))
         .filter((message) => message.text)
     );
-    setInterviewSessionId(String(session?.sessionId || ""));
+    setInterviewSessionId(activeSessionId);
     setInterviewRound(Number(session?.round || 0));
+    setInterviewRetryAction(
+      needsRescore
+        ? {
+            type: "rescore",
+            sessionId: activeSessionId,
+            label: "评分失败，请点击重试。"
+          }
+        : null
+    );
     setInterviewDimensionOpenId((prev) => {
       const first = dimensionGuide[0]?.id || memberDims[0];
       return prev && dimensionGuide.some((item) => item.id === prev) ? prev : first;
@@ -1291,6 +1311,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     try {
       setIsStartingInterview(true);
       setInterviewError("");
+      setInterviewRetryAction(null);
       const out = await startRound2Interview({
         teamId,
         memberId,
@@ -1320,6 +1341,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     try {
       setIsSendingInterview(true);
       setInterviewError("");
+      setInterviewRetryAction(null);
       const out = await endRound2Interview({ sessionId: interviewSessionId });
       setInterviewResult({
         radar: out.radar || null,
@@ -1364,6 +1386,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     if (!teamId || !memberId) return;
     setInterviewRestoreChecked(false);
     setInterviewError("");
+    setInterviewRetryAction(null);
     setInterviewSessionId("");
     setInterviewPersonas([]);
     setInterviewMessages([]);
@@ -1498,13 +1521,12 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
   const handleInterviewSend = useCallback(async () => {
     const message = String(interviewInput || "").trim();
     if (!interviewSessionId || !message || isSendingInterview) return;
+    const optimisticMessage = toInterviewMessage({ id: `local-user-${Date.now()}`, role: "user", speaker: "你", text: message }, interviewMessages.length);
     try {
       setIsSendingInterview(true);
       setInterviewError("");
-      setInterviewMessages((prev) => [
-        ...prev,
-        toInterviewMessage({ id: `local-user-${Date.now()}`, role: "user", speaker: "你", text: message }, prev.length)
-      ]);
+      setInterviewRetryAction(null);
+      setInterviewMessages((prev) => [...prev, optimisticMessage]);
       setInterviewInput("");
       const out = await replyRound2Interview({
         sessionId: interviewSessionId,
@@ -1548,11 +1570,169 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
         }
       }
     } catch (err) {
-      setInterviewError(err.message || "访谈发送失败");
+      const payload = err?.payload || {};
+      if (payload?.error === "llm_unavailable") {
+        setInterviewMessages((prev) => prev.filter((item) => item.id !== optimisticMessage.id));
+        setInterviewInput(message);
+        setInterviewRetryAction({
+          type: "reply",
+          sessionId: interviewSessionId,
+          message,
+          label: "网络繁忙，请点击重试。"
+        });
+        setInterviewError(payload?.message || "网络繁忙，请稍后重试");
+      } else if (payload?.needsRescore && String(payload?.reply || "").trim()) {
+        const replyText = String(payload.reply || "").trim();
+        setInterviewMessages((prev) => [
+          ...prev,
+          toInterviewMessage({
+            id: `local-assistant-${Date.now()}`,
+            role: "assistant",
+            speaker: payload.speaker || activeInterviewPersona?.name || "访谈对象",
+            text: replyText
+          }, prev.length)
+        ]);
+        setInterviewRound(Number(payload.round || interviewRound));
+        setInterviewProgress(payload.progress || createEmptyInterviewProgress());
+        setInterviewCanEnd(Boolean(payload.canEnd));
+        setInterviewRetryAction({
+          type: "rescore",
+          sessionId: interviewSessionId,
+          label: "评分失败，请点击重试。"
+        });
+        setInterviewError(payload?.message || "评分失败，请点击重试");
+      } else {
+        setInterviewMessages((prev) => prev.filter((item) => item.id !== optimisticMessage.id));
+        setInterviewInput(message);
+        setInterviewError(err.message || "访谈发送失败");
+      }
     } finally {
       setIsSendingInterview(false);
     }
-  }, [activeInterviewPersona, interviewInput, interviewRound, interviewSessionId, isSendingInterview]);
+  }, [activeInterviewPersona, interviewInput, interviewMessages.length, interviewRound, interviewSessionId, isSendingInterview]);
+
+  const handleInterviewRetry = useCallback(async () => {
+    if (!interviewRetryAction || isSendingInterview) return;
+    try {
+      setIsSendingInterview(true);
+      setInterviewError("");
+      if (interviewRetryAction.type === "reply") {
+        const retryMessage = String(interviewRetryAction.message || "").trim();
+        if (!interviewSessionId || !retryMessage) return;
+        const optimisticMessage = toInterviewMessage(
+          { id: `retry-user-${Date.now()}`, role: "user", speaker: "你", text: retryMessage },
+          interviewMessages.length
+        );
+        setInterviewRetryAction(null);
+        setInterviewMessages((prev) => [...prev, optimisticMessage]);
+        setInterviewInput("");
+        const out = await replyRound2Interview({
+          sessionId: interviewSessionId,
+          message: retryMessage
+        });
+        const replyText = String(out.reply || "").trim();
+        setInterviewMessages((prev) => [
+          ...prev,
+          toInterviewMessage({
+            id: `retry-assistant-${Date.now()}`,
+            role: "assistant",
+            speaker: out.speaker || activeInterviewPersona?.name || "访谈对象",
+            text: replyText
+          }, prev.length)
+        ]);
+        setInterviewRound(Number(out.round || interviewRound));
+        setInterviewProgress(out.progress || createEmptyInterviewProgress());
+        setInterviewCanEnd(Boolean(out.canEnd));
+        if (out.isComplete) {
+          const nextResult = {
+            radar: out.radar || null,
+            tags: out.tags || [],
+            evi: out.evi,
+            confidence: out.confidence || {},
+            lowConfidenceDims: out.lowConfidenceDims || [],
+            insightsByDim: out.insightsByDim || {},
+            scoreSource: out.scoreSource || {},
+            summary: out.summary || ""
+          };
+          setInterviewResult(nextResult);
+          setInterviewSessionId("");
+          setInterviewPersonas([]);
+          setInterviewProgress(out.progress || createEmptyInterviewProgress());
+          setInterviewCanEnd(false);
+          setInterviewTransition(buildInterviewTransition(out.progress, out.completedInterview, Boolean(out.reachedLimit)));
+          if (out.progress?.reachedInterviewLimit) {
+            setSystemNotice("第 3 次访谈完成，已自动进入个人选卡。");
+            setStep(2);
+          } else if (out.reachedLimit) {
+            setSystemNotice("本次访谈已结束（已达 10 轮上限）。");
+          }
+        }
+        return;
+      }
+      const out = await rescoreRound2Interview(interviewRetryAction.sessionId);
+      setInterviewRetryAction(null);
+      setInterviewResult({
+        radar: out.radar || null,
+        tags: out.tags || [],
+        evi: out.evi,
+        confidence: out.confidence || {},
+        lowConfidenceDims: out.lowConfidenceDims || [],
+        insightsByDim: out.insightsByDim || {},
+        scoreSource: out.scoreSource || {},
+        summary: out.summary || ""
+      });
+      const refreshed = await getRound2InterviewSession(teamId, memberId, "", {});
+      applyInterviewPayload(refreshed, { endedByLimit: true });
+      if (refreshed?.progress?.reachedInterviewLimit) {
+        setSystemNotice("第 3 次访谈完成，已自动进入个人选卡。");
+        setStep(2);
+      } else {
+        setSystemNotice("评分完成，本次访谈已成功收尾。");
+      }
+    } catch (err) {
+      const payload = err?.payload || {};
+      if (payload?.error === "llm_unavailable") {
+        setInterviewRetryAction({
+          type: "reply",
+          sessionId: interviewSessionId,
+          message: interviewRetryAction?.message || "",
+          label: "网络繁忙，请点击重试。"
+        });
+        setInterviewError(payload?.message || "网络繁忙，请稍后重试");
+      } else if (payload?.needsRescore && String(payload?.reply || "").trim()) {
+        const replyText = String(payload.reply || "").trim();
+        setInterviewMessages((prev) => [
+          ...prev,
+          toInterviewMessage({
+            id: `retry-assistant-${Date.now()}`,
+            role: "assistant",
+            speaker: payload.speaker || activeInterviewPersona?.name || "访谈对象",
+            text: replyText
+          }, prev.length)
+        ]);
+        setInterviewRound(Number(payload.round || interviewRound));
+        setInterviewProgress(payload.progress || createEmptyInterviewProgress());
+        setInterviewCanEnd(Boolean(payload.canEnd));
+        setInterviewRetryAction({
+          type: "rescore",
+          sessionId: interviewSessionId,
+          label: "评分失败，请点击重试。"
+        });
+        setInterviewError(payload?.message || "评分失败，请点击重试");
+      } else if (payload?.scoringError) {
+        setInterviewRetryAction((prev) => prev || {
+          type: "rescore",
+          sessionId: interviewSessionId,
+          label: "评分失败，请点击重试。"
+        });
+        setInterviewError(payload?.message || "评分失败，请稍后重试");
+      } else {
+        setInterviewError(err.message || "重试失败");
+      }
+    } finally {
+      setIsSendingInterview(false);
+    }
+  }, [activeInterviewPersona, applyInterviewPayload, interviewMessages.length, interviewRetryAction, interviewRound, interviewSessionId, isSendingInterview, memberId, teamId]);
 
   const handleIndividualSubmit = useCallback(async () => {
     if (!teamId || !memberId || indCalc.cnt < 1 || isSubmittingIndividual) return;
@@ -2304,8 +2484,18 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
               </div>
 
               {interviewError && (
-                <div style={{padding:"10px 14px",borderRadius:8,background:"#FEF2F2",border:"1px solid #FECACA",fontSize:12,color:"#991B1B",marginBottom:12}}>
-                  {interviewError}
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,padding:"10px 14px",borderRadius:8,background:"#FEF2F2",border:"1px solid #FECACA",fontSize:12,color:"#991B1B",marginBottom:12}}>
+                  <span>{interviewError}</span>
+                  {interviewRetryAction && (
+                    <button
+                      type="button"
+                      onClick={handleInterviewRetry}
+                      disabled={isSendingInterview}
+                      style={{padding:"6px 12px",borderRadius:8,background:"#991B1B",color:"#fff",border:"none",fontSize:12,fontWeight:700,cursor:"pointer",opacity:isSendingInterview ? 0.5 : 1,whiteSpace:"nowrap"}}
+                    >
+                      {isSendingInterview ? "重试中..." : "立即重试"}
+                    </button>
+                  )}
                 </div>
               )}
               <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:16}}>

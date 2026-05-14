@@ -27,6 +27,7 @@ const CAP_GROUPS = require("../../data/capability_groups_v2.json");
 const TAG_MAP = require("../../data/tag_map_v2_1.json");
 
 const ROOT = path.join(__dirname, "..", "..");
+let __round2SchemaInitialized = false;
 const CONFIG_DIR = path.join(ROOT, "game_config_v0.1");
 const GRID_PRIOR_PATH = path.join(ROOT, "data", "grid_priors_v4_cap_weights.json");
 let cachedEngineConfig = null;
@@ -121,6 +122,16 @@ const DIMENSION_GUIDE = {
 };
 const PRODUCT_TERMS_RE = /LOVOT|机器人|智能家居|家用机器人|产品|功能|设备|机器人类|认得|识别|提醒|报警|跟随|充电|联动|传感|监测|摄像|语音|屏幕|APP|远程/iu;
 
+class InterviewScoringError extends Error {
+  constructor(reason, cause) {
+    super(`interview scoring failed: ${reason}`);
+    this.name = "InterviewScoringError";
+    this.code = "INTERVIEW_SCORING_FAILED";
+    this.reason = reason;
+    if (cause) this.cause = cause;
+  }
+}
+
 const CAPABILITY_MAP = (() => {
   const map = new Map();
   (CAP_GROUPS.groups || []).forEach((group) => {
@@ -164,6 +175,7 @@ function makeOnlyLeaderResponse(team, requesterMemberId = "") {
 }
 
 async function ensureSchema() {
+  if (__round2SchemaInitialized) return;
   await runSql(`
     CREATE TABLE IF NOT EXISTS round2_dimension_assignments (
       team_id TEXT PRIMARY KEY,
@@ -269,6 +281,7 @@ async function ensureSchema() {
       WHERE is_complete = false;
   `);
   await ensureRound2StateSchema();
+  __round2SchemaInitialized = true;
 }
 
 function nowIso() {
@@ -1109,7 +1122,7 @@ async function extractInterviewResult({ gridId, architecture, memberDims, histor
     .map((m) => `${m.role === "user" ? "学生" : m.speaker || "用户"}：${m.text || ""}`)
     .join("\n");
 
-  let extracted = null;
+  let extracted;
   try {
     const messages = buildExtractInterviewMessages({ gridId, memberDims, conversation });
     const raw = await withLlmLogging({
@@ -1119,18 +1132,30 @@ async function extractInterviewResult({ gridId, architecture, memberDims, histor
       messages
     }, () => chatCompletion(messages, { temperature: 0.2, max_tokens: 2500, maxRetries: 3 }));
     const txt = String(raw || "").replace(/```json|```/g, "").trim();
+    if (!txt) {
+      throw new InterviewScoringError("llm_empty");
+    }
     const start = txt.indexOf("{");
     const end = txt.lastIndexOf("}");
-    extracted = cleanExtractedPayload(
-      JSON.parse(start >= 0 && end > start ? txt.slice(start, end + 1) : txt)
-    );
+    const jsonText = start >= 0 && end > start ? txt.slice(start, end + 1) : txt;
+    let parsed;
+    try {
+      parsed = JSON.parse(jsonText);
+    } catch (parseErr) {
+      throw new InterviewScoringError("llm_unparseable", parseErr);
+    }
+    extracted = cleanExtractedPayload(parsed);
+    if (!extracted || typeof extracted !== "object") {
+      throw new InterviewScoringError("llm_invalid_shape");
+    }
   } catch (err) {
+    if (err instanceof InterviewScoringError) throw err;
     console.error("[extractInterviewResult] LLM failed:", err.message, {
       gridId: String(gridId || ""),
       architecture: String(architecture || ""),
       memberDims: Array.isArray(memberDims) ? memberDims : []
     });
-    extracted = null;
+    throw new InterviewScoringError("llm_failed", err);
   }
 
   console.log("[Round2][TagExtract]", JSON.stringify({
@@ -2845,7 +2870,7 @@ async function interviewReply(body) {
     });
     llmMessages.push({ role: "user", content: message });
 
-    let reply = "对我来说，平时相处起来别太折腾最重要。真遇到状况的时候也得靠谱，不然我很难长期接受。";
+    let reply;
     try {
       const out = await withLlmLogging({
         caller: "round2Routes.interviewReply",
@@ -2853,8 +2878,24 @@ async function interviewReply(body) {
         memberId: session?.member_id || session?.memberId || null,
         messages: llmMessages
       }, () => chatCompletion(llmMessages, { temperature: 0.7, max_tokens: 300 }));
-      if (String(out || "").trim()) reply = String(out).trim();
-    } catch (_) {}
+      reply = String(out || "").trim();
+      if (!reply) {
+        throw new Error("llm returned empty reply");
+      }
+    } catch (err) {
+      console.error("[interviewReply] LLM call failed:", err.message, {
+        sessionId: session?.session_id || session?.id,
+        teamId: session?.team_id,
+        memberId: session?.member_id,
+        round
+      });
+      return makeResponse(503, {
+        ok: false,
+        error: "llm_unavailable",
+        retry: true,
+        message: "网络繁忙，请稍后重试"
+      });
+    }
     for (let retry = 0; retry < 2 && isPersonaLeakage(reply, persona); retry += 1) {
       console.warn(`[round2Routes.interviewReply] persona leakage detected, retry ${retry + 1}`);
       const retryMessages = [
@@ -2877,16 +2918,34 @@ async function interviewReply(body) {
     }
     reply = enforceLifeFirstReply(reply, persona, productIntroduced);
 
-    const history = [...historyBase, { role: "user", speaker: "学生", text: message }, { role: "assistant", speaker, text: reply }];
-    const isComplete = round >= MAX_INTERVIEW_TURNS;
-    const result = isComplete
-      ? await extractInterviewResult({
+    const history = [
+      ...historyBase,
+      { role: "user", speaker: "学生", text: message },
+      { role: "assistant", speaker, text: reply }
+    ];
+    const reachedLimit = round >= MAX_INTERVIEW_TURNS;
+    let result = null;
+    let scoringError = null;
+    let isComplete = false;
+
+    if (reachedLimit) {
+      try {
+        result = await extractInterviewResult({
           gridId: String(recapData.final_grid_id || "ToB_Differentiation_Adult"),
           architecture: String(recapData.architecture || ""),
           memberDims: session.member_dims,
           history
-        })
-      : null;
+        });
+        isComplete = true;
+      } catch (err) {
+        if (err instanceof InterviewScoringError) {
+          scoringError = err.reason;
+          isComplete = false;
+        } else {
+          throw err;
+        }
+      }
+    }
 
     await saveInterviewSession({
       ...session,
@@ -2899,14 +2958,16 @@ async function interviewReply(body) {
 
     const syncResult = await syncMemberInterviewState(session.team_id, session.member_id);
 
-    return makeResponse(200, {
-      ok: true,
+    return makeResponse(scoringError ? 503 : 200, {
+      ok: !scoringError,
       reply,
       speaker,
       round,
       isComplete,
       canEnd: round >= MIN_TURNS_TO_END,
-      reachedLimit: round >= MAX_INTERVIEW_TURNS,
+      reachedLimit,
+      needsRescore: reachedLimit && !isComplete,
+      scoringError: scoringError || undefined,
       radar: result?.radar,
       tags: result?.tags,
       evi: result?.evi,
@@ -2917,6 +2978,77 @@ async function interviewReply(body) {
       summary: result?.summary,
       progress: syncResult.progress,
       completedInterview: isComplete ? syncResult.progress.latestCompletedInterview : null
+    });
+  } catch (e) {
+    return makeResponse(400, { ok: false, error: e.message });
+  }
+}
+
+async function rescoreInterview(body) {
+  try {
+    const sessionId = String(body?.sessionId || "").trim();
+    if (!sessionId) return makeResponse(400, { ok: false, error: "sessionId required" });
+
+    const session = await getInterviewSession(sessionId);
+    if (!session) return makeResponse(404, { ok: false, error: "session not found" });
+
+    if (session.is_complete) {
+      return makeResponse(200, {
+        ok: true,
+        idempotent: true,
+        isComplete: true,
+        radar: session.result?.radar,
+        tags: session.result?.tags,
+        evi: session.result?.evi
+      });
+    }
+
+    if (Number(session.round_no || 0) < MAX_INTERVIEW_TURNS) {
+      return makeResponse(400, {
+        ok: false,
+        error: "interview not yet at final turn",
+        round_no: session.round_no
+      });
+    }
+
+    const recapRes = await recap({ teamId: session.team_id });
+    const recapData = recapRes?.body?.ok ? recapRes.body : {};
+
+    let result;
+    try {
+      result = await extractInterviewResult({
+        gridId: String(recapData.final_grid_id || "ToB_Differentiation_Adult"),
+        architecture: String(recapData.architecture || ""),
+        memberDims: session.member_dims,
+        history: session.history
+      });
+    } catch (err) {
+      if (err instanceof InterviewScoringError) {
+        return makeResponse(503, {
+          ok: false,
+          scoringError: err.reason,
+          retry: true,
+          message: "评分失败，请稍后重试"
+        });
+      }
+      throw err;
+    }
+
+    await saveInterviewSession({
+      ...session,
+      is_complete: true,
+      result,
+      updated_at: nowIso()
+    });
+
+    await syncMemberInterviewState(session.team_id, session.member_id);
+
+    return makeResponse(200, {
+      ok: true,
+      isComplete: true,
+      radar: result?.radar,
+      tags: result?.tags,
+      evi: result?.evi
     });
   } catch (e) {
     return makeResponse(400, { ok: false, error: e.message });
@@ -3502,10 +3634,12 @@ module.exports = {
   interviewStart,
   interviewEnd,
   interviewReply,
+  rescoreInterview,
   saveMemberSelectionApi,
   mergeApi,
   reflectionApi,
   __test: {
+    InterviewScoringError,
     getRound2ChannelFeeByGrid,
     getPriorRadarByGrid,
     buildAssignments,
@@ -3514,6 +3648,7 @@ module.exports = {
     filterIncompatibleTags,
     getGridDefaultTags,
     inferWeakEvidenceFromConversation,
+    extractInterviewResult,
     mapEvidenceToResult,
     normalizeExtractedTags,
     isPersonaLeakage,

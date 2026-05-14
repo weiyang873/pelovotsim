@@ -3,9 +3,66 @@ const http = require("http");
 const https = require("https");
 
 const REQUEST_TIMEOUT_MS = parseInt(process.env.DEEPSEEK_TIMEOUT_MS || "60000", 10);
-const MAX_RETRIES = 1;
+const MAX_RETRIES = Math.max(0, parseInt(process.env.LLM_MAX_RETRIES || "1", 10));
 const RETRY_DELAY_MS = 2000;
+const LLM_CONCURRENCY = Math.max(1, parseInt(process.env.LLM_CONCURRENCY || "10", 10));
 const RETRYABLE_NETWORK_CODES = new Set(["ECONNRESET", "ETIMEDOUT", "ECONNREFUSED", "EPIPE"]);
+// Collect all DEEPSEEK_API_KEY_N keys plus the unsuffixed DEEPSEEK_API_KEY.
+// Deduplicates by value so accidentally pasting the same key into two slots
+// doesn't double its weight in the pool.
+const DEEPSEEK_KEY_POOL = (() => {
+  const seen = new Set();
+  const keys = [];
+
+  const suffixed = Object.keys(process.env)
+    .filter((key) => /^DEEPSEEK_API_KEY_\d+$/.test(key))
+    .sort((a, b) => {
+      const aNum = parseInt(a.replace(/^DEEPSEEK_API_KEY_/, ""), 10);
+      const bNum = parseInt(b.replace(/^DEEPSEEK_API_KEY_/, ""), 10);
+      return aNum - bNum;
+    });
+
+  for (const envName of suffixed) {
+    const value = String(process.env[envName] || "").trim();
+    if (value && !seen.has(value)) {
+      seen.add(value);
+      keys.push(value);
+    }
+  }
+
+  const fallback = String(process.env.DEEPSEEK_API_KEY || "").trim();
+  if (fallback && !seen.has(fallback)) {
+    seen.add(fallback);
+    keys.push(fallback);
+  }
+
+  return keys;
+})();
+
+if (DEEPSEEK_KEY_POOL.length === 0) {
+  console.warn("[DeepSeek] No API keys configured. Set DEEPSEEK_API_KEY or DEEPSEEK_API_KEY_1..N in .env");
+} else {
+  console.log(`[DeepSeek] Loaded ${DEEPSEEK_KEY_POOL.length} API key(s) into rotation pool`);
+}
+
+const llmGate = (() => {
+  let active = 0;
+  const waiters = [];
+
+  return async function gate(fn) {
+    if (active >= LLM_CONCURRENCY) {
+      await new Promise((resolve) => waiters.push(resolve));
+    }
+    active += 1;
+    try {
+      return await fn();
+    } finally {
+      active -= 1;
+      const next = waiters.shift();
+      if (next) next();
+    }
+  };
+})();
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -26,6 +83,14 @@ function isRetryableError(error) {
   if (statusCode === 429 || statusCode >= 500) return true;
   if (RETRYABLE_NETWORK_CODES.has(String(error?.code || "").toUpperCase())) return true;
   return /timeout/i.test(String(error?.message || ""));
+}
+
+/**
+ * Whether any DeepSeek API key is configured. Exported so callers can
+ * query readiness without reading environment variables directly.
+ */
+function hasAnyKey() {
+  return DEEPSEEK_KEY_POOL.length > 0;
 }
 
 function performChatCompletionRequest(url, apiKey, body) {
@@ -113,12 +178,13 @@ function performChatCompletionRequest(url, apiKey, body) {
  * @param {Object} options - { temperature, max_tokens }
  * @returns {Promise<string>} - 模型回复文本
  */
-async function chatCompletion(messages, options = {}) {
-  const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
+async function _chatCompletionInner(messages, options = {}) {
   const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || "deepseek-chat";
   const DEEPSEEK_BASE_URL = process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com";
 
-  if (!DEEPSEEK_API_KEY) throw new Error("DEEPSEEK_API_KEY not set");
+  if (DEEPSEEK_KEY_POOL.length === 0) {
+    throw new Error("DEEPSEEK_API_KEY not set (and no DEEPSEEK_API_KEY_1..N found)");
+  }
 
   const body = JSON.stringify({
     model: DEEPSEEK_MODEL,
@@ -128,23 +194,31 @@ async function chatCompletion(messages, options = {}) {
   });
   const url = new URL("/v1/chat/completions", DEEPSEEK_BASE_URL);
   const maxRetries = Number.isFinite(options.maxRetries) ? options.maxRetries : MAX_RETRIES;
+  const startKeyIndex = Math.floor(Math.random() * DEEPSEEK_KEY_POOL.length);
 
   for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+    const keyIndex = (startKeyIndex + attempt) % DEEPSEEK_KEY_POOL.length;
+    const apiKey = DEEPSEEK_KEY_POOL[keyIndex];
+
     try {
-      return await performChatCompletionRequest(url, DEEPSEEK_API_KEY, body);
+      return await performChatCompletionRequest(url, apiKey, body);
     } catch (error) {
       const retryable = isRetryableError(error);
       const canRetry = retryable && attempt < maxRetries;
 
       if (!canRetry) {
         if (attempt > 0) {
-          console.error("[DeepSeek] Request failed after retry:", error.message);
+          console.error(`[DeepSeek] Request failed after retry (last key idx ${keyIndex}):`, error.message);
         }
         throw error;
       }
 
       const delay = RETRY_DELAY_MS * Math.pow(2, attempt) + Math.random() * 500;
-      console.warn(`[DeepSeek] Retry ${attempt + 1}/${maxRetries} after ${Math.round(delay)}ms, reason:`, error.message);
+      console.warn(
+        `[DeepSeek] Retry ${attempt + 1}/${maxRetries} (key idx ${keyIndex} → ${(keyIndex + 1) % DEEPSEEK_KEY_POOL.length}) ` +
+        `after ${Math.round(delay)}ms, reason:`,
+        error.message
+      );
       await sleep(delay);
     }
   }
@@ -152,4 +226,12 @@ async function chatCompletion(messages, options = {}) {
   throw new Error("DeepSeek request exhausted retries");
 }
 
-module.exports = { chatCompletion };
+async function chatCompletion(messages, options = {}) {
+  return llmGate(() => _chatCompletionInner(messages, options));
+}
+
+module.exports = {
+  chatCompletion,
+  hasAnyKey,
+  __TEST_GET_POOL: () => [...DEEPSEEK_KEY_POOL],
+};

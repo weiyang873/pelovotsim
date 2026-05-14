@@ -93,6 +93,14 @@ async function ensureSchema() {
       updated_at TIMESTAMPTZ
     );
 
+    CREATE TABLE IF NOT EXISTS llm_kv_cache (
+      cache_name TEXT NOT NULL,
+      cache_key TEXT NOT NULL,
+      cache_value JSONB NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (cache_name, cache_key)
+    );
+
     CREATE TABLE IF NOT EXISTS students (
       student_id TEXT PRIMARY KEY,
       student_name TEXT NOT NULL,
@@ -104,6 +112,8 @@ async function ensureSchema() {
 
     CREATE INDEX IF NOT EXISTS idx_students_team ON students(team_id);
     CREATE INDEX IF NOT EXISTS idx_students_group ON students(group_label);
+    CREATE INDEX IF NOT EXISTS idx_llm_kv_cache_updated
+      ON llm_kv_cache (cache_name, updated_at DESC);
 
     ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_sam DOUBLE PRECISION;
     ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_wtp_adj DOUBLE PRECISION;
@@ -131,6 +141,30 @@ async function ensureSchema() {
     ALTER TABLE team_members ADD COLUMN IF NOT EXISTS vp_confirmed_at TIMESTAMPTZ;
     ALTER TABLE team_members ADD COLUMN IF NOT EXISTS vp_feedback TEXT;
   `);
+  try {
+    await runSql(`
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_member_submissions_team_member
+        ON member_submissions (team_id, member_id);
+    `);
+  } catch (err) {
+    if (err.code === "23505" || /could not create unique index/i.test(String(err.message || ""))) {
+      console.warn("[ensureSchema] member_submissions has duplicate (team_id, member_id) rows; deduping");
+      await runSql(`
+        DELETE FROM member_submissions
+        WHERE id NOT IN (
+          SELECT MIN(id) FROM member_submissions
+          WHERE team_id IS NOT NULL AND member_id IS NOT NULL
+          GROUP BY team_id, member_id
+        );
+      `);
+      await runSql(`
+        CREATE UNIQUE INDEX IF NOT EXISTS uq_member_submissions_team_member
+          ON member_submissions (team_id, member_id);
+      `);
+    } else {
+      throw err;
+    }
+  }
   await ensureComputationLogSchema();
   await ensureVpIterationSchema();
 }

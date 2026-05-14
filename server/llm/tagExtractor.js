@@ -2,26 +2,9 @@
 const crypto = require("crypto");
 const { chatCompletion } = require("./deepseekClient");
 const { withLlmLogging } = require("./llm_logger");
-const path = require("path");
-const fs = require("fs");
+const { kvGet, kvSet } = require("../db/kvCache");
 
-const CACHE_PATH = path.join(__dirname, "..", "..", "data", "tag_cache.json");
-const PROMPT_VERSION = "v2";
-
-function readCache() {
-  try {
-    if (!fs.existsSync(CACHE_PATH)) return {};
-    return JSON.parse(fs.readFileSync(CACHE_PATH, "utf8"));
-  } catch (_) {
-    return {};
-  }
-}
-
-function writeCache(cache) {
-  const dir = path.dirname(CACHE_PATH);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(CACHE_PATH, JSON.stringify(cache, null, 2), "utf8");
-}
+const CACHE_NAME = "tag_extractor_v2";
 
 function normalizeText(text) {
   return String(text || "").trim().replace(/\s+/g, " ").replace(/[“”]/g, '"');
@@ -38,13 +21,13 @@ async function extractTags(messages) {
   }
 
   const normalized = normalizeText(conversationText);
-  const cacheKey = crypto.createHash("md5").update(PROMPT_VERSION + ":" + normalized).digest("hex");
+  const cacheKey = crypto.createHash("md5").update(normalized).digest("hex");
 
   // 查 Level 1 缓存
-  const cache = readCache();
-  if (cache[cacheKey]) {
+  const cached = await kvGet(CACHE_NAME, cacheKey);
+  if (cached) {
     console.log("[TagExtractor] Level 1 缓存命中");
-    return cache[cacheKey];
+    return cached;
   }
 
   // 调用 LLM 提取带极性的标签
@@ -105,8 +88,7 @@ async function extractTags(messages) {
   }
 
   // 写入 Level 1 缓存
-  cache[cacheKey] = tags;
-  writeCache(cache);
+  await kvSet(CACHE_NAME, cacheKey, tags);
 
   return tags;
 }

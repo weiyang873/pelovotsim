@@ -1,25 +1,9 @@
 // dimensionScorer.js - 维度评分 + Level 2 缓存
 const crypto = require("crypto");
-const path = require("path");
-const fs = require("fs");
 const embeddingService = require("./embeddingService");
+const { kvGet, kvSet } = require("../db/kvCache");
 
-const CACHE_PATH = path.join(__dirname, "..", "..", "data", "score_cache.json");
-
-function readCache() {
-  try {
-    if (!fs.existsSync(CACHE_PATH)) return {};
-    return JSON.parse(fs.readFileSync(CACHE_PATH, "utf8"));
-  } catch (_) {
-    return {};
-  }
-}
-
-function writeCache(cache) {
-  const dir = path.dirname(CACHE_PATH);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(CACHE_PATH, JSON.stringify(cache, null, 2), "utf8");
-}
+const CACHE_NAME = "dimension_scorer_v1";
 
 async function scoreTagsToDimensions(tags) {
   const anchorVersion = embeddingService.getAnchorVersion();
@@ -30,10 +14,10 @@ async function scoreTagsToDimensions(tags) {
     .join("|");
   const cacheKey = crypto.createHash("md5").update(sortedKey + anchorVersion).digest("hex");
 
-  const cache = readCache();
-  if (cache[cacheKey]) {
+  const cached = await kvGet(CACHE_NAME, cacheKey);
+  if (cached) {
     console.log("[DimensionScorer] Level 2 缓存命中");
-    return cache[cacheKey];
+    return cached;
   }
 
   const scores = await embeddingService.scoreTagsWithPolarity(safeTags);
@@ -44,8 +28,7 @@ async function scoreTagsToDimensions(tags) {
     computedAt: new Date().toISOString()
   };
 
-  cache[cacheKey] = result;
-  writeCache(cache);
+  await kvSet(CACHE_NAME, cacheKey, result);
   return result;
 }
 
