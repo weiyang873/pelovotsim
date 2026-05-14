@@ -51,6 +51,8 @@ services:
       LLM_CONCURRENCY: ${LLM_CONCURRENCY}
       LLM_MAX_RETRIES: ${LLM_MAX_RETRIES}
       HF_DISABLE_REMOTE: ${HF_DISABLE_REMOTE:-0}
+    env_file:
+      - .env
     depends_on:
       db:
         condition: service_healthy
