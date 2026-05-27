@@ -27,7 +27,7 @@ const CAP_GROUPS = require("../../data/capability_groups_v2.json");
 const TAG_MAP = require("../../data/tag_map_v2_1.json");
 
 const ROOT = path.join(__dirname, "..", "..");
-let __round2SchemaInitialized = false;
+let __round2RoutesSchemaPromise = null;
 const CONFIG_DIR = path.join(ROOT, "game_config_v0.1");
 const GRID_PRIOR_PATH = path.join(ROOT, "data", "grid_priors_v4_cap_weights.json");
 let cachedEngineConfig = null;
@@ -175,113 +175,121 @@ function makeOnlyLeaderResponse(team, requesterMemberId = "") {
 }
 
 async function ensureSchema() {
-  if (__round2SchemaInitialized) return;
-  await runSql(`
-    CREATE TABLE IF NOT EXISTS round2_dimension_assignments (
-      team_id TEXT PRIMARY KEY,
-      assignments_json TEXT NOT NULL,
-      updated_at TIMESTAMPTZ NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS round2_member_selections (
-      team_id TEXT NOT NULL,
-      member_id TEXT NOT NULL,
-      selections_json TEXT NOT NULL,
-      updated_at TIMESTAMPTZ NOT NULL,
-      PRIMARY KEY (team_id, member_id)
-    );
-
-    CREATE TABLE IF NOT EXISTS round2_interview_sessions (
-      session_id TEXT PRIMARY KEY,
-      team_id TEXT NOT NULL,
-      member_id TEXT NOT NULL,
-      member_dims_json TEXT NOT NULL,
-      personas_json TEXT NOT NULL,
-      history_json TEXT NOT NULL,
-      result_json TEXT,
-      persona_locked_at TIMESTAMPTZ,
-      round_no INTEGER NOT NULL,
-      is_complete BOOLEAN NOT NULL DEFAULT FALSE,
-      created_at TIMESTAMPTZ NOT NULL,
-      updated_at TIMESTAMPTZ NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS round2_submissions (
-      team_id TEXT NOT NULL,
-      session_id TEXT NOT NULL DEFAULT 'default',
-      price DOUBLE PRECISION NOT NULL,
-      selections_json TEXT NOT NULL,
-      cards_json TEXT NOT NULL,
-      card_count INTEGER NOT NULL DEFAULT 0,
-      dcogs DOUBLE PRECISION,
-      risk_total DOUBLE PRECISION,
-      best_grid TEXT,
-      submitted_at TIMESTAMPTZ NOT NULL,
-      PRIMARY KEY (team_id, session_id)
-    );
-
-    CREATE TABLE IF NOT EXISTS fg_team_radar (
-      team_id TEXT NOT NULL,
-      session_id TEXT NOT NULL DEFAULT 'default',
-      radar_json TEXT NOT NULL,
-      tags_json TEXT NOT NULL,
-      evi DOUBLE PRECISION,
-      updated_at TIMESTAMPTZ NOT NULL,
-      PRIMARY KEY (team_id, session_id)
-    );
-
-    CREATE TABLE IF NOT EXISTS round2_results (
-      team_id TEXT NOT NULL,
-      session_id TEXT NOT NULL DEFAULT 'default',
-      units INTEGER,
-      profit DOUBLE PRECISION,
-      profit_per_unit DOUBLE PRECISION,
-      vscore DOUBLE PRECISION,
-      best_grid TEXT,
-      result_json TEXT NOT NULL,
-      computed_at TIMESTAMPTZ NOT NULL,
-      PRIMARY KEY (team_id, session_id)
-    );
-
-    CREATE TABLE IF NOT EXISTS round2_team_drafts (
-      team_id TEXT PRIMARY KEY,
-      price DOUBLE PRECISION,
-      selections_json TEXT NOT NULL,
-      updated_by TEXT,
-      updated_at TIMESTAMPTZ NOT NULL
-    );
-  `);
-  await runSql(`
-    ALTER TABLE round2_interview_sessions
-    ADD COLUMN IF NOT EXISTS persona_locked_at TIMESTAMPTZ;
-  `);
-  await runSql(`
-    DELETE FROM round2_interview_sessions
-    WHERE is_complete = false
-      AND round_no = 0
-      AND COALESCE(history_json, '[]') IN ('[]', '');
-  `);
-  await runSql(`
-    DELETE FROM round2_interview_sessions a
-    USING round2_interview_sessions b
-    WHERE a.team_id = b.team_id
-      AND a.member_id = b.member_id
-      AND a.session_id <> b.session_id
-      AND a.is_complete = false
-      AND b.is_complete = false
-      AND (
-        a.round_no < b.round_no
-        OR (a.round_no = b.round_no AND a.created_at < b.created_at)
-        OR (a.round_no = b.round_no AND a.created_at = b.created_at AND a.session_id < b.session_id)
+  if (__round2RoutesSchemaPromise) return __round2RoutesSchemaPromise;
+  __round2RoutesSchemaPromise = (async () => {
+    await runSql(`
+      CREATE TABLE IF NOT EXISTS round2_dimension_assignments (
+        team_id TEXT PRIMARY KEY,
+        assignments_json TEXT NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL
       );
-  `);
-  await runSql(`
-    CREATE UNIQUE INDEX IF NOT EXISTS round2_interview_one_active
-      ON round2_interview_sessions (team_id, member_id)
-      WHERE is_complete = false;
-  `);
-  await ensureRound2StateSchema();
-  __round2SchemaInitialized = true;
+
+      CREATE TABLE IF NOT EXISTS round2_member_selections (
+        team_id TEXT NOT NULL,
+        member_id TEXT NOT NULL,
+        selections_json TEXT NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL,
+        PRIMARY KEY (team_id, member_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS round2_interview_sessions (
+        session_id TEXT PRIMARY KEY,
+        team_id TEXT NOT NULL,
+        member_id TEXT NOT NULL,
+        member_dims_json TEXT NOT NULL,
+        personas_json TEXT NOT NULL,
+        history_json TEXT NOT NULL,
+        result_json TEXT,
+        persona_locked_at TIMESTAMPTZ,
+        round_no INTEGER NOT NULL,
+        is_complete BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMPTZ NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS round2_submissions (
+        team_id TEXT NOT NULL,
+        session_id TEXT NOT NULL DEFAULT 'default',
+        price DOUBLE PRECISION NOT NULL,
+        selections_json TEXT NOT NULL,
+        cards_json TEXT NOT NULL,
+        card_count INTEGER NOT NULL DEFAULT 0,
+        dcogs DOUBLE PRECISION,
+        risk_total DOUBLE PRECISION,
+        best_grid TEXT,
+        submitted_at TIMESTAMPTZ NOT NULL,
+        PRIMARY KEY (team_id, session_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS fg_team_radar (
+        team_id TEXT NOT NULL,
+        session_id TEXT NOT NULL DEFAULT 'default',
+        radar_json TEXT NOT NULL,
+        tags_json TEXT NOT NULL,
+        evi DOUBLE PRECISION,
+        updated_at TIMESTAMPTZ NOT NULL,
+        PRIMARY KEY (team_id, session_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS round2_results (
+        team_id TEXT NOT NULL,
+        session_id TEXT NOT NULL DEFAULT 'default',
+        units INTEGER,
+        profit DOUBLE PRECISION,
+        profit_per_unit DOUBLE PRECISION,
+        vscore DOUBLE PRECISION,
+        best_grid TEXT,
+        result_json TEXT NOT NULL,
+        computed_at TIMESTAMPTZ NOT NULL,
+        PRIMARY KEY (team_id, session_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS round2_team_drafts (
+        team_id TEXT PRIMARY KEY,
+        price DOUBLE PRECISION,
+        selections_json TEXT NOT NULL,
+        updated_by TEXT,
+        updated_at TIMESTAMPTZ NOT NULL
+      );
+    `);
+    await runSql(`
+      ALTER TABLE round2_interview_sessions
+      ADD COLUMN IF NOT EXISTS persona_locked_at TIMESTAMPTZ;
+    `);
+    await runSql(`
+      DELETE FROM round2_interview_sessions
+      WHERE is_complete = false
+        AND round_no = 0
+        AND COALESCE(history_json, '[]') IN ('[]', '');
+    `);
+    await runSql(`
+      DELETE FROM round2_interview_sessions a
+      USING round2_interview_sessions b
+      WHERE a.team_id = b.team_id
+        AND a.member_id = b.member_id
+        AND a.session_id <> b.session_id
+        AND a.is_complete = false
+        AND b.is_complete = false
+        AND (
+          a.round_no < b.round_no
+          OR (a.round_no = b.round_no AND a.created_at < b.created_at)
+          OR (a.round_no = b.round_no AND a.created_at = b.created_at AND a.session_id < b.session_id)
+        );
+    `);
+    await runSql(`
+      CREATE UNIQUE INDEX IF NOT EXISTS round2_interview_one_active
+        ON round2_interview_sessions (team_id, member_id)
+        WHERE is_complete = false;
+    `);
+    await ensureRound2StateSchema();
+  })();
+  try {
+    await __round2RoutesSchemaPromise;
+  } catch (err) {
+    __round2RoutesSchemaPromise = null;
+    throw err;
+  }
+  return __round2RoutesSchemaPromise;
 }
 
 function nowIso() {

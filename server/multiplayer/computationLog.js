@@ -23,7 +23,7 @@ const CHAIN_STAGE_ALIASES = {
   r1_wtp_adj: ["r1_wtp_adj_final", "r1_wtp_adj"]
 };
 
-let schemaReadyPromise = null;
+let __computationLogSchemaPromise = null;
 
 function cloneJson(value, fallback = {}) {
   try {
@@ -73,8 +73,9 @@ function buildEntry(context, stage, params) {
 }
 
 async function ensureSchema() {
-  if (!schemaReadyPromise) {
-    schemaReadyPromise = runSql(`
+  if (__computationLogSchemaPromise) return __computationLogSchemaPromise;
+  __computationLogSchemaPromise = (async () => {
+    await runSql(`
       CREATE TABLE IF NOT EXISTS computation_log (
         id SERIAL PRIMARY KEY,
         session_id TEXT NOT NULL,
@@ -88,12 +89,15 @@ async function ensureSchema() {
 
       CREATE INDEX IF NOT EXISTS idx_comp_log_team ON computation_log(team_id);
       CREATE INDEX IF NOT EXISTS idx_comp_log_stage ON computation_log(stage);
-    `).catch((err) => {
-      schemaReadyPromise = null;
-      throw err;
-    });
+    `);
+  })();
+  try {
+    await __computationLogSchemaPromise;
+  } catch (err) {
+    __computationLogSchemaPromise = null;
+    throw err;
   }
-  await schemaReadyPromise;
+  return __computationLogSchemaPromise;
 }
 
 async function insertEntries(entries) {

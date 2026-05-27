@@ -17,6 +17,7 @@ const ARCH_DISPLAY = {
   Hybrid: { label: "混合▲", color: "#F59E0B", symbol: "▲" },
   Function: { label: "功能■", color: "#3B82F6", symbol: "■" }
 };
+let __teacherDebriefSchemaPromise = null;
 
 function makeResponse(status, body) {
   return { status, body };
@@ -70,29 +71,39 @@ function verifyTeacherAuth(ctx) {
 }
 
 async function ensureSchema() {
-  await Round2.ensureSchema();
-  await runSql(`
-    ALTER TABLE teams ADD COLUMN IF NOT EXISTS session_id TEXT DEFAULT 'default';
-    ALTER TABLE teams ADD COLUMN IF NOT EXISTS lovot_image TEXT;
-    ALTER TABLE teams ADD COLUMN IF NOT EXISTS lovot_image_mime TEXT DEFAULT 'image/png';
-    UPDATE teams SET session_id = 'default' WHERE session_id IS NULL;
-    UPDATE teams
-    SET lovot_image_mime = 'image/png'
-    WHERE (lovot_image_mime IS NULL OR lovot_image_mime = '')
-      AND COALESCE(lovot_image, '') <> '';
+  if (__teacherDebriefSchemaPromise) return __teacherDebriefSchemaPromise;
+  __teacherDebriefSchemaPromise = (async () => {
+    await Round2.ensureSchema();
+    await runSql(`
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS session_id TEXT DEFAULT 'default';
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS lovot_image TEXT;
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS lovot_image_mime TEXT DEFAULT 'image/png';
+      UPDATE teams SET session_id = 'default' WHERE session_id IS NULL;
+      UPDATE teams
+      SET lovot_image_mime = 'image/png'
+      WHERE (lovot_image_mime IS NULL OR lovot_image_mime = '')
+        AND COALESCE(lovot_image, '') <> '';
 
-    CREATE TABLE IF NOT EXISTS debrief_cache (
-      id TEXT PRIMARY KEY,
-      session_id TEXT NOT NULL,
-      round INTEGER NOT NULL,
-      type TEXT NOT NULL,
-      content TEXT NOT NULL,
-      generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
+      CREATE TABLE IF NOT EXISTS debrief_cache (
+        id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL,
+        round INTEGER NOT NULL,
+        type TEXT NOT NULL,
+        content TEXT NOT NULL,
+        generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
 
-    CREATE INDEX IF NOT EXISTS idx_debrief_cache_lookup
-      ON debrief_cache(session_id, round, type);
-  `);
+      CREATE INDEX IF NOT EXISTS idx_debrief_cache_lookup
+        ON debrief_cache(session_id, round, type);
+    `);
+  })();
+  try {
+    await __teacherDebriefSchemaPromise;
+  } catch (err) {
+    __teacherDebriefSchemaPromise = null;
+    throw err;
+  }
+  return __teacherDebriefSchemaPromise;
 }
 
 function formatArchitectureLabel(arch) {

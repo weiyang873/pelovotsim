@@ -1,25 +1,33 @@
 const crypto = require("node:crypto");
 const { runSql, sqlQuote } = require("../db/pgSql");
 
-let initialized = false;
+let __sessionsSchemaPromise = null;
 
 async function ensureTable() {
-  if (initialized) return;
-  await runSql(`
-    CREATE TABLE IF NOT EXISTS vp_sessions (
-      session_id TEXT PRIMARY KEY,
-      team_key TEXT NOT NULL,
-      strategy JSONB DEFAULT '{}'::jsonb,
-      messages JSONB DEFAULT '[]'::jsonb,
-      vp_canvas TEXT,
-      pmf_score JSONB,
-      status TEXT DEFAULT 'chatting',
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-    CREATE INDEX IF NOT EXISTS idx_vp_sessions_team_key ON vp_sessions(team_key);
-  `);
-  initialized = true;
+  if (__sessionsSchemaPromise) return __sessionsSchemaPromise;
+  __sessionsSchemaPromise = (async () => {
+    await runSql(`
+      CREATE TABLE IF NOT EXISTS vp_sessions (
+        session_id TEXT PRIMARY KEY,
+        team_key TEXT NOT NULL,
+        strategy JSONB DEFAULT '{}'::jsonb,
+        messages JSONB DEFAULT '[]'::jsonb,
+        vp_canvas TEXT,
+        pmf_score JSONB,
+        status TEXT DEFAULT 'chatting',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_vp_sessions_team_key ON vp_sessions(team_key);
+    `);
+  })();
+  try {
+    await __sessionsSchemaPromise;
+  } catch (err) {
+    __sessionsSchemaPromise = null;
+    throw err;
+  }
+  return __sessionsSchemaPromise;
 }
 
 async function createVpSession(teamKey, strategy) {

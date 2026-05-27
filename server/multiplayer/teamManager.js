@@ -7,166 +7,177 @@ const { runSql, sqlQuote } = require("../db/pgSql");
 
 const ROOT = path.join(__dirname, "..", "..");
 const TEAM_STATUSES = new Set(["forming", "phase1", "phase2", "phase3", "phase4", "frozen"]);
+let __teamManagerSchemaPromise = null;
 
 function nowIso() {
   return new Date().toISOString();
 }
 
 async function ensureSchema() {
-  await runSql(`
-    CREATE TABLE IF NOT EXISTS teams (
-      id TEXT PRIMARY KEY,
-      team_name TEXT,
-      team_size INTEGER,
-      status TEXT,
-      created_at TIMESTAMPTZ,
-      leader_member_id TEXT,
-      final_grid_id TEXT,
-      final_architecture TEXT,
-      final_architecture_source TEXT DEFAULT 'player_selected',
-      final_channel1 TEXT,
-      final_channel2 TEXT,
-      final_channel1_share DOUBLE PRECISION,
-      final_vp_text TEXT,
-      final_vp_summary JSONB,
-      final_vp_scores TEXT,
-      final_gm_max DOUBLE PRECISION,
-      final_target_gm DOUBLE PRECISION,
-      final_sam DOUBLE PRECISION,
-      final_wtp_adj DOUBLE PRECISION,
-      final_wtp_ref DOUBLE PRECISION,
-      final_vp_c DOUBLE PRECISION,
-      final_vp_g DOUBLE PRECISION,
-      final_vp_e_raw DOUBLE PRECISION,
-      final_vp_e_adj DOUBLE PRECISION,
-      final_rho_c DOUBLE PRECISION,
-      final_wtp_multiplier DOUBLE PRECISION,
-      final_wtp_vp_effect DOUBLE PRECISION,
-      final_jinang_wtp_bonus DOUBLE PRECISION
-    );
-
-    CREATE TABLE IF NOT EXISTS team_members (
-      id TEXT PRIMARY KEY,
-      team_id TEXT REFERENCES teams(id),
-      member_name TEXT,
-      member_index INTEGER,
-      is_leader BOOLEAN DEFAULT FALSE,
-      jinang_market_id TEXT,
-      jinang_tech_id TEXT,
-      joined_at TIMESTAMPTZ,
-      vp_text TEXT,
-      vp_confirmed_fields JSONB,
-      vp_scores JSONB,
-      vp_confirmed_at TIMESTAMPTZ,
-      vp_feedback TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS member_submissions (
-      id TEXT PRIMARY KEY,
-      member_id TEXT,
-      team_id TEXT,
-      grid_id TEXT,
-      architecture TEXT,
-      channel_pref TEXT,
-      vp_draft TEXT,
-      personal_gm_max DOUBLE PRECISION,
-      submitted_at TIMESTAMPTZ
-    );
-
-    CREATE TABLE IF NOT EXISTS jinang_settlements (
-      id TEXT PRIMARY KEY,
-      team_id TEXT,
-      member_id TEXT,
-      jinang_id TEXT,
-      jinang_type TEXT,
-      matched BOOLEAN,
-      match_reason TEXT,
-      effect_applied TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS round1_team_drafts (
-      team_id TEXT PRIMARY KEY,
-      grid_id TEXT,
-      architecture TEXT,
-      vp_text TEXT,
-      updated_by TEXT,
-      updated_at TIMESTAMPTZ
-    );
-
-    CREATE TABLE IF NOT EXISTS llm_kv_cache (
-      cache_name TEXT NOT NULL,
-      cache_key TEXT NOT NULL,
-      cache_value JSONB NOT NULL,
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      PRIMARY KEY (cache_name, cache_key)
-    );
-
-    CREATE TABLE IF NOT EXISTS students (
-      student_id TEXT PRIMARY KEY,
-      student_name TEXT NOT NULL,
-      group_label TEXT NOT NULL,
-      team_id TEXT,
-      member_id TEXT,
-      created_at TIMESTAMPTZ DEFAULT NOW()
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_students_team ON students(team_id);
-    CREATE INDEX IF NOT EXISTS idx_students_group ON students(group_label);
-    CREATE INDEX IF NOT EXISTS idx_llm_kv_cache_updated
-      ON llm_kv_cache (cache_name, updated_at DESC);
-
-    ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_sam DOUBLE PRECISION;
-    ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_wtp_adj DOUBLE PRECISION;
-    ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_wtp_ref DOUBLE PRECISION;
-    ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_vp_summary JSONB;
-    ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_vp_c DOUBLE PRECISION;
-    ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_vp_g DOUBLE PRECISION;
-    ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_vp_e_raw DOUBLE PRECISION;
-    ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_vp_e_adj DOUBLE PRECISION;
-    ALTER TABLE teams ALTER COLUMN final_vp_c TYPE DOUBLE PRECISION USING final_vp_c::DOUBLE PRECISION;
-    ALTER TABLE teams ALTER COLUMN final_vp_g TYPE DOUBLE PRECISION USING final_vp_g::DOUBLE PRECISION;
-    ALTER TABLE teams ALTER COLUMN final_vp_e_raw TYPE DOUBLE PRECISION USING final_vp_e_raw::DOUBLE PRECISION;
-    ALTER TABLE teams ALTER COLUMN final_vp_e_adj TYPE DOUBLE PRECISION USING final_vp_e_adj::DOUBLE PRECISION;
-    ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_rho_c DOUBLE PRECISION;
-    ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_wtp_multiplier DOUBLE PRECISION;
-    ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_wtp_vp_effect DOUBLE PRECISION;
-    ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_jinang_wtp_bonus DOUBLE PRECISION;
-    ALTER TABLE teams ADD COLUMN IF NOT EXISTS lovot_image TEXT;
-    ALTER TABLE teams ADD COLUMN IF NOT EXISTS lovot_image_mime TEXT DEFAULT 'image/png';
-    ALTER TABLE teams ADD COLUMN IF NOT EXISTS leader_member_id TEXT;
-    ALTER TABLE team_members ADD COLUMN IF NOT EXISTS is_leader BOOLEAN DEFAULT FALSE;
-    ALTER TABLE team_members ADD COLUMN IF NOT EXISTS vp_text TEXT;
-    ALTER TABLE team_members ADD COLUMN IF NOT EXISTS vp_confirmed_fields JSONB;
-    ALTER TABLE team_members ADD COLUMN IF NOT EXISTS vp_scores JSONB;
-    ALTER TABLE team_members ADD COLUMN IF NOT EXISTS vp_confirmed_at TIMESTAMPTZ;
-    ALTER TABLE team_members ADD COLUMN IF NOT EXISTS vp_feedback TEXT;
-  `);
-  try {
+  if (__teamManagerSchemaPromise) return __teamManagerSchemaPromise;
+  __teamManagerSchemaPromise = (async () => {
     await runSql(`
-      CREATE UNIQUE INDEX IF NOT EXISTS uq_member_submissions_team_member
-        ON member_submissions (team_id, member_id);
+      CREATE TABLE IF NOT EXISTS teams (
+        id TEXT PRIMARY KEY,
+        team_name TEXT,
+        team_size INTEGER,
+        status TEXT,
+        created_at TIMESTAMPTZ,
+        leader_member_id TEXT,
+        final_grid_id TEXT,
+        final_architecture TEXT,
+        final_architecture_source TEXT DEFAULT 'player_selected',
+        final_channel1 TEXT,
+        final_channel2 TEXT,
+        final_channel1_share DOUBLE PRECISION,
+        final_vp_text TEXT,
+        final_vp_summary JSONB,
+        final_vp_scores TEXT,
+        final_gm_max DOUBLE PRECISION,
+        final_target_gm DOUBLE PRECISION,
+        final_sam DOUBLE PRECISION,
+        final_wtp_adj DOUBLE PRECISION,
+        final_wtp_ref DOUBLE PRECISION,
+        final_vp_c DOUBLE PRECISION,
+        final_vp_g DOUBLE PRECISION,
+        final_vp_e_raw DOUBLE PRECISION,
+        final_vp_e_adj DOUBLE PRECISION,
+        final_rho_c DOUBLE PRECISION,
+        final_wtp_multiplier DOUBLE PRECISION,
+        final_wtp_vp_effect DOUBLE PRECISION,
+        final_jinang_wtp_bonus DOUBLE PRECISION
+      );
+
+      CREATE TABLE IF NOT EXISTS team_members (
+        id TEXT PRIMARY KEY,
+        team_id TEXT REFERENCES teams(id),
+        member_name TEXT,
+        member_index INTEGER,
+        is_leader BOOLEAN DEFAULT FALSE,
+        jinang_market_id TEXT,
+        jinang_tech_id TEXT,
+        joined_at TIMESTAMPTZ,
+        vp_text TEXT,
+        vp_confirmed_fields JSONB,
+        vp_scores JSONB,
+        vp_confirmed_at TIMESTAMPTZ,
+        vp_feedback TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS member_submissions (
+        id TEXT PRIMARY KEY,
+        member_id TEXT,
+        team_id TEXT,
+        grid_id TEXT,
+        architecture TEXT,
+        channel_pref TEXT,
+        vp_draft TEXT,
+        personal_gm_max DOUBLE PRECISION,
+        submitted_at TIMESTAMPTZ
+      );
+
+      CREATE TABLE IF NOT EXISTS jinang_settlements (
+        id TEXT PRIMARY KEY,
+        team_id TEXT,
+        member_id TEXT,
+        jinang_id TEXT,
+        jinang_type TEXT,
+        matched BOOLEAN,
+        match_reason TEXT,
+        effect_applied TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS round1_team_drafts (
+        team_id TEXT PRIMARY KEY,
+        grid_id TEXT,
+        architecture TEXT,
+        vp_text TEXT,
+        updated_by TEXT,
+        updated_at TIMESTAMPTZ
+      );
+
+      CREATE TABLE IF NOT EXISTS llm_kv_cache (
+        cache_name TEXT NOT NULL,
+        cache_key TEXT NOT NULL,
+        cache_value JSONB NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (cache_name, cache_key)
+      );
+
+      CREATE TABLE IF NOT EXISTS students (
+        student_id TEXT PRIMARY KEY,
+        student_name TEXT NOT NULL,
+        group_label TEXT NOT NULL,
+        team_id TEXT,
+        member_id TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_students_team ON students(team_id);
+      CREATE INDEX IF NOT EXISTS idx_students_group ON students(group_label);
+      CREATE INDEX IF NOT EXISTS idx_llm_kv_cache_updated
+        ON llm_kv_cache (cache_name, updated_at DESC);
+
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_sam DOUBLE PRECISION;
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_wtp_adj DOUBLE PRECISION;
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_wtp_ref DOUBLE PRECISION;
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_vp_summary JSONB;
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_vp_c DOUBLE PRECISION;
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_vp_g DOUBLE PRECISION;
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_vp_e_raw DOUBLE PRECISION;
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_vp_e_adj DOUBLE PRECISION;
+      ALTER TABLE teams ALTER COLUMN final_vp_c TYPE DOUBLE PRECISION USING final_vp_c::DOUBLE PRECISION;
+      ALTER TABLE teams ALTER COLUMN final_vp_g TYPE DOUBLE PRECISION USING final_vp_g::DOUBLE PRECISION;
+      ALTER TABLE teams ALTER COLUMN final_vp_e_raw TYPE DOUBLE PRECISION USING final_vp_e_raw::DOUBLE PRECISION;
+      ALTER TABLE teams ALTER COLUMN final_vp_e_adj TYPE DOUBLE PRECISION USING final_vp_e_adj::DOUBLE PRECISION;
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_rho_c DOUBLE PRECISION;
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_wtp_multiplier DOUBLE PRECISION;
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_wtp_vp_effect DOUBLE PRECISION;
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS final_jinang_wtp_bonus DOUBLE PRECISION;
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS lovot_image TEXT;
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS lovot_image_mime TEXT DEFAULT 'image/png';
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS leader_member_id TEXT;
+      ALTER TABLE team_members ADD COLUMN IF NOT EXISTS is_leader BOOLEAN DEFAULT FALSE;
+      ALTER TABLE team_members ADD COLUMN IF NOT EXISTS vp_text TEXT;
+      ALTER TABLE team_members ADD COLUMN IF NOT EXISTS vp_confirmed_fields JSONB;
+      ALTER TABLE team_members ADD COLUMN IF NOT EXISTS vp_scores JSONB;
+      ALTER TABLE team_members ADD COLUMN IF NOT EXISTS vp_confirmed_at TIMESTAMPTZ;
+      ALTER TABLE team_members ADD COLUMN IF NOT EXISTS vp_feedback TEXT;
     `);
-  } catch (err) {
-    if (err.code === "23505" || /could not create unique index/i.test(String(err.message || ""))) {
-      console.warn("[ensureSchema] member_submissions has duplicate (team_id, member_id) rows; deduping");
-      await runSql(`
-        DELETE FROM member_submissions
-        WHERE id NOT IN (
-          SELECT MIN(id) FROM member_submissions
-          WHERE team_id IS NOT NULL AND member_id IS NOT NULL
-          GROUP BY team_id, member_id
-        );
-      `);
+    try {
       await runSql(`
         CREATE UNIQUE INDEX IF NOT EXISTS uq_member_submissions_team_member
           ON member_submissions (team_id, member_id);
       `);
-    } else {
-      throw err;
+    } catch (err) {
+      if (err.code === "23505" || /could not create unique index/i.test(String(err.message || ""))) {
+        console.warn("[ensureSchema] member_submissions has duplicate (team_id, member_id) rows; deduping");
+        await runSql(`
+          DELETE FROM member_submissions
+          WHERE id NOT IN (
+            SELECT MIN(id) FROM member_submissions
+            WHERE team_id IS NOT NULL AND member_id IS NOT NULL
+            GROUP BY team_id, member_id
+          );
+        `);
+        await runSql(`
+          CREATE UNIQUE INDEX IF NOT EXISTS uq_member_submissions_team_member
+            ON member_submissions (team_id, member_id);
+        `);
+      } else {
+        throw err;
+      }
     }
+    await ensureComputationLogSchema();
+    await ensureVpIterationSchema();
+  })();
+  try {
+    await __teamManagerSchemaPromise;
+  } catch (err) {
+    __teamManagerSchemaPromise = null;
+    throw err;
   }
-  await ensureComputationLogSchema();
-  await ensureVpIterationSchema();
+  return __teamManagerSchemaPromise;
 }
 
 function parseJsonColumn(value) {

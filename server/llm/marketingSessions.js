@@ -1,26 +1,34 @@
 const { runSql, sqlQuote } = require("../db/pgSql");
 
-let initialized = false;
+let __marketingSessionsSchemaPromise = null;
 
 async function ensureTable() {
-  if (initialized) return;
-  await runSql(`
-    CREATE TABLE IF NOT EXISTS marketing_sessions (
-      session_id TEXT PRIMARY KEY,
-      team_key TEXT,
-      strategy JSONB,
-      vp_canvas JSONB,
-      persona JSONB,
-      messages JSONB DEFAULT '[]'::jsonb,
-      tags JSONB DEFAULT '[]'::jsonb,
-      dimensions JSONB DEFAULT '{}'::jsonb,
-      status TEXT DEFAULT 'active',
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-    CREATE INDEX IF NOT EXISTS idx_marketing_sessions_team_key ON marketing_sessions(team_key);
-  `);
-  initialized = true;
+  if (__marketingSessionsSchemaPromise) return __marketingSessionsSchemaPromise;
+  __marketingSessionsSchemaPromise = (async () => {
+    await runSql(`
+      CREATE TABLE IF NOT EXISTS marketing_sessions (
+        session_id TEXT PRIMARY KEY,
+        team_key TEXT,
+        strategy JSONB,
+        vp_canvas JSONB,
+        persona JSONB,
+        messages JSONB DEFAULT '[]'::jsonb,
+        tags JSONB DEFAULT '[]'::jsonb,
+        dimensions JSONB DEFAULT '{}'::jsonb,
+        status TEXT DEFAULT 'active',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_marketing_sessions_team_key ON marketing_sessions(team_key);
+    `);
+  })();
+  try {
+    await __marketingSessionsSchemaPromise;
+  } catch (err) {
+    __marketingSessionsSchemaPromise = null;
+    throw err;
+  }
+  return __marketingSessionsSchemaPromise;
 }
 
 function parseMaybeJson(value, fallback) {

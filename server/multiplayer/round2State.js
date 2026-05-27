@@ -30,6 +30,7 @@ const MEMBER_STEP_LABELS = {
   in_discussion: "团队讨论中",
   done: "已完成"
 };
+let __round2StateSchemaPromise = null;
 
 function nowIso() {
   return new Date().toISOString();
@@ -111,50 +112,60 @@ function formatArchitectureLabel(arch) {
 }
 
 async function ensureSchema() {
-  await runSql(`
-    ALTER TABLE teams ADD COLUMN IF NOT EXISTS r2_status TEXT DEFAULT 'R2_NOT_STARTED';
-    ALTER TABLE teams ADD COLUMN IF NOT EXISTS r2_status_entered_at TIMESTAMPTZ;
-    UPDATE teams
-    SET r2_status = COALESCE(r2_status, 'R2_NOT_STARTED'),
-        r2_status_entered_at = COALESCE(r2_status_entered_at, created_at, NOW())
-    WHERE r2_status IS NULL OR r2_status_entered_at IS NULL;
+  if (__round2StateSchemaPromise) return __round2StateSchemaPromise;
+  __round2StateSchemaPromise = (async () => {
+    await runSql(`
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS r2_status TEXT DEFAULT 'R2_NOT_STARTED';
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS r2_status_entered_at TIMESTAMPTZ;
+      UPDATE teams
+      SET r2_status = COALESCE(r2_status, 'R2_NOT_STARTED'),
+          r2_status_entered_at = COALESCE(r2_status_entered_at, created_at, NOW())
+      WHERE r2_status IS NULL OR r2_status_entered_at IS NULL;
 
-    ALTER TABLE team_members ADD COLUMN IF NOT EXISTS interview_status TEXT DEFAULT 'not_started';
-    ALTER TABLE team_members ADD COLUMN IF NOT EXISTS interview_rounds INTEGER DEFAULT 0;
-    ALTER TABLE team_members ADD COLUMN IF NOT EXISTS card_status TEXT DEFAULT 'not_started';
-    ALTER TABLE team_members ADD COLUMN IF NOT EXISTS cards_selected INTEGER DEFAULT 0;
-    ALTER TABLE team_members ADD COLUMN IF NOT EXISTS current_step TEXT DEFAULT 'idle';
-    ALTER TABLE team_members ADD COLUMN IF NOT EXISTS last_activity_at TIMESTAMPTZ;
-    ALTER TABLE team_members ADD COLUMN IF NOT EXISTS forced_by_teacher BOOLEAN DEFAULT FALSE;
+      ALTER TABLE team_members ADD COLUMN IF NOT EXISTS interview_status TEXT DEFAULT 'not_started';
+      ALTER TABLE team_members ADD COLUMN IF NOT EXISTS interview_rounds INTEGER DEFAULT 0;
+      ALTER TABLE team_members ADD COLUMN IF NOT EXISTS card_status TEXT DEFAULT 'not_started';
+      ALTER TABLE team_members ADD COLUMN IF NOT EXISTS cards_selected INTEGER DEFAULT 0;
+      ALTER TABLE team_members ADD COLUMN IF NOT EXISTS current_step TEXT DEFAULT 'idle';
+      ALTER TABLE team_members ADD COLUMN IF NOT EXISTS last_activity_at TIMESTAMPTZ;
+      ALTER TABLE team_members ADD COLUMN IF NOT EXISTS forced_by_teacher BOOLEAN DEFAULT FALSE;
 
-    UPDATE team_members
-    SET interview_status = COALESCE(interview_status, 'not_started'),
-        interview_rounds = COALESCE(interview_rounds, 0),
-        card_status = COALESCE(card_status, 'not_started'),
-        cards_selected = COALESCE(cards_selected, 0),
-        current_step = COALESCE(current_step, 'idle'),
-        forced_by_teacher = COALESCE(forced_by_teacher, FALSE),
-        last_activity_at = COALESCE(last_activity_at, joined_at, NOW())
-    WHERE interview_status IS NULL
-      OR interview_rounds IS NULL
-      OR card_status IS NULL
-      OR cards_selected IS NULL
-      OR current_step IS NULL
-      OR forced_by_teacher IS NULL
-      OR last_activity_at IS NULL;
+      UPDATE team_members
+      SET interview_status = COALESCE(interview_status, 'not_started'),
+          interview_rounds = COALESCE(interview_rounds, 0),
+          card_status = COALESCE(card_status, 'not_started'),
+          cards_selected = COALESCE(cards_selected, 0),
+          current_step = COALESCE(current_step, 'idle'),
+          forced_by_teacher = COALESCE(forced_by_teacher, FALSE),
+          last_activity_at = COALESCE(last_activity_at, joined_at, NOW())
+      WHERE interview_status IS NULL
+        OR interview_rounds IS NULL
+        OR card_status IS NULL
+        OR cards_selected IS NULL
+        OR current_step IS NULL
+        OR forced_by_teacher IS NULL
+        OR last_activity_at IS NULL;
 
-    CREATE TABLE IF NOT EXISTS teacher_actions (
-      id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-      action TEXT NOT NULL,
-      team_id TEXT,
-      member_id TEXT,
-      details TEXT,
-      performed_at TIMESTAMPTZ DEFAULT NOW()
-    );
+      CREATE TABLE IF NOT EXISTS teacher_actions (
+        id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        action TEXT NOT NULL,
+        team_id TEXT,
+        member_id TEXT,
+        details TEXT,
+        performed_at TIMESTAMPTZ DEFAULT NOW()
+      );
 
-    CREATE INDEX IF NOT EXISTS idx_teacher_actions_team_time
-      ON teacher_actions(team_id, performed_at DESC);
-  `);
+      CREATE INDEX IF NOT EXISTS idx_teacher_actions_team_time
+        ON teacher_actions(team_id, performed_at DESC);
+    `);
+  })();
+  try {
+    await __round2StateSchemaPromise;
+  } catch (err) {
+    __round2StateSchemaPromise = null;
+    throw err;
+  }
+  return __round2StateSchemaPromise;
 }
 
 async function logTeacherAction({ action, teamId = null, memberId = null, details = null }) {

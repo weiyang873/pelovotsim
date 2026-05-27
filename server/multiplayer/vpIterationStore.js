@@ -1,63 +1,71 @@
 const crypto = require("node:crypto");
 const { runSql, sqlQuote } = require("../db/pgSql");
 
-let initialized = false;
+let __vpIterationStoreSchemaPromise = null;
 
 function nowIso() {
   return new Date().toISOString();
 }
 
 async function ensureSchema() {
-  if (initialized) return;
-  await runSql(`
-    CREATE TABLE IF NOT EXISTS vp_iterations (
-      id TEXT PRIMARY KEY,
-      team_id TEXT NOT NULL,
-      session_id TEXT,
-      member_id TEXT,
-      iteration INTEGER NOT NULL,
-      trigger TEXT NOT NULL,
-      speaker_name TEXT,
-      speaker_persona TEXT,
-      vp_before TEXT,
-      vp_after TEXT,
-      score_before DOUBLE PRECISION,
-      score_after DOUBLE PRECISION,
-      score_c DOUBLE PRECISION,
-      score_g DOUBLE PRECISION,
-      score_e DOUBLE PRECISION,
-      source_iteration TEXT,
-      used_best_iteration BOOLEAN DEFAULT FALSE,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-    CREATE INDEX IF NOT EXISTS idx_vp_iterations_team_created
-      ON vp_iterations(team_id, iteration, created_at);
-  `);
-  try {
+  if (__vpIterationStoreSchemaPromise) return __vpIterationStoreSchemaPromise;
+  __vpIterationStoreSchemaPromise = (async () => {
     await runSql(`
-      CREATE UNIQUE INDEX IF NOT EXISTS uq_vp_iterations_team_iteration
-        ON vp_iterations (team_id, iteration);
+      CREATE TABLE IF NOT EXISTS vp_iterations (
+        id TEXT PRIMARY KEY,
+        team_id TEXT NOT NULL,
+        session_id TEXT,
+        member_id TEXT,
+        iteration INTEGER NOT NULL,
+        trigger TEXT NOT NULL,
+        speaker_name TEXT,
+        speaker_persona TEXT,
+        vp_before TEXT,
+        vp_after TEXT,
+        score_before DOUBLE PRECISION,
+        score_after DOUBLE PRECISION,
+        score_c DOUBLE PRECISION,
+        score_g DOUBLE PRECISION,
+        score_e DOUBLE PRECISION,
+        source_iteration TEXT,
+        used_best_iteration BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_vp_iterations_team_created
+        ON vp_iterations(team_id, iteration, created_at);
     `);
-  } catch (err) {
-    if (err.code === "23505" || /could not create unique index/i.test(String(err.message || ""))) {
-      console.warn("[vpIterationStore.ensureSchema] dedup vp_iterations");
-      await runSql(`
-        DELETE FROM vp_iterations
-        WHERE id NOT IN (
-          SELECT DISTINCT ON (team_id, iteration) id
-          FROM vp_iterations
-          ORDER BY team_id, iteration, created_at ASC
-        );
-      `);
+    try {
       await runSql(`
         CREATE UNIQUE INDEX IF NOT EXISTS uq_vp_iterations_team_iteration
           ON vp_iterations (team_id, iteration);
       `);
-    } else {
-      throw err;
+    } catch (err) {
+      if (err.code === "23505" || /could not create unique index/i.test(String(err.message || ""))) {
+        console.warn("[vpIterationStore.ensureSchema] dedup vp_iterations");
+        await runSql(`
+          DELETE FROM vp_iterations
+          WHERE id NOT IN (
+            SELECT DISTINCT ON (team_id, iteration) id
+            FROM vp_iterations
+            ORDER BY team_id, iteration, created_at ASC
+          );
+        `);
+        await runSql(`
+          CREATE UNIQUE INDEX IF NOT EXISTS uq_vp_iterations_team_iteration
+            ON vp_iterations (team_id, iteration);
+        `);
+      } else {
+        throw err;
+      }
     }
+  })();
+  try {
+    await __vpIterationStoreSchemaPromise;
+  } catch (err) {
+    __vpIterationStoreSchemaPromise = null;
+    throw err;
   }
-  initialized = true;
+  return __vpIterationStoreSchemaPromise;
 }
 
 function mapRow(row) {
