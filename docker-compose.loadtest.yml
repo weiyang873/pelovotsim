@@ -1,0 +1,39 @@
+services:
+  mock-deepseek:
+    image: node:20-trixie-slim
+    restart: unless-stopped
+    working_dir: /scripts
+    volumes:
+      - ./scripts:/scripts:ro
+    command: ["node", "/scripts/mock-deepseek.js"]
+    environment:
+      PORT: 8088
+      HOST: 0.0.0.0
+      MOCK_LATENCY_MS_MEAN: 1500
+      MOCK_LATENCY_MS_STDDEV: 500
+    ports:
+      - "127.0.0.1:8088:8088"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:8088/stats', r => process.exit(r.statusCode===200 ? 0 : 1)).on('error', () => process.exit(1))\""]
+      interval: 5s
+      timeout: 3s
+      retries: 6
+
+  app:
+    environment:
+      DEEPSEEK_BASE_URL: http://mock-deepseek:8088
+      DEEPSEEK_API_KEY: mock-loadtest-key
+      DEEPSEEK_API_KEY_1: ""
+      DEEPSEEK_API_KEY_2: ""
+      DEEPSEEK_API_KEY_3: ""
+      DEEPSEEK_API_KEY_4: ""
+      DEEPSEEK_API_KEY_5: ""
+      DEEPSEEK_API_KEY_6: ""
+      DEEPSEEK_API_KEY_7: ""
+      DEEPSEEK_API_KEY_8: ""
+    depends_on:
+      db:
+        condition: service_healthy
+      mock-deepseek:
+        condition: service_healthy
+
