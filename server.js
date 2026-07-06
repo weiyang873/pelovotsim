@@ -3181,12 +3181,26 @@ function serveStatic(req, res) {
 
 function createAppServer() {
   return http.createServer((req, res) => {
-    if (String(req.url || "").startsWith("/api/")) {
-      const handled = handleApi(req, res);
-      if (handled !== false) return;
-      return sendJson(res, 404, { ok: false, error: `route not found: ${req.url}` });
+    // Outer guard: a malformed request line (bad percent-encoding ->
+    // URIError from decodeURIComponent, bad Host header -> TypeError from
+    // new URL) must return 400, never throw out of the handler and crash
+    // the process. One layer here covers the ~31 bare decodeURIComponent
+    // sites and new URL(host) calls inside the dispatchers.
+    try {
+      if (String(req.url || "").startsWith("/api/")) {
+        const handled = handleApi(req, res);
+        if (handled !== false) return;
+        return sendJson(res, 404, { ok: false, error: `route not found: ${req.url}` });
+      }
+      serveStatic(req, res);
+    } catch (err) {
+      console.error("[Server] request handler error:", err?.message || err);
+      if (!res.headersSent) {
+        sendJson(res, 400, { ok: false, error: "bad request" });
+      } else {
+        try { res.end(); } catch (_) { /* already closed */ }
+      }
     }
-    serveStatic(req, res);
   });
 }
 
@@ -3212,6 +3226,38 @@ function registerShutdownHooks(server) {
   });
   process.on("SIGTERM", () => {
     gracefulShutdown("SIGTERM");
+  });
+
+  // A rejected promise nobody caught is a bug, but on Node 20 it defaults to
+  // crashing the process. For a live classroom that trades one lost request
+  // for the whole session, log and keep serving.
+  process.on("unhandledRejection", (reason) => {
+    console.error("[Server] unhandledRejection (logged, not exiting):", reason?.stack || reason?.message || reason);
+  });
+
+  // An uncaughtException means the process is in an undefined state; continuing
+  // is more dangerous than restarting. Log, best-effort close server+pool, then
+  // exit(1) — docker `restart: unless-stopped` brings us back, and state lives
+  // in Postgres so students just refresh.
+  let fatalExiting = false;
+  process.on("uncaughtException", (err) => {
+    console.error("[Server] uncaughtException (fatal, restarting):", err?.stack || err?.message || err);
+    if (fatalExiting) return;
+    fatalExiting = true;
+    const forceTimer = setTimeout(() => process.exit(1), 3000);
+    if (typeof forceTimer.unref === "function") forceTimer.unref();
+    (async () => {
+      try {
+        if (server && typeof server.close === "function") {
+          await new Promise((resolve) => server.close(() => resolve()));
+        }
+        await shutdown();
+      } catch (_) {
+        // ignore errors during fatal shutdown
+      } finally {
+        process.exit(1);
+      }
+    })();
   });
 }
 
