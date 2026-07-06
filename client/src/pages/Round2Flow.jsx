@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import {
+  getRound2PersonaReports,
   endRound2Interview,
   getRound2Recap,
   getRound2InterviewSession,
@@ -10,6 +11,7 @@ import {
   rescoreRound2Interview,
   saveRound2MemberSelection,
   saveRound2TeamDraft,
+  selectRound2PersonaArchetype,
   startRound2Interview,
   submitRound2TeamDecision
 } from "../api/round2Api";
@@ -124,6 +126,19 @@ function toInterviewMessage(message, fallbackIndex = 0) {
 }
 
 const STEPS = ["第一轮回顾","用户访谈","个人选卡","团队合并","研发与定价","确认提交"];
+const SUMMARY_STEPS = ["第一轮回顾","客户调研报告","个人选卡","团队合并","研发与定价","确认提交"];
+const SUMMARY_ARCHETYPE_META = {
+  elder_care: {
+    label: "独居长者照护",
+    kicker: "原型 A",
+    accent: "#0f766e"
+  },
+  adult_companion: {
+    label: "都市成人陪伴",
+    kicker: "原型 B",
+    accent: "#1d4ed8"
+  }
+};
 
 const F_BASE_WAN = 500;
 const F_BASE = F_BASE_WAN * 10000;
@@ -561,6 +576,20 @@ function formatSignedPercent(value) {
   return n >= 0 ? `+${n}%` : `${n}%`;
 }
 
+function readInterviewModeFromUrl() {
+  if (typeof window === "undefined") return "";
+  const url = new URL(window.location.href);
+  return String(url.searchParams.get("interview_mode") || "").trim().toLowerCase();
+}
+
+function getSummaryPersonaMeta(archetypeId) {
+  return SUMMARY_ARCHETYPE_META[String(archetypeId || "").trim()] || {
+    label: String(archetypeId || "客户原型").trim() || "客户原型",
+    kicker: "客户原型",
+    accent: "#1a5c3a"
+  };
+}
+
 function Round1StarRating({ score }) {
   const normalized = normalizeScoreValue(score);
   const fullStars = Math.max(0, Math.min(5, Math.round(normalized)));
@@ -709,6 +738,13 @@ export default function App() {
   const [sessionId, setSessionId] = useState("default");
   const [teamInfo, setTeamInfo] = useState(null);
   const [teamRecap, setTeamRecap] = useState(null);
+  const [interviewMode, setInterviewMode] = useState(readInterviewModeFromUrl() === "live" ? "live" : "summary");
+  const [personaReports, setPersonaReports] = useState([]);
+  const [selectedPersonaChoice, setSelectedPersonaChoice] = useState(null);
+  const [activeSummaryReportId, setActiveSummaryReportId] = useState("");
+  const [isLoadingPersonaReports, setIsLoadingPersonaReports] = useState(false);
+  const [isSelectingPersona, setIsSelectingPersona] = useState(false);
+  const [personaReportError, setPersonaReportError] = useState("");
   const [serverSelections, setServerSelections] = useState(null);
   const [isLoadingContext, setIsLoadingContext] = useState(false);
   const [loadError, setLoadError] = useState("");
@@ -749,6 +785,7 @@ export default function App() {
   const interviewStartGateRef = useRef({ memberId: "", startedAt: 0 });
 
   const isTeamMode = Boolean(teamId);
+  const isSummaryMode = interviewMode !== "live";
 
   useEffect(() => {
     const ctx = readTeamContextFromUrl();
@@ -783,6 +820,9 @@ export default function App() {
         setTeamRecap(recapRes || null);
         setMemberState(stateRes?.member || null);
         setTeamStatus(String(stateRes?.team_status || ""));
+        setInterviewMode(String(stateRes?.session_config?.interview_mode || readInterviewModeFromUrl() || "summary").trim().toLowerCase() === "live" ? "live" : "summary");
+        setPersonaReports(Array.isArray(stateRes?.persona_reports) ? stateRes.persona_reports : []);
+        setSelectedPersonaChoice(stateRes?.persona_choice || null);
         setLeaderMemberId(String(stateRes?.leader_member_id || ""));
         setLeaderName(String(stateRes?.leader_name || ""));
         setIsLeader(Boolean(stateRes?.is_leader));
@@ -869,6 +909,9 @@ export default function App() {
 
         const nextStatus = String(data?.team_status || "");
         setMemberState(data?.member || null);
+        setInterviewMode(String(data?.session_config?.interview_mode || readInterviewModeFromUrl() || "summary").trim().toLowerCase() === "live" ? "live" : "summary");
+        setPersonaReports(Array.isArray(data?.persona_reports) ? data.persona_reports : []);
+        setSelectedPersonaChoice(data?.persona_choice || null);
         setLeaderMemberId(String(data?.leader_member_id || ""));
         setLeaderName(String(data?.leader_name || ""));
         setIsLeader(Boolean(data?.is_leader));
@@ -941,6 +984,48 @@ export default function App() {
       clearInterval(timer);
     };
   }, [teamId, memberId]);
+
+  useEffect(() => {
+    if (!activeSummaryReportId && personaReports[0]?.archetype_id) {
+      setActiveSummaryReportId(String(personaReports[0].archetype_id || ""));
+    }
+    if (activeSummaryReportId && !personaReports.some((item) => item.archetype_id === activeSummaryReportId)) {
+      setActiveSummaryReportId(String(personaReports[0]?.archetype_id || ""));
+    }
+  }, [activeSummaryReportId, personaReports]);
+
+  useEffect(() => {
+    if (!teamId || interviewMode === "live") return undefined;
+    const controller = new AbortController();
+    let canceled = false;
+    const loadReports = async () => {
+      try {
+        setIsLoadingPersonaReports(true);
+        setPersonaReportError("");
+        const out = await getRound2PersonaReports(teamId, sessionId, { signal: controller.signal });
+        if (canceled) return;
+        setPersonaReports(Array.isArray(out?.reports) ? out.reports : []);
+        if (out?.selected_archetype_id) {
+          const matched = (out.reports || []).find((item) => item.archetype_id === out.selected_archetype_id) || null;
+          setSelectedPersonaChoice((prev) => (matched ? {
+            ...prev,
+            archetype_id: out.selected_archetype_id,
+            summary_text: matched.summary_text || prev?.summary_text || ""
+          } : prev));
+        }
+      } catch (err) {
+        if (err?.name === "AbortError") return;
+        if (!canceled) setPersonaReportError(err.message || "客户调研报告加载失败");
+      } finally {
+        if (!canceled) setIsLoadingPersonaReports(false);
+      }
+    };
+    loadReports();
+    return () => {
+      canceled = true;
+      controller.abort();
+    };
+  }, [interviewMode, sessionId, teamId]);
 
   const toggleSelection = useCallback((id, mode = "individual") => {
     if (mode === "team") {
@@ -1043,6 +1128,24 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     [mergeData]
   );
   const activeInterviewPersona = interviewPersonas[0] || null;
+  const activeSummaryReport = useMemo(() => {
+    const source = Array.isArray(personaReports) ? personaReports : [];
+    return source.find((item) => item.archetype_id === activeSummaryReportId) || source[0] || null;
+  }, [activeSummaryReportId, personaReports]);
+  const selectedPersonaMeta = useMemo(
+    () => getSummaryPersonaMeta(selectedPersonaChoice?.archetype_id || activeSummaryReport?.archetype_id || ""),
+    [activeSummaryReport, selectedPersonaChoice]
+  );
+  const selectedPersonaRadar = selectedPersonaChoice?.radar || mergeData?.mergedInterview?.radar || null;
+  const selectedPersonaScores = useMemo(
+    () => radarToInterviewScores(selectedPersonaRadar),
+    [selectedPersonaRadar]
+  );
+  const selectedPersonaSummaryText = String(
+    selectedPersonaChoice?.summary_text
+      || activeSummaryReport?.summary_text
+      || ""
+  ).trim();
   const activeInterviewPersonaIntro = useMemo(
     () => buildPersonaIntro(activeInterviewPersona),
     [activeInterviewPersona]
@@ -1080,11 +1183,16 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
   const showInterviewComposer = Boolean(interviewSessionId) && !interviewTransition && interviewRetryAction?.type !== "rescore";
   const showInterviewSummary = !showInterviewComposer && Boolean(interviewResult);
   const showInterviewEndButton = showInterviewComposer && interviewCanEnd && interviewRound >= INTERVIEW_MIN_TURNS && interviewRound < INTERVIEW_MAX_TURNS;
-  const canEnterCards = Boolean(interviewProgress.canProceed || memberState?.interview_status === "completed");
-  const showInterviewStartButton = !showInterviewComposer && !interviewTransition && !canEnterCards;
-  const interviewProgressLabel = interviewTransition
-    ? `已完成 ${completedInterviewCount}/${Math.max(MIN_INTERVIEWS_REQUIRED, Number(interviewProgress.maxInterviews || 3))} 次访谈`
-    : (showInterviewComposer ? `进行中 ${interviewRound}/${INTERVIEW_MAX_TURNS}` : (canEnterCards ? "访谈要求已满足" : "等待开始"));
+  const canEnterCards = isSummaryMode
+    ? Boolean(selectedPersonaChoice?.archetype_id || memberState?.interview_status === "completed")
+    : Boolean(interviewProgress.canProceed || memberState?.interview_status === "completed");
+  const showInterviewStartButton = !isSummaryMode && !showInterviewComposer && !interviewTransition && !canEnterCards;
+  const interviewProgressLabel = isSummaryMode
+    ? (canEnterCards ? "客户原型已锁定" : (isLoadingPersonaReports ? "正在生成报告..." : "等待组长确认原型"))
+    : (interviewTransition
+      ? `已完成 ${completedInterviewCount}/${Math.max(MIN_INTERVIEWS_REQUIRED, Number(interviewProgress.maxInterviews || 3))} 次访谈`
+      : (showInterviewComposer ? `进行中 ${interviewRound}/${INTERVIEW_MAX_TURNS}` : (canEnterCards ? "访谈要求已满足" : "等待开始")));
+  const stepLabels = isSummaryMode ? SUMMARY_STEPS : STEPS;
   const pendingSubmission = useMemo(() => {
     if (isSubmittingFinal) {
       return {
@@ -1231,6 +1339,30 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     teamId,
     teamTitle
   ]);
+
+  const handleSelectSummaryPersona = useCallback(async () => {
+    if (!teamId || !memberId || !activeSummaryReport?.archetype_id || isSelectingPersona) return;
+    try {
+      setIsSelectingPersona(true);
+      setPersonaReportError("");
+      const out = await selectRound2PersonaArchetype({
+        team_id: teamId,
+        member_id: memberId,
+        session_id: sessionId,
+        archetype_id: activeSummaryReport.archetype_id
+      });
+      setSelectedPersonaChoice(out?.choice || {
+        archetype_id: out?.selected_archetype_id || activeSummaryReport.archetype_id,
+        summary_text: activeSummaryReport.summary_text || ""
+      });
+      setSystemNotice("客户原型已锁定，进入个人选卡。");
+      setStep(2);
+    } catch (err) {
+      setPersonaReportError(round2LeaderErrorMessage(err));
+    } finally {
+      setIsSelectingPersona(false);
+    }
+  }, [activeSummaryReport, isSelectingPersona, memberId, sessionId, teamId]);
 
   const applyInterviewPayload = useCallback((payload, options = {}) => {
     const progress = payload?.progress || createEmptyInterviewProgress();
@@ -1383,6 +1515,10 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
   }, []);
 
   useEffect(() => {
+    if (isSummaryMode) {
+      setInterviewRestoreChecked(true);
+      return undefined;
+    }
     if (!teamId || !memberId) return;
     setInterviewRestoreChecked(false);
     setInterviewError("");
@@ -1417,9 +1553,10 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
       canceled = true;
       controller.abort();
     };
-  }, [teamId, memberId]);
+  }, [isSummaryMode, teamId, memberId]);
 
   useEffect(() => {
+    if (isSummaryMode) return undefined;
     if (
       !interviewRestoreChecked ||
       step !== 1 ||
@@ -1468,7 +1605,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
       canceled = true;
       controller.abort();
     };
-  }, [applyInterviewPayload, canStartInterviewForMember, completedInterviewCount, interviewRestoreChecked, interviewSessionId, interviewTransition, memberDims, memberId, step, teamId]);
+  }, [applyInterviewPayload, canStartInterviewForMember, completedInterviewCount, interviewRestoreChecked, interviewSessionId, interviewTransition, isSummaryMode, memberDims, memberId, step, teamId]);
 
   useEffect(() => {
     if (step < 3 || !teamId || submitted) return;
@@ -2122,13 +2259,13 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
 
       {/* Step bar */}
       <div style={{display:"flex",alignItems:"center",margin:"8px 0 16px"}}>
-        {STEPS.map((s,i) => (
-          <div key={i} style={{display:"flex",alignItems:"center",flex:i<STEPS.length-1?1:"none"}}>
+        {stepLabels.map((s,i) => (
+          <div key={i} style={{display:"flex",alignItems:"center",flex:i<stepLabels.length-1?1:"none"}}>
             <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
               <div onClick={()=>!isSubmissionBusy&&i<=step&&setStep(i)} style={{width:28,height:28,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,cursor:!isSubmissionBusy&&i<=step?"pointer":"default",background:i<step?"#2FAB6E":i===step?"#1a5c3a":"#e5e7eb",color:i<=step?"#fff":"#aaa",boxShadow:i===step?"0 0 0 3px #1a5c3a33":"none",opacity:isSubmissionBusy?0.55:1}}>{i<step?"✓":i+1}</div>
               <span style={{fontSize:9,color:i===step?"#1a5c3a":i<step?"#2FAB6E":"#aaa",fontWeight:i===step?700:400,whiteSpace:"nowrap"}}>{s}</span>
             </div>
-            {i<STEPS.length-1 && <div style={{flex:1,height:2,margin:"0 2px",marginBottom:18,background:i<step?"#2FAB6E":"#e5e7eb"}}/>}
+            {i<stepLabels.length-1 && <div style={{flex:1,height:2,margin:"0 2px",marginBottom:18,background:i<step?"#2FAB6E":"#e5e7eb"}}/>}
           </div>
         ))}
       </div>
@@ -2231,7 +2368,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
             </div>
             <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
               {[
-                {num:"1",title:"挖掘需求",desc:"与 AI 模拟的目标用户深度访谈，验证你们的需求假设，发现隐藏需求"},
+                {num:"1",title:isSummaryMode ? "阅读报告" : "挖掘需求",desc:isSummaryMode ? "阅读两份预生成的客户调研报告，确认你们究竟在为谁而造，再锁定唯一客户原型。" : "与 AI 模拟的目标用户深度访谈，验证你们的需求假设，发现隐藏需求"},
                 {num:"2",title:"技术决策",desc:"为产品选择具体的技术能力组合——做什么、不做什么、做到什么程度"},
                 {num:"3",title:"定价与结果",desc:"制定价格策略，系统根据你们的产品和定价自动计算市场表现"},
               ].map(item => (
@@ -2256,37 +2393,131 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
         <div data-testid="r2-interview-container" style={{background:"#fff",borderRadius:14,padding:24,border:"1px solid #e5e7eb"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap",marginBottom:16}}>
             <div>
-              <h2 style={{fontSize:18,fontWeight:800,margin:"0 0 8px"}}>深度用户访谈</h2>
+              <h2 style={{fontSize:18,fontWeight:800,margin:"0 0 8px"}}>{isSummaryMode ? "客户调研报告" : "深度用户访谈"}</h2>
               <p style={{fontSize:14,color:"#555",margin:0,lineHeight:1.8}}>
-                每位成员至少完成 2 次访谈，最多 3 次。单次访谈前 4 轮必须继续提问，第 5 轮起可以手动结束，第 10 轮会自动收尾。
+                {isSummaryMode
+                  ? "系统已经为你们预生成两份候选客户调研报告。请先完整阅读，再由组长确认唯一客户原型；锁定后不可更改。"
+                  : "每位成员至少完成 2 次访谈，最多 3 次。单次访谈前 4 轮必须继续提问，第 5 轮起可以手动结束，第 10 轮会自动收尾。"}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={handleDownloadInterviewTxt}
-              style={{
-                padding:"10px 14px",
-                borderRadius:10,
-                background:"#fff",
-                color:"#374151",
-                border:"1px solid #d1d5db",
-                fontSize:13,
-                fontWeight:700,
-                cursor:"pointer",
-                whiteSpace:"nowrap"
-              }}
-            >
-              下载访谈 TXT
-            </button>
+            {!isSummaryMode && (
+              <button
+                type="button"
+                onClick={handleDownloadInterviewTxt}
+                style={{
+                  padding:"10px 14px",
+                  borderRadius:10,
+                  background:"#fff",
+                  color:"#374151",
+                  border:"1px solid #d1d5db",
+                  fontSize:13,
+                  fontWeight:700,
+                  cursor:"pointer",
+                  whiteSpace:"nowrap"
+                }}
+              >
+                下载访谈 TXT
+              </button>
+            )}
           </div>
           <div style={{padding:"14px 18px",borderRadius:10,background:"#fffbeb",border:"1px solid #fde68a",marginBottom:16}}>
             <div style={{fontSize:14,fontWeight:700,color:"#92400e",marginBottom:6}}>📋 访谈规则</div>
             <div style={{fontSize:13,color:"#78350f",lineHeight:1.8}}>
-              当前成员负责维度： <strong>{memberDims.map((dimId) => DIMS.find((item) => item.id === dimId)?.l || dimId).join("、")}</strong>。
-              当前已完成 <strong>{completedInterviewCount}</strong> / {Math.max(MIN_INTERVIEWS_REQUIRED, Number(interviewProgress.maxInterviews || 3))} 次访谈。
+              {isSummaryMode ? (
+                <>
+                  当前是 <strong>团队级</strong> 决策，所有成员会看到同一组客户报告。
+                  你们锁定客户原型后，再进入个人选卡和团队合并。
+                </>
+              ) : (
+                <>
+                  当前成员负责维度： <strong>{memberDims.map((dimId) => DIMS.find((item) => item.id === dimId)?.l || dimId).join("、")}</strong>。
+                  当前已完成 <strong>{completedInterviewCount}</strong> / {Math.max(MIN_INTERVIEWS_REQUIRED, Number(interviewProgress.maxInterviews || 3))} 次访谈。
+                </>
+              )}
             </div>
           </div>
 
+          {isSummaryMode ? (
+            <div style={{display:"grid",gridTemplateColumns:"minmax(240px, 320px) minmax(0, 1fr)",gap:16}}>
+              <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                {(personaReports || []).map((report) => {
+                  const meta = getSummaryPersonaMeta(report.archetype_id);
+                  const isActive = activeSummaryReport?.archetype_id === report.archetype_id;
+                  const isLocked = selectedPersonaChoice?.archetype_id === report.archetype_id;
+                  return (
+                    <button
+                      key={report.archetype_id}
+                      type="button"
+                      onClick={() => setActiveSummaryReportId(report.archetype_id)}
+                      style={{
+                        textAlign:"left",
+                        padding:"16px 18px",
+                        borderRadius:14,
+                        border:isActive ? `2px solid ${meta.accent}` : "1px solid #e5e7eb",
+                        background:isActive ? `${meta.accent}10` : "#fff",
+                        cursor:"pointer"
+                      }}
+                    >
+                      <div style={{fontSize:11,fontWeight:800,color:meta.accent,letterSpacing:"0.04em",marginBottom:8}}>{meta.kicker}</div>
+                      <div style={{fontSize:16,fontWeight:800,color:"#111827",marginBottom:6}}>{meta.label}</div>
+                      <div style={{fontSize:12,color:"#6b7280",lineHeight:1.7}}>
+                        {isLocked ? "已锁定，后续所有成员都会围绕这个客户原型做产品决策。" : "点击查看完整客户叙事，再决定你们究竟在为谁而造。"}
+                      </div>
+                    </button>
+                  );
+                })}
+                {personaReportError && (
+                  <div style={{padding:"10px 14px",borderRadius:10,background:"#FEF2F2",border:"1px solid #FECACA",fontSize:12,color:"#991B1B"}}>
+                    {personaReportError}
+                  </div>
+                )}
+              </div>
+              <div style={{border:"1px solid #e5e7eb",borderRadius:16,background:"#fff",overflow:"hidden"}}>
+                <div style={{padding:"18px 20px",background:"#f8fafc",borderBottom:"1px solid #e5e7eb",display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}>
+                  <div>
+                    <div style={{fontSize:11,fontWeight:800,color:selectedPersonaMeta.accent,letterSpacing:"0.04em",marginBottom:6}}>{selectedPersonaMeta.kicker}</div>
+                    <div style={{fontSize:20,fontWeight:800,color:"#111827"}}>{selectedPersonaMeta.label}</div>
+                  </div>
+                  {selectedPersonaChoice?.archetype_id ? (
+                    <div style={{padding:"8px 12px",borderRadius:999,background:"#ecfdf5",color:"#166534",fontSize:12,fontWeight:800,border:"1px solid #bbf7d0"}}>
+                      已锁定，不可更改
+                    </div>
+                  ) : (
+                    <div style={{fontSize:12,color:"#6b7280"}}>
+                      组长确认后全队生效
+                    </div>
+                  )}
+                </div>
+                <div style={{padding:"22px 24px",fontSize:14,color:"#374151",lineHeight:1.95,whiteSpace:"pre-wrap",minHeight:340}}>
+                  {isLoadingPersonaReports
+                    ? "系统正在生成客户调研报告，请稍候..."
+                    : (activeSummaryReport?.summary_text || "暂未生成客户调研报告。")}
+                </div>
+                <div style={{padding:"16px 20px",borderTop:"1px solid #e5e7eb",background:"#f8fafc",display:"flex",gap:10,flexWrap:"wrap"}}>
+                  <button
+                    type="button"
+                    onClick={handleSelectSummaryPersona}
+                    disabled={!activeSummaryReport?.archetype_id || Boolean(selectedPersonaChoice?.archetype_id) || round2TeamControlsLocked || isSelectingPersona}
+                    style={{...BS,marginTop:0,flex:"1 1 220px",opacity:(!activeSummaryReport?.archetype_id || Boolean(selectedPersonaChoice?.archetype_id) || round2TeamControlsLocked || isSelectingPersona) ? 0.6 : 1}}
+                  >
+                    {round2TeamControlsLocked
+                      ? `仅组长 ${leaderDisplayName(leaderName)} 可锁定原型`
+                      : selectedPersonaChoice?.archetype_id
+                        ? "客户原型已锁定"
+                        : (isSelectingPersona ? "正在锁定..." : "锁定这个客户原型 →")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => canEnterCards && setStep(2)}
+                    disabled={!canEnterCards}
+                    style={{padding:"12px 16px",borderRadius:10,background:"#fff",color:"#1a5c3a",border:"1px solid #1a5c3a",fontSize:14,fontWeight:700,cursor:canEnterCards ? "pointer" : "not-allowed",opacity:canEnterCards ? 1 : 0.5}}
+                  >
+                    {canEnterCards ? "进入个人选卡 →" : "请先锁定客户原型"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
           <div style={{display:"flex",gap:16,alignItems:"flex-start",flexWrap:"wrap"}}>
             <div style={{flex:"1 1 680px",minWidth:0}}>
               <div style={{border:"1.5px solid #e5e7eb",borderRadius:12,overflow:"hidden",marginBottom:16}}>
@@ -2577,6 +2808,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
               </div>
             </div>
           </div>
+          )}
         </div>
       )}
 
@@ -2608,15 +2840,21 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
 
           {/* Interview summary for reference while selecting cards */}
           <div style={{padding:"14px 18px",borderRadius:10,background:"#f0fdf4",border:"1.5px solid #bbf7d0",marginBottom:8}}>
-            <div style={{fontSize:13,fontWeight:700,color:"#166534",marginBottom:6}}>🎙️ 你的访谈洞察</div>
+            <div style={{fontSize:13,fontWeight:700,color:"#166534",marginBottom:6}}>{isSummaryMode ? "📄 已锁定的客户原型" : "🎙️ 你的访谈洞察"}</div>
             <div style={{fontSize:13,color:"#374151",lineHeight:1.8,marginBottom:10}}>
-              {buildInterviewSummary(interviewResult, memberDims) || "请先完成真实访谈，再根据提炼结果选卡。"}
+              {isSummaryMode
+                ? (selectedPersonaSummaryText || "请先在上一步锁定客户原型，再根据这份报告选卡。")
+                : (buildInterviewSummary(interviewResult, memberDims) || "请先完成真实访谈，再根据提炼结果选卡。")}
             </div>
             <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
               {memberDims.map(d => {
                 const dm = DIMS.find(x=>x.id===d);
-                const interviewScores = radarToInterviewScores(interviewResult?.radar);
-                const importance = interviewResult ? scoreToImportance(interviewScores[d]) : IMP[d];
+                const interviewScores = isSummaryMode ? selectedPersonaScores : radarToInterviewScores(interviewResult?.radar);
+                const importance = (isSummaryMode
+                  ? Number.isFinite(Number(interviewScores[d]))
+                  : Boolean(interviewResult))
+                    ? scoreToImportance(interviewScores[d])
+                    : IMP[d];
                 return (
                   <span key={d} style={{fontSize:11,padding:"3px 8px",borderRadius:4,background:IMP_C[importance]+"12",color:IMP_C[importance],fontWeight:600,border:`1px solid ${IMP_C[importance]}30`}}>
                     {dm.icon} {dm.l}：{importance}
@@ -2681,6 +2919,12 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                 {mergeError}
               </div>
             )}
+            {isSummaryMode && mergeData?.mergedInterview?.summaryText && (
+              <div style={{padding:"12px 14px",borderRadius:10,background:"#f8fafc",border:"1px solid #e5e7eb",fontSize:13,color:"#374151",lineHeight:1.8,marginBottom:10}}>
+                <strong style={{display:"block",marginBottom:6,color:"#111827"}}>团队共享客户叙事</strong>
+                {mergeData.mergedInterview.summaryText}
+              </div>
+            )}
             {DIMS.map((dim) => {
               const score = Number(mergedInterviewScores?.[dim.id] || 0);
               const owners = Array.isArray(mergeData?.mergedInterview?.sourceByDim?.[dim.id])
@@ -2712,7 +2956,9 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                             : `${item.memberName}（${sourceName}）：当前合并评分 ${score.toFixed(1)} / 9。`;
                         })
                         .join("；")
-                      : "当前还没有足够的真实访谈结果支撑该维度。"}
+                      : (isSummaryMode
+                        ? "该维度来自团队已锁定的客户原型，请结合上方共享叙事和维度强弱做取舍。"
+                        : "当前还没有足够的真实访谈结果支撑该维度。")}
                   </div>
                 </div>
               );

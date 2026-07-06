@@ -70,6 +70,26 @@ export async function assignRound2Dimensions(payload) {
   return asJson(res);
 }
 
+export async function getRound2PersonaReports(teamId, sessionId = "default", options = {}) {
+  const query = new URLSearchParams({
+    teamId: String(teamId || "").trim(),
+    session_id: String(sessionId || "default").trim()
+  });
+  const res = await fetch(`${BASE}/round2/persona-reports?${query.toString()}`, {
+    signal: options.signal
+  });
+  return asJson(res);
+}
+
+export async function selectRound2PersonaArchetype(payload) {
+  const res = await fetch(`${BASE}/round2/persona-select`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {})
+  });
+  return asJson(res);
+}
+
 export async function round2InterviewAuto(payload) {
   const res = await fetch(`${BASE}/round2/interview/auto`, {
     method: "POST",
