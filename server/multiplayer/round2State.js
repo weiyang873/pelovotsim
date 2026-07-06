@@ -241,6 +241,8 @@ async function clearTeamRound2Artifacts(teamId, mode) {
       DELETE FROM round2_interview_sessions WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM round2_member_selections WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM round2_team_drafts WHERE team_id = ${sqlQuote(teamId)};
+      DELETE FROM round2_persona_choices WHERE team_id = ${sqlQuote(teamId)};
+      DELETE FROM round2_persona_reports WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM round2_submissions WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM fg_team_radar WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM round2_results WHERE team_id = ${sqlQuote(teamId)};
@@ -253,6 +255,7 @@ async function clearTeamRound2Artifacts(teamId, mode) {
       DELETE FROM round2_interview_sessions WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM round2_member_selections WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM round2_team_drafts WHERE team_id = ${sqlQuote(teamId)};
+      DELETE FROM round2_persona_choices WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM round2_submissions WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM fg_team_radar WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM round2_results WHERE team_id = ${sqlQuote(teamId)};
@@ -264,6 +267,7 @@ async function clearTeamRound2Artifacts(teamId, mode) {
     await runSql(`
       DELETE FROM round2_member_selections WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM round2_team_drafts WHERE team_id = ${sqlQuote(teamId)};
+      DELETE FROM round2_persona_choices WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM round2_submissions WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM fg_team_radar WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM round2_results WHERE team_id = ${sqlQuote(teamId)};
@@ -274,6 +278,7 @@ async function clearTeamRound2Artifacts(teamId, mode) {
   if (target === "R2_TEAM_MERGE") {
     await runSql(`
       DELETE FROM round2_team_drafts WHERE team_id = ${sqlQuote(teamId)};
+      DELETE FROM round2_persona_choices WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM round2_submissions WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM fg_team_radar WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM round2_results WHERE team_id = ${sqlQuote(teamId)};
@@ -286,6 +291,7 @@ async function clearTeamRound2Artifacts(teamId, mode) {
       UPDATE round2_team_drafts
       SET price = NULL, updated_at = ${sqlQuote(nowIso())}
       WHERE team_id = ${sqlQuote(teamId)};
+      DELETE FROM round2_persona_choices WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM round2_submissions WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM round2_results WHERE team_id = ${sqlQuote(teamId)};
     `);
@@ -305,6 +311,7 @@ async function clearMemberRound2Artifacts(teamId, memberId, resetTo) {
       WHERE team_id = ${sqlQuote(teamId)} AND member_id = ${sqlQuote(memberId)};
 
       DELETE FROM round2_team_drafts WHERE team_id = ${sqlQuote(teamId)};
+      DELETE FROM round2_persona_choices WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM round2_submissions WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM fg_team_radar WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM round2_results WHERE team_id = ${sqlQuote(teamId)};
@@ -318,6 +325,7 @@ async function clearMemberRound2Artifacts(teamId, memberId, resetTo) {
       WHERE team_id = ${sqlQuote(teamId)} AND member_id = ${sqlQuote(memberId)};
 
       DELETE FROM round2_team_drafts WHERE team_id = ${sqlQuote(teamId)};
+      DELETE FROM round2_persona_choices WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM round2_submissions WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM fg_team_radar WHERE team_id = ${sqlQuote(teamId)};
       DELETE FROM round2_results WHERE team_id = ${sqlQuote(teamId)};

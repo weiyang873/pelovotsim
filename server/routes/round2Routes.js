@@ -23,6 +23,12 @@ const {
   updateMemberProgress,
   getTeamRound2State
 } = require("../multiplayer/round2State");
+const {
+  SUMMARY_FLOW_VERSION,
+  loadPersonaArchetypes,
+  generatePersonaReports,
+  buildSummaryModeRadarResult
+} = require("../multiplayer/round2SummaryMode");
 const CAP_GROUPS = require("../../data/capability_groups_v2.json");
 const TAG_MAP = require("../../data/tag_map_v2_1.json");
 
@@ -251,6 +257,30 @@ async function ensureSchema() {
         updated_by TEXT,
         updated_at TIMESTAMPTZ NOT NULL
       );
+
+      CREATE TABLE IF NOT EXISTS round2_persona_reports (
+        session_id TEXT NOT NULL DEFAULT 'default',
+        team_id TEXT NOT NULL,
+        archetype_id TEXT NOT NULL,
+        summary_text TEXT NOT NULL,
+        flow_version TEXT NOT NULL DEFAULT 'merged_v1',
+        generated_at TIMESTAMPTZ NOT NULL,
+        PRIMARY KEY (session_id, team_id, archetype_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS round2_persona_choices (
+        session_id TEXT NOT NULL DEFAULT 'default',
+        team_id TEXT NOT NULL,
+        archetype_id TEXT NOT NULL,
+        radar_json TEXT NOT NULL,
+        tags_json TEXT NOT NULL,
+        evi DOUBLE PRECISION,
+        summary_text TEXT,
+        flow_version TEXT NOT NULL DEFAULT 'merged_v1',
+        selected_by TEXT,
+        selected_at TIMESTAMPTZ NOT NULL,
+        PRIMARY KEY (session_id, team_id)
+      );
     `);
     await runSql(`
       ALTER TABLE round2_interview_sessions
@@ -316,6 +346,166 @@ async function readRound2TeamDraft(teamId) {
     updated_by: row.updated_by || "",
     updated_at: row.updated_at || null
   };
+}
+
+async function readPersonaReports(teamId, sessionId = "default") {
+  await ensureSchema();
+  const rows = await runSql(`
+    SELECT session_id, team_id, archetype_id, summary_text, flow_version, generated_at
+    FROM round2_persona_reports
+    WHERE team_id = ${sqlQuote(teamId)}
+      AND session_id = ${sqlQuote(sessionId)}
+    ORDER BY archetype_id ASC;
+  `);
+  return rows.map((row) => ({
+    session_id: row.session_id,
+    team_id: row.team_id,
+    archetype_id: row.archetype_id,
+    summary_text: row.summary_text || "",
+    flow_version: row.flow_version || SUMMARY_FLOW_VERSION,
+    generated_at: row.generated_at || null
+  }));
+}
+
+async function persistPersonaReports(teamId, sessionId, reports) {
+  await ensureSchema();
+  for (const report of Array.isArray(reports) ? reports : []) {
+    await runSql(`
+      INSERT INTO round2_persona_reports (
+        session_id, team_id, archetype_id, summary_text, flow_version, generated_at
+      ) VALUES (
+        ${sqlQuote(sessionId)},
+        ${sqlQuote(teamId)},
+        ${sqlQuote(String(report.archetype_id || "").trim())},
+        ${sqlQuote(String(report.summary_text || "").trim())},
+        ${sqlQuote(String(report.flow_version || SUMMARY_FLOW_VERSION).trim() || SUMMARY_FLOW_VERSION)},
+        ${sqlQuote(report.generated_at || nowIso())}
+      )
+      ON CONFLICT (session_id, team_id, archetype_id) DO NOTHING;
+    `);
+  }
+}
+
+async function readPersonaChoice(teamId, sessionId = "default") {
+  await ensureSchema();
+  const rows = await runSql(`
+    SELECT session_id, team_id, archetype_id, radar_json, tags_json, evi, summary_text,
+      flow_version, selected_by, selected_at
+    FROM round2_persona_choices
+    WHERE team_id = ${sqlQuote(teamId)}
+      AND session_id = ${sqlQuote(sessionId)}
+    LIMIT 1;
+  `);
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    session_id: row.session_id,
+    team_id: row.team_id,
+    archetype_id: row.archetype_id,
+    radar: normalizeRadarPayload(safeJsonParse(row.radar_json, {})),
+    tags: safeJsonParse(row.tags_json, []),
+    evi: row.evi == null ? null : Number(row.evi),
+    summary_text: row.summary_text || "",
+    flow_version: row.flow_version || SUMMARY_FLOW_VERSION,
+    selected_by: row.selected_by || "",
+    selected_at: row.selected_at || null
+  };
+}
+
+async function savePersonaChoice(teamId, sessionId, choice) {
+  await ensureSchema();
+  await runSql(`
+    INSERT INTO round2_persona_choices (
+      session_id, team_id, archetype_id, radar_json, tags_json, evi,
+      summary_text, flow_version, selected_by, selected_at
+    ) VALUES (
+      ${sqlQuote(sessionId)},
+      ${sqlQuote(teamId)},
+      ${sqlQuote(String(choice?.archetype_id || "").trim())},
+      ${sqlQuote(JSON.stringify(choice?.radar || {}))},
+      ${sqlQuote(JSON.stringify(choice?.tags || []))},
+      ${choice?.evi == null ? "NULL" : Number(choice.evi)},
+      ${sqlQuote(String(choice?.summary_text || "").trim() || null)},
+      ${sqlQuote(String(choice?.flow_version || SUMMARY_FLOW_VERSION).trim() || SUMMARY_FLOW_VERSION)},
+      ${sqlQuote(String(choice?.selected_by || "").trim() || null)},
+      ${sqlQuote(choice?.selected_at || nowIso())}
+    )
+    ON CONFLICT (session_id, team_id) DO UPDATE SET
+      archetype_id = EXCLUDED.archetype_id,
+      radar_json = EXCLUDED.radar_json,
+      tags_json = EXCLUDED.tags_json,
+      evi = EXCLUDED.evi,
+      summary_text = EXCLUDED.summary_text,
+      flow_version = EXCLUDED.flow_version,
+      selected_by = EXCLUDED.selected_by,
+      selected_at = EXCLUDED.selected_at;
+  `);
+  return readPersonaChoice(teamId, sessionId);
+}
+
+async function upsertTeamRadar(teamId, sessionId, radar) {
+  const now = nowIso();
+  await runSql(`
+    INSERT INTO fg_team_radar (
+      team_id, session_id, radar_json, tags_json, evi, updated_at
+    ) VALUES (
+      ${sqlQuote(teamId)},
+      ${sqlQuote(sessionId)},
+      ${sqlQuote(JSON.stringify(radar.radar || {}))},
+      ${sqlQuote(JSON.stringify(radar.tags || []))},
+      ${radar.evi == null ? "NULL" : Number(radar.evi)},
+      ${sqlQuote(radar.updated_at || now)}
+    )
+    ON CONFLICT(team_id, session_id) DO UPDATE SET
+      radar_json = EXCLUDED.radar_json,
+      tags_json = EXCLUDED.tags_json,
+      evi = EXCLUDED.evi,
+      updated_at = EXCLUDED.updated_at;
+  `);
+}
+
+async function renderPersonaSummaryWithLlm({ teamId, prompt }) {
+  const messages = [
+    {
+      role: "system",
+      content: "你是客户研究叙事写作者。只写生活情境、痛点、情绪与行为，不写功能、能力、解决方案。"
+    },
+    {
+      role: "user",
+      content: prompt
+    }
+  ];
+  return withLlmLogging({
+    caller: "round2Routes.renderPersonaSummary",
+    teamId,
+    memberId: null,
+    messages
+  }, () => chatCompletion(messages, { temperature: 0.6, max_tokens: 1200, maxRetries: 2 }));
+}
+
+async function ensurePersonaReportsForTeam(teamId, sessionId = "default") {
+  const existing = await readPersonaReports(teamId, sessionId);
+  const config = loadPersonaArchetypes();
+  const existingIds = new Set(existing.map((item) => item.archetype_id));
+  const allPresent = config.archetypes.length > 0 && config.archetypes.every((item) => existingIds.has(item.id));
+  if (allPresent) {
+    return existing;
+  }
+  const recapRes = await recap({ teamId });
+  const recapData = recapRes?.body?.ok ? recapRes.body : {};
+  const team = await getTeam(teamId);
+  const generated = await generatePersonaReports({
+    archetypes: config.archetypes,
+    existingReports: existing,
+    teamName: team?.team_name || teamId,
+    recapData,
+    renderSummary: ({ prompt }) => renderPersonaSummaryWithLlm({ teamId, prompt }),
+    flowVersion: SUMMARY_FLOW_VERSION
+  });
+  await persistPersonaReports(teamId, sessionId, generated.filter((item) => {
+    return !existing.some((row) => row.archetype_id === item.archetype_id);
+  }));
+  return readPersonaReports(teamId, sessionId);
 }
 
 async function saveRound2TeamDraft(teamId, memberId, draft = {}) {
@@ -1913,6 +2103,19 @@ function aggregateInterviewByOwner({ assignments, memberMap, interviewByMember }
   return merged;
 }
 
+function buildMergedInterviewFromPersonaChoice(choice) {
+  if (!choice?.radar) return null;
+  return {
+    radar: normalizeRadarPayload(choice.radar),
+    tags: Array.isArray(choice.tags) ? choice.tags : [],
+    evi: Number.isFinite(Number(choice.evi)) ? Number(choice.evi) : 0.7,
+    sourceByDim: {},
+    selectedArchetypeId: choice.archetype_id || "",
+    summaryText: choice.summary_text || "",
+    flowVersion: choice.flow_version || SUMMARY_FLOW_VERSION
+  };
+}
+
 function enrichPersona(persona) {
   const raw = persona && typeof persona === "object" ? persona : {};
   const title = String(raw.title || raw.occupation || "").trim();
@@ -2388,22 +2591,6 @@ async function persistTeamSnapshot(teamId, sessionId, submission, radar, result)
       best_grid = EXCLUDED.best_grid,
       submitted_at = EXCLUDED.submitted_at;
 
-    INSERT INTO fg_team_radar (
-      team_id, session_id, radar_json, tags_json, evi, updated_at
-    ) VALUES (
-      ${sqlQuote(teamId)},
-      ${sqlQuote(sessionId)},
-      ${sqlQuote(JSON.stringify(radar.radar || {}))},
-      ${sqlQuote(JSON.stringify(radar.tags || []))},
-      ${radar.evi == null ? "NULL" : Number(radar.evi)},
-      ${sqlQuote(radar.updated_at || now)}
-    )
-    ON CONFLICT(team_id, session_id) DO UPDATE SET
-      radar_json = EXCLUDED.radar_json,
-      tags_json = EXCLUDED.tags_json,
-      evi = EXCLUDED.evi,
-      updated_at = EXCLUDED.updated_at;
-
     INSERT INTO round2_results (
       team_id, session_id, units, profit, profit_per_unit,
       vscore, best_grid, result_json, computed_at
@@ -2427,6 +2614,12 @@ async function persistTeamSnapshot(teamId, sessionId, submission, radar, result)
       result_json = EXCLUDED.result_json,
       computed_at = EXCLUDED.computed_at;
   `);
+  await upsertTeamRadar(teamId, sessionId, {
+    radar: radar.radar || {},
+    tags: radar.tags || [],
+    evi: radar.evi,
+    updated_at: radar.updated_at || now
+  });
 }
 
 async function buildComputedTeamSnapshot(teamId, sessionId, submissionInput, radarInput, options = {}) {
@@ -2623,6 +2816,123 @@ async function recap(query) {
   }
 }
 
+async function syncSummaryModeChoice(teamId, sessionId = "default", selectedBy = "") {
+  const teamState = await getTeamRound2State(teamId);
+  for (const member of teamState?.members || []) {
+    await updateMemberProgress(teamId, member.id, {
+      interview_status: "completed",
+      interview_rounds: Math.max(1, Number(member.interviewRounds || 0)),
+      current_step: member.cardStatus === "submitted" ? "waiting_merge" : "selecting_cards",
+      last_activity_at: nowIso()
+    });
+  }
+  await updateTeamRound2Status(teamId, "R2_INDIVIDUAL_CARDS");
+  const choice = await readPersonaChoice(teamId, sessionId);
+  return {
+    ok: true,
+    team_id: teamId,
+    selected_by: selectedBy,
+    choice
+  };
+}
+
+async function personaReportsApi(query) {
+  try {
+    const teamId = String(query?.teamId || query?.team_id || "").trim();
+    const sessionId = normalizeSessionId(query?.sessionId || query?.session_id);
+    if (!teamId) return makeResponse(400, { ok: false, error: "teamId required" });
+    const team = await getTeam(teamId);
+    if (!team) return makeResponse(404, { ok: false, error: "team not found" });
+    const reports = await ensurePersonaReportsForTeam(teamId, sessionId);
+    const choice = await readPersonaChoice(teamId, sessionId);
+    return makeResponse(200, {
+      ok: true,
+      team_id: teamId,
+      session_id: sessionId,
+      flow_version: SUMMARY_FLOW_VERSION,
+      selected_archetype_id: choice?.archetype_id || "",
+      reports
+    });
+  } catch (e) {
+    return makeResponse(400, { ok: false, error: e.message });
+  }
+}
+
+async function selectPersonaArchetypeApi(body) {
+  try {
+    const teamId = String(body?.teamId || body?.team_id || "").trim();
+    const memberId = String(body?.memberId || body?.member_id || "").trim();
+    const archetypeId = String(body?.archetypeId || body?.archetype_id || "").trim();
+    const sessionId = normalizeSessionId(body?.sessionId || body?.session_id);
+    if (!teamId || !memberId || !archetypeId) {
+      return makeResponse(400, { ok: false, error: "teamId/memberId/archetypeId required" });
+    }
+
+    const permission = await ensureRound2LeaderPermission(teamId, memberId);
+    if (!permission.ok) return permission.response;
+
+    const existingChoice = await readPersonaChoice(teamId, sessionId);
+    if (existingChoice) {
+      if (existingChoice.archetype_id !== archetypeId) {
+        return makeResponse(409, { ok: false, error: "persona_choice_locked", selected_archetype_id: existingChoice.archetype_id });
+      }
+      return makeResponse(200, {
+        ok: true,
+        locked: true,
+        team_id: teamId,
+        session_id: sessionId,
+        selected_archetype_id: existingChoice.archetype_id,
+        choice: existingChoice,
+        ...buildLeaderMeta(permission.team, memberId)
+      });
+    }
+
+    const reports = await ensurePersonaReportsForTeam(teamId, sessionId);
+    const report = reports.find((item) => item.archetype_id === archetypeId) || null;
+    const config = loadPersonaArchetypes();
+    const archetype = (config.archetypes || []).find((item) => item.id === archetypeId);
+    if (!archetype) return makeResponse(404, { ok: false, error: "persona archetype not found" });
+
+    const recapRes = await recap({ teamId });
+    const recapData = recapRes?.body?.ok ? recapRes.body : {};
+    const summaryResult = buildSummaryModeRadarResult({
+      archetype,
+      gridId: String(recapData.final_grid_id || permission.team?.final_grid_id || ""),
+      architecture: String(recapData.architecture || permission.team?.final_architecture || ""),
+      mapEvidenceToResult
+    });
+
+    const nextChoice = await savePersonaChoice(teamId, sessionId, {
+      archetype_id: archetypeId,
+      radar: summaryResult.radar,
+      tags: summaryResult.tags,
+      evi: summaryResult.evi,
+      summary_text: report?.summary_text || "",
+      flow_version: SUMMARY_FLOW_VERSION,
+      selected_by: memberId,
+      selected_at: nowIso()
+    });
+    await upsertTeamRadar(teamId, sessionId, {
+      radar: summaryResult.radar,
+      tags: summaryResult.tags,
+      evi: summaryResult.evi,
+      updated_at: nowIso()
+    });
+    await syncSummaryModeChoice(teamId, sessionId, memberId);
+
+    return makeResponse(200, {
+      ok: true,
+      team_id: teamId,
+      session_id: sessionId,
+      selected_archetype_id: archetypeId,
+      choice: nextChoice,
+      ...buildLeaderMeta(permission.team, memberId)
+    });
+  } catch (e) {
+    return makeResponse(400, { ok: false, error: e.message });
+  }
+}
+
 async function assignDimensionsApi(body) {
   try {
     const teamId = String(body?.teamId || "").trim();
@@ -2633,6 +2943,7 @@ async function assignDimensionsApi(body) {
     const memberCount = Number(body?.memberCount || listTeamMembers(team).length || 4);
     const assignments = await buildAssignments(team, memberCount);
     await saveAssignments(teamId, assignments);
+    await ensurePersonaReportsForTeam(teamId, normalizeSessionId(body?.sessionId || body?.session_id));
 
     return makeResponse(200, { ok: true, assignments });
   } catch (e) {
@@ -3280,8 +3591,11 @@ async function mergeApi(body) {
 
     const validation = validateSelections(teamSelections);
     const softPenalties = computeSoftPenalties(teamSelections, Number(body?.COGSbase || 2000));
-    const interviewByMember = await getLatestInterviewByMember(teamId);
-    const mergedInterview = aggregateInterviewByOwner({ assignments, memberMap, interviewByMember });
+    const personaChoice = await readPersonaChoice(teamId);
+    const interviewByMember = personaChoice ? {} : await getLatestInterviewByMember(teamId);
+    const mergedInterview = personaChoice
+      ? buildMergedInterviewFromPersonaChoice(personaChoice)
+      : aggregateInterviewByOwner({ assignments, memberMap, interviewByMember });
     const totalCost = teamSelections.reduce((sum, sel) => {
       try {
         return sum + Number(getCapabilityParams(sel.cap_id, sel.tier)?.dCOGS || 0);
@@ -3326,6 +3640,7 @@ async function mergeApi(body) {
       hardViolationCount: validation.hardViolationCount,
       softPenalties,
       mergedInterview,
+      selected_persona_id: personaChoice?.archetype_id || "",
       team_draft: draft,
       ...buildLeaderMeta(team, memberId)
     };
@@ -3401,17 +3716,21 @@ async function teamSubmitApi(body) {
       return makeResponse(400, { ok: false, error: "valid price required" });
     }
 
-    const radar = normalizeRadarPayload(body?.mergedInterview?.radar || body?.radar || {});
+    const personaChoice = await readPersonaChoice(teamId, sessionId);
+    const fallbackRadar = personaChoice?.radar || {};
+    const fallbackTags = Array.isArray(personaChoice?.tags) ? personaChoice.tags : [];
+    const fallbackEvi = personaChoice?.evi;
+    const radar = normalizeRadarPayload(body?.mergedInterview?.radar || body?.radar || fallbackRadar);
     const tags = Array.isArray(body?.tags)
       ? body.tags
       : Array.isArray(body?.mergedInterview?.tags)
         ? body.mergedInterview.tags
-        : [];
+        : fallbackTags;
     const evi = Number.isFinite(Number(body?.evi))
       ? Number(body.evi)
       : Number.isFinite(Number(body?.mergedInterview?.evi))
         ? Number(body.mergedInterview.evi)
-        : 0.7;
+        : (Number.isFinite(Number(fallbackEvi)) ? Number(fallbackEvi) : 0.7);
     const bestGrid = String(body?.bestGrid || body?.best_grid || team.final_grid_id || "").trim();
 
     const submission = {
@@ -3451,6 +3770,7 @@ async function teamSubmitApi(body) {
       submission: snapshot.submission,
       radar: snapshot.radar,
       result: snapshot.result,
+      flow_version: personaChoice?.flow_version || null,
       ...buildLeaderMeta(team, memberId)
     });
   } catch (e) {
@@ -3465,13 +3785,16 @@ async function teamResultApi(query) {
     if (!teamId) return makeResponse(400, { ok: false, error: "teamId required" });
 
     const snapshot = await getTeamResultSnapshot(teamId, sessionId);
+    const personaChoice = await readPersonaChoice(teamId, sessionId);
     return makeResponse(200, {
       ok: true,
       team_id: teamId,
       session_id: sessionId,
       submission: snapshot?.submission || null,
       radar: snapshot?.radar || null,
-      result: snapshot?.result || null
+      result: snapshot?.result || null,
+      selected_persona_id: personaChoice?.archetype_id || "",
+      flow_version: personaChoice?.flow_version || ""
     });
   } catch (e) {
     return makeResponse(400, { ok: false, error: e.message });
@@ -3491,6 +3814,8 @@ async function teamStatusApi(query) {
     const teamState = await getTeamRound2State(teamId);
     if (!teamState) return makeResponse(404, { ok: false, error: "team not found" });
     const teamDraft = await readRound2TeamDraft(teamId);
+    const personaChoice = await readPersonaChoice(teamId);
+    const personaReports = await readPersonaReports(teamId, "default");
     const round1Context = team
       ? (() => {
           const vpSummary = normalizeVpSummary(team.final_vp_summary, team.final_vp_text || "");
@@ -3563,6 +3888,9 @@ async function teamStatusApi(query) {
       duration_minutes: teamState.r2.durationMinutes,
       ...buildLeaderMeta(teamState, memberId),
       team_draft: teamDraft,
+      persona_choice: personaChoice,
+      persona_reports: personaReports,
+      flow_version: personaChoice?.flow_version || "",
       round1_context: round1Context,
       member: memberState,
       member_state: memberState,
@@ -3637,6 +3965,8 @@ module.exports = {
   computeCounterfactualAtPrice,
   recap,
   assignDimensionsApi,
+  personaReportsApi,
+  selectPersonaArchetypeApi,
   interviewAuto,
   interviewSessionApi,
   interviewStart,
@@ -3657,9 +3987,13 @@ module.exports = {
     getGridDefaultTags,
     inferWeakEvidenceFromConversation,
     extractInterviewResult,
+    ensurePersonaReportsForTeam,
+    buildMergedInterviewFromPersonaChoice,
     mapEvidenceToResult,
     normalizeExtractedTags,
     isPersonaLeakage,
-    isPersonaConsistentWithRound1Context
+    isPersonaConsistentWithRound1Context,
+    readPersonaReports,
+    readPersonaChoice
   }
 };

@@ -1,0 +1,315 @@
+{
+  "version": "v1",
+  "archetypes": [
+    {
+      "id": "elder_care",
+      "label": "独居长者照护",
+      "dimension_evidence": {
+        "interaction": {
+          "mentioned": true,
+          "strength": "strong",
+          "evidence": [
+            {
+              "quote": "一个人在家太安静了，偶尔真想有人接我一句。",
+              "reason": "说明对及时回应和陪伴式交流有明确期待。"
+            },
+            {
+              "quote": "有时候话到嘴边，又觉得打电话麻烦孩子。",
+              "reason": "说明她需要低门槛、低负担的日常互动对象。"
+            }
+          ],
+          "needs": [
+            "希望有人能自然回应自己的话",
+            "希望减少主动求助的心理负担"
+          ],
+          "scenarios": [
+            "傍晚独自在客厅吃饭时",
+            "夜里醒来又不想吵到家人时"
+          ],
+          "pain_points": [
+            "长期安静带来的孤独感",
+            "不愿频繁打扰子女"
+          ]
+        },
+        "perception": {
+          "mentioned": true,
+          "strength": "weak",
+          "evidence": [
+            {
+              "quote": "我有时候站起来会发晕，旁边要是有人知道我不舒服就好了。",
+              "reason": "说明她希望外界能察觉自己的状态变化。"
+            }
+          ],
+          "needs": [
+            "希望自己的状态变化被及时注意到"
+          ],
+          "scenarios": [
+            "起身去厨房倒水时"
+          ],
+          "pain_points": [
+            "身体不适时常常没人第一时间发现"
+          ]
+        },
+        "motion": {
+          "mentioned": true,
+          "strength": "weak",
+          "evidence": [
+            {
+              "quote": "半夜起夜的时候，最怕脚下一虚。",
+              "reason": "说明行动场景里的移动安全是高频顾虑。"
+            }
+          ],
+          "needs": [
+            "希望在起身和移动时更安心"
+          ],
+          "scenarios": [
+            "夜里起身去卫生间时"
+          ],
+          "pain_points": [
+            "夜间走动时缺少陪伴与支持"
+          ]
+        },
+        "safety": {
+          "mentioned": true,
+          "strength": "strong",
+          "evidence": [
+            {
+              "quote": "要是真摔了，家里人知道得太晚就麻烦了。",
+              "reason": "说明安全风险与及时知晓是核心顾虑。"
+            },
+            {
+              "quote": "我不怕麻烦自己，怕的是别人来不及知道。",
+              "reason": "说明她最在意的是关键时刻的风险后果。"
+            }
+          ],
+          "needs": [
+            "关键风险发生时有人能尽快知道",
+            "夜间和独处时更有安全感"
+          ],
+          "scenarios": [
+            "洗澡后站起身时",
+            "夜里独自行动时"
+          ],
+          "pain_points": [
+            "跌倒或不适没人及时发现",
+            "家属长期担心但又不在身边"
+          ]
+        },
+        "extend": {
+          "mentioned": false,
+          "strength": "weak",
+          "evidence": [],
+          "needs": [],
+          "scenarios": [],
+          "pain_points": []
+        },
+        "ops": {
+          "mentioned": true,
+          "strength": "strong",
+          "evidence": [
+            {
+              "quote": "太复杂的东西我记不住，最好不用总折腾。",
+              "reason": "说明她对维护负担和学习成本高度敏感。"
+            }
+          ],
+          "needs": [
+            "日常使用不能太复杂",
+            "不要频繁维护和重新学习"
+          ],
+          "scenarios": [
+            "独自在家日常使用时"
+          ],
+          "pain_points": [
+            "复杂操作让人抗拒",
+            "维护负担会直接影响接受度"
+          ]
+        }
+      },
+      "tags": [
+        "TODO(WY): 从 25 个白名单标签中确认最终教学参数"
+      ],
+      "evi": "TODO(WY): 确认固定 evi 标量",
+      "interview_quality": {
+        "specificity": "high",
+        "consistency": "high",
+        "actionability": "medium"
+      },
+      "narrative_seed": {
+        "summary_title": "独居长者调研报告（待确认）",
+        "person": "72 岁退休女性，丧偶后独居，和女儿住在同城但并不愿意天天打电话求助。待确认。",
+        "routine": "白天基本能照顾自己，晚上尤其安静，也更容易感到身体状态和情绪波动。待确认。",
+        "scenes": [
+          "傍晚一个人吃饭、饭后在客厅发呆",
+          "夜里起身去卫生间时担心站不稳",
+          "身体不舒服时犹豫要不要联系子女"
+        ],
+        "pain_points": [
+          "不想频繁麻烦家里人",
+          "真正危险发生时可能没人第一时间知道",
+          "太复杂的新东西学不会也不愿折腾"
+        ],
+        "habits": [
+          "能自己做的事尽量自己做",
+          "习惯把不舒服先忍一忍",
+          "对新设备的第一反应是怕麻烦"
+        ],
+        "emotions": [
+          "嘴上说没事，心里其实怕出事拖累家人",
+          "既想被惦记，又不想显得自己离不开人"
+        ],
+        "confirmation_note": "待确认：请 WY 复核 narrative seed 与教学参数。"
+      }
+    },
+    {
+      "id": "adult_companion",
+      "label": "都市成人陪伴",
+      "dimension_evidence": {
+        "interaction": {
+          "mentioned": true,
+          "strength": "strong",
+          "evidence": [
+            {
+              "quote": "下班回家以后，最想要的是有人能接住我的情绪，但又别太吵。",
+              "reason": "说明她期待自然、克制但持续的互动回应。"
+            },
+            {
+              "quote": "我不一定想聊天很久，但希望说一句就有人懂。",
+              "reason": "说明她重视对话的默契感和及时反馈。"
+            }
+          ],
+          "needs": [
+            "低负担但有温度的互动",
+            "在疲惫时被接住情绪"
+          ],
+          "scenarios": [
+            "下班回家刚进门时",
+            "加班后独自在客厅放空时"
+          ],
+          "pain_points": [
+            "回家后情绪无人承接",
+            "长时间安静会放大疲惫感"
+          ]
+        },
+        "perception": {
+          "mentioned": true,
+          "strength": "strong",
+          "evidence": [
+            {
+              "quote": "我最烦那种听了也像没听见的东西。",
+              "reason": "说明她对被理解、被准确感知有明确要求。"
+            }
+          ],
+          "needs": [
+            "希望自己的情绪和节奏被看懂"
+          ],
+          "scenarios": [
+            "回家后情绪低落却不想解释太多时"
+          ],
+          "pain_points": [
+            "被误解会增加交流成本"
+          ]
+        },
+        "motion": {
+          "mentioned": false,
+          "strength": "weak",
+          "evidence": [],
+          "needs": [],
+          "scenarios": [],
+          "pain_points": []
+        },
+        "safety": {
+          "mentioned": true,
+          "strength": "weak",
+          "evidence": [
+            {
+              "quote": "我不是很想把太多私生活暴露给不可信的东西。",
+              "reason": "说明她对边界和信任有基本要求。"
+            }
+          ],
+          "needs": [
+            "陪伴感不能建立在失去边界之上"
+          ],
+          "scenarios": [
+            "长期独处、但仍希望保有私人空间时"
+          ],
+          "pain_points": [
+            "担心亲密体验反过来侵犯边界"
+          ]
+        },
+        "extend": {
+          "mentioned": true,
+          "strength": "strong",
+          "evidence": [
+            {
+              "quote": "我回家通常是一边换衣服一边放音乐、看消息、开灯，所有事情都挤在一起。",
+              "reason": "说明她的陪伴需求和多设备、多场景节奏交织在一起。"
+            }
+          ],
+          "needs": [
+            "希望不同生活动作衔接更顺",
+            "希望陪伴体验融入原有节奏"
+          ],
+          "scenarios": [
+            "回家后的连续动线：开门、放包、开灯、洗漱、放松"
+          ],
+          "pain_points": [
+            "琐碎切换太多会打断放松状态"
+          ]
+        },
+        "ops": {
+          "mentioned": true,
+          "strength": "weak",
+          "evidence": [
+            {
+              "quote": "我工作已经够忙了，不想再伺候一个需要我天天照看的东西。",
+              "reason": "说明她对维护和折腾容忍度很低。"
+            }
+          ],
+          "needs": [
+            "不要增加额外照顾成本"
+          ],
+          "scenarios": [
+            "工作繁忙、作息不稳定时"
+          ],
+          "pain_points": [
+            "额外维护会迅速消耗好感"
+          ]
+        }
+      },
+      "tags": [
+        "TODO(WY): 从 25 个白名单标签中确认最终教学参数"
+      ],
+      "evi": "TODO(WY): 确认固定 evi 标量",
+      "interview_quality": {
+        "specificity": "high",
+        "consistency": "high",
+        "actionability": "medium"
+      },
+      "narrative_seed": {
+        "summary_title": "都市成人陪伴调研报告（待确认）",
+        "person": "31 岁互联网行业从业者，独居，工作节奏快，回家后既想放松又不想被打扰。待确认。",
+        "routine": "平日通勤和加班挤压了个人生活，真正属于自己的时间大多集中在晚上回家后的两三个小时。待确认。",
+        "scenes": [
+          "下班回家开门后的十分钟情绪转换",
+          "独自在客厅刷手机、放音乐、慢慢降速",
+          "忙完一整天后想说话又嫌解释成本高"
+        ],
+        "pain_points": [
+          "长期高压后回家没有情绪缓冲",
+          "既想有陪伴感，又怕被过度打扰或越界",
+          "对任何增加维护负担的新东西都很抗拒"
+        ],
+        "habits": [
+          "回家后会同时处理灯光、音乐、消息和洗漱",
+          "真正疲惫时不想做复杂操作",
+          "需要一点陪伴，但会本能地给自己留边界"
+        ],
+        "emotions": [
+          "白天一直在应对别人，晚上更想被轻轻接住",
+          "害怕空荡，也害怕新的东西反过来占据自己"
+        ],
+        "confirmation_note": "待确认：请 WY 复核 narrative seed 与教学参数。"
+      }
+    }
+  ]
+}

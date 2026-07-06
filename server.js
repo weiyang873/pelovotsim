@@ -2601,6 +2601,25 @@ function handleApi(req, res) {
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "round2 assign failed" }));
   }
 
+  if (req.method === "GET" && String(req.url || "").startsWith("/api/round2/persona-reports")) {
+    try {
+      const url = new URL(String(req.url || ""), `http://${req.headers.host || "127.0.0.1"}`);
+      const query = Object.fromEntries(url.searchParams.entries());
+      return Round2.personaReportsApi(query)
+        .then((out) => sendJson(res, out.status, out.body))
+        .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "round2 persona reports failed" }));
+    } catch (err) {
+      return sendJson(res, 400, { ok: false, error: err.message || "invalid round2 persona report request" });
+    }
+  }
+
+  if (req.method === "POST" && req.url === "/api/round2/persona-select") {
+    return readBody(req)
+      .then((p) => Round2.selectPersonaArchetypeApi(p))
+      .then((out) => sendJson(res, out.status, out.body))
+      .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "round2 persona select failed" }));
+  }
+
   if (req.method === "POST" && req.url === "/api/round2/interview/auto") {
     return readBody(req)
       .then((p) => Round2.interviewAuto(p))
