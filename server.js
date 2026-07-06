@@ -1916,24 +1916,34 @@ function handleApi(req, res) {
 
   if (req.method === "POST" && /^\/api\/admin\/import\/?$/.test(reqPath)) {
     return readBody(req)
-      .then((payload) => AdminRoutes.importStudents(payload))
+      .then((payload) => {
+        const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: null, body: payload });
+        if (!auth?.body?.ok) return auth;
+        return AdminRoutes.importStudents(payload);
+      })
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 400, { ok: false, error: err.message }));
   }
 
   if (req.method === "GET" && /^\/api\/admin\/teams\/?$/.test(reqPath)) {
+    const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: null, body: null });
+    if (!auth?.body?.ok) return sendJson(res, auth.status, auth.body);
     return AdminRoutes.listTeams()
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message }));
   }
 
   if (req.method === "GET" && /^\/api\/admin\/export\/?$/.test(reqPath)) {
+    const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: null, body: null });
+    if (!auth?.body?.ok) return sendJson(res, auth.status, auth.body);
     return AdminRoutes.exportResults()
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message }));
   }
 
   if (req.method === "POST" && /^\/api\/admin\/flush-llm-logs\/?$/.test(reqPath)) {
+    const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: null, body: null });
+    if (!auth?.body?.ok) return sendJson(res, auth.status, auth.body);
     return AdminRoutes.flushLlmLogs()
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message }));
@@ -1941,6 +1951,8 @@ function handleApi(req, res) {
 
   if (req.method === "GET" && /^\/api\/admin\/llm-logs\/?$/.test(reqPath)) {
     const url = new URL(reqUrl, `http://${req.headers.host || "127.0.0.1"}`);
+    const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: url.searchParams, body: null });
+    if (!auth?.body?.ok) return sendJson(res, auth.status, auth.body);
     return AdminRoutes.readLlmLogs({ date: url.searchParams.get("date") || "" })
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message }));
@@ -1948,6 +1960,8 @@ function handleApi(req, res) {
 
   if (req.method === "GET" && /^\/api\/admin\/llm-logs\/team\/[^/]+\/?$/.test(reqPath)) {
     const url = new URL(reqUrl, `http://${req.headers.host || "127.0.0.1"}`);
+    const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: url.searchParams, body: null });
+    if (!auth?.body?.ok) return sendJson(res, auth.status, auth.body);
     const teamId = decodeURIComponent(reqPath.split("/")[5] || "");
     return AdminRoutes.readLlmLogsByTeam(teamId, { date: url.searchParams.get("date") || "" })
       .then((out) => sendJson(res, out.status, out.body))
@@ -1956,6 +1970,8 @@ function handleApi(req, res) {
 
   if (req.method === "GET" && /^\/api\/admin\/llm-logs\/caller\/[^/]+\/?$/.test(reqPath)) {
     const url = new URL(reqUrl, `http://${req.headers.host || "127.0.0.1"}`);
+    const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: url.searchParams, body: null });
+    if (!auth?.body?.ok) return sendJson(res, auth.status, auth.body);
     const caller = decodeURIComponent(reqPath.split("/")[5] || "");
     return AdminRoutes.readLlmLogsByCaller(caller, { date: url.searchParams.get("date") || "" })
       .then((out) => sendJson(res, out.status, out.body))
@@ -2529,8 +2545,15 @@ function handleApi(req, res) {
 
   if (req.method === "POST" && req.url === "/api/computation-log") {
     return readBody(req)
-      .then((p) => ComputationLog.createLogs(p))
-      .then((body) => sendJson(res, 200, body))
+      .then((p) => {
+        const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: null, body: p });
+        if (!auth?.body?.ok) return { __authFail: auth };
+        return ComputationLog.createLogs(p).then((body) => ({ __authFail: null, body }));
+      })
+      .then((out) => {
+        if (out.__authFail) return sendJson(res, out.__authFail.status, out.__authFail.body);
+        return sendJson(res, 200, out.body);
+      })
       .catch((err) => sendJson(res, 400, { ok: false, error: err.message || "computation log create failed" }));
   }
 
@@ -2804,6 +2827,8 @@ function handleApi(req, res) {
   if (req.method === "GET" && /^\/api\/test\/export\/[^/?]+(?:\?.*)?$/.test(String(req.url || ""))) {
     try {
       const url = new URL(String(req.url || ""), `http://${req.headers.host || "127.0.0.1"}`);
+      const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: url.searchParams, body: null });
+      if (!auth?.body?.ok) return sendJson(res, auth.status, auth.body);
       const teamId = decodeURIComponent(url.pathname.split("/")[4] || "");
       return TestExportRoutes.exportTeamDataApi({
         teamId,
@@ -3126,13 +3151,29 @@ function serveStatic(req, res) {
     return;
   }
 
+  // Static whitelist: the root fallback only serves front-end assets
+  // (root *.html landing pages and /legacy/* assets). Reject dotfiles and any
+  // extension not on the allow-list so source/secret files (.env, .db, .sqlite,
+  // .log, .jsonl, package.json, ...) are never readable over HTTP.
+  const STATIC_EXT_ALLOW = new Set([
+    ".html", ".htm", ".js", ".mjs", ".css", ".map", ".md", ".txt",
+    ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".ico",
+    ".woff", ".woff2", ".ttf", ".eot"
+  ]);
+  const hasDotSegment = safePath.split("/").some((seg) => seg.startsWith("."));
+  const ext = path.extname(filePath).toLowerCase();
+  if (hasDotSegment || !STATIC_EXT_ALLOW.has(ext)) {
+    res.writeHead(404);
+    res.end("not found");
+    return;
+  }
+
   fs.readFile(filePath, (err, data) => {
     if (err) {
       res.writeHead(404);
       res.end("not found");
       return;
     }
-    const ext = path.extname(filePath);
     res.writeHead(200, { "Content-Type": MIME[ext] || "application/octet-stream" });
     res.end(data);
   });
@@ -3140,12 +3181,26 @@ function serveStatic(req, res) {
 
 function createAppServer() {
   return http.createServer((req, res) => {
-    if (String(req.url || "").startsWith("/api/")) {
-      const handled = handleApi(req, res);
-      if (handled !== false) return;
-      return sendJson(res, 404, { ok: false, error: `route not found: ${req.url}` });
+    // Outer guard: a malformed request line (bad percent-encoding ->
+    // URIError from decodeURIComponent, bad Host header -> TypeError from
+    // new URL) must return 400, never throw out of the handler and crash
+    // the process. One layer here covers the ~31 bare decodeURIComponent
+    // sites and new URL(host) calls inside the dispatchers.
+    try {
+      if (String(req.url || "").startsWith("/api/")) {
+        const handled = handleApi(req, res);
+        if (handled !== false) return;
+        return sendJson(res, 404, { ok: false, error: `route not found: ${req.url}` });
+      }
+      serveStatic(req, res);
+    } catch (err) {
+      console.error("[Server] request handler error:", err?.message || err);
+      if (!res.headersSent) {
+        sendJson(res, 400, { ok: false, error: "bad request" });
+      } else {
+        try { res.end(); } catch (_) { /* already closed */ }
+      }
     }
-    serveStatic(req, res);
   });
 }
 
@@ -3171,6 +3226,38 @@ function registerShutdownHooks(server) {
   });
   process.on("SIGTERM", () => {
     gracefulShutdown("SIGTERM");
+  });
+
+  // A rejected promise nobody caught is a bug, but on Node 20 it defaults to
+  // crashing the process. For a live classroom that trades one lost request
+  // for the whole session, log and keep serving.
+  process.on("unhandledRejection", (reason) => {
+    console.error("[Server] unhandledRejection (logged, not exiting):", reason?.stack || reason?.message || reason);
+  });
+
+  // An uncaughtException means the process is in an undefined state; continuing
+  // is more dangerous than restarting. Log, best-effort close server+pool, then
+  // exit(1) — docker `restart: unless-stopped` brings us back, and state lives
+  // in Postgres so students just refresh.
+  let fatalExiting = false;
+  process.on("uncaughtException", (err) => {
+    console.error("[Server] uncaughtException (fatal, restarting):", err?.stack || err?.message || err);
+    if (fatalExiting) return;
+    fatalExiting = true;
+    const forceTimer = setTimeout(() => process.exit(1), 3000);
+    if (typeof forceTimer.unref === "function") forceTimer.unref();
+    (async () => {
+      try {
+        if (server && typeof server.close === "function") {
+          await new Promise((resolve) => server.close(() => resolve()));
+        }
+        await shutdown();
+      } catch (_) {
+        // ignore errors during fatal shutdown
+      } finally {
+        process.exit(1);
+      }
+    })();
   });
 }
 

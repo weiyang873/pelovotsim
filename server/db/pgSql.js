@@ -15,6 +15,14 @@ const pool = new Pool({
   connectionTimeoutMillis: 5000
 });
 
+// node-postgres emits 'error' on idle clients when the server drops the
+// connection (DB restart, network blip, idle-connection reaper). An
+// unhandled 'error' on the pool would crash the whole process. Log and
+// swallow — the pool recreates connections on the next query.
+pool.on("error", (err) => {
+  console.error("[pgSql] idle client error (recoverable):", err?.message || err);
+});
+
 function sqlQuote(value) {
   if (value === null || value === undefined) return "NULL";
   return `'${String(value).replace(/'/g, "''")}'`;

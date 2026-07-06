@@ -489,7 +489,7 @@ function buildCsvFiles(exportData) {
 
 function isExportAuthorized(headers = {}) {
   const expected = String(process.env.TEST_EXPORT_KEY || "").trim();
-  if (!expected) return true;
+  if (!expected) return false;
   return String(headers["x-test-export-key"] || "").trim() === expected;
 }
 
