@@ -25,6 +25,6 @@ test("buildAssignments only assigns dimensions and does not pre-generate persona
     assert.ok(Array.isArray(item.dims));
     assert.ok(item.dims.length > 0);
     assert.deepEqual(item.personaPool, []);
-    assert.equal(item.personaVersion, 4);
+    assert.equal(item.personaVersion, 5);
   });
 });
