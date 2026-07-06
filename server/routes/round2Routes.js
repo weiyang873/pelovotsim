@@ -11,6 +11,7 @@ const { getTeam, setTeamLeader } = require("../multiplayer/teamManager");
 const { scheduleStages } = require("../multiplayer/computationLog");
 const {
   calculate,
+  computeProductMarketMatch,
   validateSelections,
   computeSoftPenalties,
   getCapabilityParams
@@ -157,6 +158,32 @@ const TIER_LABELS = {
   mid: "标准",
   high: "旗舰"
 };
+const MATCH_CARD_SCORE_STEP = {
+  low: 1,
+  mid: 2,
+  high: 3
+};
+const DIM_SHORT_TO_MATCH_KEY = {
+  interaction: "interaction",
+  perception: "perception",
+  motion: "mobility",
+  safety: "safety_privacy",
+  extend: "integration",
+  ops: "operations"
+};
+const CAPABILITY_TO_DIM_SHORT = (() => {
+  const map = new Map();
+  (CAP_GROUPS.groups || []).forEach((group) => {
+    const dimShort = DIM_GROUP_TO_SHORT[String(group.group_id || "").trim()];
+    if (!dimShort) return;
+    (group.capabilities || []).forEach((cap) => {
+      const capId = String(cap.cap_id || cap.id || "").trim();
+      if (!capId) return;
+      map.set(capId, dimShort);
+    });
+  });
+  return map;
+})();
 
 function makeResponse(status, body) {
   return { status, body };
@@ -167,30 +194,6 @@ function matchStrengthToTier(value) {
   if (strength >= 0.7) return "高度契合";
   if (strength >= 0.5) return "部分契合";
   return "契合度有限";
-}
-
-function targetGmToFrozenBand(value) {
-  const gm = Number(value);
-  if (!Number.isFinite(gm)) return null;
-  if (gm < 0.15) {
-    return {
-      label: "毛利空间",
-      range: "<15%",
-      tier: "紧"
-    };
-  }
-  if (gm <= 0.35) {
-    return {
-      label: "毛利空间",
-      range: "15%-35%",
-      tier: "中"
-    };
-  }
-  return {
-    label: "毛利空间",
-    range: ">35%",
-    tier: "宽"
-  };
 }
 
 function buildLeaderMeta(team, requesterMemberId = "") {
@@ -325,6 +328,10 @@ async function ensureSchema() {
       ADD COLUMN IF NOT EXISTS flow_version TEXT;
       ALTER TABLE round2_results
       ADD COLUMN IF NOT EXISTS flow_version TEXT;
+      ALTER TABLE round2_results
+      ADD COLUMN IF NOT EXISTS matched_grid TEXT;
+      ALTER TABLE round2_results
+      ADD COLUMN IF NOT EXISTS match_score_json TEXT;
     `);
     await runSql(`
       DELETE FROM round2_interview_sessions
@@ -1524,6 +1531,20 @@ async function buildRound2Recap(teamId, phase4Body) {
   const matchedMarketCount = settleItems.filter((x) => x?.matched && x?.jinang_type === "market").length;
   const matchedTechCount = settleItems.filter((x) => x?.matched && x?.jinang_type === "tech").length;
   const displayedWtpAdj = Number(phase4Body?.wtp_breakdown?.final_result?.WTPadj || team.final_wtp_adj || 0);
+  const round1Baseline = buildGridBaselineMetrics(team.final_grid_id, team.final_architecture);
+  const storedResult = revealR1Results ? await getStoredResult(teamId, team.session_id || "default") : null;
+  const matchedGrid = String(storedResult?.matched_grid || storedResult?.best_grid || "").trim();
+  const matchedBaseline = matchedGrid ? buildGridBaselineMetrics(matchedGrid, team.final_architecture) : null;
+  const round1MarketLabel = inferBestGridLabel(team.final_grid_id);
+  const round1Sam = team.final_sam != null && team.final_sam !== ""
+    ? Number(team.final_sam)
+    : (round1Baseline ? Number(round1Baseline.sam || 0) : null);
+  const round1WtpAdj = displayedWtpAdj > 0
+    ? displayedWtpAdj
+    : (team.final_wtp_adj != null && team.final_wtp_adj !== "" ? Number(team.final_wtp_adj) : null);
+  const executionAlignment = matchedGrid && team.final_grid_id
+    ? (toCalcGridId(team.final_grid_id, team.final_architecture) === matchedGrid ? "aligned" : "shifted")
+    : "";
   const vpSummary = normalizeVpSummary(phase4Body?.team?.final_vp_summary || team.final_vp_summary, phase4Body?.team?.final_vp_text || team.final_vp_text || "");
   const marketJinangList = Array.isArray(phase4Body?.jinang?.market_jinangs)
     ? phase4Body.jinang.market_jinangs
@@ -1545,7 +1566,6 @@ async function buildRound2Recap(teamId, phase4Body) {
         return nextBreakdown;
       })()
     : (phase4Body?.wtp_breakdown || null);
-  const frozenTargetGm = targetGmToFrozenBand(team.final_target_gm);
   console.log("[R2 pricing] 显示给学生的 WTPadj:", displayedWtpAdj);
 
   return {
@@ -1553,11 +1573,18 @@ async function buildRound2Recap(teamId, phase4Body) {
     architecture: team.final_architecture || "",
     ...(revealR1Results
       ? {
-          ...(frozenTargetGm ? {
-            target_gm_band: frozenTargetGm.range,
-            target_gm_tier: frozenTargetGm.tier,
-            target_gm_label: frozenTargetGm.label
-          } : {})
+          round1_grid_label: round1MarketLabel,
+          round1_sam: round1Sam,
+          round1_wtp_adj: round1WtpAdj,
+          matched_grid: matchedGrid || null,
+          matched_grid_label: matchedBaseline?.grid_label || "",
+          matched_grid_sam: matchedBaseline?.sam ?? null,
+          matched_grid_wtp_ref: matchedBaseline?.wtp_ref ?? null,
+          matched_grid_wtp_mean: matchedBaseline?.wtp_mean ?? null,
+          execution_alignment: executionAlignment,
+          execution_alignment_label: executionAlignment === "aligned"
+            ? "战略执行一致"
+            : (executionAlignment === "shifted" ? "战略执行发生位移" : "")
         }
       : {}),
     vp_score: Number(phase4Body?.vp_scores?.VPscore || phase4Body?.r1_result?.VPscore || 0),
@@ -2489,6 +2516,70 @@ function normalizeRadarPayload(radar) {
   };
 }
 
+function buildCardScoresFromSelections(selections) {
+  const totals = {
+    interaction: 0,
+    perception: 0,
+    motion: 0,
+    safety: 0,
+    extend: 0,
+    ops: 0
+  };
+  normalizeSelectionsPayload(selections).forEach((sel) => {
+    const dimShort = CAPABILITY_TO_DIM_SHORT.get(sel.cap_id);
+    if (!dimShort) return;
+    totals[dimShort] += Number(MATCH_CARD_SCORE_STEP[sel.tier] || 0);
+  });
+  return Object.fromEntries(
+    Object.entries(totals).map(([dimShort, total]) => [
+      dimShort,
+      Number(clamp(4 + Number(total || 0), 1, 9).toFixed(1))
+    ])
+  );
+}
+
+function toAuthorityMatchScores(cardScores) {
+  const src = cardScores && typeof cardScores === "object" ? cardScores : {};
+  return {
+    interaction: Number(src.interaction || 0),
+    perception: Number(src.perception || 0),
+    mobility: Number(src.motion || 0),
+    safety_privacy: Number(src.safety || 0),
+    integration: Number(src.extend || 0),
+    operations: Number(src.ops || 0)
+  };
+}
+
+function computeAuthorityProductMarketMatch(selections, gridPriors = getGridPriors()) {
+  const cardScores = buildCardScoresFromSelections(selections);
+  const match = computeProductMarketMatch(toAuthorityMatchScores(cardScores), gridPriors);
+  return {
+    cardScores,
+    bestGrid: String(match.bestGrid || "").trim(),
+    bestMatch: Number(match.bestMatch || 0),
+    allMatches: match.allMatches || {}
+  };
+}
+
+function buildGridBaselineMetrics(gridId, architecture) {
+  const normalizedGridId = /^B2[BC]_/.test(String(gridId || "").trim())
+    ? String(gridId || "").trim()
+    : toCalcGridId(gridId, architecture);
+  if (!normalizedGridId) return null;
+  const base = Engine.computeRound1V2(normalizedGridId, normalizeArchitecture(architecture || "Experience"), {
+    C: 3,
+    G: 3,
+    E: 3
+  }, 0);
+  return {
+    grid_id: normalizedGridId,
+    grid_label: inferBestGridLabel(normalizedGridId),
+    sam: Number(base.SAM_billion || 0),
+    wtp_ref: Number(base.WTPref || 0),
+    wtp_mean: Number(base.WTPmean || 0)
+  };
+}
+
 function buildCardSummary(selections) {
   return normalizeSelectionsPayload(selections).map((sel) => {
     const cap = CAPABILITY_MAP.get(sel.cap_id);
@@ -2598,7 +2689,8 @@ async function getStoredResult(teamId, sessionId) {
   const row = rows[0];
   if (!row) return null;
   const storedResult = safeJsonParse(row.result_json, {});
-  const marketInfo = getRound2MarketInfo(row.best_grid || storedResult.best_grid || "");
+  const matchedGrid = String(row.matched_grid || storedResult.matched_grid || row.best_grid || storedResult.best_grid || "").trim();
+  const marketInfo = getRound2MarketInfo(matchedGrid || row.best_grid || storedResult.best_grid || "");
   const marketSizeYi = Number.isFinite(Number(storedResult.market_size_yi))
     ? Number(storedResult.market_size_yi)
     : marketInfo.market_size_yi;
@@ -2614,12 +2706,15 @@ async function getStoredResult(teamId, sessionId) {
     profit: row.profit == null ? null : Number(row.profit),
     profit_per_unit: row.profit_per_unit == null ? null : Number(row.profit_per_unit),
     vscore: row.vscore == null ? null : Number(row.vscore),
-    best_grid: row.best_grid || null,
+    best_grid: matchedGrid || row.best_grid || null,
+    matched_grid: matchedGrid || null,
+    match_score_json: safeJsonParse(row.match_score_json, storedResult.match_score_json || {}),
     market_size_yi: marketSizeYi,
     hhi,
     hhi_label: hhiLabel,
     result: {
       ...storedResult,
+      matched_grid: matchedGrid || null,
       market_size_yi: marketSizeYi,
       hhi,
       hhi_label: hhiLabel
@@ -2660,7 +2755,7 @@ async function persistTeamSnapshot(teamId, sessionId, submission, radar, result)
 
     INSERT INTO round2_results (
       team_id, session_id, flow_version, units, profit, profit_per_unit,
-      vscore, best_grid, result_json, computed_at
+      vscore, best_grid, matched_grid, match_score_json, result_json, computed_at
     ) VALUES (
       ${sqlQuote(teamId)},
       ${sqlQuote(sessionId)},
@@ -2670,6 +2765,8 @@ async function persistTeamSnapshot(teamId, sessionId, submission, radar, result)
       ${result.profit_per_unit == null ? "NULL" : Number(result.profit_per_unit)},
       ${result.vscore == null ? "NULL" : Number(result.vscore)},
       ${sqlQuote(result.best_grid || null)},
+      ${sqlQuote(result.matched_grid || null)},
+      ${sqlQuote(JSON.stringify(result.match_score_json || {}))},
       ${sqlQuote(JSON.stringify(result.result || {}))},
       ${sqlQuote(result.computed_at || now)}
     )
@@ -2680,6 +2777,8 @@ async function persistTeamSnapshot(teamId, sessionId, submission, radar, result)
       profit_per_unit = EXCLUDED.profit_per_unit,
       vscore = EXCLUDED.vscore,
       best_grid = EXCLUDED.best_grid,
+      matched_grid = EXCLUDED.matched_grid,
+      match_score_json = EXCLUDED.match_score_json,
       result_json = EXCLUDED.result_json,
       computed_at = EXCLUDED.computed_at;
   `);
@@ -2740,14 +2839,27 @@ async function buildComputedTeamSnapshot(teamId, sessionId, submissionInput, rad
     sessionId,
     source: "web"
   });
+  const productMarketMatch = computeAuthorityProductMarketMatch(submission.selections, getGridPriors());
+  const clientBestGrid = String(submission.best_grid || "").trim();
+  const matchedGrid = String(productMarketMatch.bestGrid || recapData.final_grid_id || "").trim();
+  if (clientBestGrid && matchedGrid && clientBestGrid !== matchedGrid) {
+    console.warn("[Round2] client best_grid ignored; server authority match wins", JSON.stringify({
+      teamId,
+      sessionId,
+      client_best_grid: clientBestGrid,
+      matched_grid: matchedGrid
+    }));
+  }
 
   const profitPerUnit = Number(calcResult.units || 0) > 0
     ? Math.round(Number(calcResult.profit || 0) / Number(calcResult.units || 1))
     : 0;
-  const bestGrid = String(submission.best_grid || recapData.final_grid_id || "");
-  const marketInfo = getRound2MarketInfo(recapData.final_grid_id || bestGrid || calcGridId);
+  const marketInfo = getRound2MarketInfo(matchedGrid || recapData.final_grid_id || calcGridId);
   const resultPayload = {
     ...calcResult,
+    matched_grid: matchedGrid || null,
+    match_score_json: productMarketMatch.allMatches,
+    card_scores: productMarketMatch.cardScores,
     market_size_yi: marketInfo.market_size_yi,
     hhi: marketInfo.hhi,
     hhi_label: marketInfo.hhi_label
@@ -2760,8 +2872,10 @@ async function buildComputedTeamSnapshot(teamId, sessionId, submissionInput, rad
     profit: Number(calcResult.profit || 0),
     profit_per_unit: profitPerUnit,
     vscore: Number(calcResult.V || 0),
-    best_grid: bestGrid,
-    best_grid_label: inferBestGridLabel(bestGrid),
+    best_grid: matchedGrid || null,
+    matched_grid: matchedGrid || null,
+    best_grid_label: inferBestGridLabel(matchedGrid),
+    match_score_json: productMarketMatch.allMatches,
     market_size_yi: marketInfo.market_size_yi,
     hhi: marketInfo.hhi,
     hhi_label: marketInfo.hhi_label,
@@ -2775,7 +2889,7 @@ async function buildComputedTeamSnapshot(teamId, sessionId, submissionInput, rad
     dcogs: Number(calcResult.dCOGS || 0),
     risk_total: Number(calcResult.risk || 0),
     card_count: Array.isArray(submission.selections) ? submission.selections.length : Number(submission.card_count || 0),
-    best_grid: bestGrid,
+    best_grid: matchedGrid || null,
     cards: Array.isArray(submission.cards) && submission.cards.length ? submission.cards : buildCardSummary(submission.selections),
     submitted_at: submission.submitted_at || nowIso()
   };
@@ -3805,7 +3919,7 @@ async function teamSubmitApi(body) {
       : Number.isFinite(Number(body?.mergedInterview?.evi))
         ? Number(body.mergedInterview.evi)
         : (Number.isFinite(Number(fallbackEvi)) ? Number(fallbackEvi) : 0.7);
-    const bestGrid = String(body?.bestGrid || body?.best_grid || team.final_grid_id || "").trim();
+    const bestGrid = String(body?.bestGrid || body?.best_grid || "").trim();
 
     const submission = {
       team_id: teamId,

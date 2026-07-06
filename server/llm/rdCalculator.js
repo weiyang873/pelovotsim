@@ -604,28 +604,54 @@ function calculateProfit(price, gridId, X, dCOGS, coverCore, coverNice, subLift,
   };
 }
 
-function computeProductMarketMatch(cardScores, gridPriors) {
+function normalizeMatchCardScores(cardScores) {
+  const src = cardScores && typeof cardScores === "object" ? cardScores : {};
+  return {
+    perception: Number(src.perception ?? src["感知与理解"] ?? 0),
+    mobility: Number(src.mobility ?? src.motion ?? src["运动与导航"] ?? 0),
+    interaction: Number(src.interaction ?? src["交互与表达"] ?? 0),
+    safety_privacy: Number(src.safety_privacy ?? src.safety ?? src["安全与信任"] ?? 0),
+    integration: Number(src.integration ?? src.extend ?? src["可扩展与连接"] ?? 0),
+    operations: Number(src.operations ?? src.ops ?? src["可运营与可维护"] ?? 0)
+  };
+}
+
+function normalizeMatchWeights(weights) {
+  const src = weights && typeof weights === "object" ? weights : {};
+  const normalized = {};
+  for (const key of DIM_KEYS) {
+    normalized[key] = Number(src[key] ?? src[DIM_KEY_TO_CN[key]] ?? 0);
+  }
+  return normalized;
+}
+
+function computeProductMarketMatch(cardScores, gridPriors = GRID_PRIORS) {
   const allMatches = {};
   let bestGrid = null;
   let bestMatch = -Infinity;
+  const normalizedScores = normalizeMatchCardScores(cardScores);
 
   const priors = Array.isArray(gridPriors?.grids) ? gridPriors.grids : [];
   for (const g of priors) {
     const gridId = g.id;
     if (!gridId) continue;
-    const weights = g.weights || g.radar_weight_prior || {};
+    const weights = normalizeMatchWeights(g.weights || g.radar_weight_prior || {});
     let match = 0;
-    for (const [dim, weight] of Object.entries(weights)) {
-      match += Number(weight || 0) * Number(cardScores?.[dim] || 0);
+    for (const key of DIM_KEYS) {
+      match += Number(weights[key] || 0) * Number(normalizedScores[key] || 0);
     }
-    allMatches[gridId] = match;
+    allMatches[gridId] = roundForLog(match);
     if (match > bestMatch) {
       bestMatch = match;
       bestGrid = gridId;
     }
   }
 
-  return { bestGrid, bestMatch, allMatches };
+  return {
+    bestGrid,
+    bestMatch: roundForLog(bestMatch),
+    allMatches
+  };
 }
 
 function validatePrecomputedWtpPriors() {

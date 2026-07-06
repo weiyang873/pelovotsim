@@ -574,22 +574,28 @@ function normalizeScoreValue(value) {
   return Math.max(0, Math.min(5, Math.round(n * 10) / 10));
 }
 
-function formatFrozenTargetGm(recap) {
+function formatRecapComparison(recap) {
   const src = recap && typeof recap === "object" ? recap : {};
-  const range = String(src.target_gm_band || "").trim();
-  const tier = String(src.target_gm_tier || "").trim();
-  const label = String(src.target_gm_label || "毛利空间").trim() || "毛利空间";
-  if (!range && !tier) {
-    return {
-      label,
-      value: "待揭示",
-      detail: "未记录"
-    };
-  }
   return {
-    label,
-    value: range || "待揭示",
-    detail: tier ? `· ${tier}` : ""
+    round1: {
+      gridLabel: String(src.round1_grid_label || formatGridLabel(src.final_grid_id) || "待揭示").trim() || "待揭示",
+      sam: Number.isFinite(Number(src.round1_sam)) ? `${Math.round(Number(src.round1_sam)).toLocaleString()} 亿` : "待揭示",
+      wtp: Number.isFinite(Number(src.round1_wtp_adj)) ? `¥${Math.round(Number(src.round1_wtp_adj)).toLocaleString()}` : "待揭示"
+    },
+    round2: {
+      gridLabel: String(src.matched_grid_label || "待揭示").trim() || "待揭示",
+      sam: Number.isFinite(Number(src.matched_grid_sam)) ? `${Math.round(Number(src.matched_grid_sam)).toLocaleString()} 亿` : "待揭示",
+      wtp: Number.isFinite(Number(src.matched_grid_wtp_ref)) ? `¥${Math.round(Number(src.matched_grid_wtp_ref)).toLocaleString()}` : "待揭示",
+      detail: Number.isFinite(Number(src.matched_grid_wtp_mean))
+        ? `WTPmean ¥${Math.round(Number(src.matched_grid_wtp_mean)).toLocaleString()}`
+        : ""
+    },
+    alignmentLabel: String(src.execution_alignment_label || "").trim(),
+    alignmentDetail: src.execution_alignment === "aligned"
+      ? "你们实际做出来的产品，和 Round 1 说要做的市场落在同一格。"
+      : (src.execution_alignment === "shifted"
+        ? "你们实际做出来的产品更贴近另一格，这更适合作为课堂复盘讨论点，不代表简单对错。"
+        : "")
   };
 }
 
@@ -1119,8 +1125,8 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
   const resultMarketJinangBonusPct = Number.isFinite(Number(resultMarketJinang?.bonus))
     ? Math.round(Number(resultMarketJinang.bonus) * 100)
     : 0;
-  const frozenTargetGm = useMemo(
-    () => formatFrozenTargetGm(teamRecap),
+  const recapComparison = useMemo(
+    () => formatRecapComparison(teamRecap),
     [teamRecap]
   );
   const marketSizeYi = Number.isFinite(Number(submittedCalc?.market_size_yi))
@@ -3199,12 +3205,12 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
             <h3 style={{fontSize:16,fontWeight:800,margin:"0 0 12px"}}>📈 市场参考（第一轮结果）</h3>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
               <div style={{padding:"12px 14px",borderRadius:10,background:"#f0fdf4",border:"1.5px solid #bbf7d0"}}>
-                <div style={{fontSize:11,color:"#6b7280"}}>{frozenTargetGm.label}</div>
-                <div style={{display:"flex",alignItems:"baseline",gap:8,marginTop:4,flexWrap:"wrap"}}>
-                  <div style={{fontSize:22,fontWeight:800,color:"#166534"}}>{frozenTargetGm.value}</div>
-                  <div style={{fontSize:12,fontWeight:700,color:"#15803d"}}>{frozenTargetGm.detail}</div>
+                <div style={{fontSize:11,color:"#6b7280"}}>Round 1 锚定市场</div>
+                <div style={{fontSize:18,fontWeight:800,color:"#166534",marginTop:4}}>{recapComparison.round1.gridLabel}</div>
+                <div style={{fontSize:11,color:"#15803d",marginTop:6}}>
+                  SAM {recapComparison.round1.sam} / WTPadj {recapComparison.round1.wtp}
                 </div>
-                <div style={{fontSize:10,color:"#888"}}>{formatGridLabel(teamRecap?.final_grid_id || teamInfo?.final_grid_id)}</div>
+                <div style={{fontSize:10,color:"#888"}}>这是你们在第一轮选择的市场与支付意愿基线。</div>
               </div>
               <div style={{padding:"12px 14px",borderRadius:10,background:"#faf5ff",border:"1.5px solid #e9d5ff"}}>
                 <div style={{fontSize:11,color:"#6b7280"}}>价值主张对支付意愿的影响</div>
@@ -3432,12 +3438,38 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
             <>
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:10,margin:"18px 0"}}>
                 <div style={{padding:"14px 16px",borderRadius:12,background:"#f8fafc",border:"1px solid #e2e8f0"}}>
-                  <div style={{fontSize:12,fontWeight:800,color:"#334155",marginBottom:8}}>Round 1 冻结结果</div>
+                  <div style={{fontSize:12,fontWeight:800,color:"#334155",marginBottom:8}}>Round 1 / Round 2 两线对比</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+                    <div style={{padding:"10px 12px",borderRadius:10,background:"#ffffff",border:"1px solid #e2e8f0"}}>
+                      <div style={{fontSize:11,color:"#64748b",marginBottom:6}}>Round 1（你说要做什么）</div>
+                      <div style={{fontSize:13,color:"#1f2937",lineHeight:1.8}}>
+                        <div>目标市场：<strong>{recapComparison.round1.gridLabel}</strong></div>
+                        <div>市场规模：<strong>{recapComparison.round1.sam}</strong></div>
+                        <div>WTP：<strong>{recapComparison.round1.wtp}</strong></div>
+                      </div>
+                    </div>
+                    <div style={{padding:"10px 12px",borderRadius:10,background:"#f8fafc",border:"1px solid #dbeafe"}}>
+                      <div style={{fontSize:11,color:"#64748b",marginBottom:6}}>Round 2（你实际做了什么）</div>
+                      <div style={{fontSize:13,color:"#1f2937",lineHeight:1.8}}>
+                        <div>最匹配格子：<strong>{recapComparison.round2.gridLabel}</strong></div>
+                        <div>市场规模：<strong>{recapComparison.round2.sam}</strong></div>
+                        <div>WTP：<strong>{recapComparison.round2.wtp}</strong></div>
+                      </div>
+                      {recapComparison.round2.detail && (
+                        <div style={{fontSize:10,color:"#64748b",marginTop:6}}>{recapComparison.round2.detail}</div>
+                      )}
+                    </div>
+                  </div>
                   <div style={{fontSize:13,color:"#475569",lineHeight:1.8}}>
-                    <div>{frozenTargetGm.label}：<strong>{frozenTargetGm.value}{frozenTargetGm.detail}</strong></div>
                     <div>市场锦囊反馈：<strong>{teamRecap?.jinang_market?.match_tier || "待揭示"}</strong></div>
                     <div>VP 评分：<strong>C {normalizeScoreValue(teamRecap?.vp_scores?.C).toFixed(1)} / G {normalizeScoreValue(teamRecap?.vp_scores?.G).toFixed(1)} / E {normalizeScoreValue(teamRecap?.vp_scores?.E).toFixed(1)}</strong></div>
                   </div>
+                  {recapComparison.alignmentLabel && (
+                    <div style={{marginTop:10,padding:"10px 12px",borderRadius:10,background:"#ffffff",border:"1px dashed #cbd5e1",fontSize:12,color:"#475569",lineHeight:1.7}}>
+                      <strong>{recapComparison.alignmentLabel}</strong>
+                      {recapComparison.alignmentDetail ? `：${recapComparison.alignmentDetail}` : ""}
+                    </div>
+                  )}
                 </div>
                 <div style={{padding:"14px 16px",borderRadius:12,background:"#eff6ff",border:"1px solid #bfdbfe"}}>
                   <div style={{fontSize:12,fontWeight:800,color:"#1d4ed8",marginBottom:8}}>Round 2 最终结果</div>
