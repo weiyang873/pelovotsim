@@ -1916,24 +1916,34 @@ function handleApi(req, res) {
 
   if (req.method === "POST" && /^\/api\/admin\/import\/?$/.test(reqPath)) {
     return readBody(req)
-      .then((payload) => AdminRoutes.importStudents(payload))
+      .then((payload) => {
+        const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: null, body: payload });
+        if (!auth?.body?.ok) return auth;
+        return AdminRoutes.importStudents(payload);
+      })
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 400, { ok: false, error: err.message }));
   }
 
   if (req.method === "GET" && /^\/api\/admin\/teams\/?$/.test(reqPath)) {
+    const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: null, body: null });
+    if (!auth?.body?.ok) return sendJson(res, auth.status, auth.body);
     return AdminRoutes.listTeams()
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message }));
   }
 
   if (req.method === "GET" && /^\/api\/admin\/export\/?$/.test(reqPath)) {
+    const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: null, body: null });
+    if (!auth?.body?.ok) return sendJson(res, auth.status, auth.body);
     return AdminRoutes.exportResults()
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message }));
   }
 
   if (req.method === "POST" && /^\/api\/admin\/flush-llm-logs\/?$/.test(reqPath)) {
+    const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: null, body: null });
+    if (!auth?.body?.ok) return sendJson(res, auth.status, auth.body);
     return AdminRoutes.flushLlmLogs()
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message }));
@@ -1941,6 +1951,8 @@ function handleApi(req, res) {
 
   if (req.method === "GET" && /^\/api\/admin\/llm-logs\/?$/.test(reqPath)) {
     const url = new URL(reqUrl, `http://${req.headers.host || "127.0.0.1"}`);
+    const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: url.searchParams, body: null });
+    if (!auth?.body?.ok) return sendJson(res, auth.status, auth.body);
     return AdminRoutes.readLlmLogs({ date: url.searchParams.get("date") || "" })
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message }));
@@ -1948,6 +1960,8 @@ function handleApi(req, res) {
 
   if (req.method === "GET" && /^\/api\/admin\/llm-logs\/team\/[^/]+\/?$/.test(reqPath)) {
     const url = new URL(reqUrl, `http://${req.headers.host || "127.0.0.1"}`);
+    const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: url.searchParams, body: null });
+    if (!auth?.body?.ok) return sendJson(res, auth.status, auth.body);
     const teamId = decodeURIComponent(reqPath.split("/")[5] || "");
     return AdminRoutes.readLlmLogsByTeam(teamId, { date: url.searchParams.get("date") || "" })
       .then((out) => sendJson(res, out.status, out.body))
@@ -1956,6 +1970,8 @@ function handleApi(req, res) {
 
   if (req.method === "GET" && /^\/api\/admin\/llm-logs\/caller\/[^/]+\/?$/.test(reqPath)) {
     const url = new URL(reqUrl, `http://${req.headers.host || "127.0.0.1"}`);
+    const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: url.searchParams, body: null });
+    if (!auth?.body?.ok) return sendJson(res, auth.status, auth.body);
     const caller = decodeURIComponent(reqPath.split("/")[5] || "");
     return AdminRoutes.readLlmLogsByCaller(caller, { date: url.searchParams.get("date") || "" })
       .then((out) => sendJson(res, out.status, out.body))
@@ -2529,8 +2545,15 @@ function handleApi(req, res) {
 
   if (req.method === "POST" && req.url === "/api/computation-log") {
     return readBody(req)
-      .then((p) => ComputationLog.createLogs(p))
-      .then((body) => sendJson(res, 200, body))
+      .then((p) => {
+        const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: null, body: p });
+        if (!auth?.body?.ok) return { __authFail: auth };
+        return ComputationLog.createLogs(p).then((body) => ({ __authFail: null, body }));
+      })
+      .then((out) => {
+        if (out.__authFail) return sendJson(res, out.__authFail.status, out.__authFail.body);
+        return sendJson(res, 200, out.body);
+      })
       .catch((err) => sendJson(res, 400, { ok: false, error: err.message || "computation log create failed" }));
   }
 
@@ -2804,6 +2827,8 @@ function handleApi(req, res) {
   if (req.method === "GET" && /^\/api\/test\/export\/[^/?]+(?:\?.*)?$/.test(String(req.url || ""))) {
     try {
       const url = new URL(String(req.url || ""), `http://${req.headers.host || "127.0.0.1"}`);
+      const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: url.searchParams, body: null });
+      if (!auth?.body?.ok) return sendJson(res, auth.status, auth.body);
       const teamId = decodeURIComponent(url.pathname.split("/")[4] || "");
       return TestExportRoutes.exportTeamDataApi({
         teamId,
@@ -3126,13 +3151,29 @@ function serveStatic(req, res) {
     return;
   }
 
+  // Static whitelist: the root fallback only serves front-end assets
+  // (root *.html landing pages and /legacy/* assets). Reject dotfiles and any
+  // extension not on the allow-list so source/secret files (.env, .db, .sqlite,
+  // .log, .jsonl, package.json, ...) are never readable over HTTP.
+  const STATIC_EXT_ALLOW = new Set([
+    ".html", ".htm", ".js", ".mjs", ".css", ".map", ".md", ".txt",
+    ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".ico",
+    ".woff", ".woff2", ".ttf", ".eot"
+  ]);
+  const hasDotSegment = safePath.split("/").some((seg) => seg.startsWith("."));
+  const ext = path.extname(filePath).toLowerCase();
+  if (hasDotSegment || !STATIC_EXT_ALLOW.has(ext)) {
+    res.writeHead(404);
+    res.end("not found");
+    return;
+  }
+
   fs.readFile(filePath, (err, data) => {
     if (err) {
       res.writeHead(404);
       res.end("not found");
       return;
     }
-    const ext = path.extname(filePath);
     res.writeHead(200, { "Content-Type": MIME[ext] || "application/octet-stream" });
     res.end(data);
   });
