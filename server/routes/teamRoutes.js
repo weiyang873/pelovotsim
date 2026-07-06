@@ -106,6 +106,51 @@ function clamp01(value) {
   return Math.max(0, Math.min(1, Number(value || 0)));
 }
 
+function matchStrengthToTier(value) {
+  const strength = clamp01(value);
+  if (strength >= 0.7) return "高度契合";
+  if (strength >= 0.5) return "部分契合";
+  return "契合度有限";
+}
+
+function toStudentFacingMatch(item) {
+  if (!item) return null;
+  const { match_strength, ...rest } = item;
+  return {
+    ...rest,
+    match_tier: matchStrengthToTier(match_strength)
+  };
+}
+
+function sanitizeStudentR1Result(result) {
+  if (!result || typeof result !== "object") return result;
+  const { jinang_match_strength, ...rest } = result;
+  return rest;
+}
+
+function sanitizeStudentSettle(settle) {
+  const src = settle && typeof settle === "object" ? settle : {};
+  const settlements = Array.isArray(src.settlements) ? src.settlements : [];
+  return {
+    ...src,
+    settlements: settlements.map((item) => {
+      const effect = parseSettlementEffect(item);
+      const { match_strength, ...restEffect } = effect;
+      return {
+        ...item,
+        match_tier: matchStrengthToTier(item?.match_strength),
+        effect_applied: {
+          ...restEffect,
+          bonus: Number.isFinite(Number(restEffect?.bonus)) ? Number(restEffect.bonus) : undefined
+        }
+      };
+    }).map((item) => {
+      const { match_strength, ...rest } = item;
+      return rest;
+    })
+  };
+}
+
 function mean(values) {
   const list = (Array.isArray(values) ? values : []).filter((item) => Number.isFinite(item));
   if (!list.length) return 0;
@@ -1799,16 +1844,16 @@ async function confirmAndScoreVp(body) {
       session_id: persisted.sessionId,
       vp_result: buildConfirmedVpResult(confirmedFields, normalizedScores),
       jinang: {
-        marketJinang: previewMarketJinang?.top ? {
+        marketJinang: previewMarketJinang?.top ? toStudentFacingMatch({
           id: previewMarketJinang.top.id,
           name: previewMarketJinang.top.name,
           member_id: previewMarketJinang.top.member_id,
           member_name: previewMarketJinang.top.member_name,
           match_strength: Number(previewMarketJinang.top.match_strength || 0),
           bonus: Number(previewMarketJinang.top.bonus || 0)
-        } : null,
+        }) : null,
         marketJinangs: Array.isArray(previewMarketJinang?.items)
-          ? previewMarketJinang.items.map((item) => ({
+          ? previewMarketJinang.items.map((item) => toStudentFacingMatch({
               id: item.id,
               name: item.name,
               member_id: item.member_id,
@@ -2280,9 +2325,9 @@ async function finalizePhase3(teamId, body) {
       ok: true,
       team_id: teamId,
       status: "phase4",
-      r1_result: r1,
+      r1_result: sanitizeStudentR1Result(r1),
       vp_summary: finalVpSummary,
-      settle
+      settle: sanitizeStudentSettle(settle)
     });
   } catch (e) {
     return makeResponse(400, { ok: false, error: e.message });
@@ -2453,15 +2498,15 @@ async function buildPhase4Data(teamId) {
       final_vp_text: team.final_vp_text,
       final_vp_summary: vpSummary
     },
-    r1_result: r1,
+    r1_result: sanitizeStudentR1Result(r1),
     wtp_breakdown: (() => {
       const finalPct = Math.round((Number(r1.wtp_multiplier || 1) - 1) * 100);
       const jinangDeltaPct = Math.round(Number(r1.jinang_wtp_bonus || 0) * 100);
       const basePct = finalPct - jinangDeltaPct;
       return {
         base_result: r1Base,
-        final_result: r1,
-        market_jinang_match_strength: marketJinangSummary.topMatchStrength,
+        final_result: sanitizeStudentR1Result(r1),
+        market_jinang_match_tier: matchStrengthToTier(marketJinangSummary.topMatchStrength),
         rho_discount: r1.rho_C,
         vp_effect: r1.wtp_vp_effect,
         jinang_bonus: r1.jinang_wtp_bonus,
@@ -2490,15 +2535,15 @@ async function buildPhase4Data(teamId) {
     },
     vp_feedback: vpFeedback,
     jinang: {
-      market_jinang: topMarketJinang ? {
+      market_jinang: topMarketJinang ? toStudentFacingMatch({
         id: topMarketJinang.jinang_id,
         name: topMarketJinang.name,
         member_id: topMarketJinang.member_id,
         member_name: topMarketJinang.member_name,
         match_strength: Number(topMarketJinang.match_strength || 0),
         bonus: Number(topMarketJinang.bonus || 0)
-      } : null,
-      market_jinangs: marketJinangSummary.items.map((item) => ({
+      }) : null,
+      market_jinangs: marketJinangSummary.items.map((item) => toStudentFacingMatch({
         id: item.jinang_id,
         name: item.name,
         member_id: item.member_id,
@@ -2508,15 +2553,28 @@ async function buildPhase4Data(teamId) {
       })),
       market_jinang_bonus_total: marketJinangSummary.totalBonus
     },
-    settle
+    settle: sanitizeStudentSettle(settle)
   };
 }
 
-async function phase4Data(teamId) {
+async function phase4Data(teamId, options = {}) {
   try {
     const data = await buildPhase4Data(teamId);
     if (!data.ok) return makeResponse(data.status || 400, { ok: false, error: data.error || "phase4 failed" });
-    return makeResponse(200, data);
+    if (options?.includeRawMatchStrength) {
+      return makeResponse(200, data);
+    }
+    return makeResponse(200, {
+      ...data,
+      r1_result: sanitizeStudentR1Result(data.r1_result),
+      wtp_breakdown: data?.wtp_breakdown
+        ? {
+            ...data.wtp_breakdown,
+            final_result: sanitizeStudentR1Result(data.wtp_breakdown.final_result)
+          }
+        : data?.wtp_breakdown,
+      settle: sanitizeStudentSettle(data.settle)
+    });
   } catch (e) {
     return makeResponse(400, { ok: false, error: e.message });
   }

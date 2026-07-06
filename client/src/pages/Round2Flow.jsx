@@ -1093,7 +1093,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
   const resultTechJinang = teamRecap?.jinang_tech || null;
   const resultMarketJinangBonusPct = Number.isFinite(Number(resultMarketJinang?.bonus))
     ? Math.round(Number(resultMarketJinang.bonus) * 100)
-    : Math.round(Number(resultMarketJinang?.match_strength || 0) * 0.05 * 100);
+    : 0;
   const marketSizeYi = Number.isFinite(Number(submittedCalc?.market_size_yi))
     ? Number(submittedCalc.market_size_yi)
     : Number.isFinite(Number(teamRecap?.market_size_yi))

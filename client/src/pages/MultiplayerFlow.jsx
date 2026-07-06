@@ -1908,7 +1908,7 @@ export default function App() {
   const wtpHasJinangBoost = Math.abs(wtpJinangDeltaPct) > 0;
   const resultMarketJinangBonusPct = Number.isFinite(Number(resultMarketJinang?.bonus))
     ? Math.round(Number(resultMarketJinang.bonus) * 100)
-    : Math.round(Number(resultMarketJinang?.match_strength || 0) * 0.05 * 100);
+    : 0;
   const matchedJinangCount = settleItems.filter((s) => Boolean(s?.matched)).length;
   const matchedMarketJinangCount = settleItems.filter((s) => Boolean(s?.matched) && s?.jinang_type === "market").length;
   const matchedTechJinangCount = settleItems.filter((s) => Boolean(s?.matched) && s?.jinang_type === "tech").length;
@@ -1916,20 +1916,18 @@ export default function App() {
   const visibleMatches = settleItems
     .filter((s) => Boolean(s?.matched))
     .map((s) => {
-      const strength = Number(s?.match_strength || 0);
-      if (strength < 0.3) return null;
       const rawJinangId = String(s?.jinang_id || "").trim();
       const normalizedJinangId = rawJinangId.replace("-", "");
       const card = getCard(rawJinangId) || getCard(normalizedJinangId) || { icon: "🎴", title: s?.name || rawJinangId || "锦囊" };
       const bonusPct = Number.isFinite(Number(s?.bonus))
         ? Math.round(Number(s.bonus) * 100)
-        : Math.round(strength * 0.05 * 100);
+        : 0;
       return {
         id: s?.id || `${s?.member_id}-${s?.jinang_id}`,
         card,
         cardId: rawJinangId || card.id || "—",
         cardTitle: s?.name || card.title || rawJinangId || "锦囊",
-        label: strength >= 0.7 ? "高匹配" : "中匹配",
+        label: String(s?.match_tier || "部分契合"),
         type: s?.jinang_type,
         scope: s?.jinang_type === "market" ? "Round 1 支付意愿" : "Round 2 研发与成本",
         text: s?.jinang_type === "market"
@@ -2292,7 +2290,7 @@ export default function App() {
             }}>
               <div style={{ fontWeight: 700, marginBottom: 4, fontSize: 14 }}>💡 怎么用锦囊？</div>
               <div>
-                锦囊描述了你在某些方面的独特能力。小组所有成员的锦囊都会在最终结算时生效，关键是团队选择的市场定位和价值主张能否击中这些能力。匹配度越高，团队在成本或市场份额上的优势越大。
+                锦囊描述了你在某些方面的独特能力。小组所有成员的锦囊都会在最终结算时生效，关键是团队选择的市场定位和价值主张能否与这些优势形成更合适的组合。系统会在结果页给出定性反馈，帮助你理解哪些地方产生了帮助。
               </div>
               <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px dashed #e0d48a", color: "#7a6a2a" }}>
                 🧭 锦囊能力不是必须使用的，你也可以根据案例材料和课堂讨论，对市场方向做出自主判断。
@@ -2300,7 +2298,7 @@ export default function App() {
             </div>
 
             <p style={{ fontSize: 13, color: "#888", margin: "0 0 16px", fontStyle: "italic" }}>
-              仔细读一读每张卡描述的能力，想想它们和哪些市场方向最契合。
+              仔细读一读每张卡描述的能力，想想它们更可能在哪些市场方向里发挥作用。
             </p>
             <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
               <JinnangCard
@@ -3208,7 +3206,7 @@ export default function App() {
                   lineHeight: 1.7
                 }}>
                   市场锦囊最高匹配项：<strong>{resultMarketJinang.name}</strong>
-                  {`（契合度 ${Math.round(Number(resultMarketJinang.match_strength || 0) * 100)}%）`}
+                  {`（${String(resultMarketJinang.match_tier || "部分契合")}）`}
                   {resultMarketJinangBonusPct > 0
                     ? `，为支付意愿额外增加了 ${resultMarketJinangBonusPct}%。`
                     : "，但本轮未形成额外市场端增益。"}
@@ -3229,7 +3227,7 @@ export default function App() {
                       </div>
                       <span style={{
                         marginLeft: "auto", padding: "2px 8px", borderRadius: 4,
-                        background: item.label === "高匹配" ? "#22c55e" : "#86efac",
+                        background: item.label === "高度契合" ? "#22c55e" : item.label === "部分契合" ? "#86efac" : "#d1d5db",
                         color: "#fff", fontSize: 10, fontWeight: 600
                       }}>{item.label}</span>
                     </div>

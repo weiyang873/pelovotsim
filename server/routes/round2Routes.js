@@ -161,6 +161,13 @@ function makeResponse(status, body) {
   return { status, body };
 }
 
+function matchStrengthToTier(value) {
+  const strength = Math.max(0, Math.min(1, Number(value || 0)));
+  if (strength >= 0.7) return "高度契合";
+  if (strength >= 0.5) return "部分契合";
+  return "契合度有限";
+}
+
 function buildLeaderMeta(team, requesterMemberId = "") {
   const leaderMemberId = String(team?.leader_member_id || team?.leaderMemberId || "").trim();
   const leaderName = String(team?.leader_name || team?.leaderName || "").trim();
@@ -1504,12 +1511,12 @@ async function buildRound2Recap(teamId, phase4Body) {
     vp_summary: vpSummary,
     wtp_breakdown: phase4Body?.wtp_breakdown || null,
     jinang_tech: tech
-      ? { card_id: tech.jinang_id, match_strength: Number(tech.match_strength || 0), name: tech.name || tech.jinang_id }
+      ? { card_id: tech.jinang_id, match_tier: matchStrengthToTier(tech.match_strength), name: tech.name || tech.jinang_id }
       : null,
     jinang_market: market
       ? {
           card_id: market.jinang_id,
-          match_strength: Number(market.match_strength || 0),
+          match_tier: matchStrengthToTier(market.match_strength),
           name: market.name || market.jinang_id,
           bonus: Number(market.bonus || 0)
         }
@@ -1519,7 +1526,7 @@ async function buildRound2Recap(teamId, phase4Body) {
       name: item.name,
       member_id: item.member_id,
       member_name: item.member_name,
-      match_strength: Number(item.match_strength || 0),
+      match_tier: matchStrengthToTier(item.match_strength),
       bonus: Number(item.bonus || 0)
     })),
     jinang_summary: {
@@ -2804,7 +2811,7 @@ async function recap(query) {
     const teamId = String(query?.teamId || "").trim();
     if (!teamId) return makeResponse(400, { ok: false, error: "teamId required" });
 
-    const p4 = await TeamRoutes.phase4Data(teamId);
+    const p4 = await TeamRoutes.phase4Data(teamId, { includeRawMatchStrength: true });
     if (!p4?.body?.ok) {
       return makeResponse(p4?.status || 400, p4?.body || { ok: false, error: "phase4 unavailable" });
     }
