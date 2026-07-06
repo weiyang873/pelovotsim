@@ -1,5 +1,11 @@
 const { getTeam, setTeamLeader } = require("../multiplayer/teamManager");
 const { runSql, sqlQuote } = require("../db/pgSql");
+const TeacherDebrief = require("./teacherDebrief");
+const {
+  normalizeSessionId,
+  getSessionConfig,
+  updateSessionConfig
+} = require("../multiplayer/sessionConfig");
 const { ensureSchema: ensureVpIterationSchema } = require("../multiplayer/vpIterationStore");
 const { mergeTeamSelections } = require("../multiplayer/rdTeamAdapter");
 const {
@@ -194,17 +200,50 @@ async function setLeaderApi(body) {
 
 async function sessionStatusApi() {
   try {
-    await ensureSchema();
+    await TeacherDebrief.ensureSchema();
     const data = await getSessionStatusSummary();
-    return makeResponse(200, { ok: true, ...data });
+    const sessionId = "default";
+    const sessionConfig = await getSessionConfig(sessionId);
+    return makeResponse(200, { ok: true, session_id: sessionId, session_config: sessionConfig, ...data });
   } catch (e) {
     return makeResponse(500, { ok: false, error: e.message });
   }
 }
 
-async function openRound2Api() {
+async function sessionConfigApi(query) {
   try {
-    await ensureSchema();
+    await TeacherDebrief.ensureSchema();
+    const sessionId = normalizeSessionId(query?.session_id || query?.sessionId);
+    const sessionConfig = await getSessionConfig(sessionId);
+    return makeResponse(200, { ok: true, session_id: sessionId, session_config: sessionConfig });
+  } catch (e) {
+    return makeResponse(500, { ok: false, error: e.message });
+  }
+}
+
+async function updateSessionConfigApi(body) {
+  try {
+    await TeacherDebrief.ensureSchema();
+    const sessionId = normalizeSessionId(body?.session_id || body?.sessionId);
+    const sessionConfig = await updateSessionConfig(sessionId, body?.config || {});
+    await logTeacherAction({
+      action: "update_session_config",
+      details: {
+        session_id: sessionId,
+        config: sessionConfig
+      }
+    });
+    return makeResponse(200, { ok: true, session_id: sessionId, session_config: sessionConfig });
+  } catch (e) {
+    return makeResponse(500, { ok: false, error: e.message });
+  }
+}
+
+async function openRound2Api(body = {}) {
+  try {
+    await TeacherDebrief.ensureSchema();
+    const sessionId = normalizeSessionId(body?.session_id || body?.sessionId);
+    const sessionConfig = await getSessionConfig(sessionId);
     const snapshot = await getSessionStatusSummary();
     const affected = [];
     for (const team of snapshot.teams) {
@@ -217,11 +256,13 @@ async function openRound2Api() {
 
     await logTeacherAction({
       action: "open_round2",
-      details: { affected_team_ids: affected }
+      details: { session_id: sessionId, affected_team_ids: affected, session_config: sessionConfig }
     });
 
     return makeResponse(200, {
       ok: true,
+      session_id: sessionId,
+      session_config: sessionConfig,
       affected_count: affected.length,
       team_ids: affected
     });
@@ -647,9 +688,12 @@ async function resetSessionApi(body) {
       DELETE FROM fg_team_radar;
       DELETE FROM round2_results;
       DELETE FROM round2_submissions;
+      DELETE FROM round2_persona_choices;
+      DELETE FROM round2_persona_reports;
       DELETE FROM round2_member_selections;
       DELETE FROM round2_interview_sessions;
       DELETE FROM round2_dimension_assignments;
+      DELETE FROM session_config;
       DELETE FROM member_submissions;
       DELETE FROM jinang_settlements;
       DELETE FROM students;
@@ -670,6 +714,8 @@ async function resetSessionApi(body) {
 module.exports = {
   ensureSchema,
   sessionStatusApi,
+  sessionConfigApi,
+  updateSessionConfigApi,
   openRound2Api,
   setLeaderApi,
   forceEndInterviewApi,

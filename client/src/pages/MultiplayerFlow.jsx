@@ -1914,7 +1914,7 @@ export default function App() {
   const matchedTechJinangCount = settleItems.filter((s) => Boolean(s?.matched) && s?.jinang_type === "tech").length;
   const totalJinangCount = settleItems.length || (teamMembers.length ? teamMembers.length * 2 : 0);
   const visibleMatches = settleItems
-    .filter((s) => Boolean(s?.matched))
+    .filter((s) => Boolean(s?.matched) && String(s?.match_tier || "").trim())
     .map((s) => {
       const rawJinangId = String(s?.jinang_id || "").trim();
       const normalizedJinangId = rawJinangId.replace("-", "");
@@ -3206,7 +3206,7 @@ export default function App() {
                   lineHeight: 1.7
                 }}>
                   市场锦囊最高匹配项：<strong>{resultMarketJinang.name}</strong>
-                  {`（${String(resultMarketJinang.match_tier || "部分契合")}）`}
+                  {resultMarketJinang.match_tier ? `（${String(resultMarketJinang.match_tier)}）` : ""}
                   {resultMarketJinangBonusPct > 0
                     ? `，为支付意愿额外增加了 ${resultMarketJinangBonusPct}%。`
                     : "，但本轮未形成额外市场端增益。"}

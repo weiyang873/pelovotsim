@@ -2109,6 +2109,26 @@ function handleApi(req, res) {
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher open round2 failed" }));
   }
 
+  if (req.method === "GET" && /^\/api\/teacher\/session-config\/?$/.test(reqPath)) {
+    const url = new URL(reqUrl, `http://${req.headers.host || "127.0.0.1"}`);
+    const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: url.searchParams, body: null });
+    if (!auth?.body?.ok) return sendJson(res, auth.status, auth.body);
+    return TeacherConsole.sessionConfigApi(Object.fromEntries(url.searchParams.entries()))
+      .then((out) => sendJson(res, out.status, out.body))
+      .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher session config failed" }));
+  }
+
+  if (req.method === "POST" && /^\/api\/teacher\/session-config\/?$/.test(reqPath)) {
+    return readBody(req)
+      .then((payload) => {
+        const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: null, body: payload });
+        if (!auth?.body?.ok) return auth;
+        return TeacherConsole.updateSessionConfigApi(payload);
+      })
+      .then((out) => sendJson(res, out.status, out.body))
+      .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher update session config failed" }));
+  }
+
   if (req.method === "POST" && /^\/api\/teacher\/set-leader\/?$/.test(reqPath)) {
     return readBody(req)
       .then((payload) => {

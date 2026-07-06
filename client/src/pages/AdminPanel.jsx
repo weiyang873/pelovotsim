@@ -18,6 +18,7 @@ import {
   teacherResetMember,
   teacherResetSession,
   teacherResetTeam,
+  updateTeacherSessionConfig,
   verifyTeacherCode
 } from "../api/teacherApi";
 
@@ -54,6 +55,11 @@ const DIM_LABELS = {
   safety: "安全",
   extend: "扩展",
   ops: "运营"
+};
+const DEFAULT_SESSION_CONFIG = {
+  reveal_r1_results: false,
+  hold_before_r2: false,
+  interview_mode: "summary"
 };
 
 function parseLeaderMarker(value) {
@@ -579,6 +585,7 @@ export default function AdminPanel() {
   const [teacherCode, setTeacherCode] = useState(readTeacherCode());
   const [activeTab, setActiveTab] = useState("实时监控");
   const [sessionData, setSessionData] = useState({ meta: null, teams: [] });
+  const [sessionConfig, setSessionConfig] = useState(DEFAULT_SESSION_CONFIG);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [busyAction, setBusyAction] = useState("");
@@ -615,6 +622,10 @@ export default function AdminPanel() {
       setSessionData({
         meta: data.meta || null,
         teams: data.teams || []
+      });
+      setSessionConfig({
+        ...DEFAULT_SESSION_CONFIG,
+        ...(data.session_config || {})
       });
       setLastUpdatedAt(new Date().toLocaleTimeString());
     } catch (err) {
@@ -660,6 +671,25 @@ export default function AdminPanel() {
       return null;
     } finally {
       setBusyAction("");
+    }
+  };
+
+  const handleSessionConfigChange = async (patch) => {
+    if (!teacherCode) return;
+    const nextConfig = {
+      ...sessionConfig,
+      ...(patch || {})
+    };
+    const result = await withRefresh(
+      "updateSessionConfig",
+      () => updateTeacherSessionConfig(teacherCode, "default", nextConfig),
+      "已更新课堂开关"
+    );
+    if (result?.session_config) {
+      setSessionConfig({
+        ...DEFAULT_SESSION_CONFIG,
+        ...result.session_config
+      });
     }
   };
 
@@ -923,6 +953,7 @@ export default function AdminPanel() {
   }
 
   const meta = sessionData.meta || { totalStudents: 0, totalTeams: 0, r1Frozen: 0, r2Submitted: 0 };
+  const waitingTeams = (sessionData.teams || []).filter((team) => team?.r2?.status === "R2_NOT_STARTED").length;
   const importPreviewGroups = importPreviewRows.reduce((acc, row) => {
     const groupKey = String(row.group || "");
     if (!acc[groupKey]) acc[groupKey] = [];
@@ -1024,13 +1055,127 @@ export default function AdminPanel() {
               ))}
             </div>
 
+            <div style={{ padding: 20, borderRadius: 18, background: "#fff", border: "1px solid #e2e8f0", marginBottom: 18 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "wrap", marginBottom: 14 }}>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a", marginBottom: 6 }}>课堂开关</div>
+                  <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.7 }}>
+                    控制 Round 1 结果揭示、Round 2 放行闸门，以及 Round 2 使用摘要模式还是 live 访谈模式。
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <span style={{ padding: "6px 10px", borderRadius: 999, background: sessionConfig.reveal_r1_results ? "#dcfce7" : "#e2e8f0", color: sessionConfig.reveal_r1_results ? "#166534" : "#475569", fontSize: 11, fontWeight: 800 }}>
+                    R1 结果: {sessionConfig.reveal_r1_results ? "完整揭示" : "延迟揭示"}
+                  </span>
+                  <span style={{ padding: "6px 10px", borderRadius: 999, background: sessionConfig.hold_before_r2 ? "#dbeafe" : "#e2e8f0", color: sessionConfig.hold_before_r2 ? "#1d4ed8" : "#475569", fontSize: 11, fontWeight: 800 }}>
+                    Round 2: {sessionConfig.hold_before_r2 ? "需教师放行" : "自动直通"}
+                  </span>
+                  <span style={{ padding: "6px 10px", borderRadius: 999, background: sessionConfig.interview_mode === "live" ? "#fef3c7" : "#ede9fe", color: sessionConfig.interview_mode === "live" ? "#92400e" : "#6d28d9", fontSize: 11, fontWeight: 800 }}>
+                    访谈模式: {sessionConfig.interview_mode === "live" ? "Live" : "Summary"}
+                  </span>
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14 }}>
+                <div style={{ padding: 14, borderRadius: 14, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: "#334155", marginBottom: 10 }}>Round 1 结果揭示</div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button
+                      onClick={() => handleSessionConfigChange({ reveal_r1_results: false })}
+                      disabled={Boolean(busyAction)}
+                      style={{
+                        ...ghostButtonStyle(),
+                        border: sessionConfig.reveal_r1_results ? "1px solid #cbd5e1" : "1px solid #1d4ed8",
+                        background: sessionConfig.reveal_r1_results ? "#fff" : "#eff6ff",
+                        color: sessionConfig.reveal_r1_results ? "#475569" : "#1d4ed8"
+                      }}
+                    >
+                      延迟揭示
+                    </button>
+                    <button
+                      onClick={() => handleSessionConfigChange({ reveal_r1_results: true })}
+                      disabled={Boolean(busyAction)}
+                      style={{
+                        ...ghostButtonStyle(),
+                        border: sessionConfig.reveal_r1_results ? "1px solid #166534" : "1px solid #cbd5e1",
+                        background: sessionConfig.reveal_r1_results ? "#ecfdf5" : "#fff",
+                        color: sessionConfig.reveal_r1_results ? "#166534" : "#475569"
+                      }}
+                    >
+                      立即完整揭示
+                    </button>
+                  </div>
+                </div>
+                <div style={{ padding: 14, borderRadius: 14, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: "#334155", marginBottom: 10 }}>Round 2 放行闸门</div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button
+                      onClick={() => handleSessionConfigChange({ hold_before_r2: true })}
+                      disabled={Boolean(busyAction)}
+                      style={{
+                        ...ghostButtonStyle(),
+                        border: sessionConfig.hold_before_r2 ? "1px solid #1d4ed8" : "1px solid #cbd5e1",
+                        background: sessionConfig.hold_before_r2 ? "#eff6ff" : "#fff",
+                        color: sessionConfig.hold_before_r2 ? "#1d4ed8" : "#475569"
+                      }}
+                    >
+                      需教师放行
+                    </button>
+                    <button
+                      onClick={() => handleSessionConfigChange({ hold_before_r2: false })}
+                      disabled={Boolean(busyAction)}
+                      style={{
+                        ...ghostButtonStyle(),
+                        border: sessionConfig.hold_before_r2 ? "1px solid #cbd5e1" : "1px solid #166534",
+                        background: sessionConfig.hold_before_r2 ? "#fff" : "#ecfdf5",
+                        color: sessionConfig.hold_before_r2 ? "#475569" : "#166534"
+                      }}
+                    >
+                      自动直通
+                    </button>
+                  </div>
+                  <div style={{ fontSize: 11, color: "#64748b", marginTop: 10 }}>
+                    当前有 {waitingTeams} 组停留在等待放行状态。
+                  </div>
+                </div>
+                <div style={{ padding: 14, borderRadius: 14, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: "#334155", marginBottom: 10 }}>Round 2 访谈模式</div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button
+                      onClick={() => handleSessionConfigChange({ interview_mode: "summary" })}
+                      disabled={Boolean(busyAction)}
+                      style={{
+                        ...ghostButtonStyle(),
+                        border: sessionConfig.interview_mode === "summary" ? "1px solid #6d28d9" : "1px solid #cbd5e1",
+                        background: sessionConfig.interview_mode === "summary" ? "#f5f3ff" : "#fff",
+                        color: sessionConfig.interview_mode === "summary" ? "#6d28d9" : "#475569"
+                      }}
+                    >
+                      Summary 模式
+                    </button>
+                    <button
+                      onClick={() => handleSessionConfigChange({ interview_mode: "live" })}
+                      disabled={Boolean(busyAction)}
+                      style={{
+                        ...ghostButtonStyle(),
+                        border: sessionConfig.interview_mode === "live" ? "1px solid #92400e" : "1px solid #cbd5e1",
+                        background: sessionConfig.interview_mode === "live" ? "#fffbeb" : "#fff",
+                        color: sessionConfig.interview_mode === "live" ? "#92400e" : "#475569"
+                      }}
+                    >
+                      Live 访谈
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 18 }}>
               <button
-                onClick={() => withRefresh("openRound2", () => openTeacherRound2(teacherCode), "已开放 Round 2")}
+                onClick={() => withRefresh("openRound2", () => openTeacherRound2(teacherCode), sessionConfig.hold_before_r2 ? "已放行等待中的队伍" : "已开放 Round 2")}
                 disabled={Boolean(busyAction)}
                 style={actionButtonStyle("#1a5c3a")}
               >
-                开放 Round 2
+                {sessionConfig.hold_before_r2 ? "放行等待中的队伍" : "开放 Round 2"}
               </button>
               <button
                 onClick={() => withRefresh("forceMergeAll", () => teacherForceMergeAll(teacherCode), "已批量强制合并")}

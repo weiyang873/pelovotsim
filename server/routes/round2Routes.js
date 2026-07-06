@@ -29,6 +29,7 @@ const {
   generatePersonaReports,
   buildSummaryModeRadarResult
 } = require("../multiplayer/round2SummaryMode");
+const { getSessionConfig } = require("../multiplayer/sessionConfig");
 const CAP_GROUPS = require("../../data/capability_groups_v2.json");
 const TAG_MAP = require("../../data/tag_map_v2_1.json");
 
@@ -168,6 +169,30 @@ function matchStrengthToTier(value) {
   return "契合度有限";
 }
 
+function targetGmToFrozenBand(value) {
+  const gm = Number(value);
+  if (!Number.isFinite(gm)) return null;
+  if (gm < 0.15) {
+    return {
+      label: "毛利空间",
+      range: "<15%",
+      tier: "紧"
+    };
+  }
+  if (gm <= 0.35) {
+    return {
+      label: "毛利空间",
+      range: "15%-35%",
+      tier: "中"
+    };
+  }
+  return {
+    label: "毛利空间",
+    range: ">35%",
+    tier: "宽"
+  };
+}
+
 function buildLeaderMeta(team, requesterMemberId = "") {
   const leaderMemberId = String(team?.leader_member_id || team?.leaderMemberId || "").trim();
   const leaderName = String(team?.leader_name || team?.leaderName || "").trim();
@@ -223,6 +248,7 @@ async function ensureSchema() {
       CREATE TABLE IF NOT EXISTS round2_submissions (
         team_id TEXT NOT NULL,
         session_id TEXT NOT NULL DEFAULT 'default',
+        flow_version TEXT,
         price DOUBLE PRECISION NOT NULL,
         selections_json TEXT NOT NULL,
         cards_json TEXT NOT NULL,
@@ -247,6 +273,7 @@ async function ensureSchema() {
       CREATE TABLE IF NOT EXISTS round2_results (
         team_id TEXT NOT NULL,
         session_id TEXT NOT NULL DEFAULT 'default',
+        flow_version TEXT,
         units INTEGER,
         profit DOUBLE PRECISION,
         profit_per_unit DOUBLE PRECISION,
@@ -292,6 +319,12 @@ async function ensureSchema() {
     await runSql(`
       ALTER TABLE round2_interview_sessions
       ADD COLUMN IF NOT EXISTS persona_locked_at TIMESTAMPTZ;
+    `);
+    await runSql(`
+      ALTER TABLE round2_submissions
+      ADD COLUMN IF NOT EXISTS flow_version TEXT;
+      ALTER TABLE round2_results
+      ADD COLUMN IF NOT EXISTS flow_version TEXT;
     `);
     await runSql(`
       DELETE FROM round2_interview_sessions
@@ -1445,6 +1478,8 @@ function listTeamMembers(team) {
 async function buildRound2Recap(teamId, phase4Body) {
   const team = await getTeam(teamId);
   if (!team) throw new Error("team not found");
+  const sessionConfig = await getSessionConfig(team.session_id || "default");
+  const revealR1Results = sessionConfig.reveal_r1_results === true || String(team.r2_status || "").trim() === "R2_SUBMITTED";
   console.log("[R2] 读取 WTPadj:", Number(team.final_wtp_adj || 0), "来源表:", "teams", "字段:", "final_wtp_adj");
 
   const parsed = parseGridId(team.final_grid_id);
@@ -1493,14 +1528,38 @@ async function buildRound2Recap(teamId, phase4Body) {
   const marketJinangList = Array.isArray(phase4Body?.jinang?.market_jinangs)
     ? phase4Body.jinang.market_jinangs
     : [];
+  const revealedJinangMarketList = marketJinangList.map((item) => ({
+    card_id: item.id,
+    name: item.name,
+    member_id: item.member_id,
+    member_name: item.member_name,
+    match_tier: matchStrengthToTier(item.match_strength),
+    bonus: Number(item.bonus || 0)
+  }));
+  const recapWtpBreakdown = phase4Body?.wtp_breakdown && typeof phase4Body.wtp_breakdown === "object"
+    ? (() => {
+        const nextBreakdown = { ...phase4Body.wtp_breakdown };
+        if (!revealR1Results) {
+          delete nextBreakdown.market_jinang_match_tier;
+        }
+        return nextBreakdown;
+      })()
+    : (phase4Body?.wtp_breakdown || null);
+  const frozenTargetGm = targetGmToFrozenBand(team.final_target_gm);
   console.log("[R2 pricing] 显示给学生的 WTPadj:", displayedWtpAdj);
 
   return {
     final_grid_id: team.final_grid_id,
     architecture: team.final_architecture || "",
-    margin_headroom: phase4Body?.margin_headroom?.tier || "中等",
-    market_space_tier: phase4Body?.market_space?.tier || "M",
-    difficulty_tier: phase4Body?.market_space?.difficulty_tier || "中",
+    ...(revealR1Results
+      ? {
+          ...(frozenTargetGm ? {
+            target_gm_band: frozenTargetGm.range,
+            target_gm_tier: frozenTargetGm.tier,
+            target_gm_label: frozenTargetGm.label
+          } : {})
+        }
+      : {}),
     vp_score: Number(phase4Body?.vp_scores?.VPscore || phase4Body?.r1_result?.VPscore || 0),
     vp_feedback: String(phase4Body?.vp_feedback || "").trim() || null,
     vp_scores: {
@@ -1509,26 +1568,23 @@ async function buildRound2Recap(teamId, phase4Body) {
       E: Number(vpScores.E || 3)
     },
     vp_summary: vpSummary,
-    wtp_breakdown: phase4Body?.wtp_breakdown || null,
+    wtp_breakdown: recapWtpBreakdown,
     jinang_tech: tech
-      ? { card_id: tech.jinang_id, match_tier: matchStrengthToTier(tech.match_strength), name: tech.name || tech.jinang_id }
+      ? {
+          card_id: tech.jinang_id,
+          name: tech.name || tech.jinang_id,
+          ...(revealR1Results ? { match_tier: matchStrengthToTier(tech.match_strength) } : {})
+        }
       : null,
     jinang_market: market
       ? {
           card_id: market.jinang_id,
-          match_tier: matchStrengthToTier(market.match_strength),
           name: market.name || market.jinang_id,
-          bonus: Number(market.bonus || 0)
+          bonus: Number(market.bonus || 0),
+          ...(revealR1Results ? { match_tier: matchStrengthToTier(market.match_strength) } : {})
         }
       : null,
-    jinang_market_list: marketJinangList.map((item) => ({
-      card_id: item.id,
-      name: item.name,
-      member_id: item.member_id,
-      member_name: item.member_name,
-      match_tier: matchStrengthToTier(item.match_strength),
-      bonus: Number(item.bonus || 0)
-    })),
+    ...(revealR1Results ? { jinang_market_list: revealedJinangMarketList } : {}),
     jinang_summary: {
       total_count: settleItems.length,
       matched_count: settleItems.filter((x) => Boolean(x?.matched)).length,
@@ -2499,6 +2555,7 @@ async function getStoredSubmission(teamId, sessionId) {
   return {
     team_id: row.team_id,
     session_id: row.session_id,
+    flow_version: row.flow_version || "",
     price: Number(row.price || 0),
     selections: safeJsonParse(row.selections_json, []),
     cards: safeJsonParse(row.cards_json, []),
@@ -2552,6 +2609,7 @@ async function getStoredResult(teamId, sessionId) {
   return {
     team_id: row.team_id,
     session_id: row.session_id,
+    flow_version: row.flow_version || "",
     units: row.units == null ? null : Number(row.units),
     profit: row.profit == null ? null : Number(row.profit),
     profit_per_unit: row.profit_per_unit == null ? null : Number(row.profit_per_unit),
@@ -2574,11 +2632,12 @@ async function persistTeamSnapshot(teamId, sessionId, submission, radar, result)
   const now = nowIso();
   await runSql(`
     INSERT INTO round2_submissions (
-      team_id, session_id, price, selections_json, cards_json, card_count,
+      team_id, session_id, flow_version, price, selections_json, cards_json, card_count,
       dcogs, risk_total, best_grid, submitted_at
     ) VALUES (
       ${sqlQuote(teamId)},
       ${sqlQuote(sessionId)},
+      ${sqlQuote(String(submission.flow_version || "").trim() || null)},
       ${Number(submission.price || 0)},
       ${sqlQuote(JSON.stringify(submission.selections || []))},
       ${sqlQuote(JSON.stringify(submission.cards || []))},
@@ -2589,6 +2648,7 @@ async function persistTeamSnapshot(teamId, sessionId, submission, radar, result)
       ${sqlQuote(submission.submitted_at || now)}
     )
     ON CONFLICT(team_id, session_id) DO UPDATE SET
+      flow_version = EXCLUDED.flow_version,
       price = EXCLUDED.price,
       selections_json = EXCLUDED.selections_json,
       cards_json = EXCLUDED.cards_json,
@@ -2599,11 +2659,12 @@ async function persistTeamSnapshot(teamId, sessionId, submission, radar, result)
       submitted_at = EXCLUDED.submitted_at;
 
     INSERT INTO round2_results (
-      team_id, session_id, units, profit, profit_per_unit,
+      team_id, session_id, flow_version, units, profit, profit_per_unit,
       vscore, best_grid, result_json, computed_at
     ) VALUES (
       ${sqlQuote(teamId)},
       ${sqlQuote(sessionId)},
+      ${sqlQuote(String(result.flow_version || "").trim() || null)},
       ${result.units == null ? "NULL" : Number(result.units)},
       ${result.profit == null ? "NULL" : Number(result.profit)},
       ${result.profit_per_unit == null ? "NULL" : Number(result.profit_per_unit)},
@@ -2613,6 +2674,7 @@ async function persistTeamSnapshot(teamId, sessionId, submission, radar, result)
       ${sqlQuote(result.computed_at || now)}
     )
     ON CONFLICT(team_id, session_id) DO UPDATE SET
+      flow_version = EXCLUDED.flow_version,
       units = EXCLUDED.units,
       profit = EXCLUDED.profit,
       profit_per_unit = EXCLUDED.profit_per_unit,
@@ -2693,6 +2755,7 @@ async function buildComputedTeamSnapshot(teamId, sessionId, submissionInput, rad
   const result = {
     team_id: teamId,
     session_id: sessionId,
+    flow_version: submission.flow_version || "",
     units: Number(calcResult.units || 0),
     profit: Number(calcResult.profit || 0),
     profit_per_unit: profitPerUnit,
@@ -2708,6 +2771,7 @@ async function buildComputedTeamSnapshot(teamId, sessionId, submissionInput, rad
 
   const nextSubmission = {
     ...submission,
+    flow_version: submission.flow_version || result.flow_version || "",
     dcogs: Number(calcResult.dCOGS || 0),
     risk_total: Number(calcResult.risk || 0),
     card_count: Array.isArray(submission.selections) ? submission.selections.length : Number(submission.card_count || 0),
@@ -3724,6 +3788,9 @@ async function teamSubmitApi(body) {
     }
 
     const personaChoice = await readPersonaChoice(teamId, sessionId);
+    const sessionConfig = await getSessionConfig(team?.session_id || "default");
+    const flowVersion = personaChoice?.flow_version
+      || (sessionConfig.interview_mode === "live" ? "twophase_v1" : SUMMARY_FLOW_VERSION);
     const fallbackRadar = personaChoice?.radar || {};
     const fallbackTags = Array.isArray(personaChoice?.tags) ? personaChoice.tags : [];
     const fallbackEvi = personaChoice?.evi;
@@ -3743,6 +3810,7 @@ async function teamSubmitApi(body) {
     const submission = {
       team_id: teamId,
       session_id: sessionId,
+      flow_version: flowVersion,
       price,
       selections,
       cards: buildCardSummary(selections),
@@ -3777,7 +3845,7 @@ async function teamSubmitApi(body) {
       submission: snapshot.submission,
       radar: snapshot.radar,
       result: snapshot.result,
-      flow_version: personaChoice?.flow_version || null,
+      flow_version: flowVersion,
       ...buildLeaderMeta(team, memberId)
     });
   } catch (e) {
@@ -3821,6 +3889,7 @@ async function teamStatusApi(query) {
     const teamState = await getTeamRound2State(teamId);
     if (!teamState) return makeResponse(404, { ok: false, error: "team not found" });
     const teamDraft = await readRound2TeamDraft(teamId);
+    const sessionConfig = await getSessionConfig(team?.session_id || "default");
     const personaChoice = await readPersonaChoice(teamId);
     const personaReports = await readPersonaReports(teamId, "default");
     const round1Context = team
@@ -3894,6 +3963,7 @@ async function teamStatusApi(query) {
       entered_at: teamState.r2.enteredAt,
       duration_minutes: teamState.r2.durationMinutes,
       ...buildLeaderMeta(teamState, memberId),
+      session_config: sessionConfig,
       team_draft: teamDraft,
       persona_choice: personaChoice,
       persona_reports: personaReports,

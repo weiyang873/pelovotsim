@@ -193,6 +193,7 @@ function parseJsonColumn(value) {
 async function getTeamRow(teamId) {
   const rows = await runSql(`
     SELECT t.id, t.team_name, t.team_size, t.status, t.created_at,
+      t.session_id, t.r2_status, t.r2_status_entered_at,
       t.leader_member_id,
       leader.member_name AS leader_name,
       t.final_grid_id, t.final_architecture, t.final_architecture_source, t.final_channel1, t.final_channel2,

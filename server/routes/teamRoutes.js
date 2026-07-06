@@ -32,6 +32,7 @@ const {
   updateTeamRound2Status
 } = require("../multiplayer/round2State");
 const { computeJinangWtpBonus } = require("../multiplayer/jinangCoeff");
+const { getSessionConfig } = require("../multiplayer/sessionConfig");
 
 const ROOT = path.join(__dirname, "..", "..");
 const CONFIG_DIR = path.join(ROOT, "game_config_v0.1");
@@ -149,6 +150,44 @@ function sanitizeStudentSettle(settle) {
       return rest;
     })
   };
+}
+
+function hideDeferredRound1Fields(payload) {
+  const src = payload && typeof payload === "object" ? payload : {};
+  const next = { ...src };
+
+  if (next.wtp_breakdown && typeof next.wtp_breakdown === "object") {
+    const nextBreakdown = { ...next.wtp_breakdown };
+    delete nextBreakdown.market_jinang_match_tier;
+    next.wtp_breakdown = nextBreakdown;
+  }
+
+  if (next.jinang && typeof next.jinang === "object") {
+    const nextJinang = { ...next.jinang };
+    if (nextJinang.market_jinang && typeof nextJinang.market_jinang === "object") {
+      const { match_tier, ...restMarketJinang } = nextJinang.market_jinang;
+      nextJinang.market_jinang = restMarketJinang;
+    }
+    if (Array.isArray(nextJinang.market_jinangs)) {
+      nextJinang.market_jinangs = nextJinang.market_jinangs.map((item) => {
+        const { match_tier, ...restItem } = item || {};
+        return restItem;
+      });
+    }
+    next.jinang = nextJinang;
+  }
+
+  if (next.settle && typeof next.settle === "object" && Array.isArray(next.settle.settlements)) {
+    next.settle = {
+      ...next.settle,
+      settlements: next.settle.settlements.map((item) => {
+        const { match_tier, ...restItem } = item || {};
+        return restItem;
+      })
+    };
+  }
+
+  return next;
 }
 
 function mean(values) {
@@ -2564,7 +2603,10 @@ async function phase4Data(teamId, options = {}) {
     if (options?.includeRawMatchStrength) {
       return makeResponse(200, data);
     }
-    return makeResponse(200, {
+    const team = await getTeam(teamId);
+    const sessionConfig = await getSessionConfig(team?.session_id || "default");
+    const revealR1Results = sessionConfig.reveal_r1_results === true || String(team?.r2_status || "").trim() === "R2_SUBMITTED";
+    const studentPayload = {
       ...data,
       r1_result: sanitizeStudentR1Result(data.r1_result),
       wtp_breakdown: data?.wtp_breakdown
@@ -2574,7 +2616,8 @@ async function phase4Data(teamId, options = {}) {
           }
         : data?.wtp_breakdown,
       settle: sanitizeStudentSettle(data.settle)
-    });
+    };
+    return makeResponse(200, revealR1Results ? studentPayload : hideDeferredRound1Fields(studentPayload));
   } catch (e) {
     return makeResponse(400, { ok: false, error: e.message });
   }
@@ -2745,12 +2788,15 @@ async function freezeTeam(teamId, body = {}) {
     if (!team.final_grid_id) {
       return makeResponse(400, { ok: false, error: "must finalize before freezing" });
     }
+    const sessionConfig = await getSessionConfig(team.session_id || "default");
+    const nextRound2Status = sessionConfig.hold_before_r2 ? "R2_NOT_STARTED" : "R2_INTERVIEWING";
     await updateTeamStatus(teamId, "frozen");
-    await updateTeamRound2Status(teamId, "R2_INTERVIEWING");
+    await updateTeamRound2Status(teamId, nextRound2Status);
     return makeResponse(200, {
       ok: true,
       status: "frozen",
-      r2_status: "R2_INTERVIEWING",
+      r2_status: nextRound2Status,
+      session_config: sessionConfig,
       ...buildLeaderMeta(team, memberId)
     });
   } catch (e) {

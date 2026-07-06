@@ -6,6 +6,7 @@ const { getTeamSessions } = require("../llm/sessions");
 const { buildDataUrl, generateLovotImage } = require("../llm/lovotImageGen");
 const { loadJinangConfig } = require("../multiplayer/jinangDealer");
 const { listTeamIterations } = require("../multiplayer/vpIterationStore");
+const { ensureSessionConfigSchema } = require("../multiplayer/sessionConfig");
 const Round2 = require("./round2Routes");
 const PROMPT_CACHE_VERSION = "teacher_debrief_v2";
 const TEAM_COLORS = [
@@ -74,6 +75,7 @@ async function ensureSchema() {
   if (__teacherDebriefSchemaPromise) return __teacherDebriefSchemaPromise;
   __teacherDebriefSchemaPromise = (async () => {
     await Round2.ensureSchema();
+    await ensureSessionConfigSchema();
     await runSql(`
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS session_id TEXT DEFAULT 'default';
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS lovot_image TEXT;

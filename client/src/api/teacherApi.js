@@ -30,6 +30,25 @@ export async function getTeacherSessionStatus(code) {
   return asJson(res);
 }
 
+export async function getTeacherSessionConfig(code, sessionId = "default") {
+  const res = await fetch(`${BASE}/teacher/session-config?session_id=${encodeURIComponent(sessionId)}`, {
+    headers: { "x-teacher-code": String(code || "").trim() }
+  });
+  return asJson(res);
+}
+
+export async function updateTeacherSessionConfig(code, sessionId = "default", config = {}) {
+  const res = await fetch(`${BASE}/teacher/session-config`, {
+    method: "POST",
+    headers: teacherHeaders(code),
+    body: JSON.stringify({
+      session_id: sessionId,
+      config
+    })
+  });
+  return asJson(res);
+}
+
 export async function getTeacherDebriefData(code, sessionId = "default") {
   const res = await fetch(
     `${BASE}/teacher/debrief-data?session_id=${encodeURIComponent(sessionId)}`,

@@ -355,6 +355,7 @@ function round2LeaderErrorMessage(err) {
 }
 
 function mapTeamStatusToStep(teamStatus) {
+  if (teamStatus === "R2_REVIEW") return 1;
   if (teamStatus === "R2_INTERVIEWING") return 1;
   if (teamStatus === "R2_INDIVIDUAL_CARDS") return 2;
   if (teamStatus === "R2_TEAM_MERGE") return 3;
@@ -364,6 +365,7 @@ function mapTeamStatusToStep(teamStatus) {
 }
 
 function teamStatusNotice(teamStatus) {
+  if (teamStatus === "R2_REVIEW") return "系统已同步到 Round 2 放行状态";
   if (teamStatus === "R2_INTERVIEWING") return "系统已同步到用户访谈阶段";
   if (teamStatus === "R2_INDIVIDUAL_CARDS") return "系统已同步到个人选卡阶段";
   if (teamStatus === "R2_TEAM_MERGE") return "系统已推进到团队合并阶段";
@@ -373,6 +375,7 @@ function teamStatusNotice(teamStatus) {
 }
 
 function teamStatusLabel(teamStatus) {
+  if (teamStatus === "R2_REVIEW") return "Round 2 放行阶段";
   if (teamStatus === "R2_INTERVIEWING") return "访谈阶段";
   if (teamStatus === "R2_INDIVIDUAL_CARDS") return "个人选卡阶段";
   if (teamStatus === "R2_TEAM_MERGE") return "团队合并阶段";
@@ -571,6 +574,25 @@ function normalizeScoreValue(value) {
   return Math.max(0, Math.min(5, Math.round(n * 10) / 10));
 }
 
+function formatFrozenTargetGm(recap) {
+  const src = recap && typeof recap === "object" ? recap : {};
+  const range = String(src.target_gm_band || "").trim();
+  const tier = String(src.target_gm_tier || "").trim();
+  const label = String(src.target_gm_label || "毛利空间").trim() || "毛利空间";
+  if (!range && !tier) {
+    return {
+      label,
+      value: "待揭示",
+      detail: "未记录"
+    };
+  }
+  return {
+    label,
+    value: range || "待揭示",
+    detail: tier ? `· ${tier}` : ""
+  };
+}
+
 function formatSignedPercent(value) {
   const n = Number(value || 0);
   return n >= 0 ? `+${n}%` : `${n}%`;
@@ -738,6 +760,7 @@ export default function App() {
   const [sessionId, setSessionId] = useState("default");
   const [teamInfo, setTeamInfo] = useState(null);
   const [teamRecap, setTeamRecap] = useState(null);
+  const [sessionConfig, setSessionConfig] = useState({ reveal_r1_results: false, hold_before_r2: false, interview_mode: "summary" });
   const [interviewMode, setInterviewMode] = useState(readInterviewModeFromUrl() === "live" ? "live" : "summary");
   const [personaReports, setPersonaReports] = useState([]);
   const [selectedPersonaChoice, setSelectedPersonaChoice] = useState(null);
@@ -818,6 +841,7 @@ export default function App() {
 
         setTeamInfo(teamRes.team);
         setTeamRecap(recapRes || null);
+        setSessionConfig(stateRes?.session_config || { reveal_r1_results: false, hold_before_r2: false, interview_mode: "summary" });
         setMemberState(stateRes?.member || null);
         setTeamStatus(String(stateRes?.team_status || ""));
         setInterviewMode(String(stateRes?.session_config?.interview_mode || readInterviewModeFromUrl() || "summary").trim().toLowerCase() === "live" ? "live" : "summary");
@@ -909,6 +933,7 @@ export default function App() {
 
         const nextStatus = String(data?.team_status || "");
         setMemberState(data?.member || null);
+        setSessionConfig(data?.session_config || { reveal_r1_results: false, hold_before_r2: false, interview_mode: "summary" });
         setInterviewMode(String(data?.session_config?.interview_mode || readInterviewModeFromUrl() || "summary").trim().toLowerCase() === "live" ? "live" : "summary");
         setPersonaReports(Array.isArray(data?.persona_reports) ? data.persona_reports : []);
         setSelectedPersonaChoice(data?.persona_choice || null);
@@ -1094,6 +1119,10 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
   const resultMarketJinangBonusPct = Number.isFinite(Number(resultMarketJinang?.bonus))
     ? Math.round(Number(resultMarketJinang.bonus) * 100)
     : 0;
+  const frozenTargetGm = useMemo(
+    () => formatFrozenTargetGm(teamRecap),
+    [teamRecap]
+  );
   const marketSizeYi = Number.isFinite(Number(submittedCalc?.market_size_yi))
     ? Number(submittedCalc.market_size_yi)
     : Number.isFinite(Number(teamRecap?.market_size_yi))
@@ -1193,6 +1222,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
       ? `已完成 ${completedInterviewCount}/${Math.max(MIN_INTERVIEWS_REQUIRED, Number(interviewProgress.maxInterviews || 3))} 次访谈`
       : (showInterviewComposer ? `进行中 ${interviewRound}/${INTERVIEW_MAX_TURNS}` : (canEnterCards ? "访谈要求已满足" : "等待开始")));
   const stepLabels = isSummaryMode ? SUMMARY_STEPS : STEPS;
+  const isWaitingForTeacherRelease = Boolean(sessionConfig?.hold_before_r2 && teamStatus === "R2_NOT_STARTED");
   const pendingSubmission = useMemo(() => {
     if (isSubmittingFinal) {
       return {
@@ -1927,6 +1957,10 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
       setServerSelections(mappedSelections);
       setTeamDraftSelections(mappedSelections);
       setTeamResultSnapshot(out?.result || null);
+      try {
+        const refreshedRecap = await getRound2Recap(teamId);
+        setTeamRecap(refreshedRecap || null);
+      } catch (_) {}
       setSubmitted(true);
     } catch (err) {
       setSubmitError(round2LeaderErrorMessage(err));
@@ -2384,7 +2418,14 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
             <span data-testid="r2-recap-target-gm">{String(teamRecap?.target_gm ?? "")}</span>
             <span data-testid="r2-recap-space-tier">{String(teamRecap?.market_space_tier || "")}</span>
           </div>
-          <button onClick={()=>setStep(1)} style={BS}>进入第二轮 →</button>
+          {isWaitingForTeacherRelease && (
+            <div style={{padding:"12px 14px",borderRadius:10,background:"#eff6ff",border:"1px solid #bfdbfe",fontSize:13,color:"#1d4ed8",lineHeight:1.8,marginBottom:12}}>
+              当前班次启用了教师放行。请先停留在这一页，系统会每 3 秒轮询一次；老师放行后，你们会自动进入第二轮。
+            </div>
+          )}
+          <button onClick={()=>!isWaitingForTeacherRelease&&setStep(1)} disabled={isWaitingForTeacherRelease} style={{...BS,opacity:isWaitingForTeacherRelease?0.55:1,cursor:isWaitingForTeacherRelease?"not-allowed":"pointer"}}>
+            {isWaitingForTeacherRelease ? "等待教师放行..." : "进入第二轮 →"}
+          </button>
         </div>
       )}
 
@@ -3158,8 +3199,11 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
             <h3 style={{fontSize:16,fontWeight:800,margin:"0 0 12px"}}>📈 市场参考（第一轮结果）</h3>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
               <div style={{padding:"12px 14px",borderRadius:10,background:"#f0fdf4",border:"1.5px solid #bbf7d0"}}>
-                <div style={{fontSize:11,color:"#6b7280"}}>市场空间</div>
-                <div style={{fontSize:22,fontWeight:800,color:"#166534",marginTop:4}}>{teamRecap?.market_space_tier || "中"}</div>
+                <div style={{fontSize:11,color:"#6b7280"}}>{frozenTargetGm.label}</div>
+                <div style={{display:"flex",alignItems:"baseline",gap:8,marginTop:4,flexWrap:"wrap"}}>
+                  <div style={{fontSize:22,fontWeight:800,color:"#166534"}}>{frozenTargetGm.value}</div>
+                  <div style={{fontSize:12,fontWeight:700,color:"#15803d"}}>{frozenTargetGm.detail}</div>
+                </div>
                 <div style={{fontSize:10,color:"#888"}}>{formatGridLabel(teamRecap?.final_grid_id || teamInfo?.final_grid_id)}</div>
               </div>
               <div style={{padding:"12px 14px",borderRadius:10,background:"#faf5ff",border:"1.5px solid #e9d5ff"}}>
@@ -3386,6 +3430,24 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
 
           {submittedCalc ? (
             <>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:10,margin:"18px 0"}}>
+                <div style={{padding:"14px 16px",borderRadius:12,background:"#f8fafc",border:"1px solid #e2e8f0"}}>
+                  <div style={{fontSize:12,fontWeight:800,color:"#334155",marginBottom:8}}>Round 1 冻结结果</div>
+                  <div style={{fontSize:13,color:"#475569",lineHeight:1.8}}>
+                    <div>{frozenTargetGm.label}：<strong>{frozenTargetGm.value}{frozenTargetGm.detail}</strong></div>
+                    <div>市场锦囊反馈：<strong>{teamRecap?.jinang_market?.match_tier || "待揭示"}</strong></div>
+                    <div>VP 评分：<strong>C {normalizeScoreValue(teamRecap?.vp_scores?.C).toFixed(1)} / G {normalizeScoreValue(teamRecap?.vp_scores?.G).toFixed(1)} / E {normalizeScoreValue(teamRecap?.vp_scores?.E).toFixed(1)}</strong></div>
+                  </div>
+                </div>
+                <div style={{padding:"14px 16px",borderRadius:12,background:"#eff6ff",border:"1px solid #bfdbfe"}}>
+                  <div style={{fontSize:12,fontWeight:800,color:"#1d4ed8",marginBottom:8}}>Round 2 最终结果</div>
+                  <div style={{fontSize:13,color:"#1e3a8a",lineHeight:1.8}}>
+                    <div>销量：<strong>{Number(submittedCalc.units || 0).toLocaleString()} 台</strong></div>
+                    <div>利润：<strong>{formatSignedCurrency(Math.round(Number(submittedCalc.profit || 0)))}</strong></div>
+                    <div>单台毛利：<strong>{formatSignedCurrency(Math.round(Number(submittedCalc.unitMargin || 0)))}</strong></div>
+                  </div>
+                </div>
+              </div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10,margin:"18px 0"}}>
                 <div style={{padding:"14px 16px",borderRadius:10,background:"#eff6ff",border:"1px solid #bfdbfe"}}>
                   <div style={{fontSize:11,color:"#6b7280"}}>实际销量 Q</div>
