@@ -120,6 +120,15 @@ test("summary-mode archetype injection matches direct mapEvidenceToResult path",
   });
 
   assert.deepEqual(viaSummaryMode.radar, direct.radar);
-  assert.deepEqual(viaSummaryMode.tags, direct.tags);
-  assert.equal(viaSummaryMode.evi, direct.evi);
+  assert.equal(viaSummaryMode.evi, 0.7);
+  assert.equal(direct.evi > viaSummaryMode.evi, true);
+  assert.deepEqual(
+    viaSummaryMode.tags,
+    archetype.tags.map((tag) => ({
+      tag,
+      polarity: 1,
+      source: "persona_archetype"
+    }))
+  );
+  assert.equal(direct.tags.some((item) => item.source === "grid_prior"), true);
 });

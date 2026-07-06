@@ -152,9 +152,45 @@ function sanitizeStudentSettle(settle) {
   };
 }
 
+const DEFERRED_SENSITIVE_KEY_SET = new Set([
+  "SAM_billion",
+  "WTPmean",
+  "WTPref",
+  "WTPadj",
+  "WTPadj_raw",
+  "WTPref_adjusted",
+  "jinang_match_strength",
+  "match_strength"
+]);
+
+function shouldStripDeferredKey(key) {
+  const text = String(key || "").trim();
+  if (!text) return false;
+  if (DEFERRED_SENSITIVE_KEY_SET.has(text)) return true;
+  const lower = text.toLowerCase();
+  if (lower.includes("margin")) return true;
+  if (lower.includes("share")) return true;
+  if (lower === "gm" || lower.startsWith("gm_") || lower.endsWith("_gm") || lower.includes("gmmax")) return true;
+  if (lower.includes("wtpref") || lower.includes("wtpadj") || lower.includes("wtpmean")) return true;
+  return false;
+}
+
+function stripDeferredSensitiveFields(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => stripDeferredSensitiveFields(item));
+  }
+  if (!value || typeof value !== "object") return value;
+  const next = {};
+  for (const [key, raw] of Object.entries(value)) {
+    if (shouldStripDeferredKey(key)) continue;
+    next[key] = stripDeferredSensitiveFields(raw);
+  }
+  return next;
+}
+
 function hideDeferredRound1Fields(payload) {
   const src = payload && typeof payload === "object" ? payload : {};
-  const next = { ...src };
+  const next = stripDeferredSensitiveFields(src);
 
   if (next.wtp_breakdown && typeof next.wtp_breakdown === "object") {
     const nextBreakdown = { ...next.wtp_breakdown };
@@ -2592,7 +2628,8 @@ async function buildPhase4Data(teamId) {
       })),
       market_jinang_bonus_total: marketJinangSummary.totalBonus
     },
-    settle: sanitizeStudentSettle(settle)
+    settle: sanitizeStudentSettle(settle),
+    settle_raw: settle
   };
 }
 
@@ -2601,21 +2638,25 @@ async function phase4Data(teamId, options = {}) {
     const data = await buildPhase4Data(teamId);
     if (!data.ok) return makeResponse(data.status || 400, { ok: false, error: data.error || "phase4 failed" });
     if (options?.includeRawMatchStrength) {
-      return makeResponse(200, data);
+      return makeResponse(200, {
+        ...data,
+        settle: data.settle_raw || data.settle
+      });
     }
+    const { settle_raw, ...studentData } = data;
     const team = await getTeam(teamId);
     const sessionConfig = await getSessionConfig(team?.session_id || "default");
     const revealR1Results = sessionConfig.reveal_r1_results === true || String(team?.r2_status || "").trim() === "R2_SUBMITTED";
     const studentPayload = {
-      ...data,
-      r1_result: sanitizeStudentR1Result(data.r1_result),
-      wtp_breakdown: data?.wtp_breakdown
+      ...studentData,
+      r1_result: sanitizeStudentR1Result(studentData.r1_result),
+      wtp_breakdown: studentData?.wtp_breakdown
         ? {
-            ...data.wtp_breakdown,
-            final_result: sanitizeStudentR1Result(data.wtp_breakdown.final_result)
+            ...studentData.wtp_breakdown,
+            final_result: sanitizeStudentR1Result(studentData.wtp_breakdown.final_result)
           }
-        : data?.wtp_breakdown,
-      settle: sanitizeStudentSettle(data.settle)
+        : studentData?.wtp_breakdown,
+      settle: sanitizeStudentSettle(studentData.settle)
     };
     return makeResponse(200, revealR1Results ? studentPayload : hideDeferredRound1Fields(studentPayload));
   } catch (e) {
@@ -2905,6 +2946,7 @@ module.exports = {
   leaderStartRound2,
   getTeamStatus,
   getMemberJinangApi,
+  hideDeferredRound1Fields,
   clipScore,
   lambdaMap,
   rhoDiscount,

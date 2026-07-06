@@ -694,6 +694,18 @@ function roundForLog(value, digits = 6) {
   return Number(n.toFixed(digits));
 }
 
+function sanitizeStudentTeamResult(result) {
+  if (!result || typeof result !== "object") return result;
+  const next = { ...result };
+  delete next.match_score_json;
+  if (next.result && typeof next.result === "object") {
+    const nested = { ...next.result };
+    delete nested.match_score_json;
+    next.result = nested;
+  }
+  return next;
+}
+
 function buildComputationContext({ teamId, sessionId, memberId, source = "web" }) {
   const team_id = String(teamId || "").trim();
   const session_id = String(sessionId || "").trim();
@@ -2995,7 +3007,11 @@ async function recap(query) {
     }
 
     const data = await buildRound2Recap(teamId, p4.body);
-    return makeResponse(200, { ok: true, ...data });
+    const team = await getTeam(teamId);
+    const sessionConfig = await getSessionConfig(team?.session_id || "default");
+    const revealR1Results = sessionConfig.reveal_r1_results === true || String(team?.r2_status || "").trim() === "R2_SUBMITTED";
+    const responseBody = { ok: true, ...data };
+    return makeResponse(200, revealR1Results ? responseBody : TeamRoutes.hideDeferredRound1Fields(responseBody));
   } catch (e) {
     return makeResponse(400, { ok: false, error: e.message });
   }
@@ -3958,7 +3974,7 @@ async function teamSubmitApi(body) {
       session_id: sessionId,
       submission: snapshot.submission,
       radar: snapshot.radar,
-      result: snapshot.result,
+      result: sanitizeStudentTeamResult(snapshot.result),
       flow_version: flowVersion,
       ...buildLeaderMeta(team, memberId)
     });
@@ -3981,7 +3997,7 @@ async function teamResultApi(query) {
       session_id: sessionId,
       submission: snapshot?.submission || null,
       radar: snapshot?.radar || null,
-      result: snapshot?.result || null,
+      result: sanitizeStudentTeamResult(snapshot?.result || null),
       selected_persona_id: personaChoice?.archetype_id || "",
       flow_version: personaChoice?.flow_version || ""
     });
