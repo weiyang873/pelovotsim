@@ -8,6 +8,8 @@ const ROOT = path.join(__dirname, "..", "..");
 const DEFAULT_ARCHETYPES_PATH = path.join(ROOT, "game_config_v0.1", "persona_archetypes_v1.json");
 const SUMMARY_FLOW_VERSION = "merged_v1";
 const DIM_KEYS = ["interaction", "perception", "motion", "safety", "extend", "ops"];
+const SUMMARY_TARGET_CHAR_MAX = 1200;
+const SUMMARY_HARD_CHAR_MAX = 1500;
 const DEFAULT_INTERVIEW_QUALITY = {
   specificity: "high",
   consistency: "high",
@@ -92,7 +94,16 @@ function findLeakageTerms(summaryText, vocabulary = getLeakageVocabulary()) {
   });
 }
 
-function buildPersonaSummaryPrompt({ archetype, teamName, recapData }) {
+function countSummaryChars(summaryText) {
+  return String(summaryText || "").replace(/\s+/g, "").length;
+}
+
+function isSummaryLengthAcceptable(summaryText) {
+  const charCount = countSummaryChars(summaryText);
+  return charCount > 0 && charCount <= SUMMARY_HARD_CHAR_MAX;
+}
+
+function buildPersonaSummaryPrompt({ archetype, teamName, recapData, attempt = 0, retryReason = "" }) {
   const seed = normalizeArchetypeSeed(archetype?.narrative_seed);
   const scenes = seed.scenes.map((item) => `- ${item}`).join("\n") || "- 暂无";
   const painPoints = seed.pain_points.map((item) => `- ${item}`).join("\n") || "- 暂无";
@@ -100,13 +111,24 @@ function buildPersonaSummaryPrompt({ archetype, teamName, recapData }) {
   const emotions = seed.emotions.map((item) => `- ${item}`).join("\n") || "- 暂无";
   const gridLabel = String(recapData?.final_grid_id || "").trim() || "未命名格子";
   const vpSummary = String(recapData?.vp_summary?.who || recapData?.vp_summary || "").trim() || "围绕真实生活场景做取舍";
+  const retryLines = [];
+
+  if (attempt > 0) {
+    retryLines.push("上一次输出未通过校验，请严格重写，不要沿用上一次的表述。");
+  }
+  if (retryReason === "length") {
+    retryLines.push(`这一次请把正文尽量控制在 ${SUMMARY_TARGET_CHAR_MAX} 个中文字符以内，绝对不要超过 ${SUMMARY_HARD_CHAR_MAX} 个中文字符。`);
+  } else if (retryReason === "leakage") {
+    retryLines.push("这一次继续严格避免任何能力名、功能名、解决方案、卡片名、标签词、产品词、品牌词。");
+  }
 
   return [
     "你是 EMBA 教学模拟中的客户研究报告撰写者。",
-    "请用中文写一份 600-900 字的客户调研报告，输出纯正文，不要分点、不要标题、不要 markdown。",
+    `请用中文写一份客户调研报告，正文目标控制在 ${SUMMARY_TARGET_CHAR_MAX} 个中文字符以内，硬性上限是 ${SUMMARY_HARD_CHAR_MAX} 个中文字符（可自然分段，但不要标题、不要分点、不要 markdown）。`,
     "报告必须只写人物情境、生活节奏、痛点、情绪、行为习惯与具体场景。",
     "绝对禁止出现任何能力名、功能名、解决方案、卡片名、标签词、产品词、品牌词。",
     "例如可以写“半夜起身时总担心自己站不稳”，但不能写任何功能或能力建议。",
+    retryLines.join("\n"),
     "",
     `团队：${String(teamName || "当前团队").trim() || "当前团队"}`,
     `Round 1 上下文：${gridLabel}`,
@@ -145,14 +167,14 @@ function buildFallbackPersonaSummary({ archetype, recapData }) {
     : "这份材料更像是一段真实生活的切片，而不是一个已经说清需求的产品 brief。";
 
   return [
-    `${seed.summary_title || archetype?.label || archetype?.id || "客户调研报告"}（模板降级版，待确认）`,
+    `${seed.summary_title || archetype?.label || archetype?.id || "客户调研报告"}`,
     `${seed.person || "人物背景待确认"}。${seed.routine || "日常节奏待确认"}。`,
     sceneSentence,
     painSentence,
     habitsSentence,
     emotionSentence,
     recapSentence,
-    "这名客户并不会主动把自己的困难整理成产品语言，更可能是在聊天时零散提到那些最费神、最怕出问题、最不想麻烦别人的时刻。课堂上如果要继续使用这份原型，仍建议根据教学节奏补充或校准隐藏参数。"
+    "这名客户并不会主动把自己的困难整理成产品语言，更可能是在聊天时零散提到那些最费神、最怕出问题、最不想麻烦别人的时刻。"
   ].join("");
 }
 
@@ -258,6 +280,7 @@ async function generatePersonaReports({
   teamName,
   recapData,
   renderSummary,
+  onFallback,
   now = () => new Date().toISOString(),
   flowVersion = SUMMARY_FLOW_VERSION
 }) {
@@ -277,25 +300,53 @@ async function generatePersonaReports({
     let summaryText = "";
     let generatedVia = "llm";
     let leakageMatches = [];
+    let hadRenderError = false;
+    let lastErrorMessage = "";
+    let retryReason = "";
+    let lastCharCount = 0;
     for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
         summaryText = String(await renderSummary({
           archetype,
-          prompt: buildPersonaSummaryPrompt({ archetype, teamName, recapData }),
+          prompt: buildPersonaSummaryPrompt({ archetype, teamName, recapData, attempt, retryReason }),
           attempt
         }) || "").trim();
-      } catch (_) {
+      } catch (error) {
+        hadRenderError = true;
+        lastErrorMessage = String(error?.message || "").trim();
         summaryText = "";
+        retryReason = "call_failed";
       }
       if (!summaryText) continue;
       leakageMatches = findLeakageTerms(summaryText);
-      if (!leakageMatches.length) break;
-      summaryText = "";
+      if (leakageMatches.length) {
+        retryReason = "leakage";
+        summaryText = "";
+        continue;
+      }
+      lastCharCount = countSummaryChars(summaryText);
+      if (lastCharCount > SUMMARY_HARD_CHAR_MAX) {
+        retryReason = "length";
+        summaryText = "";
+        continue;
+      }
+      retryReason = "";
+      break;
     }
 
     if (!summaryText) {
       summaryText = buildFallbackPersonaSummary({ archetype, recapData });
       generatedVia = "template";
+      if (typeof onFallback === "function") {
+        onFallback({
+          archetypeId,
+          hadRenderError,
+          lastErrorMessage,
+          leakageMatches,
+          lastCharCount,
+          retryReason
+        });
+      }
       leakageMatches = [];
     }
 
@@ -320,6 +371,8 @@ module.exports = {
   loadPersonaArchetypes,
   getLeakageVocabulary,
   findLeakageTerms,
+  countSummaryChars,
+  isSummaryLengthAcceptable,
   buildPersonaSummaryPrompt,
   buildFallbackPersonaSummary,
   normalizeArchetypeForScoring,

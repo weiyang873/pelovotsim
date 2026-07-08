@@ -1,8 +1,21 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
+const TAG_MAP = require("../data/tag_map_v2_1.json");
 const Round2 = require("../server/routes/round2Routes");
 const SummaryMode = require("../server/multiplayer/round2SummaryMode");
+
+function makeLengthSafeNarrative() {
+  return "她下班回家后总会先站在玄关里听几秒屋里的安静，确认没有任何熟悉的动静后，才慢慢把包放下、开灯、开电视。电视并不是为了看，而是为了让屋里有一点人声，像是有人在旁边陪着。她会给自己倒一杯温水，坐在沙发上刷手机，来回切换几个应用，却说不清自己到底看进去了什么。工作日里她在公司总是反应快、情绪稳，开会时能连续接住很多人的问题，也习惯把场面圆回来，可一回到家，整个人像突然泄了气。周末如果没有人约，她常常一整天不说话，直到晚上嗓子都有点发哑。她并不愿意承认自己在难受，只会说最近有点累，或者说睡得不好。其实真正让她撑不住的不是某一件大事，而是那种持续很久、又说不出口的空落感。她需要的不是热闹，而是一个能在她情绪往下掉的时候，给她一点回应、让她觉得自己没有被世界彻底晾在一边的存在。".repeat(2);
+}
+
+function makeSoftOverTargetNarrative() {
+  return makeLengthSafeNarrative().repeat(2);
+}
+
+function makeHardOverLimitNarrative() {
+  return makeLengthSafeNarrative().repeat(3);
+}
 
 test("generatePersonaReports is idempotent for existing archetype rows", async () => {
   const archetypes = [
@@ -50,7 +63,7 @@ test("generatePersonaReports is idempotent for existing archetype rows", async (
     recapData: { final_grid_id: "B2C_Differentiation_Elder" },
     renderSummary: async () => {
       renderCount += 1;
-      return "这是一段只描述真实生活节奏和情绪起伏的客户叙事，没有出现任何能力名或解决方案词。";
+      return makeLengthSafeNarrative();
     },
     now: () => "2026-07-06T12:00:00.000Z"
   });
@@ -59,6 +72,7 @@ test("generatePersonaReports is idempotent for existing archetype rows", async (
   assert.equal(rows.length, 2);
   assert.equal(rows[0].summary_text, "already-there");
   assert.equal(rows[1].generated_via, "llm");
+  assert.equal(SummaryMode.isSummaryLengthAcceptable(rows[1].summary_text), true);
 });
 
 test("generatePersonaReports retries leakage and falls back to template when needed", async () => {
@@ -78,6 +92,7 @@ test("generatePersonaReports retries leakage and falls back to template when nee
   }];
 
   let attemptCount = 0;
+  const fallbackEvents = [];
   const rows = await SummaryMode.generatePersonaReports({
     archetypes,
     teamName: "第1组",
@@ -86,13 +101,89 @@ test("generatePersonaReports retries leakage and falls back to template when nee
       attemptCount += 1;
       return "她总说自己最需要情绪识别，这样家里人才能放心。";
     },
+    onFallback: (event) => {
+      fallbackEvents.push(event);
+    },
     now: () => "2026-07-06T12:00:00.000Z"
   });
 
   assert.equal(attemptCount, 3);
   assert.equal(rows.length, 1);
   assert.equal(rows[0].generated_via, "template");
-  assert.match(rows[0].summary_text, /模板降级版/);
+  assert.equal(fallbackEvents.length, 1);
+  assert.equal(fallbackEvents[0].archetypeId, "elder_care");
+  assert.deepEqual(fallbackEvents[0].leakageMatches, ["情绪识别"]);
+  assert.doesNotMatch(rows[0].summary_text, /模板降级版|隐藏参数|补充或校准隐藏参数/);
+});
+
+test("generatePersonaReports accepts summaries above target when they stay under hard cap", async () => {
+  const archetypes = [{
+    id: "adult_companion",
+    label: "都市成人陪伴",
+    narrative_seed: {
+      summary_title: "都市成人陪伴调研报告",
+      person: "31 岁独居白领",
+      routine: "白天上班节奏快，回家后落差很大",
+      scenes: ["深夜回家后打开电视听人声"],
+      pain_points: ["周末经常整天不说话"],
+      habits: ["会反复刷手机让屋里保持亮着"],
+      emotions: ["空落", "不想麻烦别人"],
+      confirmation_note: "待确认"
+    }
+  }];
+
+  let attemptCount = 0;
+  const rows = await SummaryMode.generatePersonaReports({
+    archetypes,
+    teamName: "第1组",
+    recapData: { final_grid_id: "B2C_Differentiation_Adult" },
+    renderSummary: async () => {
+      attemptCount += 1;
+      return makeSoftOverTargetNarrative();
+    },
+    now: () => "2026-07-06T12:00:00.000Z"
+  });
+
+  assert.equal(attemptCount, 1);
+  assert.equal(rows[0].generated_via, "llm");
+  assert.equal(SummaryMode.isSummaryLengthAcceptable(rows[0].summary_text), true);
+  assert(SummaryMode.countSummaryChars(rows[0].summary_text) > 1200);
+});
+
+test("generatePersonaReports retries only when summary exceeds hard cap", async () => {
+  const archetypes = [{
+    id: "adult_companion",
+    label: "都市成人陪伴",
+    narrative_seed: {
+      summary_title: "都市成人陪伴调研报告",
+      person: "31 岁独居白领",
+      routine: "白天上班节奏快，回家后落差很大",
+      scenes: ["深夜回家后打开电视听人声"],
+      pain_points: ["周末经常整天不说话"],
+      habits: ["会反复刷手机让屋里保持亮着"],
+      emotions: ["空落", "不想麻烦别人"],
+      confirmation_note: "待确认"
+    }
+  }];
+
+  let attemptCount = 0;
+  const rows = await SummaryMode.generatePersonaReports({
+    archetypes,
+    teamName: "第1组",
+    recapData: { final_grid_id: "B2C_Differentiation_Adult" },
+    renderSummary: async () => {
+      attemptCount += 1;
+      if (attemptCount === 1) {
+        return makeHardOverLimitNarrative();
+      }
+      return makeLengthSafeNarrative();
+    },
+    now: () => "2026-07-06T12:00:00.000Z"
+  });
+
+  assert.equal(attemptCount, 2);
+  assert.equal(rows[0].generated_via, "llm");
+  assert.equal(SummaryMode.isSummaryLengthAcceptable(rows[0].summary_text), true);
 });
 
 test("summary-mode archetype injection matches direct mapEvidenceToResult path", () => {
@@ -131,4 +222,19 @@ test("summary-mode archetype injection matches direct mapEvidenceToResult path",
     }))
   );
   assert.equal(direct.tags.some((item) => item.source === "grid_prior"), true);
+});
+
+test("summary-mode archetype tags stay inside whitelist and new tags trigger leakage blocking", () => {
+  const whitelist = new Set(Object.keys(TAG_MAP.need_tag_to_dim || {}));
+  const { archetypes } = SummaryMode.loadPersonaArchetypes();
+  const elderCare = archetypes.find((item) => item.id === "elder_care");
+  const adultCompanion = archetypes.find((item) => item.id === "adult_companion");
+
+  assert.ok(elderCare);
+  assert.ok(adultCompanion);
+  assert.deepEqual(elderCare.tags, ["安全与信任", "情感陪伴", "远程关怀", "省心可靠"]);
+  assert.deepEqual(adultCompanion.tags, ["情感陪伴", "个性化推荐", "隐私保护", "内容生态"]);
+  assert.equal(elderCare.tags.every((tag) => whitelist.has(tag)), true);
+  assert.equal(adultCompanion.tags.every((tag) => whitelist.has(tag)), true);
+  assert.deepEqual(SummaryMode.findLeakageTerms("她最在意远程关怀这件事。"), ["远程关怀"]);
 });

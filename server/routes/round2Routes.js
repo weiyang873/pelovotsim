@@ -3,7 +3,7 @@ const { runSql, sqlQuote } = require("../db/pgSql");
 
 const Engine = require("../../engine");
 const TeamRoutes = require("./teamRoutes");
-const { chatCompletion } = require("../llm/deepseekClient");
+const { chatCompletion, hasAnyKey } = require("../llm/deepseekClient");
 const { withLlmLogging } = require("../llm/llm_logger");
 const { generatePersona } = require("../llm/personaGenerator");
 const { getTeamSessions } = require("../llm/sessions");
@@ -547,6 +547,19 @@ async function ensurePersonaReportsForTeam(teamId, sessionId = "default") {
     teamName: team?.team_name || teamId,
     recapData,
     renderSummary: ({ prompt }) => renderPersonaSummaryWithLlm({ teamId, prompt }),
+    onFallback: ({ archetypeId, hadRenderError, lastErrorMessage, leakageMatches, lastCharCount, retryReason }) => {
+      console.warn("persona summary fallback: no LLM key/call failed", JSON.stringify({
+        teamId,
+        sessionId,
+        archetypeId,
+        has_llm_key: hasAnyKey(),
+        had_render_error: hadRenderError,
+        last_error: lastErrorMessage || "",
+        leakage_matches: Array.isArray(leakageMatches) ? leakageMatches : [],
+        last_char_count: Number(lastCharCount || 0),
+        retry_reason: retryReason || ""
+      }));
+    },
     flowVersion: SUMMARY_FLOW_VERSION
   });
   await persistPersonaReports(teamId, sessionId, generated.filter((item) => {
