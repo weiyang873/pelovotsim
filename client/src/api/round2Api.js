@@ -81,6 +81,39 @@ export async function getRound2PersonaReports(teamId, sessionId = "default", opt
   return asJson(res);
 }
 
+export async function getRound2PersonaReport(teamId, memberId, reportIndex, sessionId = "default", options = {}) {
+  const query = new URLSearchParams({
+    teamId: String(teamId || "").trim(),
+    memberId: String(memberId || "").trim(),
+    session_id: String(sessionId || "default").trim()
+  });
+  const res = await fetch(`${BASE}/round2/persona-report/${encodeURIComponent(String(reportIndex))}?${query.toString()}`, {
+    signal: options.signal
+  });
+  return asJson(res);
+}
+
+export async function getRound2TeamReadingStatus(teamId, memberId, sessionId = "default", options = {}) {
+  const query = new URLSearchParams({
+    teamId: String(teamId || "").trim(),
+    memberId: String(memberId || "").trim(),
+    session_id: String(sessionId || "default").trim()
+  });
+  const res = await fetch(`${BASE}/round2/team-reading-status?${query.toString()}`, {
+    signal: options.signal
+  });
+  return asJson(res);
+}
+
+export async function continueRound2SummaryReading(payload) {
+  const res = await fetch(`${BASE}/round2/persona-select`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {})
+  });
+  return asJson(res);
+}
+
 export async function round2InterviewAuto(payload) {
   const res = await fetch(`${BASE}/round2/interview/auto`, {
     method: "POST",

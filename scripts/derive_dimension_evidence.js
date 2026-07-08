@@ -46,7 +46,7 @@ function main() {
     return {
       grid_id: grid.id,
       dimension_evidence,
-      evi: 0.7,
+      evi: null,
       tags
     };
   });

@@ -1,8 +1,11 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import {
+  continueRound2SummaryReading,
   endRound2Interview,
+  getRound2PersonaReport,
   getRound2Recap,
   getRound2InterviewSession,
+  getRound2TeamReadingStatus,
   getRound2State,
   getRound2TeamMerge,
   getRound2TeamResult,
@@ -747,8 +750,21 @@ export default function App() {
   const [sessionConfig, setSessionConfig] = useState({ reveal_r1_results: false, hold_before_r2: false, interview_mode: "summary" });
   const [interviewMode, setInterviewMode] = useState(readInterviewModeFromUrl() === "live" ? "live" : "summary");
   const [personaReports, setPersonaReports] = useState([]);
+  const [availableSummaryReports, setAvailableSummaryReports] = useState([]);
+  const [defaultSummaryReportIndex, setDefaultSummaryReportIndex] = useState(0);
+  const [activeSummaryReportIndex, setActiveSummaryReportIndex] = useState(null);
+  const [summaryReadingStatus, setSummaryReadingStatus] = useState({
+    total_reports: 0,
+    team_viewed_count: 0,
+    team_viewed_personas: [],
+    my_viewed_personas: []
+  });
   const [selectedPersonaChoice, setSelectedPersonaChoice] = useState(null);
   const [isLoadingPersonaReports, setIsLoadingPersonaReports] = useState(false);
+  const [isLoadingSummaryReport, setIsLoadingSummaryReport] = useState(false);
+  const [isLoadingReadingStatus, setIsLoadingReadingStatus] = useState(false);
+  const [isFreezingSummary, setIsFreezingSummary] = useState(false);
+  const [summaryReportError, setSummaryReportError] = useState("");
   const [serverSelections, setServerSelections] = useState(null);
   const [isLoadingContext, setIsLoadingContext] = useState(false);
   const [loadError, setLoadError] = useState("");
@@ -787,6 +803,7 @@ export default function App() {
   const previousStepRef = useRef(0);
   const systemNoticeTimerRef = useRef(null);
   const interviewStartGateRef = useRef({ memberId: "", startedAt: 0 });
+  const summaryReportInitializedRef = useRef(false);
 
   const isTeamMode = Boolean(teamId);
   const isSummaryMode = interviewMode !== "live";
@@ -826,8 +843,26 @@ export default function App() {
         setMemberState(stateRes?.member || null);
         setTeamStatus(String(stateRes?.team_status || ""));
         setInterviewMode(String(stateRes?.session_config?.interview_mode || readInterviewModeFromUrl() || "summary").trim().toLowerCase() === "live" ? "live" : "summary");
-        setPersonaReports(Array.isArray(stateRes?.persona_reports) ? stateRes.persona_reports : []);
-        setSelectedPersonaChoice(stateRes?.persona_choice || null);
+        const initialChoice = stateRes?.persona_choice || null;
+        const initialReports = Array.isArray(stateRes?.persona_reports) ? stateRes.persona_reports : [];
+        const initialAvailableReports = Array.isArray(stateRes?.available_reports) ? stateRes.available_reports : [];
+        const initialDefaultReportIndex = Number.isFinite(Number(stateRes?.default_report_index))
+          ? Number(stateRes.default_report_index)
+          : 0;
+        setSelectedPersonaChoice(initialChoice);
+        setAvailableSummaryReports(initialAvailableReports);
+        setDefaultSummaryReportIndex(initialDefaultReportIndex);
+        setPersonaReports(initialReports);
+        if (initialChoice?.summary_text) {
+          const frozenIndex = Number.isFinite(Number(initialReports[0]?.report_index))
+            ? Number(initialReports[0].report_index)
+            : initialDefaultReportIndex;
+          setActiveSummaryReportIndex(frozenIndex);
+          summaryReportInitializedRef.current = true;
+        } else {
+          setActiveSummaryReportIndex(initialDefaultReportIndex);
+          summaryReportInitializedRef.current = false;
+        }
         setLeaderMemberId(String(stateRes?.leader_member_id || ""));
         setLeaderName(String(stateRes?.leader_name || ""));
         setIsLeader(Boolean(stateRes?.is_leader));
@@ -916,8 +951,23 @@ export default function App() {
         setMemberState(data?.member || null);
         setSessionConfig(data?.session_config || { reveal_r1_results: false, hold_before_r2: false, interview_mode: "summary" });
         setInterviewMode(String(data?.session_config?.interview_mode || readInterviewModeFromUrl() || "summary").trim().toLowerCase() === "live" ? "live" : "summary");
-        setPersonaReports(Array.isArray(data?.persona_reports) ? data.persona_reports : []);
-        setSelectedPersonaChoice(data?.persona_choice || null);
+        const nextChoice = data?.persona_choice || null;
+        const nextAvailableReports = Array.isArray(data?.available_reports) ? data.available_reports : [];
+        const nextDefaultReportIndex = Number.isFinite(Number(data?.default_report_index))
+          ? Number(data.default_report_index)
+          : 0;
+        setSelectedPersonaChoice(nextChoice);
+        setAvailableSummaryReports(nextAvailableReports);
+        setDefaultSummaryReportIndex(nextDefaultReportIndex);
+        if (nextChoice?.summary_text) {
+          const nextReports = Array.isArray(data?.persona_reports) ? data.persona_reports : [];
+          setPersonaReports(nextReports);
+          const frozenIndex = Number.isFinite(Number(nextReports[0]?.report_index))
+            ? Number(nextReports[0].report_index)
+            : nextDefaultReportIndex;
+          setActiveSummaryReportIndex(frozenIndex);
+          summaryReportInitializedRef.current = true;
+        }
         setLeaderMemberId(String(data?.leader_member_id || ""));
         setLeaderName(String(data?.leader_name || ""));
         setIsLeader(Boolean(data?.is_leader));
@@ -993,8 +1043,108 @@ export default function App() {
 
   useEffect(() => {
     if (interviewMode === "live") return;
-    setIsLoadingPersonaReports(Boolean(isLoadingContext && !personaReports.length));
-  }, [interviewMode, isLoadingContext, personaReports.length]);
+    setIsLoadingPersonaReports(Boolean(isLoadingContext || isLoadingSummaryReport));
+  }, [interviewMode, isLoadingContext, isLoadingSummaryReport]);
+
+  const loadSummaryReadingStatus = useCallback(async (options = {}) => {
+    if (!teamId || !memberId || !isSummaryMode) return null;
+    const silent = options.silent === true;
+    if (!silent) {
+      setIsLoadingReadingStatus(true);
+    }
+    try {
+      const out = await getRound2TeamReadingStatus(teamId, memberId, sessionId, options);
+      setSummaryReadingStatus({
+        total_reports: Number(out?.total_reports || 0),
+        team_viewed_count: Number(out?.team_viewed_count || 0),
+        team_viewed_personas: Array.isArray(out?.team_viewed_personas) ? out.team_viewed_personas : [],
+        my_viewed_personas: Array.isArray(out?.my_viewed_personas) ? out.my_viewed_personas : []
+      });
+      return out;
+    } finally {
+      if (!silent) {
+        setIsLoadingReadingStatus(false);
+      }
+    }
+  }, [isSummaryMode, memberId, sessionId, teamId]);
+
+  const loadSummaryReport = useCallback(async (reportIndex, options = {}) => {
+    if (!teamId || !memberId || !isSummaryMode) return null;
+    const normalizedIndex = Number(reportIndex);
+    if (!Number.isInteger(normalizedIndex) || normalizedIndex < 0) return null;
+    const silent = options.silent === true;
+    if (!silent) {
+      setIsLoadingSummaryReport(true);
+      setSummaryReportError("");
+    }
+    try {
+      const out = await getRound2PersonaReport(teamId, memberId, normalizedIndex, sessionId, options);
+      const report = out?.report || null;
+      setPersonaReports(report ? [report] : []);
+      setActiveSummaryReportIndex(Number.isFinite(Number(report?.report_index)) ? Number(report.report_index) : normalizedIndex);
+      summaryReportInitializedRef.current = true;
+      await loadSummaryReadingStatus({ silent: true });
+      return out;
+    } catch (err) {
+      if (!silent) {
+        setSummaryReportError(err.message || "客户调研报告加载失败");
+      }
+      throw err;
+    } finally {
+      if (!silent) {
+        setIsLoadingSummaryReport(false);
+      }
+    }
+  }, [isSummaryMode, loadSummaryReadingStatus, memberId, sessionId, teamId]);
+
+  useEffect(() => {
+    if (!isSummaryMode || !teamId || !memberId) return undefined;
+    let canceled = false;
+    const controller = new AbortController();
+    const tick = async () => {
+      try {
+        await loadSummaryReadingStatus({ signal: controller.signal, silent: true });
+      } catch (error) {
+        if (error?.name === "AbortError") return;
+        if (!canceled) {
+          setSummaryReportError((prev) => prev || error.message || "阅读进度加载失败");
+        }
+      }
+    };
+    tick();
+    const timer = window.setInterval(tick, 3000);
+    return () => {
+      canceled = true;
+      controller.abort();
+      window.clearInterval(timer);
+    };
+  }, [isSummaryMode, loadSummaryReadingStatus, memberId, teamId]);
+
+  useEffect(() => {
+    if (!isSummaryMode || !teamId || !memberId) return undefined;
+    if (selectedPersonaChoice?.summary_text) return undefined;
+    const targetIndex = Number.isInteger(Number(activeSummaryReportIndex))
+      ? Number(activeSummaryReportIndex)
+      : (Number.isInteger(Number(defaultSummaryReportIndex)) ? Number(defaultSummaryReportIndex) : null);
+    if (targetIndex == null || targetIndex < 0) return undefined;
+    if (summaryReportInitializedRef.current && Number(activeSummaryReportIndex) === targetIndex && personaReports.length) {
+      return undefined;
+    }
+    const controller = new AbortController();
+    loadSummaryReport(targetIndex, { signal: controller.signal }).catch((error) => {
+      if (error?.name === "AbortError") return;
+    });
+    return () => controller.abort();
+  }, [
+    activeSummaryReportIndex,
+    defaultSummaryReportIndex,
+    isSummaryMode,
+    loadSummaryReport,
+    memberId,
+    personaReports.length,
+    selectedPersonaChoice?.summary_text,
+    teamId
+  ]);
 
   const toggleSelection = useCallback((id, mode = "individual") => {
     if (mode === "team") {
@@ -1105,6 +1255,31 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     const source = Array.isArray(personaReports) ? personaReports : [];
     return source[0] || null;
   }, [personaReports]);
+  const summaryReportReady = Boolean(selectedPersonaChoice?.summary_text || activeSummaryReport?.summary_text);
+  const myViewedPersonaIds = useMemo(
+    () => Array.isArray(summaryReadingStatus?.my_viewed_personas) ? summaryReadingStatus.my_viewed_personas : [],
+    [summaryReadingStatus]
+  );
+  const nextUnreadSummaryReport = useMemo(() => {
+    const reports = Array.isArray(availableSummaryReports) ? availableSummaryReports : [];
+    if (!reports.length) return null;
+    const currentIndex = Number.isFinite(Number(activeSummaryReportIndex)) ? Number(activeSummaryReportIndex) : Number(defaultSummaryReportIndex || 0);
+    const startPosition = Math.max(0, reports.findIndex((item) => Number(item?.report_index) === currentIndex));
+    const viewedSet = new Set(myViewedPersonaIds.map((item) => String(item || "").trim()));
+    for (let offset = 1; offset <= reports.length; offset += 1) {
+      const report = reports[(startPosition + offset) % reports.length];
+      const personaId = String(report?.persona_id || "").trim();
+      if (personaId && !viewedSet.has(personaId)) {
+        return report;
+      }
+    }
+    return null;
+  }, [activeSummaryReportIndex, availableSummaryReports, defaultSummaryReportIndex, myViewedPersonaIds]);
+  const summaryProgressLabel = useMemo(() => {
+    const total = Number(summaryReadingStatus?.total_reports || availableSummaryReports.length || 3);
+    const viewed = Number(summaryReadingStatus?.team_viewed_count || 0);
+    return `团队已阅读 ${viewed}/${total}`;
+  }, [availableSummaryReports.length, summaryReadingStatus]);
   const selectedPersonaRadar = selectedPersonaChoice?.radar || mergeData?.mergedInterview?.radar || null;
   const selectedPersonaScores = useMemo(
     () => radarToInterviewScores(selectedPersonaRadar),
@@ -1157,12 +1332,16 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
   const showInterviewComposer = Boolean(interviewSessionId) && !interviewTransition && interviewRetryAction?.type !== "rescore";
   const showInterviewSummary = !showInterviewComposer && Boolean(interviewResult);
   const showInterviewEndButton = showInterviewComposer && interviewCanEnd && interviewRound >= INTERVIEW_MIN_TURNS && interviewRound < INTERVIEW_MAX_TURNS;
+  const hasMergedInterviewReady = Boolean(
+    mergeData?.mergedInterview?.radar
+    && Object.keys(mergeData.mergedInterview.radar || {}).length > 0
+  );
   const canEnterCards = isSummaryMode
-    ? Boolean(selectedPersonaSummaryText)
+    ? Boolean(selectedPersonaChoice?.summary_text)
     : Boolean(interviewProgress.canProceed || memberState?.interview_status === "completed");
   const showInterviewStartButton = !isSummaryMode && !showInterviewComposer && !interviewTransition && !canEnterCards;
   const interviewProgressLabel = isSummaryMode
-    ? (canEnterCards ? "报告已就绪" : (isLoadingPersonaReports ? "正在加载报告..." : "等待报告加载"))
+    ? (canEnterCards ? "报告已冻结" : (summaryReportReady ? "报告已就绪" : (isLoadingPersonaReports ? "正在加载报告..." : "等待报告加载")))
     : (interviewTransition
       ? `已完成 ${completedInterviewCount}/${Math.max(MIN_INTERVIEWS_REQUIRED, Number(interviewProgress.maxInterviews || 3))} 次访谈`
       : (showInterviewComposer ? `进行中 ${interviewRound}/${INTERVIEW_MAX_TURNS}` : (canEnterCards ? "访谈要求已满足" : "等待开始")));
@@ -1244,6 +1423,35 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
       });
     }
   }, []);
+
+  const handleViewAnotherSummaryReport = useCallback(async () => {
+    if (!nextUnreadSummaryReport || isLoadingSummaryReport || selectedPersonaChoice?.summary_text) return;
+    try {
+      await loadSummaryReport(Number(nextUnreadSummaryReport.report_index));
+    } catch (err) {
+      setSummaryReportError(err.message || "客户调研报告加载失败");
+    }
+  }, [isLoadingSummaryReport, loadSummaryReport, nextUnreadSummaryReport, selectedPersonaChoice?.summary_text]);
+
+  const handleContinueFromSummary = useCallback(async () => {
+    if (!teamId || !memberId || !summaryReportReady || isFreezingSummary) return;
+    try {
+      setIsFreezingSummary(true);
+      setSummaryReportError("");
+      const out = await continueRound2SummaryReading({
+        teamId,
+        memberId,
+        session_id: sessionId
+      });
+      setSelectedPersonaChoice(out?.choice || null);
+      setSystemNotice("已阅读调研报告，进入个人选卡。");
+      setStep(2);
+    } catch (err) {
+      setSummaryReportError(err.message || "冻结调研报告失败");
+    } finally {
+      setIsFreezingSummary(false);
+    }
+  }, [isFreezingSummary, memberId, sessionId, summaryReportReady, teamId]);
 
   const handleDownloadInterviewTxt = useCallback(() => {
     const lines = [];
@@ -1851,7 +2059,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
       return;
     }
     if (!teamId || isSubmittingFinal || round2TeamControlsLocked) return;
-    if (!mergeData?.mergedInterview || !Array.isArray(mergeData.mergedInterview.tags) || mergeData.mergedInterview.tags.length === 0) {
+    if (!hasMergedInterviewReady) {
       setSystemNotice("团队合并数据未就绪，请等待加载完成后再提交。");
       return;
     }
@@ -1888,7 +2096,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     } finally {
       setIsSubmittingFinal(false);
     }
-  }, [isTeamMode, isSubmittingFinal, memberId, mergeData, round2TeamControlsLocked, sessionId, teamId, teamPrice, teamRecap, teamSel]);
+  }, [hasMergedInterviewReady, isTeamMode, isSubmittingFinal, memberId, mergeData, round2TeamControlsLocked, sessionId, teamId, teamPrice, teamRecap, teamSel]);
 
   // ── Render card (individual mode: no cost numbers) ──
   const renderCard = (card, dim, sels, showCost, mode) => {
@@ -2384,11 +2592,11 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
           </div>
           <div style={{padding:"14px 18px",borderRadius:10,background:"#fffbeb",border:"1px solid #fde68a",marginBottom:16}}>
             <div style={{fontSize:14,fontWeight:700,color:"#92400e",marginBottom:6}}>📋 访谈规则</div>
-            <div style={{fontSize:13,color:"#78350f",lineHeight:1.8}}>
+              <div style={{fontSize:13,color:"#78350f",lineHeight:1.8}}>
               {isSummaryMode ? (
                 <>
-                  当前是 <strong>团队级</strong> 决策，所有成员会看到同一份已冻结的客户调研报告。
-                  阅读完成后即可进入个人选卡和团队合并。
+                  当前是 <strong>团队级</strong> 决策，团队会围绕同一组客户调研报告进入后续选卡。
+                  阅读完成后点击继续，系统将冻结本队的 Round 2 入口结果，不会重抽。
                 </>
               ) : (
                 <>
@@ -2406,34 +2614,60 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                   <div style={{fontSize:11,fontWeight:800,color:"#1a5c3a",letterSpacing:"0.04em",marginBottom:6}}>团队共享报告</div>
                   <div style={{fontSize:20,fontWeight:800,color:"#111827"}}>{summaryReportTitle}</div>
                 </div>
-                <div style={{padding:"8px 12px",borderRadius:999,background:"#ecfdf5",color:"#166534",fontSize:12,fontWeight:800,border:"1px solid #bbf7d0"}}>
-                  已按团队冻结，不重抽
-                </div>
+                {selectedPersonaChoice?.summary_text ? (
+                  <div style={{padding:"8px 12px",borderRadius:999,background:"#ecfdf5",color:"#166534",fontSize:12,fontWeight:800,border:"1px solid #bbf7d0"}}>
+                    已按团队冻结，不重抽
+                  </div>
+                ) : (
+                  <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                    <div style={{padding:"8px 12px",borderRadius:999,background:"#ecfdf5",color:"#166534",fontSize:12,fontWeight:800,border:"1px solid #bbf7d0"}}>
+                      {summaryProgressLabel}
+                    </div>
+                    {isLoadingReadingStatus && (
+                      <div style={{fontSize:12,color:"#6b7280"}}>同步中…</div>
+                    )}
+                  </div>
+                )}
               </div>
               <div style={{padding:"22px 24px",fontSize:14,color:"#374151",lineHeight:1.95,whiteSpace:"pre-wrap",minHeight:340}}>
                 {isLoadingPersonaReports
                   ? "系统正在加载客户调研报告，请稍候..."
                   : (selectedPersonaSummaryText || "暂未分配客户调研报告。")}
               </div>
-              {loadError && (
+              {(loadError || summaryReportError) && (
                 <div style={{padding:"0 20px 16px"}}>
                   <div style={{padding:"10px 14px",borderRadius:10,background:"#FEF2F2",border:"1px solid #FECACA",fontSize:12,color:"#991B1B"}}>
-                    {loadError}
+                    {summaryReportError || loadError}
                   </div>
                 </div>
               )}
-              <div style={{padding:"16px 20px",borderTop:"1px solid #e5e7eb",background:"#f8fafc",display:"flex",justifyContent:"flex-end"}}>
+              <div style={{padding:"16px 20px",borderTop:"1px solid #e5e7eb",background:"#f8fafc",display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}>
                 <button
                   type="button"
-                  onClick={() => {
-                    if (!canEnterCards) return;
-                    setSystemNotice("已阅读调研报告，进入个人选卡。");
-                    setStep(2);
+                  onClick={handleViewAnotherSummaryReport}
+                  disabled={!nextUnreadSummaryReport || Boolean(selectedPersonaChoice?.summary_text) || isLoadingSummaryReport}
+                  style={{
+                    padding:"12px 16px",
+                    borderRadius:10,
+                    background:nextUnreadSummaryReport && !selectedPersonaChoice?.summary_text ? "#fff" : "#f3f4f6",
+                    color:nextUnreadSummaryReport && !selectedPersonaChoice?.summary_text ? "#1f2937" : "#9ca3af",
+                    border:"1px solid #d1d5db",
+                    fontSize:14,
+                    fontWeight:700,
+                    cursor:nextUnreadSummaryReport && !selectedPersonaChoice?.summary_text && !isLoadingSummaryReport ? "pointer" : "not-allowed"
                   }}
-                  disabled={!canEnterCards}
-                  style={{padding:"12px 16px",borderRadius:10,background:canEnterCards ? "#1a5c3a" : "#d1d5db",color:"#fff",border:"none",fontSize:14,fontWeight:700,cursor:canEnterCards ? "pointer" : "not-allowed",opacity:canEnterCards ? 1 : 0.6}}
                 >
-                  {canEnterCards ? "继续，进入个人选卡 →" : "等待报告加载"}
+                  {selectedPersonaChoice?.summary_text
+                    ? "已冻结"
+                    : (nextUnreadSummaryReport ? "查看另一位受访者" : "已阅读全部受访者")}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleContinueFromSummary}
+                  disabled={!summaryReportReady || isFreezingSummary}
+                  style={{padding:"12px 16px",borderRadius:10,background:summaryReportReady ? "#1a5c3a" : "#d1d5db",color:"#fff",border:"none",fontSize:14,fontWeight:700,cursor:summaryReportReady && !isFreezingSummary ? "pointer" : "not-allowed",opacity:summaryReportReady ? 1 : 0.6}}
+                >
+                  {isFreezingSummary ? "正在冻结…" : (summaryReportReady ? "继续，进入个人选卡 →" : "等待报告加载")}
                 </button>
               </div>
             </div>
@@ -2883,7 +3117,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                 </div>
               );
             })}
-            {mergeData?.mergedInterview?.tags?.length > 0 && (
+            {!isSummaryMode && mergeData?.mergedInterview?.tags?.length > 0 && (
               <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:8}}>
                 {mergeData.mergedInterview.tags.slice(0, 8).map((item, index) => (
                   <span key={`${item.tag || item}-${index}`} style={{fontSize:11,padding:"3px 8px",borderRadius:999,background:"#EFF6FF",color:"#1E40AF",fontWeight:600}}>
@@ -3282,7 +3516,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
             >
               ← 返回修改
             </button>
-            <button data-testid="r2-final-submit" onClick={handleFinalSubmit} disabled={isSubmittingFinal || round2TeamControlsLocked || !mergeData?.mergedInterview || !Array.isArray(mergeData?.mergedInterview?.tags) || mergeData.mergedInterview.tags.length === 0} style={{...BS,flex:1,opacity:isSubmittingFinal||round2TeamControlsLocked||!mergeData?.mergedInterview||!Array.isArray(mergeData?.mergedInterview?.tags)||mergeData.mergedInterview.tags.length===0?0.7:1,cursor:isSubmittingFinal?"wait":((round2TeamControlsLocked||!mergeData?.mergedInterview||!Array.isArray(mergeData?.mergedInterview?.tags)||mergeData.mergedInterview.tags.length===0)?"not-allowed":"pointer")}}>
+            <button data-testid="r2-final-submit" onClick={handleFinalSubmit} disabled={isSubmittingFinal || round2TeamControlsLocked || !hasMergedInterviewReady} style={{...BS,flex:1,opacity:isSubmittingFinal||round2TeamControlsLocked||!hasMergedInterviewReady?0.7:1,cursor:isSubmittingFinal?"wait":((round2TeamControlsLocked||!hasMergedInterviewReady)?"not-allowed":"pointer")}}>
               {round2TeamControlsLocked ? `仅组长 ${leaderDisplayName(leaderName)} 可提交` : (isSubmittingFinal ? "提交中..." : "确认提交 ✓")}
             </button>
           </div>

@@ -264,16 +264,23 @@ test("static summary evidence injection uses config evi and student choice sanit
   const evidenceRow = Round2.__test.getGridDimensionEvidenceRow("B2C_Differentiation_Elder");
   assert.ok(evidenceRow);
 
+  const fullKeywords = Round2.__test.getGridKeywordsFull("B2C_Differentiation_Elder");
+  const report = Round2.__test.getStaticPersonaReportByIndex("B2C_Differentiation_Elder", 0);
+  const expectedCoverageRatio = report.covered_keywords.length / fullKeywords.length;
+  const expectedEvi = Round2.__test.computeDynamicSummaryEvi(expectedCoverageRatio);
+
   const result = Round2.__test.buildStaticSummaryModeRadarResult({
     gridId: "B2C_Differentiation_Elder",
     architecture: "Experience",
     evidenceRow,
-    mapEvidenceToResultFn: Round2.__test.mapEvidenceToResult
+    mapEvidenceToResultFn: Round2.__test.mapEvidenceToResult,
+    eviOverride: expectedEvi
   });
 
-  assert.equal(result.evi, 0.7);
-  assert.equal(result.eviMeta.raw_evi, 0.7);
-  assert.equal(result.eviMeta.final_evi, 0.7);
+  assert.equal(evidenceRow.evi, null);
+  assert.equal(result.evi, expectedEvi);
+  assert.equal(result.eviMeta.raw_evi, expectedEvi);
+  assert.equal(result.eviMeta.final_evi, expectedEvi);
   assert.equal(Array.isArray(result.tags), true);
   assert.equal(result.tags.length > 0, true);
 
@@ -290,7 +297,39 @@ test("static summary evidence injection uses config evi and student choice sanit
     covered_keywords: ["A"],
     uncovered_keywords: ["B"]
   });
+  assert.equal("evi" in studentChoice, false);
+  assert.equal("tags" in studentChoice, false);
   assert.equal("covered_keywords" in studentChoice, false);
   assert.equal("uncovered_keywords" in studentChoice, false);
   assert.equal(studentChoice.persona_id, "ToC_Diff_Elder_P1");
+});
+
+test("summary-mode dynamic coverage ratio uses viewed report union and student merged interview strips evi", () => {
+  const gridId = "B2C_Differentiation_Elder";
+  const fullKeywords = Round2.__test.getGridKeywordsFull(gridId);
+  const reportA = Round2.__test.getStaticPersonaReportByIndex(gridId, 0);
+  const reportB = Round2.__test.getStaticPersonaReportByIndex(gridId, 1);
+  assert.ok(fullKeywords.length > 0);
+  assert.ok(reportA);
+  assert.ok(reportB);
+
+  const viewedPersonaIds = [reportA.persona_id, reportB.persona_id];
+  const union = new Set([...(reportA.covered_keywords || []), ...(reportB.covered_keywords || [])]);
+  const expectedCoverageRatio = union.size / fullKeywords.length;
+  const actualCoverageRatio = Round2.__test.computeCoverageRatioForViewedReports(gridId, viewedPersonaIds);
+  assert.equal(actualCoverageRatio, expectedCoverageRatio);
+  assert.equal(Round2.__test.computeDynamicSummaryEvi(0), 0);
+  assert.equal(Round2.__test.computeDynamicSummaryEvi(1), 0.85);
+
+  const mergedInterview = Round2.__test.buildMergedInterviewFromPersonaChoice({
+    persona_id: reportA.persona_id,
+    radar: { interaction: 7 },
+    tags: [{ tag: "情感陪伴", polarity: 1 }],
+    evi: Round2.__test.computeDynamicSummaryEvi(actualCoverageRatio),
+    summary_text: reportA.report_text,
+    flow_version: "merged_v1"
+  });
+  const studentMerged = Round2.__test.sanitizeStudentMergedInterview(mergedInterview, { stripEvi: true, stripTags: true });
+  assert.equal("evi" in studentMerged, false);
+  assert.equal("tags" in studentMerged, false);
 });

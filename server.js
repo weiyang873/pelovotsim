@@ -2633,6 +2633,33 @@ function handleApi(req, res) {
     }
   }
 
+  {
+    const match = String(req.url || "").match(/^\/api\/round2\/persona-report\/(\d+)(?:\?.*)?$/);
+    if (req.method === "GET" && match) {
+      try {
+        const url = new URL(String(req.url || ""), `http://${req.headers.host || "127.0.0.1"}`);
+        const query = Object.fromEntries(url.searchParams.entries());
+        return Round2.personaReportByIndexApi({ reportIndex: match[1] }, query)
+          .then((out) => sendJson(res, out.status, out.body))
+          .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "round2 persona report by index failed" }));
+      } catch (err) {
+        return sendJson(res, 400, { ok: false, error: err.message || "invalid round2 persona report index request" });
+      }
+    }
+  }
+
+  if (req.method === "GET" && String(req.url || "").startsWith("/api/round2/team-reading-status")) {
+    try {
+      const url = new URL(String(req.url || ""), `http://${req.headers.host || "127.0.0.1"}`);
+      const query = Object.fromEntries(url.searchParams.entries());
+      return Round2.teamReadingStatusApi(query)
+        .then((out) => sendJson(res, out.status, out.body))
+        .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "round2 team reading status failed" }));
+    } catch (err) {
+      return sendJson(res, 400, { ok: false, error: err.message || "invalid round2 team reading status request" });
+    }
+  }
+
   if (req.method === "POST" && req.url === "/api/round2/persona-select") {
     return readBody(req)
       .then((p) => Round2.selectPersonaArchetypeApi(p))

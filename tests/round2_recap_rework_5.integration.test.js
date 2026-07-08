@@ -90,6 +90,7 @@ async function cleanupTeam(teamId) {
     "round2_results",
     "round2_submissions",
     "fg_team_radar",
+    "round2_persona_views",
     "round2_persona_choices",
     "round2_persona_reports",
     "round2_team_drafts",
@@ -180,21 +181,47 @@ async function main() {
       memberCount: TEAM_SIZE
     });
     assert.equal(assignRes.status, 200);
+    assert(Array.isArray(assignRes.body.available_reports), "summary mode should return available reports");
+    assert(Number.isInteger(Number(assignRes.body.default_report_index)), "summary mode should return default report index");
 
-    const reportsRes = await Round2.personaReportsApi({
+    const readReportRes = await Round2.personaReportByIndexApi(
+      { reportIndex: assignRes.body.default_report_index },
+      {
+        teamId,
+        memberId,
+        session_id: SESSION_ID
+      }
+    );
+    assert.equal(readReportRes.status, 200);
+    assert.equal(readReportRes.body.report.report_index, assignRes.body.default_report_index);
+    assert.equal("covered_keywords" in readReportRes.body.report, false);
+    assert.equal("uncovered_keywords" in readReportRes.body.report, false);
+
+    const readingStatusRes = await Round2.teamReadingStatusApi({
       teamId,
+      memberId,
       session_id: SESSION_ID
     });
-    assert.equal(reportsRes.status, 200);
-    assert((reportsRes.body.reports || []).length >= 1, "summary mode should return persona reports");
+    assert.equal(readingStatusRes.status, 200);
+    assert.equal(readingStatusRes.body.team_viewed_count, 1);
+    assert.equal("coverage_ratio" in readingStatusRes.body, false);
 
     const selectRes = await Round2.selectPersonaArchetypeApi({
       teamId,
       memberId,
-      session_id: SESSION_ID,
-      archetypeId: reportsRes.body.reports[0].archetype_id
+      session_id: SESSION_ID
     });
     assert.equal(selectRes.status, 200);
+    assert.equal("evi" in selectRes.body.choice, false);
+    assert.equal("tags" in selectRes.body.choice, false);
+    assert.equal("coverage_ratio" in selectRes.body.choice, false);
+
+    const frozenChoice = await Round2.__test.readPersonaChoice(teamId, SESSION_ID);
+    assert.ok(frozenChoice);
+    assert.equal(Array.isArray(frozenChoice.reports_viewed), true);
+    assert.equal(frozenChoice.reports_viewed.length, 1);
+    assert(Number(frozenChoice.coverage_ratio) > 0, "coverage ratio should be frozen after reading");
+    assert.equal(Number(frozenChoice.evi) > 0, true);
 
     const memberSelectionRes = await Round2.saveMemberSelectionApi({
       teamId,
@@ -209,6 +236,8 @@ async function main() {
       COGSbase: 2000
     });
     assert.equal(mergeRes.status, 200);
+    assert.equal("evi" in mergeRes.body.mergedInterview, false);
+    assert.equal("tags" in mergeRes.body.mergedInterview, false);
 
     const draftRes = await Round2.saveTeamDraftApi({
       teamId,

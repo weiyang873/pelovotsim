@@ -46,6 +46,7 @@ let cachedGridPriors = null;
 let cachedStaticPersonaReports = null;
 let cachedGridDimensionEvidence = null;
 const ROUND2_PERSONA_POOL_VERSION = 5;
+const SUMMARY_DYNAMIC_EVI_MAX = 0.85;
 
 const DIM_KEYS_SHORT = ["interaction", "perception", "motion", "safety", "extend", "ops"];
 const DIM_SHORT_TO_GROUP = {
@@ -323,6 +324,15 @@ async function ensureSchema() {
         selected_at TIMESTAMPTZ NOT NULL,
         PRIMARY KEY (session_id, team_id)
       );
+
+      CREATE TABLE IF NOT EXISTS round2_persona_views (
+        session_id TEXT NOT NULL DEFAULT 'default',
+        team_id TEXT NOT NULL,
+        member_id TEXT NOT NULL,
+        persona_id TEXT NOT NULL,
+        viewed_at TIMESTAMPTZ NOT NULL,
+        PRIMARY KEY (session_id, team_id, member_id, persona_id)
+      );
     `);
     await runSql(`
       ALTER TABLE round2_interview_sessions
@@ -335,6 +345,10 @@ async function ensureSchema() {
       ADD COLUMN IF NOT EXISTS covered_keywords_json TEXT;
       ALTER TABLE round2_persona_choices
       ADD COLUMN IF NOT EXISTS uncovered_keywords_json TEXT;
+      ALTER TABLE round2_persona_choices
+      ADD COLUMN IF NOT EXISTS reports_viewed_json TEXT;
+      ALTER TABLE round2_persona_choices
+      ADD COLUMN IF NOT EXISTS coverage_ratio DOUBLE PRECISION;
     `);
     await runSql(`
       ALTER TABLE round2_submissions
@@ -426,6 +440,12 @@ function getStaticPersonaGrid(gridId) {
   return (config?.grids || []).find((item) => String(item?.grid_id || "").trim() === normalizedGridId) || null;
 }
 
+function getReportTextTitle(reportText) {
+  const lines = String(reportText || "").split("\n").map((line) => line.trim()).filter(Boolean);
+  if (lines[0] === "━━━━━━━━━━━━━━━━━━━━" && lines[2]) return lines[2];
+  return lines[0] || "客户调研报告";
+}
+
 function getGridDimensionEvidenceRow(gridId) {
   const config = loadGridDimensionEvidenceConfig();
   const normalizedGridId = String(gridId || "").trim();
@@ -436,8 +456,10 @@ function sanitizeStudentPersonaReport(report) {
   if (!report || typeof report !== "object") return null;
   return {
     grid_id: String(report.grid_id || "").trim(),
+    report_index: Number.isFinite(Number(report.report_index)) ? Number(report.report_index) : 0,
     persona_id: String(report.persona_id || report.archetype_id || "").trim(),
     archetype_id: String(report.persona_id || report.archetype_id || "").trim(),
+    title: String(report.title || getReportTextTitle(report.summary_text || report.report_text || "")).trim(),
     summary_text: String(report.summary_text || report.report_text || "").trim(),
     report_text: String(report.report_text || report.summary_text || "").trim(),
     char_count: Number(report.char_count || 0),
@@ -458,8 +480,6 @@ function sanitizeStudentPersonaChoice(choice) {
     persona_id: choice.persona_id || choice.archetype_id || "",
     archetype_id: choice.persona_id || choice.archetype_id || "",
     radar: normalizeRadarPayload(choice.radar),
-    tags: Array.isArray(choice.tags) ? choice.tags : [],
-    evi: choice.evi == null ? null : Number(choice.evi),
     summary_text: String(choice.summary_text || "").trim(),
     flow_version: choice.flow_version || SUMMARY_FLOW_VERSION,
     selected_by: choice.selected_by || "",
@@ -467,20 +487,36 @@ function sanitizeStudentPersonaChoice(choice) {
   };
 }
 
-function selectStaticPersonaReport({ teamId, gridId }) {
+function getStaticPersonaReportsForGrid(gridId) {
   const grid = getStaticPersonaGrid(gridId);
-  const reports = Array.isArray(grid?.reports) ? grid.reports : [];
-  if (!reports.length) {
-    throw new Error(`static persona reports not found for grid ${gridId}`);
+  return Array.isArray(grid?.reports) ? grid.reports : [];
+}
+
+function buildStudentPersonaCatalog(gridId) {
+  return getStaticPersonaReportsForGrid(gridId).map((report, index) => ({
+    report_index: index,
+    persona_id: String(report?.persona_id || "").trim(),
+    title: getReportTextTitle(report?.report_text || "")
+  }));
+}
+
+function getDefaultPersonaReportIndex(teamId, gridId) {
+  return pickDeterministicIndex(String(teamId || "").trim(), getStaticPersonaReportsForGrid(gridId).length);
+}
+
+function getStaticPersonaReportByIndex(gridId, reportIndex) {
+  const reports = getStaticPersonaReportsForGrid(gridId);
+  const index = Number(reportIndex);
+  if (!Number.isInteger(index) || index < 0 || index >= reports.length) {
+    return null;
   }
-  const selectedIndex = pickDeterministicIndex(String(teamId || "").trim(), reports.length);
-  const selected = reports[selectedIndex];
-  if (!selected) {
-    throw new Error(`static persona report selection failed for grid ${gridId}`);
-  }
+  const selected = reports[index];
+  if (!selected) return null;
   return {
-    grid_id: String(grid?.grid_id || gridId || "").trim(),
+    grid_id: String(gridId || "").trim(),
+    report_index: index,
     persona_id: String(selected?.persona_id || "").trim(),
+    title: getReportTextTitle(selected?.report_text || ""),
     report_text: String(selected?.report_text || "").trim(),
     char_count: Number(selected?.char_count || 0),
     leakage_check_passed: selected?.leakage_check_passed !== false,
@@ -492,7 +528,55 @@ function selectStaticPersonaReport({ teamId, gridId }) {
   };
 }
 
-function buildStaticSummaryModeRadarResult({ gridId, architecture, evidenceRow, mapEvidenceToResultFn }) {
+function getStaticPersonaReportByPersonaId(gridId, personaId) {
+  const normalizedPersonaId = String(personaId || "").trim();
+  if (!normalizedPersonaId) return null;
+  const reports = getStaticPersonaReportsForGrid(gridId);
+  const index = reports.findIndex((report) => String(report?.persona_id || "").trim() === normalizedPersonaId);
+  if (index < 0) return null;
+  return getStaticPersonaReportByIndex(gridId, index);
+}
+
+function getGridKeywordsFull(gridId) {
+  const reports = getStaticPersonaReportsForGrid(gridId);
+  for (const report of reports) {
+    const keywords = uniqueStrings(report?.grid_keywords_full);
+    if (keywords.length) return keywords;
+  }
+  return [];
+}
+
+function selectStaticPersonaReport({ teamId, gridId }) {
+  const reports = getStaticPersonaReportsForGrid(gridId);
+  if (!reports.length) {
+    throw new Error(`static persona reports not found for grid ${gridId}`);
+  }
+  const selectedIndex = getDefaultPersonaReportIndex(teamId, gridId);
+  const selected = reports[selectedIndex];
+  if (!selected) {
+    throw new Error(`static persona report selection failed for grid ${gridId}`);
+  }
+  return getStaticPersonaReportByIndex(gridId, selectedIndex);
+}
+
+function computeCoverageRatioForViewedReports(gridId, viewedPersonaIds) {
+  const fullKeywords = getGridKeywordsFull(gridId);
+  if (!fullKeywords.length) return 0;
+  const coveredUnion = new Set();
+  uniqueStrings(viewedPersonaIds).forEach((personaId) => {
+    const report = getStaticPersonaReportByPersonaId(gridId, personaId);
+    (report?.covered_keywords || []).forEach((keyword) => coveredUnion.add(keyword));
+  });
+  return coveredUnion.size / fullKeywords.length;
+}
+
+function computeDynamicSummaryEvi(coverageRatio, maxEvi = SUMMARY_DYNAMIC_EVI_MAX) {
+  const normalized = Number(coverageRatio);
+  if (!Number.isFinite(normalized) || normalized <= 0) return 0;
+  return roundTo(clamp(normalized, 0, 1) * Number(maxEvi || SUMMARY_DYNAMIC_EVI_MAX), 4);
+}
+
+function buildStaticSummaryModeRadarResult({ gridId, architecture, evidenceRow, mapEvidenceToResultFn, eviOverride = null }) {
   const extracted = {
     focused_dimensions: [],
     dimension_evidence: evidenceRow?.dimension_evidence && typeof evidenceRow.dimension_evidence === "object"
@@ -514,12 +598,12 @@ function buildStaticSummaryModeRadarResult({ gridId, architecture, evidenceRow, 
     history: [],
     conversation: JSON.stringify(extracted.dimension_evidence)
   });
-  const configuredEvi = Number(evidenceRow?.evi);
-  if (Number.isFinite(configuredEvi)) {
-    result.evi = configuredEvi;
+  const nextEvi = Number(eviOverride);
+  if (Number.isFinite(nextEvi)) {
+    result.evi = nextEvi;
     if (result.eviMeta) {
-      result.eviMeta.raw_evi = configuredEvi;
-      result.eviMeta.final_evi = configuredEvi;
+      result.eviMeta.raw_evi = nextEvi;
+      result.eviMeta.final_evi = nextEvi;
     }
   }
   return result;
@@ -589,7 +673,8 @@ async function readPersonaChoice(teamId, sessionId = "default") {
   await ensureSchema();
   const rows = await runSql(`
     SELECT session_id, team_id, archetype_id, radar_json, tags_json, evi, summary_text,
-      flow_version, selected_by, selected_at, grid_id, covered_keywords_json, uncovered_keywords_json
+      flow_version, selected_by, selected_at, grid_id, covered_keywords_json, uncovered_keywords_json,
+      reports_viewed_json, coverage_ratio
     FROM round2_persona_choices
     WHERE team_id = ${sqlQuote(teamId)}
       AND session_id = ${sqlQuote(sessionId)}
@@ -605,11 +690,13 @@ async function readPersonaChoice(teamId, sessionId = "default") {
     archetype_id: row.archetype_id,
     radar: normalizeRadarPayload(safeJsonParse(row.radar_json, {})),
     tags: safeJsonParse(row.tags_json, []),
-    evi: row.evi == null ? null : Number(row.evi),
     summary_text: row.summary_text || "",
     flow_version: row.flow_version || SUMMARY_FLOW_VERSION,
     selected_by: row.selected_by || "",
     selected_at: row.selected_at || null,
+    evi: row.evi == null ? null : Number(row.evi),
+    coverage_ratio: row.coverage_ratio == null ? null : Number(row.coverage_ratio),
+    reports_viewed: safeJsonParse(row.reports_viewed_json, []),
     covered_keywords: safeJsonParse(row.covered_keywords_json, []),
     uncovered_keywords: safeJsonParse(row.uncovered_keywords_json, [])
   };
@@ -621,7 +708,7 @@ async function savePersonaChoice(teamId, sessionId, choice) {
     INSERT INTO round2_persona_choices (
       session_id, team_id, archetype_id, radar_json, tags_json, evi,
       summary_text, flow_version, selected_by, selected_at, grid_id,
-      covered_keywords_json, uncovered_keywords_json
+      covered_keywords_json, uncovered_keywords_json, reports_viewed_json, coverage_ratio
     ) VALUES (
       ${sqlQuote(sessionId)},
       ${sqlQuote(teamId)},
@@ -635,7 +722,9 @@ async function savePersonaChoice(teamId, sessionId, choice) {
       ${sqlQuote(choice?.selected_at || nowIso())},
       ${sqlQuote(String(choice?.grid_id || "").trim() || null)},
       ${sqlQuote(JSON.stringify(uniqueStrings(choice?.covered_keywords)))},
-      ${sqlQuote(JSON.stringify(uniqueStrings(choice?.uncovered_keywords)))}
+      ${sqlQuote(JSON.stringify(uniqueStrings(choice?.uncovered_keywords)))},
+      ${sqlQuote(JSON.stringify(uniqueStrings(choice?.reports_viewed)))},
+      ${choice?.coverage_ratio == null ? "NULL" : Number(choice.coverage_ratio)}
     )
     ON CONFLICT (session_id, team_id) DO UPDATE SET
       archetype_id = EXCLUDED.archetype_id,
@@ -648,9 +737,54 @@ async function savePersonaChoice(teamId, sessionId, choice) {
       selected_at = EXCLUDED.selected_at,
       grid_id = EXCLUDED.grid_id,
       covered_keywords_json = EXCLUDED.covered_keywords_json,
-      uncovered_keywords_json = EXCLUDED.uncovered_keywords_json;
+      uncovered_keywords_json = EXCLUDED.uncovered_keywords_json,
+      reports_viewed_json = EXCLUDED.reports_viewed_json,
+      coverage_ratio = EXCLUDED.coverage_ratio;
   `);
   return readPersonaChoice(teamId, sessionId);
+}
+
+async function recordPersonaView(sessionId, teamId, memberId, personaId) {
+  await ensureSchema();
+  await runSql(`
+    INSERT INTO round2_persona_views (
+      session_id, team_id, member_id, persona_id, viewed_at
+    ) VALUES (
+      ${sqlQuote(sessionId)},
+      ${sqlQuote(teamId)},
+      ${sqlQuote(memberId)},
+      ${sqlQuote(personaId)},
+      ${sqlQuote(nowIso())}
+    )
+    ON CONFLICT (session_id, team_id, member_id, persona_id) DO NOTHING;
+  `);
+}
+
+async function getTeamViewedPersonas(teamId, sessionId = "default") {
+  await ensureSchema();
+  const rows = await runSql(`
+    SELECT persona_id, MIN(viewed_at) AS first_viewed_at
+    FROM round2_persona_views
+    WHERE team_id = ${sqlQuote(teamId)}
+      AND session_id = ${sqlQuote(sessionId)}
+    GROUP BY persona_id
+    ORDER BY MIN(viewed_at) ASC, persona_id ASC;
+  `);
+  return rows.map((row) => String(row.persona_id || "").trim()).filter(Boolean);
+}
+
+async function getMemberViewedPersonas(teamId, memberId, sessionId = "default") {
+  await ensureSchema();
+  const rows = await runSql(`
+    SELECT persona_id, MIN(viewed_at) AS first_viewed_at
+    FROM round2_persona_views
+    WHERE team_id = ${sqlQuote(teamId)}
+      AND member_id = ${sqlQuote(memberId)}
+      AND session_id = ${sqlQuote(sessionId)}
+    GROUP BY persona_id
+    ORDER BY MIN(viewed_at) ASC, persona_id ASC;
+  `);
+  return rows.map((row) => String(row.persona_id || "").trim()).filter(Boolean);
 }
 
 async function upsertTeamRadar(teamId, sessionId, radar) {
@@ -731,14 +865,36 @@ async function ensurePersonaReportsForTeam(teamId, sessionId = "default") {
   return readPersonaReports(teamId, sessionId);
 }
 
-async function ensureStaticSummaryChoiceForTeam(team, sessionId = "default") {
+function isSummaryModeSession(sessionConfig) {
+  return String(sessionConfig?.interview_mode || "summary").trim().toLowerCase() !== "live";
+}
+
+function buildStudentReadingStatusPayload({ allViewed, myViewed, totalReports }) {
+  return {
+    total_reports: Number(totalReports || 0),
+    team_viewed_count: uniqueStrings(allViewed).length,
+    team_viewed_personas: uniqueStrings(allViewed),
+    my_viewed_personas: uniqueStrings(myViewed)
+  };
+}
+
+function getDefaultStaticSummaryReportForTeam(team) {
+  const teamId = String(team?.id || team?.team_id || "").trim();
+  if (!teamId) return null;
+  const calcGridId = toCalcGridId(team?.final_grid_id || "", team?.final_architecture || "");
+  if (!calcGridId) return null;
+  return selectStaticPersonaReport({
+    teamId,
+    gridId: calcGridId
+  });
+}
+
+async function freezeStaticSummaryChoiceForTeam(team, sessionId = "default", selectedBy = "system_summary_freeze") {
   const teamId = String(team?.id || team?.team_id || "").trim();
   if (!teamId) return null;
 
   const sessionConfig = await getSessionConfig(team?.session_id || "default");
-  if (String(sessionConfig?.interview_mode || "summary").trim().toLowerCase() === "live") {
-    return null;
-  }
+  if (!isSummaryModeSession(sessionConfig)) return null;
 
   const existingChoice = await readPersonaChoice(teamId, sessionId);
   if (existingChoice?.summary_text) {
@@ -748,10 +904,19 @@ async function ensureStaticSummaryChoiceForTeam(team, sessionId = "default") {
   const calcGridId = toCalcGridId(team?.final_grid_id || "", team?.final_architecture || "");
   if (!calcGridId) return null;
 
-  const selectedReport = selectStaticPersonaReport({
-    teamId,
-    gridId: calcGridId
+  const allViewed = await getTeamViewedPersonas(teamId, sessionId);
+  const fallbackReport = getDefaultStaticSummaryReportForTeam(team);
+  const reportsViewed = uniqueStrings(allViewed.length ? allViewed : [fallbackReport?.persona_id || ""]);
+  const fullKeywords = getGridKeywordsFull(calcGridId);
+  const coveredKeywordSet = new Set();
+  reportsViewed.forEach((personaId) => {
+    const report = getStaticPersonaReportByPersonaId(calcGridId, personaId);
+    (report?.covered_keywords || []).forEach((keyword) => coveredKeywordSet.add(keyword));
   });
+  const coveredKeywords = Array.from(coveredKeywordSet);
+  const uncoveredKeywords = fullKeywords.filter((keyword) => !coveredKeywordSet.has(keyword));
+  const coverageRatio = computeCoverageRatioForViewedReports(calcGridId, reportsViewed);
+  const dynamicEvi = computeDynamicSummaryEvi(coverageRatio, SUMMARY_DYNAMIC_EVI_MAX);
   const evidenceRow = getGridDimensionEvidenceRow(calcGridId);
   if (!evidenceRow) {
     throw new Error(`grid dimension evidence not found for grid ${calcGridId}`);
@@ -761,21 +926,26 @@ async function ensureStaticSummaryChoiceForTeam(team, sessionId = "default") {
     gridId: calcGridId,
     architecture: String(team?.final_architecture || "").trim(),
     evidenceRow,
-    mapEvidenceToResultFn: mapEvidenceToResult
+    mapEvidenceToResultFn: mapEvidenceToResult,
+    eviOverride: dynamicEvi
   });
+
+  const summaryReport = fallbackReport || getStaticPersonaReportByPersonaId(calcGridId, reportsViewed[0]);
 
   const nextChoice = await savePersonaChoice(teamId, sessionId, {
     grid_id: calcGridId,
-    persona_id: selectedReport.persona_id,
+    persona_id: summaryReport?.persona_id || reportsViewed[0] || "",
     radar: summaryResult.radar,
     tags: summaryResult.tags,
     evi: summaryResult.evi,
-    summary_text: selectedReport.report_text,
+    summary_text: summaryReport?.report_text || "",
     flow_version: SUMMARY_FLOW_VERSION,
-    selected_by: "system_assign_dimensions",
+    selected_by: String(selectedBy || "").trim() || "system_summary_freeze",
     selected_at: nowIso(),
-    covered_keywords: selectedReport.covered_keywords,
-    uncovered_keywords: selectedReport.uncovered_keywords
+    covered_keywords: coveredKeywords,
+    uncovered_keywords: uncoveredKeywords,
+    reports_viewed: reportsViewed,
+    coverage_ratio: coverageRatio
   });
 
   await upsertTeamRadar(teamId, sessionId, {
@@ -789,15 +959,26 @@ async function ensureStaticSummaryChoiceForTeam(team, sessionId = "default") {
 }
 
 async function listStudentPersonaReportsForTeam(team, sessionId = "default") {
-  const choice = await ensureStaticSummaryChoiceForTeam(team, sessionId);
-  if (!choice) return [];
+  const choice = await readPersonaChoice(String(team?.id || team?.team_id || "").trim(), sessionId);
+  if (choice?.summary_text) {
+    const selectedReport = getStaticPersonaReportByPersonaId(choice.grid_id || "", choice.persona_id || choice.archetype_id || "");
+    return [sanitizeStudentPersonaReport({
+      ...(selectedReport || {}),
+      grid_id: choice.grid_id || "",
+      report_index: Number.isFinite(Number(selectedReport?.report_index)) ? Number(selectedReport.report_index) : 0,
+      persona_id: choice.persona_id || choice.archetype_id || "",
+      summary_text: String(choice.summary_text || "").trim(),
+      report_text: String(choice.summary_text || "").trim(),
+      flow_version: choice.flow_version || SUMMARY_FLOW_VERSION,
+      generated_at: choice.selected_at || null
+    })];
+  }
+  const defaultReport = getDefaultStaticSummaryReportForTeam(team);
+  if (!defaultReport) return [];
   return [sanitizeStudentPersonaReport({
-    grid_id: choice.grid_id || "",
-    persona_id: choice.persona_id || choice.archetype_id || "",
-    summary_text: String(choice.summary_text || "").trim(),
-    report_text: String(choice.summary_text || "").trim(),
-    flow_version: choice.flow_version || SUMMARY_FLOW_VERSION,
-    generated_at: choice.selected_at || null
+    ...defaultReport,
+    flow_version: SUMMARY_FLOW_VERSION,
+    generated_at: null
   })];
 }
 
@@ -2464,6 +2645,18 @@ function buildMergedInterviewFromPersonaChoice(choice) {
   };
 }
 
+function sanitizeStudentMergedInterview(mergedInterview, options = {}) {
+  if (!mergedInterview || typeof mergedInterview !== "object") return mergedInterview;
+  const next = { ...mergedInterview };
+  if (options?.stripEvi) {
+    delete next.evi;
+  }
+  if (options?.stripTags) {
+    delete next.tags;
+  }
+  return next;
+}
+
 function enrichPersona(persona) {
   const raw = persona && typeof persona === "object" ? persona : {};
   const title = String(raw.title || raw.occupation || "").trim();
@@ -3290,15 +3483,83 @@ async function personaReportsApi(query) {
     if (!teamId) return makeResponse(400, { ok: false, error: "teamId required" });
     const team = await getTeam(teamId);
     if (!team) return makeResponse(404, { ok: false, error: "team not found" });
+    const calcGridId = toCalcGridId(team?.final_grid_id || "", team?.final_architecture || "");
     const reports = await listStudentPersonaReportsForTeam(team, sessionId);
-    const choice = await ensureStaticSummaryChoiceForTeam(team, sessionId);
+    const choice = await readPersonaChoice(teamId, sessionId);
     return makeResponse(200, {
       ok: true,
       team_id: teamId,
       session_id: sessionId,
       flow_version: SUMMARY_FLOW_VERSION,
+      default_report_index: getDefaultPersonaReportIndex(teamId, calcGridId),
+      available_reports: buildStudentPersonaCatalog(calcGridId),
       selected_archetype_id: choice?.persona_id || choice?.archetype_id || "",
       reports
+    });
+  } catch (e) {
+    return makeResponse(400, { ok: false, error: e.message });
+  }
+}
+
+async function personaReportByIndexApi(params, query) {
+  try {
+    const teamId = String(query?.teamId || query?.team_id || "").trim();
+    const memberId = String(query?.memberId || query?.member_id || "").trim();
+    const sessionId = normalizeSessionId(query?.sessionId || query?.session_id);
+    const reportIndex = Number(params?.reportIndex);
+    if (!teamId || !memberId) {
+      return makeResponse(400, { ok: false, error: "teamId/memberId required" });
+    }
+
+    const team = await getTeam(teamId);
+    if (!team) return makeResponse(404, { ok: false, error: "team not found" });
+
+    const calcGridId = toCalcGridId(team?.final_grid_id || "", team?.final_architecture || "");
+    const report = getStaticPersonaReportByIndex(calcGridId, reportIndex);
+    if (!report) {
+      return makeResponse(404, { ok: false, error: "persona report not found" });
+    }
+
+    await recordPersonaView(sessionId, teamId, memberId, report.persona_id);
+    return makeResponse(200, {
+      ok: true,
+      team_id: teamId,
+      session_id: sessionId,
+      report: sanitizeStudentPersonaReport({
+        ...report,
+        flow_version: SUMMARY_FLOW_VERSION,
+        generated_at: null
+      })
+    });
+  } catch (e) {
+    return makeResponse(400, { ok: false, error: e.message });
+  }
+}
+
+async function teamReadingStatusApi(query) {
+  try {
+    const teamId = String(query?.teamId || query?.team_id || "").trim();
+    const memberId = String(query?.memberId || query?.member_id || "").trim();
+    const sessionId = normalizeSessionId(query?.sessionId || query?.session_id);
+    if (!teamId || !memberId) {
+      return makeResponse(400, { ok: false, error: "teamId/memberId required" });
+    }
+
+    const team = await getTeam(teamId);
+    if (!team) return makeResponse(404, { ok: false, error: "team not found" });
+
+    const calcGridId = toCalcGridId(team?.final_grid_id || "", team?.final_architecture || "");
+    const allViewed = await getTeamViewedPersonas(teamId, sessionId);
+    const myViewed = await getMemberViewedPersonas(teamId, memberId, sessionId);
+    return makeResponse(200, {
+      ok: true,
+      team_id: teamId,
+      session_id: sessionId,
+      ...buildStudentReadingStatusPayload({
+        allViewed,
+        myViewed,
+        totalReports: getStaticPersonaReportsForGrid(calcGridId).length
+      })
     });
   } catch (e) {
     return makeResponse(400, { ok: false, error: e.message });
@@ -3308,18 +3569,20 @@ async function personaReportsApi(query) {
 async function selectPersonaArchetypeApi(body) {
   try {
     const teamId = String(body?.teamId || body?.team_id || "").trim();
+    const memberId = String(body?.memberId || body?.member_id || "").trim();
     const sessionId = normalizeSessionId(body?.sessionId || body?.session_id);
-    if (!teamId) {
-      return makeResponse(400, { ok: false, error: "teamId required" });
+    if (!teamId || !memberId) {
+      return makeResponse(400, { ok: false, error: "teamId/memberId required" });
     }
 
     const team = await getTeam(teamId);
     if (!team) return makeResponse(404, { ok: false, error: "team not found" });
 
-    const nextChoice = await ensureStaticSummaryChoiceForTeam(team, sessionId);
+    const nextChoice = await freezeStaticSummaryChoiceForTeam(team, sessionId, memberId);
     if (!nextChoice) {
       return makeResponse(404, { ok: false, error: "static persona report not ready" });
     }
+    await syncSummaryModeChoice(teamId, sessionId, memberId);
 
     return makeResponse(200, {
       ok: true,
@@ -3345,12 +3608,14 @@ async function assignDimensionsApi(body) {
     const assignments = await buildAssignments(team, memberCount);
     await saveAssignments(teamId, assignments);
     const sessionId = normalizeSessionId(body?.sessionId || body?.session_id);
-    const personaChoice = await ensureStaticSummaryChoiceForTeam(team, sessionId);
+    const calcGridId = toCalcGridId(team?.final_grid_id || "", team?.final_architecture || "");
 
     return makeResponse(200, {
       ok: true,
       assignments,
-      persona_choice: sanitizeStudentPersonaChoice(personaChoice),
+      default_report_index: getDefaultPersonaReportIndex(teamId, calcGridId),
+      available_reports: buildStudentPersonaCatalog(calcGridId),
+      persona_choice: sanitizeStudentPersonaChoice(await readPersonaChoice(teamId, sessionId)),
       persona_reports: await listStudentPersonaReportsForTeam(team, sessionId)
     });
   } catch (e) {
@@ -3934,8 +4199,16 @@ async function saveMemberSelectionApi(body) {
   try {
     const teamId = String(body?.teamId || "").trim();
     const memberId = String(body?.memberId || "").trim();
+    const sessionId = normalizeSessionId(body?.sessionId || body?.session_id);
     const selections = Array.isArray(body?.selections) ? body.selections : [];
     if (!teamId || !memberId) return makeResponse(400, { ok: false, error: "teamId/memberId required" });
+    const team = await getTeam(teamId);
+    if (team) {
+      const sessionConfig = await getSessionConfig(team?.session_id || "default");
+      if (isSummaryModeSession(sessionConfig)) {
+        await freezeStaticSummaryChoiceForTeam(team, sessionId, memberId);
+      }
+    }
     await saveMemberSelections(teamId, memberId, selections);
     await updateMemberProgress(teamId, memberId, {
       card_status: "submitted",
@@ -3967,6 +4240,7 @@ async function mergeApi(body) {
   try {
     const teamId = String(body?.teamId || "").trim();
     const memberId = String(body?.memberId || body?.member_id || "").trim();
+    const sessionId = normalizeSessionId(body?.sessionId || body?.session_id);
     if (!teamId) return makeResponse(400, { ok: false, error: "teamId required" });
     let team = await getTeam(teamId);
     if (!team) return makeResponse(404, { ok: false, error: "team not found" });
@@ -3999,12 +4273,15 @@ async function mergeApi(body) {
     const validation = validateSelections(teamSelections);
     const softPenalties = computeSoftPenalties(teamSelections, Number(body?.COGSbase || 2000));
     const sessionConfig = await getSessionConfig(team?.session_id || "default");
-    const personaChoice = String(sessionConfig?.interview_mode || "summary").trim().toLowerCase() === "live"
-      ? await readPersonaChoice(teamId)
-      : await ensureStaticSummaryChoiceForTeam(team, "default");
+    const personaChoice = isSummaryModeSession(sessionConfig)
+      ? await freezeStaticSummaryChoiceForTeam(team, sessionId, memberId || "system_merge")
+      : await readPersonaChoice(teamId, sessionId);
     const interviewByMember = personaChoice ? {} : await getLatestInterviewByMember(teamId);
     const mergedInterview = personaChoice
-      ? buildMergedInterviewFromPersonaChoice(personaChoice)
+      ? sanitizeStudentMergedInterview(buildMergedInterviewFromPersonaChoice(personaChoice), {
+          stripEvi: isSummaryModeSession(sessionConfig),
+          stripTags: isSummaryModeSession(sessionConfig)
+        })
       : aggregateInterviewByOwner({ assignments, memberMap, interviewByMember });
     const totalCost = teamSelections.reduce((sum, sel) => {
       try {
@@ -4127,9 +4404,9 @@ async function teamSubmitApi(body) {
     }
 
     const sessionConfig = await getSessionConfig(team?.session_id || "default");
-    const personaChoice = String(sessionConfig?.interview_mode || "summary").trim().toLowerCase() === "live"
-      ? await readPersonaChoice(teamId, sessionId)
-      : await ensureStaticSummaryChoiceForTeam(team, sessionId);
+    const personaChoice = isSummaryModeSession(sessionConfig)
+      ? await freezeStaticSummaryChoiceForTeam(team, sessionId, memberId || "system_submit")
+      : await readPersonaChoice(teamId, sessionId);
     const flowVersion = personaChoice?.flow_version
       || (sessionConfig.interview_mode === "live" ? "twophase_v1" : SUMMARY_FLOW_VERSION);
     const fallbackRadar = personaChoice?.radar || {};
@@ -4227,8 +4504,11 @@ async function teamStatusApi(query) {
     if (!team) return makeResponse(404, { ok: false, error: "team not found" });
     await ensureAssignments(team);
     const sessionId = normalizeSessionId(query?.sessionId || query?.session_id);
-    const personaChoice = await ensureStaticSummaryChoiceForTeam(team, sessionId);
+    const personaChoice = await readPersonaChoice(teamId, sessionId);
     const personaReports = await listStudentPersonaReportsForTeam(team, sessionId);
+    const calcGridId = toCalcGridId(team?.final_grid_id || "", team?.final_architecture || "");
+    const defaultReportIndex = getDefaultPersonaReportIndex(teamId, calcGridId);
+    const availableReports = buildStudentPersonaCatalog(calcGridId);
 
     const teamState = await getTeamRound2State(teamId);
     if (!teamState) return makeResponse(404, { ok: false, error: "team not found" });
@@ -4309,6 +4589,8 @@ async function teamStatusApi(query) {
       team_draft: teamDraft,
       persona_choice: sanitizeStudentPersonaChoice(personaChoice),
       persona_reports: personaReports,
+      default_report_index: defaultReportIndex,
+      available_reports: availableReports,
       flow_version: personaChoice?.flow_version || "",
       round1_context: round1Context,
       member: memberState,
@@ -4385,6 +4667,8 @@ module.exports = {
   recap,
   assignDimensionsApi,
   personaReportsApi,
+  personaReportByIndexApi,
+  teamReadingStatusApi,
   selectPersonaArchetypeApi,
   interviewAuto,
   interviewSessionApi,
@@ -4415,9 +4699,22 @@ module.exports = {
     readPersonaReports,
     readPersonaChoice,
     selectStaticPersonaReport,
+    getDefaultPersonaReportIndex,
+    getStaticPersonaReportByIndex,
+    getStaticPersonaReportByPersonaId,
+    getGridKeywordsFull,
+    buildStudentPersonaCatalog,
+    computeCoverageRatioForViewedReports,
+    computeDynamicSummaryEvi,
     buildStaticSummaryModeRadarResult,
+    buildStudentReadingStatusPayload,
+    freezeStaticSummaryChoiceForTeam,
+    recordPersonaView,
+    getTeamViewedPersonas,
+    getMemberViewedPersonas,
     sanitizeStudentPersonaChoice,
     sanitizeStudentPersonaReport,
+    sanitizeStudentMergedInterview,
     getGridDimensionEvidenceRow
   }
 };
