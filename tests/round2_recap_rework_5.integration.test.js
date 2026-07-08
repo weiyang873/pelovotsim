@@ -223,6 +223,25 @@ async function main() {
     assert(Number(frozenChoice.coverage_ratio) > 0, "coverage ratio should be frozen after reading");
     assert.equal(Number(frozenChoice.evi) > 0, true);
 
+    const alternativeReport = (assignRes.body.available_reports || []).find((item) => {
+      return Number(item?.report_index) !== Number(assignRes.body.default_report_index);
+    });
+    if (alternativeReport) {
+      const lateReadRes = await Round2.personaReportByIndexApi(
+        { reportIndex: alternativeReport.report_index },
+        {
+          teamId,
+          memberId,
+          session_id: SESSION_ID
+        }
+      );
+      assert.equal(lateReadRes.status, 200);
+      const frozenChoiceAfterLateRead = await Round2.__test.readPersonaChoice(teamId, SESSION_ID);
+      assert.equal(frozenChoiceAfterLateRead.coverage_ratio, frozenChoice.coverage_ratio);
+      assert.equal(frozenChoiceAfterLateRead.evi, frozenChoice.evi);
+      assert.deepEqual(frozenChoiceAfterLateRead.reports_viewed, frozenChoice.reports_viewed);
+    }
+
     const memberSelectionRes = await Round2.saveMemberSelectionApi({
       teamId,
       memberId,
