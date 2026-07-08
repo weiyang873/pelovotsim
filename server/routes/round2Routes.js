@@ -1,3 +1,4 @@
+const fs = require("node:fs");
 const path = require("node:path");
 const { runSql, sqlQuote } = require("../db/pgSql");
 
@@ -38,8 +39,12 @@ const ROOT = path.join(__dirname, "..", "..");
 let __round2RoutesSchemaPromise = null;
 const CONFIG_DIR = path.join(ROOT, "game_config_v0.1");
 const GRID_PRIOR_PATH = path.join(ROOT, "data", "grid_priors_v4_cap_weights.json");
+const STATIC_PERSONA_REPORTS_PATH = path.join(CONFIG_DIR, "persona_reports_v1.json");
+const GRID_DIMENSION_EVIDENCE_PATH = path.join(CONFIG_DIR, "grid_dimension_evidence_v1.json");
 let cachedEngineConfig = null;
 let cachedGridPriors = null;
+let cachedStaticPersonaReports = null;
+let cachedGridDimensionEvidence = null;
 const ROUND2_PERSONA_POOL_VERSION = 5;
 
 const DIM_KEYS_SHORT = ["interaction", "perception", "motion", "safety", "extend", "ops"];
@@ -324,6 +329,14 @@ async function ensureSchema() {
       ADD COLUMN IF NOT EXISTS persona_locked_at TIMESTAMPTZ;
     `);
     await runSql(`
+      ALTER TABLE round2_persona_choices
+      ADD COLUMN IF NOT EXISTS grid_id TEXT;
+      ALTER TABLE round2_persona_choices
+      ADD COLUMN IF NOT EXISTS covered_keywords_json TEXT;
+      ALTER TABLE round2_persona_choices
+      ADD COLUMN IF NOT EXISTS uncovered_keywords_json TEXT;
+    `);
+    await runSql(`
       ALTER TABLE round2_submissions
       ADD COLUMN IF NOT EXISTS flow_version TEXT;
       ALTER TABLE round2_results
@@ -371,6 +384,145 @@ async function ensureSchema() {
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+function readJsonFile(filePath) {
+  return JSON.parse(fs.readFileSync(filePath, "utf8"));
+}
+
+function loadStaticPersonaReportsConfig() {
+  if (!cachedStaticPersonaReports) {
+    cachedStaticPersonaReports = readJsonFile(STATIC_PERSONA_REPORTS_PATH);
+  }
+  return cachedStaticPersonaReports;
+}
+
+function loadGridDimensionEvidenceConfig() {
+  if (!cachedGridDimensionEvidence) {
+    cachedGridDimensionEvidence = readJsonFile(GRID_DIMENSION_EVIDENCE_PATH);
+  }
+  return cachedGridDimensionEvidence;
+}
+
+function hashStringToUint32(value) {
+  let hash = 2166136261;
+  const text = String(value || "");
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function pickDeterministicIndex(seed, size) {
+  const count = Number(size || 0);
+  if (count <= 0) return -1;
+  return hashStringToUint32(seed) % count;
+}
+
+function getStaticPersonaGrid(gridId) {
+  const config = loadStaticPersonaReportsConfig();
+  const normalizedGridId = String(gridId || "").trim();
+  return (config?.grids || []).find((item) => String(item?.grid_id || "").trim() === normalizedGridId) || null;
+}
+
+function getGridDimensionEvidenceRow(gridId) {
+  const config = loadGridDimensionEvidenceConfig();
+  const normalizedGridId = String(gridId || "").trim();
+  return (config?.grids || []).find((item) => String(item?.grid_id || "").trim() === normalizedGridId) || null;
+}
+
+function sanitizeStudentPersonaReport(report) {
+  if (!report || typeof report !== "object") return null;
+  return {
+    grid_id: String(report.grid_id || "").trim(),
+    persona_id: String(report.persona_id || report.archetype_id || "").trim(),
+    archetype_id: String(report.persona_id || report.archetype_id || "").trim(),
+    summary_text: String(report.summary_text || report.report_text || "").trim(),
+    report_text: String(report.report_text || report.summary_text || "").trim(),
+    char_count: Number(report.char_count || 0),
+    leakage_check_passed: report.leakage_check_passed !== false,
+    reviewed: report.reviewed === true,
+    change_level: String(report.change_level || "").trim(),
+    flow_version: String(report.flow_version || SUMMARY_FLOW_VERSION).trim() || SUMMARY_FLOW_VERSION,
+    generated_at: report.generated_at || null
+  };
+}
+
+function sanitizeStudentPersonaChoice(choice) {
+  if (!choice || typeof choice !== "object") return null;
+  return {
+    session_id: choice.session_id,
+    team_id: choice.team_id,
+    grid_id: choice.grid_id || "",
+    persona_id: choice.persona_id || choice.archetype_id || "",
+    archetype_id: choice.persona_id || choice.archetype_id || "",
+    radar: normalizeRadarPayload(choice.radar),
+    tags: Array.isArray(choice.tags) ? choice.tags : [],
+    evi: choice.evi == null ? null : Number(choice.evi),
+    summary_text: String(choice.summary_text || "").trim(),
+    flow_version: choice.flow_version || SUMMARY_FLOW_VERSION,
+    selected_by: choice.selected_by || "",
+    selected_at: choice.selected_at || null
+  };
+}
+
+function selectStaticPersonaReport({ teamId, gridId }) {
+  const grid = getStaticPersonaGrid(gridId);
+  const reports = Array.isArray(grid?.reports) ? grid.reports : [];
+  if (!reports.length) {
+    throw new Error(`static persona reports not found for grid ${gridId}`);
+  }
+  const selectedIndex = pickDeterministicIndex(String(teamId || "").trim(), reports.length);
+  const selected = reports[selectedIndex];
+  if (!selected) {
+    throw new Error(`static persona report selection failed for grid ${gridId}`);
+  }
+  return {
+    grid_id: String(grid?.grid_id || gridId || "").trim(),
+    persona_id: String(selected?.persona_id || "").trim(),
+    report_text: String(selected?.report_text || "").trim(),
+    char_count: Number(selected?.char_count || 0),
+    leakage_check_passed: selected?.leakage_check_passed !== false,
+    reviewed: selected?.reviewed === true,
+    change_level: String(selected?.change_level || "").trim(),
+    grid_keywords_full: uniqueStrings(selected?.grid_keywords_full),
+    covered_keywords: uniqueStrings(selected?.covered_keywords),
+    uncovered_keywords: uniqueStrings(selected?.uncovered_keywords)
+  };
+}
+
+function buildStaticSummaryModeRadarResult({ gridId, architecture, evidenceRow, mapEvidenceToResultFn }) {
+  const extracted = {
+    focused_dimensions: [],
+    dimension_evidence: evidenceRow?.dimension_evidence && typeof evidenceRow.dimension_evidence === "object"
+      ? evidenceRow.dimension_evidence
+      : {},
+    other_dimensions: {},
+    tags: Array.isArray(evidenceRow?.tags) ? evidenceRow.tags : [],
+    interview_quality: {
+      specificity: "medium",
+      consistency: "medium",
+      actionability: "medium"
+    }
+  };
+  const result = mapEvidenceToResultFn({
+    gridId,
+    architecture,
+    memberDims: DIM_KEYS_SHORT,
+    extracted,
+    history: [],
+    conversation: JSON.stringify(extracted.dimension_evidence)
+  });
+  const configuredEvi = Number(evidenceRow?.evi);
+  if (Number.isFinite(configuredEvi)) {
+    result.evi = configuredEvi;
+    if (result.eviMeta) {
+      result.eviMeta.raw_evi = configuredEvi;
+      result.eviMeta.final_evi = configuredEvi;
+    }
+  }
+  return result;
 }
 
 async function readRound2TeamDraft(teamId) {
@@ -437,7 +589,7 @@ async function readPersonaChoice(teamId, sessionId = "default") {
   await ensureSchema();
   const rows = await runSql(`
     SELECT session_id, team_id, archetype_id, radar_json, tags_json, evi, summary_text,
-      flow_version, selected_by, selected_at
+      flow_version, selected_by, selected_at, grid_id, covered_keywords_json, uncovered_keywords_json
     FROM round2_persona_choices
     WHERE team_id = ${sqlQuote(teamId)}
       AND session_id = ${sqlQuote(sessionId)}
@@ -448,6 +600,8 @@ async function readPersonaChoice(teamId, sessionId = "default") {
   return {
     session_id: row.session_id,
     team_id: row.team_id,
+    grid_id: row.grid_id || "",
+    persona_id: row.archetype_id,
     archetype_id: row.archetype_id,
     radar: normalizeRadarPayload(safeJsonParse(row.radar_json, {})),
     tags: safeJsonParse(row.tags_json, []),
@@ -455,7 +609,9 @@ async function readPersonaChoice(teamId, sessionId = "default") {
     summary_text: row.summary_text || "",
     flow_version: row.flow_version || SUMMARY_FLOW_VERSION,
     selected_by: row.selected_by || "",
-    selected_at: row.selected_at || null
+    selected_at: row.selected_at || null,
+    covered_keywords: safeJsonParse(row.covered_keywords_json, []),
+    uncovered_keywords: safeJsonParse(row.uncovered_keywords_json, [])
   };
 }
 
@@ -464,18 +620,22 @@ async function savePersonaChoice(teamId, sessionId, choice) {
   await runSql(`
     INSERT INTO round2_persona_choices (
       session_id, team_id, archetype_id, radar_json, tags_json, evi,
-      summary_text, flow_version, selected_by, selected_at
+      summary_text, flow_version, selected_by, selected_at, grid_id,
+      covered_keywords_json, uncovered_keywords_json
     ) VALUES (
       ${sqlQuote(sessionId)},
       ${sqlQuote(teamId)},
-      ${sqlQuote(String(choice?.archetype_id || "").trim())},
+      ${sqlQuote(String(choice?.persona_id || choice?.archetype_id || "").trim())},
       ${sqlQuote(JSON.stringify(choice?.radar || {}))},
       ${sqlQuote(JSON.stringify(choice?.tags || []))},
       ${choice?.evi == null ? "NULL" : Number(choice.evi)},
       ${sqlQuote(String(choice?.summary_text || "").trim() || null)},
       ${sqlQuote(String(choice?.flow_version || SUMMARY_FLOW_VERSION).trim() || SUMMARY_FLOW_VERSION)},
       ${sqlQuote(String(choice?.selected_by || "").trim() || null)},
-      ${sqlQuote(choice?.selected_at || nowIso())}
+      ${sqlQuote(choice?.selected_at || nowIso())},
+      ${sqlQuote(String(choice?.grid_id || "").trim() || null)},
+      ${sqlQuote(JSON.stringify(uniqueStrings(choice?.covered_keywords)))},
+      ${sqlQuote(JSON.stringify(uniqueStrings(choice?.uncovered_keywords)))}
     )
     ON CONFLICT (session_id, team_id) DO UPDATE SET
       archetype_id = EXCLUDED.archetype_id,
@@ -485,7 +645,10 @@ async function savePersonaChoice(teamId, sessionId, choice) {
       summary_text = EXCLUDED.summary_text,
       flow_version = EXCLUDED.flow_version,
       selected_by = EXCLUDED.selected_by,
-      selected_at = EXCLUDED.selected_at;
+      selected_at = EXCLUDED.selected_at,
+      grid_id = EXCLUDED.grid_id,
+      covered_keywords_json = EXCLUDED.covered_keywords_json,
+      uncovered_keywords_json = EXCLUDED.uncovered_keywords_json;
   `);
   return readPersonaChoice(teamId, sessionId);
 }
@@ -566,6 +729,76 @@ async function ensurePersonaReportsForTeam(teamId, sessionId = "default") {
     return !existing.some((row) => row.archetype_id === item.archetype_id);
   }));
   return readPersonaReports(teamId, sessionId);
+}
+
+async function ensureStaticSummaryChoiceForTeam(team, sessionId = "default") {
+  const teamId = String(team?.id || team?.team_id || "").trim();
+  if (!teamId) return null;
+
+  const sessionConfig = await getSessionConfig(team?.session_id || "default");
+  if (String(sessionConfig?.interview_mode || "summary").trim().toLowerCase() === "live") {
+    return null;
+  }
+
+  const existingChoice = await readPersonaChoice(teamId, sessionId);
+  if (existingChoice?.summary_text) {
+    return existingChoice;
+  }
+
+  const calcGridId = toCalcGridId(team?.final_grid_id || "", team?.final_architecture || "");
+  if (!calcGridId) return null;
+
+  const selectedReport = selectStaticPersonaReport({
+    teamId,
+    gridId: calcGridId
+  });
+  const evidenceRow = getGridDimensionEvidenceRow(calcGridId);
+  if (!evidenceRow) {
+    throw new Error(`grid dimension evidence not found for grid ${calcGridId}`);
+  }
+
+  const summaryResult = buildStaticSummaryModeRadarResult({
+    gridId: calcGridId,
+    architecture: String(team?.final_architecture || "").trim(),
+    evidenceRow,
+    mapEvidenceToResultFn: mapEvidenceToResult
+  });
+
+  const nextChoice = await savePersonaChoice(teamId, sessionId, {
+    grid_id: calcGridId,
+    persona_id: selectedReport.persona_id,
+    radar: summaryResult.radar,
+    tags: summaryResult.tags,
+    evi: summaryResult.evi,
+    summary_text: selectedReport.report_text,
+    flow_version: SUMMARY_FLOW_VERSION,
+    selected_by: "system_assign_dimensions",
+    selected_at: nowIso(),
+    covered_keywords: selectedReport.covered_keywords,
+    uncovered_keywords: selectedReport.uncovered_keywords
+  });
+
+  await upsertTeamRadar(teamId, sessionId, {
+    radar: summaryResult.radar,
+    tags: summaryResult.tags,
+    evi: summaryResult.evi,
+    updated_at: nowIso()
+  });
+
+  return nextChoice;
+}
+
+async function listStudentPersonaReportsForTeam(team, sessionId = "default") {
+  const choice = await ensureStaticSummaryChoiceForTeam(team, sessionId);
+  if (!choice) return [];
+  return [sanitizeStudentPersonaReport({
+    grid_id: choice.grid_id || "",
+    persona_id: choice.persona_id || choice.archetype_id || "",
+    summary_text: String(choice.summary_text || "").trim(),
+    report_text: String(choice.summary_text || "").trim(),
+    flow_version: choice.flow_version || SUMMARY_FLOW_VERSION,
+    generated_at: choice.selected_at || null
+  })];
 }
 
 async function saveRound2TeamDraft(teamId, memberId, draft = {}) {
@@ -2225,7 +2458,7 @@ function buildMergedInterviewFromPersonaChoice(choice) {
     tags: Array.isArray(choice.tags) ? choice.tags : [],
     evi: Number.isFinite(Number(choice.evi)) ? Number(choice.evi) : 0.7,
     sourceByDim: {},
-    selectedArchetypeId: choice.archetype_id || "",
+    selectedArchetypeId: choice.persona_id || choice.archetype_id || "",
     summaryText: choice.summary_text || "",
     flowVersion: choice.flow_version || SUMMARY_FLOW_VERSION
   };
@@ -3057,14 +3290,14 @@ async function personaReportsApi(query) {
     if (!teamId) return makeResponse(400, { ok: false, error: "teamId required" });
     const team = await getTeam(teamId);
     if (!team) return makeResponse(404, { ok: false, error: "team not found" });
-    const reports = await ensurePersonaReportsForTeam(teamId, sessionId);
-    const choice = await readPersonaChoice(teamId, sessionId);
+    const reports = await listStudentPersonaReportsForTeam(team, sessionId);
+    const choice = await ensureStaticSummaryChoiceForTeam(team, sessionId);
     return makeResponse(200, {
       ok: true,
       team_id: teamId,
       session_id: sessionId,
       flow_version: SUMMARY_FLOW_VERSION,
-      selected_archetype_id: choice?.archetype_id || "",
+      selected_archetype_id: choice?.persona_id || choice?.archetype_id || "",
       reports
     });
   } catch (e) {
@@ -3075,72 +3308,26 @@ async function personaReportsApi(query) {
 async function selectPersonaArchetypeApi(body) {
   try {
     const teamId = String(body?.teamId || body?.team_id || "").trim();
-    const memberId = String(body?.memberId || body?.member_id || "").trim();
-    const archetypeId = String(body?.archetypeId || body?.archetype_id || "").trim();
     const sessionId = normalizeSessionId(body?.sessionId || body?.session_id);
-    if (!teamId || !memberId || !archetypeId) {
-      return makeResponse(400, { ok: false, error: "teamId/memberId/archetypeId required" });
+    if (!teamId) {
+      return makeResponse(400, { ok: false, error: "teamId required" });
     }
 
-    const permission = await ensureRound2LeaderPermission(teamId, memberId);
-    if (!permission.ok) return permission.response;
+    const team = await getTeam(teamId);
+    if (!team) return makeResponse(404, { ok: false, error: "team not found" });
 
-    const existingChoice = await readPersonaChoice(teamId, sessionId);
-    if (existingChoice) {
-      if (existingChoice.archetype_id !== archetypeId) {
-        return makeResponse(409, { ok: false, error: "persona_choice_locked", selected_archetype_id: existingChoice.archetype_id });
-      }
-      return makeResponse(200, {
-        ok: true,
-        locked: true,
-        team_id: teamId,
-        session_id: sessionId,
-        selected_archetype_id: existingChoice.archetype_id,
-        choice: existingChoice,
-        ...buildLeaderMeta(permission.team, memberId)
-      });
+    const nextChoice = await ensureStaticSummaryChoiceForTeam(team, sessionId);
+    if (!nextChoice) {
+      return makeResponse(404, { ok: false, error: "static persona report not ready" });
     }
-
-    const reports = await ensurePersonaReportsForTeam(teamId, sessionId);
-    const report = reports.find((item) => item.archetype_id === archetypeId) || null;
-    const config = loadPersonaArchetypes();
-    const archetype = (config.archetypes || []).find((item) => item.id === archetypeId);
-    if (!archetype) return makeResponse(404, { ok: false, error: "persona archetype not found" });
-
-    const recapRes = await recap({ teamId });
-    const recapData = recapRes?.body?.ok ? recapRes.body : {};
-    const summaryResult = buildSummaryModeRadarResult({
-      archetype,
-      gridId: String(recapData.final_grid_id || permission.team?.final_grid_id || ""),
-      architecture: String(recapData.architecture || permission.team?.final_architecture || ""),
-      mapEvidenceToResult
-    });
-
-    const nextChoice = await savePersonaChoice(teamId, sessionId, {
-      archetype_id: archetypeId,
-      radar: summaryResult.radar,
-      tags: summaryResult.tags,
-      evi: summaryResult.evi,
-      summary_text: report?.summary_text || "",
-      flow_version: SUMMARY_FLOW_VERSION,
-      selected_by: memberId,
-      selected_at: nowIso()
-    });
-    await upsertTeamRadar(teamId, sessionId, {
-      radar: summaryResult.radar,
-      tags: summaryResult.tags,
-      evi: summaryResult.evi,
-      updated_at: nowIso()
-    });
-    await syncSummaryModeChoice(teamId, sessionId, memberId);
 
     return makeResponse(200, {
       ok: true,
+      locked: true,
       team_id: teamId,
       session_id: sessionId,
-      selected_archetype_id: archetypeId,
-      choice: nextChoice,
-      ...buildLeaderMeta(permission.team, memberId)
+      selected_archetype_id: nextChoice.persona_id || nextChoice.archetype_id || "",
+      choice: sanitizeStudentPersonaChoice(nextChoice)
     });
   } catch (e) {
     return makeResponse(400, { ok: false, error: e.message });
@@ -3157,9 +3344,15 @@ async function assignDimensionsApi(body) {
     const memberCount = Number(body?.memberCount || listTeamMembers(team).length || 4);
     const assignments = await buildAssignments(team, memberCount);
     await saveAssignments(teamId, assignments);
-    await ensurePersonaReportsForTeam(teamId, normalizeSessionId(body?.sessionId || body?.session_id));
+    const sessionId = normalizeSessionId(body?.sessionId || body?.session_id);
+    const personaChoice = await ensureStaticSummaryChoiceForTeam(team, sessionId);
 
-    return makeResponse(200, { ok: true, assignments });
+    return makeResponse(200, {
+      ok: true,
+      assignments,
+      persona_choice: sanitizeStudentPersonaChoice(personaChoice),
+      persona_reports: await listStudentPersonaReportsForTeam(team, sessionId)
+    });
   } catch (e) {
     return makeResponse(400, { ok: false, error: e.message });
   }
@@ -3805,7 +3998,10 @@ async function mergeApi(body) {
 
     const validation = validateSelections(teamSelections);
     const softPenalties = computeSoftPenalties(teamSelections, Number(body?.COGSbase || 2000));
-    const personaChoice = await readPersonaChoice(teamId);
+    const sessionConfig = await getSessionConfig(team?.session_id || "default");
+    const personaChoice = String(sessionConfig?.interview_mode || "summary").trim().toLowerCase() === "live"
+      ? await readPersonaChoice(teamId)
+      : await ensureStaticSummaryChoiceForTeam(team, "default");
     const interviewByMember = personaChoice ? {} : await getLatestInterviewByMember(teamId);
     const mergedInterview = personaChoice
       ? buildMergedInterviewFromPersonaChoice(personaChoice)
@@ -3854,7 +4050,7 @@ async function mergeApi(body) {
       hardViolationCount: validation.hardViolationCount,
       softPenalties,
       mergedInterview,
-      selected_persona_id: personaChoice?.archetype_id || "",
+      selected_persona_id: personaChoice?.persona_id || personaChoice?.archetype_id || "",
       team_draft: draft,
       ...buildLeaderMeta(team, memberId)
     };
@@ -3930,8 +4126,10 @@ async function teamSubmitApi(body) {
       return makeResponse(400, { ok: false, error: "valid price required" });
     }
 
-    const personaChoice = await readPersonaChoice(teamId, sessionId);
     const sessionConfig = await getSessionConfig(team?.session_id || "default");
+    const personaChoice = String(sessionConfig?.interview_mode || "summary").trim().toLowerCase() === "live"
+      ? await readPersonaChoice(teamId, sessionId)
+      : await ensureStaticSummaryChoiceForTeam(team, sessionId);
     const flowVersion = personaChoice?.flow_version
       || (sessionConfig.interview_mode === "live" ? "twophase_v1" : SUMMARY_FLOW_VERSION);
     const fallbackRadar = personaChoice?.radar || {};
@@ -4011,7 +4209,7 @@ async function teamResultApi(query) {
       submission: snapshot?.submission || null,
       radar: snapshot?.radar || null,
       result: sanitizeStudentTeamResult(snapshot?.result || null),
-      selected_persona_id: personaChoice?.archetype_id || "",
+      selected_persona_id: personaChoice?.persona_id || personaChoice?.archetype_id || "",
       flow_version: personaChoice?.flow_version || ""
     });
   } catch (e) {
@@ -4028,13 +4226,14 @@ async function teamStatusApi(query) {
     const team = await getTeam(teamId);
     if (!team) return makeResponse(404, { ok: false, error: "team not found" });
     await ensureAssignments(team);
+    const sessionId = normalizeSessionId(query?.sessionId || query?.session_id);
+    const personaChoice = await ensureStaticSummaryChoiceForTeam(team, sessionId);
+    const personaReports = await listStudentPersonaReportsForTeam(team, sessionId);
 
     const teamState = await getTeamRound2State(teamId);
     if (!teamState) return makeResponse(404, { ok: false, error: "team not found" });
     const teamDraft = await readRound2TeamDraft(teamId);
     const sessionConfig = await getSessionConfig(team?.session_id || "default");
-    const personaChoice = await readPersonaChoice(teamId);
-    const personaReports = await readPersonaReports(teamId, "default");
     const round1Context = team
       ? (() => {
           const vpSummary = normalizeVpSummary(team.final_vp_summary, team.final_vp_text || "");
@@ -4108,7 +4307,7 @@ async function teamStatusApi(query) {
       ...buildLeaderMeta(teamState, memberId),
       session_config: sessionConfig,
       team_draft: teamDraft,
-      persona_choice: personaChoice,
+      persona_choice: sanitizeStudentPersonaChoice(personaChoice),
       persona_reports: personaReports,
       flow_version: personaChoice?.flow_version || "",
       round1_context: round1Context,
@@ -4214,6 +4413,11 @@ module.exports = {
     isPersonaLeakage,
     isPersonaConsistentWithRound1Context,
     readPersonaReports,
-    readPersonaChoice
+    readPersonaChoice,
+    selectStaticPersonaReport,
+    buildStaticSummaryModeRadarResult,
+    sanitizeStudentPersonaChoice,
+    sanitizeStudentPersonaReport,
+    getGridDimensionEvidenceRow
   }
 };

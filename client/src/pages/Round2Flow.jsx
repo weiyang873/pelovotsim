@@ -1,6 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import {
-  getRound2PersonaReports,
   endRound2Interview,
   getRound2Recap,
   getRound2InterviewSession,
@@ -11,7 +10,6 @@ import {
   rescoreRound2Interview,
   saveRound2MemberSelection,
   saveRound2TeamDraft,
-  selectRound2PersonaArchetype,
   startRound2Interview,
   submitRound2TeamDecision
 } from "../api/round2Api";
@@ -127,18 +125,6 @@ function toInterviewMessage(message, fallbackIndex = 0) {
 
 const STEPS = ["第一轮回顾","用户访谈","个人选卡","团队合并","研发与定价","确认提交"];
 const SUMMARY_STEPS = ["第一轮回顾","客户调研报告","个人选卡","团队合并","研发与定价","确认提交"];
-const SUMMARY_ARCHETYPE_META = {
-  elder_care: {
-    label: "独居长者照护",
-    kicker: "原型 A",
-    accent: "#0f766e"
-  },
-  adult_companion: {
-    label: "都市成人陪伴",
-    kicker: "原型 B",
-    accent: "#1d4ed8"
-  }
-};
 
 const F_BASE_WAN = 500;
 const F_BASE = F_BASE_WAN * 10000;
@@ -610,14 +596,6 @@ function readInterviewModeFromUrl() {
   return String(url.searchParams.get("interview_mode") || "").trim().toLowerCase();
 }
 
-function getSummaryPersonaMeta(archetypeId) {
-  return SUMMARY_ARCHETYPE_META[String(archetypeId || "").trim()] || {
-    label: String(archetypeId || "客户原型").trim() || "客户原型",
-    kicker: "客户原型",
-    accent: "#1a5c3a"
-  };
-}
-
 function Round1StarRating({ score }) {
   const normalized = normalizeScoreValue(score);
   const fullStars = Math.max(0, Math.min(5, Math.round(normalized)));
@@ -770,10 +748,7 @@ export default function App() {
   const [interviewMode, setInterviewMode] = useState(readInterviewModeFromUrl() === "live" ? "live" : "summary");
   const [personaReports, setPersonaReports] = useState([]);
   const [selectedPersonaChoice, setSelectedPersonaChoice] = useState(null);
-  const [activeSummaryReportId, setActiveSummaryReportId] = useState("");
   const [isLoadingPersonaReports, setIsLoadingPersonaReports] = useState(false);
-  const [isSelectingPersona, setIsSelectingPersona] = useState(false);
-  const [personaReportError, setPersonaReportError] = useState("");
   const [serverSelections, setServerSelections] = useState(null);
   const [isLoadingContext, setIsLoadingContext] = useState(false);
   const [loadError, setLoadError] = useState("");
@@ -1017,46 +992,9 @@ export default function App() {
   }, [teamId, memberId]);
 
   useEffect(() => {
-    if (!activeSummaryReportId && personaReports[0]?.archetype_id) {
-      setActiveSummaryReportId(String(personaReports[0].archetype_id || ""));
-    }
-    if (activeSummaryReportId && !personaReports.some((item) => item.archetype_id === activeSummaryReportId)) {
-      setActiveSummaryReportId(String(personaReports[0]?.archetype_id || ""));
-    }
-  }, [activeSummaryReportId, personaReports]);
-
-  useEffect(() => {
-    if (!teamId || interviewMode === "live") return undefined;
-    const controller = new AbortController();
-    let canceled = false;
-    const loadReports = async () => {
-      try {
-        setIsLoadingPersonaReports(true);
-        setPersonaReportError("");
-        const out = await getRound2PersonaReports(teamId, sessionId, { signal: controller.signal });
-        if (canceled) return;
-        setPersonaReports(Array.isArray(out?.reports) ? out.reports : []);
-        if (out?.selected_archetype_id) {
-          const matched = (out.reports || []).find((item) => item.archetype_id === out.selected_archetype_id) || null;
-          setSelectedPersonaChoice((prev) => (matched ? {
-            ...prev,
-            archetype_id: out.selected_archetype_id,
-            summary_text: matched.summary_text || prev?.summary_text || ""
-          } : prev));
-        }
-      } catch (err) {
-        if (err?.name === "AbortError") return;
-        if (!canceled) setPersonaReportError(err.message || "客户调研报告加载失败");
-      } finally {
-        if (!canceled) setIsLoadingPersonaReports(false);
-      }
-    };
-    loadReports();
-    return () => {
-      canceled = true;
-      controller.abort();
-    };
-  }, [interviewMode, sessionId, teamId]);
+    if (interviewMode === "live") return;
+    setIsLoadingPersonaReports(Boolean(isLoadingContext && !personaReports.length));
+  }, [interviewMode, isLoadingContext, personaReports.length]);
 
   const toggleSelection = useCallback((id, mode = "individual") => {
     if (mode === "team") {
@@ -1165,12 +1103,8 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
   const activeInterviewPersona = interviewPersonas[0] || null;
   const activeSummaryReport = useMemo(() => {
     const source = Array.isArray(personaReports) ? personaReports : [];
-    return source.find((item) => item.archetype_id === activeSummaryReportId) || source[0] || null;
-  }, [activeSummaryReportId, personaReports]);
-  const selectedPersonaMeta = useMemo(
-    () => getSummaryPersonaMeta(selectedPersonaChoice?.archetype_id || activeSummaryReport?.archetype_id || ""),
-    [activeSummaryReport, selectedPersonaChoice]
-  );
+    return source[0] || null;
+  }, [personaReports]);
   const selectedPersonaRadar = selectedPersonaChoice?.radar || mergeData?.mergedInterview?.radar || null;
   const selectedPersonaScores = useMemo(
     () => radarToInterviewScores(selectedPersonaRadar),
@@ -1181,6 +1115,11 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
       || activeSummaryReport?.summary_text
       || ""
   ).trim();
+  const summaryReportTitle = useMemo(() => {
+    const lines = selectedPersonaSummaryText.split("\n").map((line) => line.trim()).filter(Boolean);
+    if (lines[0] === "━━━━━━━━━━━━━━━━━━━━" && lines[2]) return lines[2];
+    return lines[0] || "客户调研报告";
+  }, [selectedPersonaSummaryText]);
   const activeInterviewPersonaIntro = useMemo(
     () => buildPersonaIntro(activeInterviewPersona),
     [activeInterviewPersona]
@@ -1219,11 +1158,11 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
   const showInterviewSummary = !showInterviewComposer && Boolean(interviewResult);
   const showInterviewEndButton = showInterviewComposer && interviewCanEnd && interviewRound >= INTERVIEW_MIN_TURNS && interviewRound < INTERVIEW_MAX_TURNS;
   const canEnterCards = isSummaryMode
-    ? Boolean(selectedPersonaChoice?.archetype_id || memberState?.interview_status === "completed")
+    ? Boolean(selectedPersonaSummaryText)
     : Boolean(interviewProgress.canProceed || memberState?.interview_status === "completed");
   const showInterviewStartButton = !isSummaryMode && !showInterviewComposer && !interviewTransition && !canEnterCards;
   const interviewProgressLabel = isSummaryMode
-    ? (canEnterCards ? "客户原型已锁定" : (isLoadingPersonaReports ? "正在生成报告..." : "等待组长确认原型"))
+    ? (canEnterCards ? "报告已就绪" : (isLoadingPersonaReports ? "正在加载报告..." : "等待报告加载"))
     : (interviewTransition
       ? `已完成 ${completedInterviewCount}/${Math.max(MIN_INTERVIEWS_REQUIRED, Number(interviewProgress.maxInterviews || 3))} 次访谈`
       : (showInterviewComposer ? `进行中 ${interviewRound}/${INTERVIEW_MAX_TURNS}` : (canEnterCards ? "访谈要求已满足" : "等待开始")));
@@ -1375,30 +1314,6 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     teamId,
     teamTitle
   ]);
-
-  const handleSelectSummaryPersona = useCallback(async () => {
-    if (!teamId || !memberId || !activeSummaryReport?.archetype_id || isSelectingPersona) return;
-    try {
-      setIsSelectingPersona(true);
-      setPersonaReportError("");
-      const out = await selectRound2PersonaArchetype({
-        team_id: teamId,
-        member_id: memberId,
-        session_id: sessionId,
-        archetype_id: activeSummaryReport.archetype_id
-      });
-      setSelectedPersonaChoice(out?.choice || {
-        archetype_id: out?.selected_archetype_id || activeSummaryReport.archetype_id,
-        summary_text: activeSummaryReport.summary_text || ""
-      });
-      setSystemNotice("客户原型已锁定，进入个人选卡。");
-      setStep(2);
-    } catch (err) {
-      setPersonaReportError(round2LeaderErrorMessage(err));
-    } finally {
-      setIsSelectingPersona(false);
-    }
-  }, [activeSummaryReport, isSelectingPersona, memberId, sessionId, teamId]);
 
   const applyInterviewPayload = useCallback((payload, options = {}) => {
     const progress = payload?.progress || createEmptyInterviewProgress();
@@ -2408,7 +2323,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
             </div>
             <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
               {[
-                {num:"1",title:isSummaryMode ? "阅读报告" : "挖掘需求",desc:isSummaryMode ? "阅读两份预生成的客户调研报告，确认你们究竟在为谁而造，再锁定唯一客户原型。" : "与 AI 模拟的目标用户深度访谈，验证你们的需求假设，发现隐藏需求"},
+                {num:"1",title:isSummaryMode ? "阅读报告" : "挖掘需求",desc:isSummaryMode ? "阅读系统为团队冻结的客户调研报告，确认你们究竟在为谁而造，再进入个人选卡。" : "与 AI 模拟的目标用户深度访谈，验证你们的需求假设，发现隐藏需求"},
                 {num:"2",title:"技术决策",desc:"为产品选择具体的技术能力组合——做什么、不做什么、做到什么程度"},
                 {num:"3",title:"定价与结果",desc:"制定价格策略，系统根据你们的产品和定价自动计算市场表现"},
               ].map(item => (
@@ -2443,7 +2358,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
               <h2 style={{fontSize:18,fontWeight:800,margin:"0 0 8px"}}>{isSummaryMode ? "客户调研报告" : "深度用户访谈"}</h2>
               <p style={{fontSize:14,color:"#555",margin:0,lineHeight:1.8}}>
                 {isSummaryMode
-                  ? "系统已经为你们预生成两份候选客户调研报告。请先完整阅读，再由组长确认唯一客户原型；锁定后不可更改。"
+                  ? "系统已经为你们按团队分配并冻结一份客户调研报告。请先完整阅读，再进入个人选卡。"
                   : "每位成员至少完成 2 次访谈，最多 3 次。单次访谈前 4 轮必须继续提问，第 5 轮起可以手动结束，第 10 轮会自动收尾。"}
               </p>
             </div>
@@ -2472,8 +2387,8 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
             <div style={{fontSize:13,color:"#78350f",lineHeight:1.8}}>
               {isSummaryMode ? (
                 <>
-                  当前是 <strong>团队级</strong> 决策，所有成员会看到同一组客户报告。
-                  你们锁定客户原型后，再进入个人选卡和团队合并。
+                  当前是 <strong>团队级</strong> 决策，所有成员会看到同一份已冻结的客户调研报告。
+                  阅读完成后即可进入个人选卡和团队合并。
                 </>
               ) : (
                 <>
@@ -2485,83 +2400,41 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
           </div>
 
           {isSummaryMode ? (
-            <div style={{display:"grid",gridTemplateColumns:"minmax(240px, 320px) minmax(0, 1fr)",gap:16}}>
-              <div style={{display:"flex",flexDirection:"column",gap:12}}>
-                {(personaReports || []).map((report) => {
-                  const meta = getSummaryPersonaMeta(report.archetype_id);
-                  const isActive = activeSummaryReport?.archetype_id === report.archetype_id;
-                  const isLocked = selectedPersonaChoice?.archetype_id === report.archetype_id;
-                  return (
-                    <button
-                      key={report.archetype_id}
-                      type="button"
-                      onClick={() => setActiveSummaryReportId(report.archetype_id)}
-                      style={{
-                        textAlign:"left",
-                        padding:"16px 18px",
-                        borderRadius:14,
-                        border:isActive ? `2px solid ${meta.accent}` : "1px solid #e5e7eb",
-                        background:isActive ? `${meta.accent}10` : "#fff",
-                        cursor:"pointer"
-                      }}
-                    >
-                      <div style={{fontSize:11,fontWeight:800,color:meta.accent,letterSpacing:"0.04em",marginBottom:8}}>{meta.kicker}</div>
-                      <div style={{fontSize:16,fontWeight:800,color:"#111827",marginBottom:6}}>{meta.label}</div>
-                      <div style={{fontSize:12,color:"#6b7280",lineHeight:1.7}}>
-                        {isLocked ? "已锁定，后续所有成员都会围绕这个客户原型做产品决策。" : "点击查看完整客户叙事，再决定你们究竟在为谁而造。"}
-                      </div>
-                    </button>
-                  );
-                })}
-                {personaReportError && (
-                  <div style={{padding:"10px 14px",borderRadius:10,background:"#FEF2F2",border:"1px solid #FECACA",fontSize:12,color:"#991B1B"}}>
-                    {personaReportError}
-                  </div>
-                )}
+            <div style={{border:"1px solid #e5e7eb",borderRadius:16,background:"#fff",overflow:"hidden"}}>
+              <div style={{padding:"18px 20px",background:"#f8fafc",borderBottom:"1px solid #e5e7eb",display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}>
+                <div>
+                  <div style={{fontSize:11,fontWeight:800,color:"#1a5c3a",letterSpacing:"0.04em",marginBottom:6}}>团队共享报告</div>
+                  <div style={{fontSize:20,fontWeight:800,color:"#111827"}}>{summaryReportTitle}</div>
+                </div>
+                <div style={{padding:"8px 12px",borderRadius:999,background:"#ecfdf5",color:"#166534",fontSize:12,fontWeight:800,border:"1px solid #bbf7d0"}}>
+                  已按团队冻结，不重抽
+                </div>
               </div>
-              <div style={{border:"1px solid #e5e7eb",borderRadius:16,background:"#fff",overflow:"hidden"}}>
-                <div style={{padding:"18px 20px",background:"#f8fafc",borderBottom:"1px solid #e5e7eb",display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}>
-                  <div>
-                    <div style={{fontSize:11,fontWeight:800,color:selectedPersonaMeta.accent,letterSpacing:"0.04em",marginBottom:6}}>{selectedPersonaMeta.kicker}</div>
-                    <div style={{fontSize:20,fontWeight:800,color:"#111827"}}>{selectedPersonaMeta.label}</div>
+              <div style={{padding:"22px 24px",fontSize:14,color:"#374151",lineHeight:1.95,whiteSpace:"pre-wrap",minHeight:340}}>
+                {isLoadingPersonaReports
+                  ? "系统正在加载客户调研报告，请稍候..."
+                  : (selectedPersonaSummaryText || "暂未分配客户调研报告。")}
+              </div>
+              {loadError && (
+                <div style={{padding:"0 20px 16px"}}>
+                  <div style={{padding:"10px 14px",borderRadius:10,background:"#FEF2F2",border:"1px solid #FECACA",fontSize:12,color:"#991B1B"}}>
+                    {loadError}
                   </div>
-                  {selectedPersonaChoice?.archetype_id ? (
-                    <div style={{padding:"8px 12px",borderRadius:999,background:"#ecfdf5",color:"#166534",fontSize:12,fontWeight:800,border:"1px solid #bbf7d0"}}>
-                      已锁定，不可更改
-                    </div>
-                  ) : (
-                    <div style={{fontSize:12,color:"#6b7280"}}>
-                      组长确认后全队生效
-                    </div>
-                  )}
                 </div>
-                <div style={{padding:"22px 24px",fontSize:14,color:"#374151",lineHeight:1.95,whiteSpace:"pre-wrap",minHeight:340}}>
-                  {isLoadingPersonaReports
-                    ? "系统正在生成客户调研报告，请稍候..."
-                    : (activeSummaryReport?.summary_text || "暂未生成客户调研报告。")}
-                </div>
-                <div style={{padding:"16px 20px",borderTop:"1px solid #e5e7eb",background:"#f8fafc",display:"flex",gap:10,flexWrap:"wrap"}}>
-                  <button
-                    type="button"
-                    onClick={handleSelectSummaryPersona}
-                    disabled={!activeSummaryReport?.archetype_id || Boolean(selectedPersonaChoice?.archetype_id) || round2TeamControlsLocked || isSelectingPersona}
-                    style={{...BS,marginTop:0,flex:"1 1 220px",opacity:(!activeSummaryReport?.archetype_id || Boolean(selectedPersonaChoice?.archetype_id) || round2TeamControlsLocked || isSelectingPersona) ? 0.6 : 1}}
-                  >
-                    {round2TeamControlsLocked
-                      ? `仅组长 ${leaderDisplayName(leaderName)} 可锁定原型`
-                      : selectedPersonaChoice?.archetype_id
-                        ? "客户原型已锁定"
-                        : (isSelectingPersona ? "正在锁定..." : "锁定这个客户原型 →")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => canEnterCards && setStep(2)}
-                    disabled={!canEnterCards}
-                    style={{padding:"12px 16px",borderRadius:10,background:"#fff",color:"#1a5c3a",border:"1px solid #1a5c3a",fontSize:14,fontWeight:700,cursor:canEnterCards ? "pointer" : "not-allowed",opacity:canEnterCards ? 1 : 0.5}}
-                  >
-                    {canEnterCards ? "进入个人选卡 →" : "请先锁定客户原型"}
-                  </button>
-                </div>
+              )}
+              <div style={{padding:"16px 20px",borderTop:"1px solid #e5e7eb",background:"#f8fafc",display:"flex",justifyContent:"flex-end"}}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!canEnterCards) return;
+                    setSystemNotice("已阅读调研报告，进入个人选卡。");
+                    setStep(2);
+                  }}
+                  disabled={!canEnterCards}
+                  style={{padding:"12px 16px",borderRadius:10,background:canEnterCards ? "#1a5c3a" : "#d1d5db",color:"#fff",border:"none",fontSize:14,fontWeight:700,cursor:canEnterCards ? "pointer" : "not-allowed",opacity:canEnterCards ? 1 : 0.6}}
+                >
+                  {canEnterCards ? "继续，进入个人选卡 →" : "等待报告加载"}
+                </button>
               </div>
             </div>
           ) : (
@@ -2887,10 +2760,10 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
 
           {/* Interview summary for reference while selecting cards */}
           <div style={{padding:"14px 18px",borderRadius:10,background:"#f0fdf4",border:"1.5px solid #bbf7d0",marginBottom:8}}>
-            <div style={{fontSize:13,fontWeight:700,color:"#166534",marginBottom:6}}>{isSummaryMode ? "📄 已锁定的客户原型" : "🎙️ 你的访谈洞察"}</div>
+            <div style={{fontSize:13,fontWeight:700,color:"#166534",marginBottom:6}}>{isSummaryMode ? "📄 团队共享调研报告" : "🎙️ 你的访谈洞察"}</div>
             <div style={{fontSize:13,color:"#374151",lineHeight:1.8,marginBottom:10}}>
               {isSummaryMode
-                ? (selectedPersonaSummaryText || "请先在上一步锁定客户原型，再根据这份报告选卡。")
+                ? (selectedPersonaSummaryText || "请先在上一步阅读调研报告，再根据这份报告选卡。")
                 : (buildInterviewSummary(interviewResult, memberDims) || "请先完成真实访谈，再根据提炼结果选卡。")}
             </div>
             <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
@@ -3004,7 +2877,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                         })
                         .join("；")
                       : (isSummaryMode
-                        ? "该维度来自团队已锁定的客户原型，请结合上方共享叙事和维度强弱做取舍。"
+                        ? "该维度来自团队已冻结的调研报告，请结合上方共享叙事和维度强弱做取舍。"
                         : "当前还没有足够的真实访谈结果支撑该维度。")}
                   </div>
                 </div>

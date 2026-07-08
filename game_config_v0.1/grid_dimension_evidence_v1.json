@@ -1,0 +1,451 @@
+{
+  "version": "v1",
+  "generated_at": "2026-07-08T10:22:00.280Z",
+  "note": "strength 按 radar_weight_prior 线性归一化直接输出；tags 取高权重维度反查白名单 key。TODO(WY)",
+  "grids": [
+    {
+      "grid_id": "B2B_Differentiation_Elder",
+      "dimension_evidence": {
+        "interaction": {
+          "mentioned": true,
+          "strength": 0.2286
+        },
+        "perception": {
+          "mentioned": true,
+          "strength": 0.219
+        },
+        "safety": {
+          "mentioned": false,
+          "strength": 0.1619
+        },
+        "extend": {
+          "mentioned": false,
+          "strength": 0.1524
+        },
+        "motion": {
+          "mentioned": false,
+          "strength": 0.1238
+        },
+        "ops": {
+          "mentioned": false,
+          "strength": 0.1143
+        }
+      },
+      "evi": 0.7,
+      "tags": [
+        "多轮对话",
+        "情感陪伴",
+        "表情显示",
+        "语音交互",
+        "音乐播放"
+      ]
+    },
+    {
+      "grid_id": "B2B_Differentiation_Adult",
+      "dimension_evidence": {
+        "ops": {
+          "mentioned": false,
+          "strength": 0.1923
+        },
+        "perception": {
+          "mentioned": false,
+          "strength": 0.1827
+        },
+        "extend": {
+          "mentioned": false,
+          "strength": 0.1827
+        },
+        "safety": {
+          "mentioned": false,
+          "strength": 0.1731
+        },
+        "interaction": {
+          "mentioned": false,
+          "strength": 0.1538
+        },
+        "motion": {
+          "mentioned": false,
+          "strength": 0.1154
+        }
+      },
+      "evi": 0.7,
+      "tags": [
+        "OTA更新",
+        "便携版",
+        "自动充电",
+        "省心可靠",
+        "个性化推荐"
+      ]
+    },
+    {
+      "grid_id": "B2B_Differentiation_Child",
+      "dimension_evidence": {
+        "perception": {
+          "mentioned": true,
+          "strength": 0.2404
+        },
+        "safety": {
+          "mentioned": true,
+          "strength": 0.2115
+        },
+        "extend": {
+          "mentioned": false,
+          "strength": 0.1635
+        },
+        "motion": {
+          "mentioned": false,
+          "strength": 0.1442
+        },
+        "interaction": {
+          "mentioned": false,
+          "strength": 0.1346
+        },
+        "ops": {
+          "mentioned": false,
+          "strength": 0.1058
+        }
+      },
+      "evi": 0.7,
+      "tags": [
+        "个性化推荐",
+        "场景感知",
+        "情绪识别",
+        "拍照功能",
+        "搭配建议"
+      ]
+    },
+    {
+      "grid_id": "B2B_Cost_Elder",
+      "dimension_evidence": {
+        "safety": {
+          "mentioned": true,
+          "strength": 0.2277
+        },
+        "ops": {
+          "mentioned": true,
+          "strength": 0.2178
+        },
+        "perception": {
+          "mentioned": false,
+          "strength": 0.1584
+        },
+        "interaction": {
+          "mentioned": false,
+          "strength": 0.1584
+        },
+        "extend": {
+          "mentioned": false,
+          "strength": 0.1287
+        },
+        "motion": {
+          "mentioned": false,
+          "strength": 0.1089
+        }
+      },
+      "evi": 0.7,
+      "tags": [
+        "儿童安全",
+        "安全与信任",
+        "远程关怀",
+        "隐私保护",
+        "OTA更新"
+      ]
+    },
+    {
+      "grid_id": "B2B_Cost_Adult",
+      "dimension_evidence": {
+        "ops": {
+          "mentioned": true,
+          "strength": 0.3
+        },
+        "safety": {
+          "mentioned": true,
+          "strength": 0.24
+        },
+        "extend": {
+          "mentioned": false,
+          "strength": 0.16
+        },
+        "perception": {
+          "mentioned": false,
+          "strength": 0.12
+        },
+        "motion": {
+          "mentioned": false,
+          "strength": 0.1
+        },
+        "interaction": {
+          "mentioned": false,
+          "strength": 0.08
+        }
+      },
+      "evi": 0.7,
+      "tags": [
+        "OTA更新",
+        "便携版",
+        "自动充电",
+        "省心可靠",
+        "儿童安全"
+      ]
+    },
+    {
+      "grid_id": "B2B_Cost_Child",
+      "dimension_evidence": {
+        "safety": {
+          "mentioned": true,
+          "strength": 0.28
+        },
+        "ops": {
+          "mentioned": true,
+          "strength": 0.21
+        },
+        "perception": {
+          "mentioned": false,
+          "strength": 0.18
+        },
+        "extend": {
+          "mentioned": false,
+          "strength": 0.14
+        },
+        "motion": {
+          "mentioned": false,
+          "strength": 0.13
+        },
+        "interaction": {
+          "mentioned": false,
+          "strength": 0.06
+        }
+      },
+      "evi": 0.7,
+      "tags": [
+        "儿童安全",
+        "安全与信任",
+        "远程关怀",
+        "隐私保护",
+        "OTA更新"
+      ]
+    },
+    {
+      "grid_id": "B2C_Differentiation_Elder",
+      "dimension_evidence": {
+        "interaction": {
+          "mentioned": true,
+          "strength": 0.3429
+        },
+        "perception": {
+          "mentioned": true,
+          "strength": 0.2381
+        },
+        "ops": {
+          "mentioned": false,
+          "strength": 0.1333
+        },
+        "motion": {
+          "mentioned": false,
+          "strength": 0.1048
+        },
+        "extend": {
+          "mentioned": false,
+          "strength": 0.0952
+        },
+        "safety": {
+          "mentioned": false,
+          "strength": 0.0857
+        }
+      },
+      "evi": 0.7,
+      "tags": [
+        "多轮对话",
+        "情感陪伴",
+        "表情显示",
+        "语音交互",
+        "音乐播放"
+      ]
+    },
+    {
+      "grid_id": "B2C_Differentiation_Adult",
+      "dimension_evidence": {
+        "interaction": {
+          "mentioned": true,
+          "strength": 0.2692
+        },
+        "ops": {
+          "mentioned": true,
+          "strength": 0.2115
+        },
+        "perception": {
+          "mentioned": true,
+          "strength": 0.2019
+        },
+        "extend": {
+          "mentioned": false,
+          "strength": 0.125
+        },
+        "safety": {
+          "mentioned": false,
+          "strength": 0.0962
+        },
+        "motion": {
+          "mentioned": false,
+          "strength": 0.0962
+        }
+      },
+      "evi": 0.7,
+      "tags": [
+        "多轮对话",
+        "情感陪伴",
+        "表情显示",
+        "语音交互",
+        "音乐播放"
+      ]
+    },
+    {
+      "grid_id": "B2C_Differentiation_Child",
+      "dimension_evidence": {
+        "perception": {
+          "mentioned": true,
+          "strength": 0.2596
+        },
+        "interaction": {
+          "mentioned": true,
+          "strength": 0.25
+        },
+        "safety": {
+          "mentioned": false,
+          "strength": 0.1346
+        },
+        "motion": {
+          "mentioned": false,
+          "strength": 0.125
+        },
+        "ops": {
+          "mentioned": false,
+          "strength": 0.125
+        },
+        "extend": {
+          "mentioned": false,
+          "strength": 0.1058
+        }
+      },
+      "evi": 0.7,
+      "tags": [
+        "个性化推荐",
+        "场景感知",
+        "情绪识别",
+        "拍照功能",
+        "搭配建议"
+      ]
+    },
+    {
+      "grid_id": "B2C_Cost_Elder",
+      "dimension_evidence": {
+        "interaction": {
+          "mentioned": true,
+          "strength": 0.2772
+        },
+        "ops": {
+          "mentioned": true,
+          "strength": 0.2376
+        },
+        "perception": {
+          "mentioned": false,
+          "strength": 0.1782
+        },
+        "safety": {
+          "mentioned": false,
+          "strength": 0.1485
+        },
+        "motion": {
+          "mentioned": false,
+          "strength": 0.0891
+        },
+        "extend": {
+          "mentioned": false,
+          "strength": 0.0693
+        }
+      },
+      "evi": 0.7,
+      "tags": [
+        "多轮对话",
+        "情感陪伴",
+        "表情显示",
+        "语音交互",
+        "音乐播放"
+      ]
+    },
+    {
+      "grid_id": "B2C_Cost_Adult",
+      "dimension_evidence": {
+        "ops": {
+          "mentioned": true,
+          "strength": 0.32
+        },
+        "interaction": {
+          "mentioned": false,
+          "strength": 0.2
+        },
+        "safety": {
+          "mentioned": false,
+          "strength": 0.16
+        },
+        "perception": {
+          "mentioned": false,
+          "strength": 0.14
+        },
+        "extend": {
+          "mentioned": false,
+          "strength": 0.1
+        },
+        "motion": {
+          "mentioned": false,
+          "strength": 0.08
+        }
+      },
+      "evi": 0.7,
+      "tags": [
+        "OTA更新",
+        "便携版",
+        "自动充电",
+        "省心可靠",
+        "多轮对话"
+      ]
+    },
+    {
+      "grid_id": "B2C_Cost_Child",
+      "dimension_evidence": {
+        "ops": {
+          "mentioned": true,
+          "strength": 0.23
+        },
+        "perception": {
+          "mentioned": false,
+          "strength": 0.2
+        },
+        "safety": {
+          "mentioned": false,
+          "strength": 0.2
+        },
+        "interaction": {
+          "mentioned": false,
+          "strength": 0.18
+        },
+        "motion": {
+          "mentioned": false,
+          "strength": 0.11
+        },
+        "extend": {
+          "mentioned": false,
+          "strength": 0.08
+        }
+      },
+      "evi": 0.7,
+      "tags": [
+        "OTA更新",
+        "便携版",
+        "自动充电",
+        "省心可靠",
+        "个性化推荐"
+      ]
+    }
+  ]
+}

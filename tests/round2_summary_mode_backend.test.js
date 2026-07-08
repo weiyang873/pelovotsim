@@ -238,3 +238,59 @@ test("summary-mode archetype tags stay inside whitelist and new tags trigger lea
   assert.equal(adultCompanion.tags.every((tag) => whitelist.has(tag)), true);
   assert.deepEqual(SummaryMode.findLeakageTerms("她最在意远程关怀这件事。"), ["远程关怀"]);
 });
+
+test("static summary report selection is deterministic per team and strips keyword coverage from student payload", () => {
+  const pickedA = Round2.__test.selectStaticPersonaReport({
+    teamId: "team_static_demo",
+    gridId: "B2C_Differentiation_Elder"
+  });
+  const pickedB = Round2.__test.selectStaticPersonaReport({
+    teamId: "team_static_demo",
+    gridId: "B2C_Differentiation_Elder"
+  });
+
+  assert.equal(pickedA.persona_id, pickedB.persona_id);
+  assert.ok(pickedA.report_text.includes("客户调研报告"));
+  assert.ok(Array.isArray(pickedA.covered_keywords));
+  assert.ok(Array.isArray(pickedA.uncovered_keywords));
+
+  const studentPayload = Round2.__test.sanitizeStudentPersonaReport(pickedA);
+  assert.equal("covered_keywords" in studentPayload, false);
+  assert.equal("uncovered_keywords" in studentPayload, false);
+  assert.equal(studentPayload.persona_id, pickedA.persona_id);
+});
+
+test("static summary evidence injection uses config evi and student choice sanitizer hides keyword subsets", () => {
+  const evidenceRow = Round2.__test.getGridDimensionEvidenceRow("B2C_Differentiation_Elder");
+  assert.ok(evidenceRow);
+
+  const result = Round2.__test.buildStaticSummaryModeRadarResult({
+    gridId: "B2C_Differentiation_Elder",
+    architecture: "Experience",
+    evidenceRow,
+    mapEvidenceToResultFn: Round2.__test.mapEvidenceToResult
+  });
+
+  assert.equal(result.evi, 0.7);
+  assert.equal(result.eviMeta.raw_evi, 0.7);
+  assert.equal(result.eviMeta.final_evi, 0.7);
+  assert.equal(Array.isArray(result.tags), true);
+  assert.equal(result.tags.length > 0, true);
+
+  const studentChoice = Round2.__test.sanitizeStudentPersonaChoice({
+    session_id: "default",
+    team_id: "team_static_demo",
+    grid_id: "B2C_Differentiation_Elder",
+    persona_id: "ToC_Diff_Elder_P1",
+    radar: result.radar,
+    tags: result.tags,
+    evi: result.evi,
+    summary_text: "客户调研报告正文",
+    flow_version: "merged_v1",
+    covered_keywords: ["A"],
+    uncovered_keywords: ["B"]
+  });
+  assert.equal("covered_keywords" in studentChoice, false);
+  assert.equal("uncovered_keywords" in studentChoice, false);
+  assert.equal(studentChoice.persona_id, "ToC_Diff_Elder_P1");
+});

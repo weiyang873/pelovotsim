@@ -81,15 +81,6 @@ export async function getRound2PersonaReports(teamId, sessionId = "default", opt
   return asJson(res);
 }
 
-export async function selectRound2PersonaArchetype(payload) {
-  const res = await fetch(`${BASE}/round2/persona-select`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload || {})
-  });
-  return asJson(res);
-}
-
 export async function round2InterviewAuto(payload) {
   const res = await fetch(`${BASE}/round2/interview/auto`, {
     method: "POST",
