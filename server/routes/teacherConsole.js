@@ -4,7 +4,8 @@ const TeacherDebrief = require("./teacherDebrief");
 const {
   normalizeSessionId,
   getSessionConfig,
-  updateSessionConfig
+  updateSessionConfig,
+  clearSessionConfigCache
 } = require("../multiplayer/sessionConfig");
 const { ensureSchema: ensureVpIterationSchema } = require("../multiplayer/vpIterationStore");
 const { mergeTeamSelections } = require("../multiplayer/rdTeamAdapter");
@@ -700,6 +701,7 @@ async function resetSessionApi(body) {
       DELETE FROM team_members;
       DELETE FROM teams;
     `);
+    clearSessionConfigCache();
 
     return makeResponse(200, {
       ok: true,

@@ -943,11 +943,12 @@ function getInitialStaticSummaryReportForTeam(team) {
 async function freezeStaticSummaryChoiceForTeam(team, sessionId = "default", selectedBy = "system_summary_freeze") {
   const teamId = String(team?.id || team?.team_id || "").trim();
   if (!teamId) return null;
+  const normalizedSessionId = normalizeSessionId(sessionId);
 
-  const sessionConfig = await getSessionConfig(team?.session_id || "default");
+  const sessionConfig = await getSessionConfig(normalizedSessionId);
   if (!isSummaryModeSession(sessionConfig)) return null;
 
-  const existingChoice = await readPersonaChoice(teamId, sessionId);
+  const existingChoice = await readPersonaChoice(teamId, normalizedSessionId);
   if (existingChoice?.summary_text) {
     return existingChoice;
   }
@@ -955,7 +956,7 @@ async function freezeStaticSummaryChoiceForTeam(team, sessionId = "default", sel
   const calcGridId = toCalcGridId(team?.final_grid_id || "", team?.final_architecture || "");
   if (!calcGridId) return null;
 
-  const allViewed = await getTeamViewedPersonas(teamId, sessionId);
+  const allViewed = await getTeamViewedPersonas(teamId, normalizedSessionId);
   const fallbackReport = getDefaultStaticSummaryReportForTeam(team);
   const reportsViewed = uniqueStrings(allViewed.length ? allViewed : [fallbackReport?.persona_id || ""]);
   const fullKeywords = getGridKeywordsFull(calcGridId);
@@ -983,7 +984,7 @@ async function freezeStaticSummaryChoiceForTeam(team, sessionId = "default", sel
 
   const summaryReport = fallbackReport || getStaticPersonaReportByPersonaId(calcGridId, reportsViewed[0]);
 
-  const nextChoice = await savePersonaChoice(teamId, sessionId, {
+  const nextChoice = await savePersonaChoice(teamId, normalizedSessionId, {
     grid_id: calcGridId,
     persona_id: summaryReport?.persona_id || reportsViewed[0] || "",
     radar: summaryResult.radar,
@@ -999,7 +1000,7 @@ async function freezeStaticSummaryChoiceForTeam(team, sessionId = "default", sel
     coverage_ratio: coverageRatio
   });
 
-  await upsertTeamRadar(teamId, sessionId, {
+  await upsertTeamRadar(teamId, normalizedSessionId, {
     radar: summaryResult.radar,
     tags: summaryResult.tags,
     evi: summaryResult.evi,
@@ -4391,7 +4392,7 @@ async function saveMemberSelectionApi(body) {
     if (!teamId || !memberId) return makeResponse(400, { ok: false, error: "teamId/memberId required" });
     const team = await getTeam(teamId);
     if (team) {
-      const sessionConfig = await getSessionConfig(team?.session_id || "default");
+      const sessionConfig = await getSessionConfig(sessionId);
       if (isSummaryModeSession(sessionConfig)) {
         await freezeStaticSummaryChoiceForTeam(team, sessionId, memberId);
       }
@@ -4459,7 +4460,7 @@ async function mergeApi(body) {
 
     const validation = validateSelections(teamSelections);
     const softPenalties = computeSoftPenalties(teamSelections, Number(body?.COGSbase || 2000));
-    const sessionConfig = await getSessionConfig(team?.session_id || "default");
+    const sessionConfig = await getSessionConfig(sessionId);
     const personaChoice = isSummaryModeSession(sessionConfig)
       ? await freezeStaticSummaryChoiceForTeam(team, sessionId, memberId || "system_merge")
       : await readPersonaChoice(teamId, sessionId);
@@ -4590,7 +4591,7 @@ async function teamSubmitApi(body) {
       return makeResponse(400, { ok: false, error: "valid price required" });
     }
 
-    const sessionConfig = await getSessionConfig(team?.session_id || "default");
+    const sessionConfig = await getSessionConfig(sessionId);
     const personaChoice = isSummaryModeSession(sessionConfig)
       ? await freezeStaticSummaryChoiceForTeam(team, sessionId, memberId || "system_submit")
       : await readPersonaChoice(teamId, sessionId);
@@ -4751,7 +4752,7 @@ async function teamStatusApi(query) {
     const teamState = await getTeamRound2State(teamId);
     if (!teamState) return makeResponse(404, { ok: false, error: "team not found" });
     const teamDraft = await readRound2TeamDraft(teamId);
-    const sessionConfig = await getSessionConfig(team?.session_id || "default");
+    const sessionConfig = await getSessionConfig(sessionId);
     const round1Context = team
       ? (() => {
           const vpSummary = normalizeVpSummary(team.final_vp_summary, team.final_vp_text || "");

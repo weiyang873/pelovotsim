@@ -665,12 +665,6 @@ function formatSignedPercent(value) {
   return n >= 0 ? `+${n}%` : `${n}%`;
 }
 
-function readInterviewModeFromUrl() {
-  if (typeof window === "undefined") return "";
-  const url = new URL(window.location.href);
-  return String(url.searchParams.get("interview_mode") || "").trim().toLowerCase();
-}
-
 function Round1StarRating({ score }) {
   const normalized = normalizeScoreValue(score);
   const fullStars = Math.max(0, Math.min(5, Math.round(normalized)));
@@ -820,7 +814,7 @@ export default function App() {
   const [teamInfo, setTeamInfo] = useState(null);
   const [teamRecap, setTeamRecap] = useState(null);
   const [sessionConfig, setSessionConfig] = useState({ reveal_r1_results: false, hold_before_r2: false, interview_mode: "summary" });
-  const [interviewMode, setInterviewMode] = useState(readInterviewModeFromUrl() === "live" ? "live" : "summary");
+  const [interviewMode, setInterviewMode] = useState("summary");
   const [personaReports, setPersonaReports] = useState([]);
   const [availableSummaryReports, setAvailableSummaryReports] = useState([]);
   const [defaultSummaryReportIndex, setDefaultSummaryReportIndex] = useState(0);
@@ -925,7 +919,7 @@ export default function App() {
         setSessionConfig(stateRes?.session_config || { reveal_r1_results: false, hold_before_r2: false, interview_mode: "summary" });
         setMemberState(stateRes?.member || null);
         setTeamStatus(String(stateRes?.team_status || ""));
-        setInterviewMode(String(stateRes?.session_config?.interview_mode || readInterviewModeFromUrl() || "summary").trim().toLowerCase() === "live" ? "live" : "summary");
+        setInterviewMode(String(stateRes?.session_config?.interview_mode || "summary").trim().toLowerCase() === "live" ? "live" : "summary");
         const initialChoice = stateRes?.persona_choice || null;
         const initialReports = Array.isArray(stateRes?.persona_reports) ? stateRes.persona_reports : [];
         const initialAvailableReports = Array.isArray(stateRes?.available_reports) ? stateRes.available_reports : [];
@@ -977,7 +971,7 @@ export default function App() {
         }
         if (stateRes?.team_status && !snapshotRes?.submission) {
           const teamStep = mapTeamStatusToStep(stateRes.team_status);
-          const entryInterviewMode = String(stateRes?.session_config?.interview_mode || readInterviewModeFromUrl() || "summary").trim().toLowerCase();
+          const entryInterviewMode = String(stateRes?.session_config?.interview_mode || "summary").trim().toLowerCase();
           const cardsUnlocked = hasUnlockedRound2Cards({
             interviewMode: entryInterviewMode,
             memberState: stateRes?.member_state,
@@ -1041,7 +1035,7 @@ export default function App() {
         const nextStatus = String(data?.team_status || "");
         setMemberState(data?.member || null);
         setSessionConfig(data?.session_config || { reveal_r1_results: false, hold_before_r2: false, interview_mode: "summary" });
-        setInterviewMode(String(data?.session_config?.interview_mode || readInterviewModeFromUrl() || "summary").trim().toLowerCase() === "live" ? "live" : "summary");
+        setInterviewMode(String(data?.session_config?.interview_mode || "summary").trim().toLowerCase() === "live" ? "live" : "summary");
         const hasPersonaChoice = Object.prototype.hasOwnProperty.call(data || {}, "persona_choice");
         const nextChoice = hasPersonaChoice ? (data?.persona_choice || null) : selectedPersonaChoiceRef.current;
         commitSelectedPersonaChoice(nextChoice);
@@ -1081,7 +1075,7 @@ export default function App() {
         const nextStep = mapTeamStatusToStep(nextStatus);
         const prevStatus = previousStatusRef.current;
         const prevStep = previousStepRef.current;
-        const nextInterviewMode = String(data?.session_config?.interview_mode || readInterviewModeFromUrl() || "summary").trim().toLowerCase();
+        const nextInterviewMode = String(data?.session_config?.interview_mode || "summary").trim().toLowerCase();
         const cardsUnlocked = hasUnlockedRound2Cards({
           interviewMode: nextInterviewMode,
           memberState: data?.member_state,

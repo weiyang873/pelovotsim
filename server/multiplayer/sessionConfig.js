@@ -50,6 +50,15 @@ function cloneSessionConfig(config) {
   };
 }
 
+function clearSessionConfigCache(sessionId = "") {
+  const normalizedSessionId = String(sessionId || "").trim();
+  if (normalizedSessionId) {
+    sessionConfigCache.delete(normalizeSessionId(normalizedSessionId));
+    return;
+  }
+  sessionConfigCache.clear();
+}
+
 async function getSessionConfig(sessionId = "default") {
   const normalizedSessionId = normalizeSessionId(sessionId);
   if (sessionConfigCache.has(normalizedSessionId)) {
@@ -107,6 +116,7 @@ module.exports = {
   ensureSessionConfigSchema,
   normalizeSessionId,
   normalizeSessionConfig,
+  clearSessionConfigCache,
   getSessionConfig,
   updateSessionConfig
 };
