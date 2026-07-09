@@ -2235,10 +2235,12 @@ export default function App() {
         cardTitle: s?.name || card.title || rawJinangId || "锦囊",
         label: String(s?.match_tier || "部分契合"),
         type: s?.jinang_type,
-        scope: s?.jinang_type === "market" ? "Round 1 支付意愿" : "Round 2 研发与成本",
-        text: s?.jinang_type === "market"
-          ? `→ 为支付意愿额外增加了 ${bonusPct}%`
-          : "→ 只在第二轮生效：相关能力卡成本/风险更低"
+        scope: round1ScoresRevealed ? (s?.jinang_type === "market" ? "Round 1 支付意愿" : "Round 2 研发与成本") : "",
+        text: round1ScoresRevealed
+          ? (s?.jinang_type === "market"
+              ? `→ 为支付意愿额外增加了 ${bonusPct}%`
+              : "→ 只在第二轮生效：相关能力卡成本/风险更低")
+          : ""
       };
     })
     .filter(Boolean);
@@ -3650,44 +3652,46 @@ export default function App() {
               </div>
             </div>
 
-            <div style={{
-              padding: "20px", borderRadius: 12,
-              border: "1.5px solid #e5e7eb",
-              display: "flex", alignItems: "flex-start", gap: 20, flexWrap: "wrap",
-              marginBottom: 16,
-            }}>
-              <div style={{ flex: "0 0 auto" }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 4 }}>用户支付意愿</div>
-                <div style={{ fontSize: 12, color: "#9ca3af" }}>相对于该细分市场平均水平（拆分显示 VP 本身与市场锦囊）</div>
-              </div>
-              <div style={{ minWidth: 220 }}>
-                <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 4 }}>最终结果（含市场锦囊）</div>
-                <div style={{ fontSize: 36, fontWeight: 800, color: wtpPct >= 0 ? "#2FAB6E" : "#dc2626" }}>
-                  {wtpPct >= 0 ? `+${wtpPct}%` : `${wtpPct}%`}
+            {round1ScoresRevealed && (
+              <div style={{
+                padding: "20px", borderRadius: 12,
+                border: "1.5px solid #e5e7eb",
+                display: "flex", alignItems: "flex-start", gap: 20, flexWrap: "wrap",
+                marginBottom: 16,
+              }}>
+                <div style={{ flex: "0 0 auto" }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 4 }}>用户支付意愿</div>
+                  <div style={{ fontSize: 12, color: "#9ca3af" }}>相对于该细分市场平均水平（拆分显示 VP 本身与市场锦囊）</div>
                 </div>
-                <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 8 }}>
-                  仅看 VP 本身：{wtpBasePct >= 0 ? `+${wtpBasePct}%` : `${wtpBasePct}%`}
-                </div>
-                <div style={{ fontSize: 12, color: wtpJinangDeltaPct >= 0 ? "#2FAB6E" : "#dc2626", marginTop: 4 }}>
-                  市场锦囊额外影响：{wtpJinangDeltaPct >= 0 ? `+${wtpJinangDeltaPct}%` : `${wtpJinangDeltaPct}%`}
-                </div>
-                {rhoDiscountValue != null && (
-                  <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
-                    系统已将客户定义清晰度纳入支付意愿修正。
+                <div style={{ minWidth: 220 }}>
+                  <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 4 }}>最终结果（含市场锦囊）</div>
+                  <div style={{ fontSize: 36, fontWeight: 800, color: wtpPct >= 0 ? "#2FAB6E" : "#dc2626" }}>
+                    {wtpPct >= 0 ? `+${wtpPct}%` : `${wtpPct}%`}
                   </div>
-                )}
-                {!wtpHasJinangBoost && matchedTechJinangCount > 0 && (
-                  <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
-                    当前命中的是技术锦囊，只在第二轮研发/成本端生效，不影响本轮支付意愿。
+                  <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 8 }}>
+                    仅看 VP 本身：{wtpBasePct >= 0 ? `+${wtpBasePct}%` : `${wtpBasePct}%`}
                   </div>
-                )}
+                  <div style={{ fontSize: 12, color: wtpJinangDeltaPct >= 0 ? "#2FAB6E" : "#dc2626", marginTop: 4 }}>
+                    市场锦囊额外影响：{wtpJinangDeltaPct >= 0 ? `+${wtpJinangDeltaPct}%` : `${wtpJinangDeltaPct}%`}
+                  </div>
+                  {rhoDiscountValue != null && (
+                    <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
+                      系统已将客户定义清晰度纳入支付意愿修正。
+                    </div>
+                  )}
+                  {!wtpHasJinangBoost && matchedTechJinangCount > 0 && (
+                    <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
+                      当前命中的是技术锦囊，只在第二轮研发/成本端生效，不影响本轮支付意愿。
+                    </div>
+                  )}
+                </div>
+                <div style={{ fontSize: 13, color: "#666", lineHeight: 1.7, flex: "1 1 280px" }}>
+                  {wtpPct >= 0
+                    ? "支付意愿先根据价值主张本身计算，再叠加市场锦囊影响；如果客户定义还不够清晰，系统会适当压低最终溢价。"
+                    : "当前最终结果仍低于该细分市场平均水平，说明价值主张还需要继续加强。"}
+                </div>
               </div>
-              <div style={{ fontSize: 13, color: "#666", lineHeight: 1.7, flex: "1 1 280px" }}>
-                {wtpPct >= 0
-                  ? "支付意愿先根据价值主张本身计算，再叠加市场锦囊影响；如果客户定义还不够清晰，系统会适当压低最终溢价。"
-                  : "当前最终结果仍低于该细分市场平均水平，说明价值主张还需要继续加强。"}
-              </div>
-            </div>
+            )}
 
             <div style={{
               padding: "20px", borderRadius: 12,
@@ -3695,10 +3699,12 @@ export default function App() {
               marginBottom: 16,
             }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: "#166534", marginBottom: 10 }}>🎯 锦囊匹配结果</div>
-              <div style={{ fontSize: 13, color: "#15803d", marginBottom: 10 }}>
-                团队共 {totalJinangCount} 张锦囊中，{matchedJinangCount} 张与当前定位匹配
-                {`（市场 ${matchedMarketJinangCount} 张，技术 ${matchedTechJinangCount} 张）`}
-              </div>
+              {round1ScoresRevealed && (
+                <div style={{ fontSize: 13, color: "#15803d", marginBottom: 10 }}>
+                  团队共 {totalJinangCount} 张锦囊中，{matchedJinangCount} 张与当前定位匹配
+                  {`（市场 ${matchedMarketJinangCount} 张，技术 ${matchedTechJinangCount} 张）`}
+                </div>
+              )}
               {resultMarketJinang && (
                 <div style={{
                   marginBottom: 10,
@@ -3712,9 +3718,11 @@ export default function App() {
                 }}>
                   市场锦囊最高匹配项：<strong>{resultMarketJinang.name}</strong>
                   {resultMarketJinang.match_tier ? `（${String(resultMarketJinang.match_tier)}）` : ""}
-                  {resultMarketJinangBonusPct > 0
-                    ? `，为支付意愿额外增加了 ${resultMarketJinangBonusPct}%。`
-                    : "，但本轮未形成额外市场端增益。"}
+                  {round1ScoresRevealed && (
+                    resultMarketJinangBonusPct > 0
+                      ? `，为支付意愿额外增加了 ${resultMarketJinangBonusPct}%。`
+                      : "，但本轮未形成额外市场端增益。"
+                  )}
                 </div>
               )}
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
@@ -3736,16 +3744,22 @@ export default function App() {
                         color: "#fff", fontSize: 10, fontWeight: 600
                       }}>{item.label}</span>
                     </div>
-                    <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>
-                      生效范围：{item.scope}
-                    </div>
-                    <div style={{ color: "#4b5563" }}>{item.text}</div>
+                    {round1ScoresRevealed && item.scope && (
+                      <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>
+                        生效范围：{item.scope}
+                      </div>
+                    )}
+                    {round1ScoresRevealed && item.text && (
+                      <div style={{ color: "#4b5563" }}>{item.text}</div>
+                    )}
                   </div>
                 ))}
               </div>
-              <div style={{ fontSize: 12, color: "#6b7280" }}>
-                市场锦囊会影响第一轮支付意愿；技术锦囊不直接加第一轮分数，而是在第二轮产品能力、成本和风险计算里生效。所有团队成员的锦囊（包括未匹配的）都会带入第二轮计算。
-              </div>
+              {round1ScoresRevealed && (
+                <div style={{ fontSize: 12, color: "#6b7280" }}>
+                  市场锦囊会影响第一轮支付意愿；技术锦囊不直接加第一轮分数，而是在第二轮产品能力、成本和风险计算里生效。所有团队成员的锦囊（包括未匹配的）都会带入第二轮计算。
+                </div>
+              )}
             </div>
 
             <div style={{

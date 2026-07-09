@@ -173,6 +173,25 @@ const DEFERRED_SENSITIVE_KEY_SET = new Set([
   "WTPadj",
   "WTPadj_raw",
   "WTPref_adjusted",
+  "wtp_breakdown",
+  "wtp_premium",
+  "vp_premium",
+  "jinang_premium",
+  "premium_pct",
+  "jinang_bonus",
+  "market_jinang_bonus_total",
+  "match_strength_pct",
+  "base_pct",
+  "final_pct",
+  "jinang_delta_pct",
+  "compressed_jinang_delta_pct",
+  "rho_discount",
+  "vp_effect",
+  "multiplier",
+  "wtp_multiplier",
+  "wtp_mult_compressed",
+  "wtp_vp_effect",
+  "bonus",
   "jinang_match_strength",
   "match_strength"
 ]);
@@ -202,7 +221,10 @@ function shouldStripDeferredKey(key) {
   if (lower.includes("margin")) return true;
   if (lower.includes("share")) return true;
   if (lower === "gm" || lower.startsWith("gm_") || lower.endsWith("_gm") || lower.includes("gmmax")) return true;
-  if (lower.includes("wtpref") || lower.includes("wtpadj") || lower.includes("wtpmean") || lower.includes("wtpmedian")) return true;
+  if (lower.includes("wtp")) return true;
+  if (lower.includes("premium") || lower.includes("bonus")) return true;
+  if (lower.includes("pct") || lower.includes("percent")) return true;
+  if (lower.includes("multiplier") || lower.includes("vp_effect") || lower.includes("rho_discount")) return true;
   return false;
 }
 
@@ -257,24 +279,8 @@ function hideDeferredRound1Fields(payload) {
   const src = payload && typeof payload === "object" ? payload : {};
   const next = stripDeferredVpScoreFields(stripDeferredSensitiveFields(src));
 
-  if (next.wtp_breakdown && typeof next.wtp_breakdown === "object") {
-    const nextBreakdown = { ...next.wtp_breakdown };
-    delete nextBreakdown.market_jinang_match_tier;
-    next.wtp_breakdown = nextBreakdown;
-  }
-
   if (next.jinang && typeof next.jinang === "object") {
     const nextJinang = { ...next.jinang };
-    if (nextJinang.market_jinang && typeof nextJinang.market_jinang === "object") {
-      const { match_tier, ...restMarketJinang } = nextJinang.market_jinang;
-      nextJinang.market_jinang = restMarketJinang;
-    }
-    if (Array.isArray(nextJinang.market_jinangs)) {
-      nextJinang.market_jinangs = nextJinang.market_jinangs.map((item) => {
-        const { match_tier, ...restItem } = item || {};
-        return restItem;
-      });
-    }
     next.jinang = nextJinang;
   }
 
