@@ -353,6 +353,20 @@ function mapTeamStatusToStep(teamStatus) {
   return 0;
 }
 
+function hasUnlockedRound2Cards({
+  interviewMode,
+  memberState,
+  personaChoice
+}) {
+  const mode = String(interviewMode || "").trim().toLowerCase() === "live" ? "live" : "summary";
+  if (mode === "live") {
+    return Number(memberState?.completedInterviews || memberState?.completed_interviews || 0) >= 2
+      || memberState?.card_status === "submitted";
+  }
+  return Boolean(String(personaChoice?.summary_text || "").trim())
+    || memberState?.card_status === "submitted";
+}
+
 function teamStatusNotice(teamStatus) {
   if (teamStatus === "R2_REVIEW") return "系统已同步到 Round 2 放行状态";
   if (teamStatus === "R2_INTERVIEWING") return "系统已同步到用户访谈阶段";
@@ -894,9 +908,13 @@ export default function App() {
         }
         if (stateRes?.team_status && !snapshotRes?.submission) {
           const teamStep = mapTeamStatusToStep(stateRes.team_status);
-          const myInterviewDone = Number(stateRes?.member_state?.completedInterviews || stateRes?.member_state?.completed_interviews || 0) >= 2
-            || stateRes?.member_state?.card_status === "submitted";
-          const safeStep = (teamStep >= 2 && !myInterviewDone) ? 1 : teamStep;
+          const entryInterviewMode = String(stateRes?.session_config?.interview_mode || readInterviewModeFromUrl() || "summary").trim().toLowerCase();
+          const cardsUnlocked = hasUnlockedRound2Cards({
+            interviewMode: entryInterviewMode,
+            memberState: stateRes?.member_state,
+            personaChoice: stateRes?.persona_choice
+          });
+          const safeStep = (teamStep >= 2 && !cardsUnlocked) ? 1 : teamStep;
           setStep((prev) => Math.max(prev, safeStep));
         }
       })
@@ -987,8 +1005,12 @@ export default function App() {
         const nextStep = mapTeamStatusToStep(nextStatus);
         const prevStatus = previousStatusRef.current;
         const prevStep = previousStepRef.current;
-        const memberInterviewDone = Number(data?.member_state?.completedInterviews || data?.member_state?.completed_interviews || 0) >= 2
-          || data?.member_state?.card_status === "submitted";
+        const nextInterviewMode = String(data?.session_config?.interview_mode || readInterviewModeFromUrl() || "summary").trim().toLowerCase();
+        const cardsUnlocked = hasUnlockedRound2Cards({
+          interviewMode: nextInterviewMode,
+          memberState: data?.member_state,
+          personaChoice: data?.persona_choice
+        });
 
         setSubmitted(nextStatus === "R2_SUBMITTED");
         if (nextStatus !== "R2_SUBMITTED") {
@@ -998,7 +1020,7 @@ export default function App() {
 
         setStep((prev) => {
           if (nextStatus === "R2_SUBMITTED") return 5;
-          if (nextStep >= 2 && !memberInterviewDone) return Math.min(prev, 1);
+          if (nextStep >= 2 && !cardsUnlocked) return Math.min(prev, 1);
           if (nextStep > 0 && nextStep < prev) return prev;
           return Math.max(prev, nextStep);
         });
