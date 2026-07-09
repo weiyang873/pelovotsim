@@ -2376,6 +2376,20 @@ function handleApi(req, res) {
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "vp extract-fields failed" }));
   }
 
+  if (req.method === "POST" && req.url === "/api/round1/vp-feedback") {
+    return readBody(req)
+      .then((p) => TeamRoutes.round1VpFeedbackApi(p))
+      .then((out) => sendJson(res, out.status, out.body))
+      .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "round1 vp feedback failed" }));
+  }
+
+  if (req.method === "POST" && req.url === "/api/round1/vp-submit") {
+    return readBody(req)
+      .then((p) => TeamRoutes.confirmAndScoreVp(p))
+      .then((out) => sendJson(res, out.status, out.body))
+      .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "round1 vp submit failed" }));
+  }
+
   if (req.method === "POST" && req.url === "/api/vp/confirm-and-score") {
     return readBody(req)
       .then((p) => TeamRoutes.confirmAndScoreVp(p))
@@ -2461,6 +2475,7 @@ function handleApi(req, res) {
     return handleLlmHealth(req, res);
   }
 
+  // LEGACY: multi-round VP coach, retained for research track
   if (String(req.url || "").startsWith("/api/round1/coach/")) {
     return sendJson(res, 410, {
       ok: false,
@@ -2495,6 +2510,7 @@ function handleApi(req, res) {
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "vp canvas submit failed" }));
   }
 
+  // LEGACY: multi-round VP coach, retained for research track
   if (req.method === "POST" && req.url === "/api/vp/chat") {
     return readBody(req)
       .then((p) => VpChat.chatTurn(p))

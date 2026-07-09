@@ -107,6 +107,14 @@ function clamp01(value) {
   return Math.max(0, Math.min(1, Number(value || 0)));
 }
 
+function countChars(text) {
+  return Array.from(String(text || "")).length;
+}
+
+function sliceChars(text, limit) {
+  return Array.from(String(text || "")).slice(0, limit).join("");
+}
+
 function matchStrengthToTier(value) {
   const strength = clamp01(value);
   if (strength >= 0.7) return "高度契合";
@@ -1297,6 +1305,178 @@ function sanitizeStudentVpConfirmationResponse(payload) {
   };
 }
 
+function buildVpTextFromConfirmedFields(fields) {
+  const src = normalizeConfirmedFieldsPayload(fields);
+  return [
+    src.who_raw ? `WHO：${src.who_raw}` : "",
+    src.pain_raw ? `PAIN：${src.pain_raw}` : "",
+    src.how_raw ? `HOW：${src.how_raw}` : "",
+    src.alternative_raw && src.alternative_raw !== "未明确" ? `替代方案对比：${src.alternative_raw}` : "",
+    src.boundary_raw && src.boundary_raw !== "未明确" ? `BOUNDARY：${src.boundary_raw}` : ""
+  ].filter(Boolean).join("\n");
+}
+
+function normalizeSimplifiedVpFields(payload = {}) {
+  return normalizeConfirmedFieldsPayload({
+    who_raw: payload.who ?? payload.who_raw,
+    pain_raw: payload.pain ?? payload.pain_raw,
+    how_raw: payload.how ?? payload.how_raw,
+    alternative_raw: payload.alternative ?? payload.alternative_raw,
+    boundary_raw: payload.boundary ?? payload.boundary_raw
+  });
+}
+
+function readSimplifiedVpPayload(payload = {}) {
+  const fields = normalizeSimplifiedVpFields(payload);
+  const hasSimplifiedFields = Boolean(
+    String(payload.who ?? "").trim() ||
+    String(payload.pain ?? "").trim() ||
+    String(payload.how ?? "").trim()
+  );
+  return {
+    hasSimplifiedFields,
+    fields,
+    vpText: String(payload.vpText || payload.vp_text || "").trim() || buildVpTextFromConfirmedFields(fields)
+  };
+}
+
+function parseFeedbackJson(raw) {
+  const text = String(raw || "").trim();
+  const match = text.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+  try {
+    const parsed = JSON.parse(match[0]);
+    const feedback = {
+      good: String(parsed?.good || "").trim(),
+      improve: String(parsed?.improve || "").trim(),
+      suggest: String(parsed?.suggest || "").trim()
+    };
+    return feedback.good && feedback.improve && feedback.suggest ? feedback : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function buildFallbackDraftFeedback(fields) {
+  const src = normalizeConfirmedFieldsPayload(fields);
+  const who = src.who_raw;
+  const pain = src.pain_raw;
+  const how = src.how_raw;
+  const mismatch = /老人|养老|长者/.test(who) && /上班|加班|白领|通勤|职场|年轻/.test(pain);
+  return {
+    good: who && pain ? `初稿已经把目标客户和痛点分开表达，"${sliceChars(who, 24)}"这个方向有继续打磨的空间。` : "选题方向有潜力，已经开始按 WHO / PAIN / HOW 拆分价值主张。",
+    improve: mismatch
+      ? "WHO 和 PAIN 之间存在不一致：目标客户像是老人或养老场景，但痛点描述更接近年轻上班族，需要先统一用户画像。"
+      : `最需要改进的是${how && countChars(how) >= 20 ? "把 WHO 和 PAIN 写得更具体" : "HOW 的因果链"}，现在读者还不容易判断具体场景和解决机制是否真正对应。`,
+    suggest: "下一步请补上一句具体触发场景，并说明你的方案通过什么机制缓解这个痛点。"
+  };
+}
+
+async function generateDraftVpFeedback({ teamId, memberId, gridLabel, archLabel, fields }) {
+  const src = normalizeConfirmedFieldsPayload(fields);
+  const prompt = [
+    "你是一位产品战略顾问，正在审阅一份价值主张初稿。",
+    "",
+    "团队信息：",
+    `- 目标市场：${gridLabel}`,
+    `- 产品架构：${archLabel}`,
+    "",
+    "学生初稿：",
+    `WHO：${src.who_raw}`,
+    `PAIN：${src.pain_raw}`,
+    `HOW：${src.how_raw}`,
+    src.alternative_raw && src.alternative_raw !== "未明确" ? `替代方案对比：${src.alternative_raw}` : "",
+    src.boundary_raw && src.boundary_raw !== "未明确" ? `边界条件：${src.boundary_raw}` : "",
+    "",
+    "请给出结构化反馈，严格按以下 JSON 格式输出，不要有任何其他内容：",
+    "",
+    "{",
+    "  \"good\": \"1-2 句话，指出初稿中写得最好的部分，引用原文中的具体措辞\",",
+    "  \"improve\": \"1-2 句话，指出最需要改进的一个问题，说清楚为什么有问题\",",
+    "  \"suggest\": \"1 句话，给出一个具体的改进方向，告诉学生下一步可以怎么改\"",
+    "}",
+    "",
+    "约束：",
+    "- 不要重写学生的 VP，只给反馈",
+    "- 不要给出产品建议或解决方案",
+    "- 反馈针对 VP 的写法质量，不评判市场选择对错",
+    "- 重点检查 WHO 是否足够具体、PAIN 是否有具体触发情境、HOW 是否有因果链",
+    "- 如果 WHO/PAIN/HOW 之间逻辑不一致，优先指出",
+    "- good 部分要真诚，不要为了鼓励而夸"
+  ].filter(Boolean).join("\n");
+
+  const messages = [
+    { role: "system", content: "你是 EMBA 课程中的产品战略顾问。只输出合法 JSON。" },
+    { role: "user", content: prompt }
+  ];
+  try {
+    const raw = await withLlmLogging({
+      caller: "teamRoutes.round1VpFeedback",
+      teamId,
+      memberId,
+      messages
+    }, () => chatCompletion(messages, { temperature: 0.2, max_tokens: 500 }));
+    return parseFeedbackJson(raw) || buildFallbackDraftFeedback(src);
+  } catch (err) {
+    console.warn("[round1/vp-feedback] fallback:", err?.message || err);
+    return buildFallbackDraftFeedback(src);
+  }
+}
+
+async function generateFinalVpComment({ teamId, memberId, fields, scores }) {
+  const src = normalizeConfirmedFieldsPayload(fields);
+  const scoreSet = scores && typeof scores === "object" ? scores : {};
+  const prompt = [
+    "你是一位产品战略顾问，请为以下价值主张撰写一段简短评语。",
+    "",
+    "学生提交的 VP：",
+    `WHO：${src.who_raw}`,
+    `PAIN：${src.pain_raw}`,
+    `HOW：${src.how_raw}`,
+    "",
+    "评分结果（仅供你参考，不要在评语中提及具体分数）：",
+    `- 客户描述覆盖度 C = ${scoreSet.C}（满分 5）`,
+    `- 痛点泛化能力 G = ${scoreSet.G}（满分 5）`,
+    `- 方案有效性 E = ${scoreSet.E}（满分 5）`,
+    "",
+    "请用 150-250 字中文写一段评语，包含：",
+    "1. 对初稿的整体判断（一句话）",
+    "2. 最突出的优点（引用原文中的具体措辞）",
+    "3. 最需要改进的地方和改进方向",
+    "4. 对下一轮（产品研发阶段）的一句提醒",
+    "",
+    "约束：",
+    "- 不要提及任何数字分数",
+    "- 不要给出产品建议或解决方案",
+    "- 语气专业但温和"
+  ].join("\n");
+  const messages = [
+    { role: "system", content: "你是 EMBA 课程中的产品战略顾问。输出一段中文评语，不要列分数。" },
+    { role: "user", content: prompt }
+  ];
+  try {
+    const raw = await withLlmLogging({
+      caller: "teamRoutes.round1VpSubmitComment",
+      teamId,
+      memberId,
+      messages
+    }, () => chatCompletion(messages, { temperature: 0.3, max_tokens: 500 }));
+    const cleaned = sanitizeGeneratedFeedback(raw);
+    return fitFeedbackLength(cleaned, 150, 250);
+  } catch (err) {
+    console.warn("[round1/vp-submit] feedback fallback:", err?.message || err);
+    return fitFeedbackLength(buildFallbackVpFeedback({ vpText: buildVpTextFromConfirmedFields(src), confirmedFields: src, scores }), 150, 250);
+  }
+}
+
+function buildStudentJinangMatch(previewMarketJinang) {
+  const items = Array.isArray(previewMarketJinang?.items) ? previewMarketJinang.items : [];
+  return items.map((item) => ({
+    name: String(item?.name || item?.id || "").trim(),
+    tier: matchStrengthToTier(item?.match_strength)
+  })).filter((item) => item.name);
+}
+
 function extractTextValue(src, key) {
   const text = String(src || "");
   const re = new RegExp(`${key}\\s*[：:]\\s*([^\\n]+)`);
@@ -1868,15 +2048,58 @@ async function extractVpFieldsApi(body) {
   }
 }
 
+async function round1VpFeedbackApi(body) {
+  try {
+    const payload = body || {};
+    const teamId = String(payload.team_id || payload.teamId || "").trim();
+    const memberId = String(payload.member_id || payload.memberId || "").trim();
+    if (!teamId || !memberId) {
+      return makeResponse(400, { ok: false, error: "team_id/member_id required" });
+    }
+    await assertMemberInTeam(teamId, memberId);
+    const team = await getTeam(teamId);
+    if (!team) return makeResponse(404, { ok: false, error: "team not found" });
+
+    const fields = normalizeSimplifiedVpFields(payload);
+    if (!fields.who_raw || !fields.pain_raw || !fields.how_raw) {
+      return makeResponse(400, { ok: false, error: "WHO/PAIN/HOW required" });
+    }
+
+    const draft = await readRound1TeamDraft(teamId).catch(() => null);
+    const gridId = String(payload.grid_id || payload.gridId || draft?.grid_id || team.final_grid_id || "").trim();
+    const architecture = normalizeArchitecture(payload.architecture || draft?.architecture || team.final_architecture || "Experience");
+    if (!gridId || !architecture) {
+      return makeResponse(400, { ok: false, error: "grid_id and architecture required" });
+    }
+
+    const strategy = resolvePhase3Strategy(gridId, architecture);
+    const feedback = await generateDraftVpFeedback({
+      teamId,
+      memberId,
+      gridLabel: strategy.cell_label,
+      archLabel: toArchitecturePromptLabel(architecture),
+      fields
+    });
+
+    return makeResponse(200, { ok: true, feedback });
+  } catch (e) {
+    console.error("[round1/vp-feedback] error:", e);
+    return makeResponse(400, { ok: false, error: e.message || "vp feedback failed" });
+  }
+}
+
 async function confirmAndScoreVp(body) {
   try {
     const payload = body || {};
-    const teamId = String(payload.teamId || "").trim();
-    const memberId = String(payload.memberId || "").trim();
-    const vpText = String(payload.vpText || "").trim();
-    const gridId = String(payload.grid_id || payload.gridId || "").trim();
-    const architecture = String(payload.architecture || "").trim();
-    const confirmedFields = normalizeConfirmedFieldsPayload(payload.confirmedFields);
+    const teamId = String(payload.teamId || payload.team_id || "").trim();
+    const memberId = String(payload.memberId || payload.member_id || "").trim();
+    const simplified = readSimplifiedVpPayload(payload);
+    const hasSimplifiedPayload = simplified.hasSimplifiedFields || payload.accepted_feedback !== undefined;
+    const confirmedFields = hasSimplifiedPayload
+      ? simplified.fields
+      : normalizeConfirmedFieldsPayload(payload.confirmedFields);
+    const vpText = String(payload.vpText || payload.vp_text || "").trim()
+      || (hasSimplifiedPayload ? simplified.vpText : "");
 
     if (!teamId) {
       return makeResponse(400, { ok: false, error: "缺少 teamId" });
@@ -1884,6 +2107,9 @@ async function confirmAndScoreVp(body) {
     const permission = await ensureLeaderPermission(teamId, memberId);
     if (!permission.ok) return permission.response;
     const team = permission.team;
+    const draft = await readRound1TeamDraft(teamId).catch(() => null);
+    const gridId = String(payload.grid_id || payload.gridId || draft?.grid_id || team.final_grid_id || "").trim();
+    const architecture = normalizeArchitecture(payload.architecture || draft?.architecture || team.final_architecture || "");
     if (!gridId || !architecture) {
       return makeResponse(400, { ok: false, error: "缺少必要参数" });
     }
@@ -1895,6 +2121,32 @@ async function confirmAndScoreVp(body) {
     }
     if (!confirmedFields.how_raw || confirmedFields.how_raw.length < 2) {
       return makeResponse(400, { ok: false, error: "解决方式不能为空" });
+    }
+
+    const existing = await readPersistedPhase3Confirmation(
+      teamId,
+      memberId,
+      String(team?.leader_member_id || "").trim()
+    ).catch(() => null);
+    if (existing?.confirmed_at && existing?.fields) {
+      const previewMarketJinang = await getPreviewMarketJinang(teamId, gridId, architecture).catch(() => null);
+      const frozenResponse = {
+        status: "confirmed",
+        feedback_text: String(existing.feedback || "").trim(),
+        jinang_match: buildStudentJinangMatch(previewMarketJinang),
+        confirmed_at: existing.confirmed_at,
+        fields: existing.fields
+      };
+      return makeResponse(200, hasSimplifiedPayload
+        ? frozenResponse
+        : sanitizeStudentVpConfirmationResponse({
+            ok: true,
+            feedback: existing.feedback || "",
+            confirmedAt: existing.confirmed_at,
+            fields: existing.fields,
+            session_id: null,
+            vp_result: buildConfirmedVpResult(existing.fields)
+          }));
     }
 
     const result = await scoreVpByWord(confirmedFields, gridId, architecture);
@@ -1926,8 +2178,15 @@ async function confirmAndScoreVp(body) {
       Eadj: clipScore(round1Outcome.Eadj, 1, 5),
       VPscore: clipScore(round1Outcome.VPscore, 1, 5)
     };
-    const feedback = await generateVpFeedback({
-      vpText,
+    const feedback = hasSimplifiedPayload
+      ? await generateFinalVpComment({
+        teamId,
+        memberId,
+        fields: confirmedFields,
+        scores: normalizedScores
+      })
+      : await generateVpFeedback({
+      vpText: vpText || buildVpTextFromConfirmedFields(confirmedFields),
       confirmedFields,
       scores: normalizedScores,
       details: result?.details || null,
@@ -1939,7 +2198,7 @@ async function confirmAndScoreVp(body) {
     const persisted = await persistConfirmedVpResult({
       teamId,
       memberId,
-      vpText,
+      vpText: vpText || buildVpTextFromConfirmedFields(confirmedFields),
       confirmedFields,
       scores: normalizedScores,
       confirmedAt,
@@ -1966,14 +2225,24 @@ async function confirmAndScoreVp(body) {
       sessionId: persisted.sessionId,
       memberId,
       trigger: "confirm_score",
-      vpAfter: vpText,
+      vpAfter: vpText || buildVpTextFromConfirmedFields(confirmedFields),
       scores: normalizedScores
     });
     await saveRound1TeamDraft(teamId, memberId, {
       grid_id: gridId,
       architecture,
-      vp_text: vpText
+      vp_text: vpText || buildVpTextFromConfirmedFields(confirmedFields)
     }).catch(() => {});
+
+    if (hasSimplifiedPayload) {
+      return makeResponse(200, {
+        status: "confirmed",
+        feedback_text: feedback || "",
+        jinang_match: buildStudentJinangMatch(previewMarketJinang),
+        confirmed_at: confirmedAt,
+        fields: confirmedFields
+      });
+    }
 
     return makeResponse(200, sanitizeStudentVpConfirmationResponse({
       ok: true,
@@ -2973,6 +3242,7 @@ module.exports = {
   submitPhase3Vp,
   chatPhase3,
   extractVpFieldsApi,
+  round1VpFeedbackApi,
   confirmAndScoreVp,
   generateVpFeedbackApi,
   finalizePhase3,
