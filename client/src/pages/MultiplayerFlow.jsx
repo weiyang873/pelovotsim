@@ -1294,7 +1294,7 @@ export default function App() {
       setVpFeedbackRequest(null);
       setIsGeneratingVpFeedback(false);
       setVpPanelState(confirmation.status === "confirming" ? "confirming" : "scored");
-    } else if (!["confirming", "feedback"].includes(vpPanelStateRef.current)) {
+    } else if (!["chatting", "confirming", "feedback"].includes(vpPanelStateRef.current)) {
       setVpConfirmedFields(emptyConfirmedFields());
       setVpConfirmedScores(null);
       setVpConfirmedAt("");

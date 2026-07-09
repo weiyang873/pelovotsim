@@ -372,8 +372,8 @@ test.describe.serial("Round 1 + Round 2 multiuser UI E2E", () => {
       watchdog.bump("round1-complete");
 
       expect(normalizeText(flowContext.round1SynthesizedVp)).not.toBe("");
-      expect(flowContext.round1ScoreResponse?.ok).toBeTruthy();
-      expect(String(flowContext.round1ScoreResponse?.feedback || "").trim()).not.toBe("");
+      expect(flowContext.round1ScoreResponse?.status).toBe("confirmed");
+      expect(String(flowContext.round1ScoreResponse?.feedback_text || "").trim()).not.toBe("");
       expect("scores" in (flowContext.round1ScoreResponse || {})).toBe(false);
       await expect(leaderPage.locator("[data-testid='r2-recap-container']")).toBeVisible({ timeout: 120000 });
       await expect(leaderPage.locator("[data-testid='r2-recap-space-tier']")).not.toHaveText("", { timeout: 30000 });

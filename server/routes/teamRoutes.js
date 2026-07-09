@@ -5,7 +5,12 @@ const Engine = require("../../engine");
 const { chat, synthesizeVP } = require("../llm/vpCoach");
 const { extractVpFields } = require("../llm/vpEmbeddingScorer");
 const { scoreVp } = require("../llm/vpScorer");
-const { scoreVpByWord, generateVpFeedback } = require("../llm/vpWordScorer");
+const {
+  scoreVpByWord,
+  generateVpFeedback,
+  sanitizeGeneratedFeedback,
+  buildFallbackVpFeedback
+} = require("../llm/vpWordScorer");
 const { chatCompletion } = require("../llm/deepseekClient");
 const { withLlmLogging } = require("../llm/llm_logger");
 const { computeWTPParams, compressWtpMult, GRID_PARAMS, PERCENTILES, SHAPE_PARAMS, GLOBAL_PARAMS } = require("../llm/rdCalculator");
@@ -1372,6 +1377,17 @@ function buildFallbackDraftFeedback(fields) {
   };
 }
 
+function fitFinalVpComment(text, min = 150, max = 250) {
+  const plain = String(text || "").replace(/\s+/g, " ").trim();
+  if (!plain) return "";
+  if (countChars(plain) <= max && countChars(plain) >= min) return plain;
+  if (countChars(plain) > max) {
+    const clipped = sliceChars(plain, max);
+    return /[。！？]$/.test(clipped) ? clipped : `${clipped}。`;
+  }
+  return plain;
+}
+
 async function generateDraftVpFeedback({ teamId, memberId, gridLabel, archLabel, fields }) {
   const src = normalizeConfirmedFieldsPayload(fields);
   const prompt = [
@@ -1462,10 +1478,10 @@ async function generateFinalVpComment({ teamId, memberId, fields, scores }) {
       messages
     }, () => chatCompletion(messages, { temperature: 0.3, max_tokens: 500 }));
     const cleaned = sanitizeGeneratedFeedback(raw);
-    return fitFeedbackLength(cleaned, 150, 250);
+    return fitFinalVpComment(cleaned, 150, 250);
   } catch (err) {
     console.warn("[round1/vp-submit] feedback fallback:", err?.message || err);
-    return fitFeedbackLength(buildFallbackVpFeedback({ vpText: buildVpTextFromConfirmedFields(src), confirmedFields: src, scores }), 150, 250);
+    return fitFinalVpComment(buildFallbackVpFeedback({ vpText: buildVpTextFromConfirmedFields(src), confirmedFields: src, scores }), 150, 250);
   }
 }
 

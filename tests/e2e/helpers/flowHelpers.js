@@ -505,112 +505,72 @@ async function runRound1Flow({
     await page.locator(`[data-testid='${finalTeamGridTestId}']`).last().click();
     await page.locator(`[data-testid='${teamArchitectureTestId}']`).click();
     await page.locator("[data-testid='round1-distribution-continue-btn']").click();
-    await expect(page.locator("[data-testid='coach-messages']")).toBeVisible();
+    await expect(page.locator("[data-testid='vp-simplified-flow']")).toBeVisible();
     if (strictMonitoring) {
       monitor.assertClean("Step 4: 战略分布图");
     }
     return {};
   });
 
-  await runStep("Step 5: VP Coach 对话", async () => {
-    logProgress(onProgress, "round1-step5-coach-start");
-    const coachMessageItems = page.locator("[data-testid='coach-message-coach']");
-    const userMessages = page.locator("[data-testid='coach-message-user']");
-    const coachInput = page.locator("[data-testid='coach-message-input']");
-    await expect(page.locator("[data-testid='coach-messages']")).toBeVisible({ timeout: 60000 });
-    await expect(coachInput).toBeEditable({ timeout: 60000 });
-    await assertStable(page, "[data-testid='coach-messages']", { duration: 1500, checkInterval: 200 });
-
-    for (let index = 0; index < coachMessages.length; index += 1) {
-      const message = coachMessages[index];
-      console.log(`[E2E] Coach turn ${index + 1}/${coachMessages.length}: send`);
-      logProgress(onProgress, `round1-step5-coach-turn-${index + 1}-send`);
-      const beforeCoachCount = await coachMessageItems.count();
-      const beforeUserCount = await userMessages.count();
-      await coachInput.fill(message);
-      await page.locator("[data-testid='coach-send-btn']").click();
-      await expect.poll(async () => userMessages.count(), {
-        timeout: 15000,
-        intervals: [500, 1000, 2000]
-      }).toBeGreaterThan(beforeUserCount);
-      await expect(async () => {
-        const count = await coachMessageItems.count();
-        expect(count).toBeGreaterThan(beforeCoachCount);
-      }).toPass({ timeout: 60000 });
-      console.log(`[E2E] Coach turn ${index + 1}/${coachMessages.length}: reply`);
-      logProgress(onProgress, `round1-step5-coach-turn-${index + 1}-reply`);
-    }
-
-    const vpTextarea = page.locator("[data-testid='round1-vp-textarea']");
-    const synthesizeButton = page.locator("[data-testid='vp-synthesize-btn']");
-    await expect(synthesizeButton).toBeVisible({ timeout: 30000 });
-    console.log("[E2E] VP synthesize: click");
-    logProgress(onProgress, "round1-step5-vp-synthesize-click");
-    await synthesizeButton.click();
-    await expect.poll(async () => String(await vpTextarea.inputValue()).trim().length, {
-      timeout: 90000,
-      intervals: [1000, 2000, 3000]
-    }).toBeGreaterThan(0);
-    console.log("[E2E] VP synthesize: ready");
-    logProgress(onProgress, "round1-step5-vp-synthesize-ready");
-    context.round1SynthesizedVp = await vpTextarea.inputValue();
+  await runStep("Step 5: VP 撰写与提交", async () => {
+    logProgress(onProgress, "round1-step5-vp-write-start");
+    const requiredFieldFallbacks = {
+      who_raw: "独居城市白领，二十五到三十五岁，下班后回到安静公寓时最容易感到情绪低落。",
+      pain_raw: "他们在高压工作结束后缺少即时回应，现有社交软件只会增加信息负担，无法缓解回家第一刻的空落。",
+      how_raw: "LOVOT通过主动迎接、轻量陪伴和情绪化互动，让用户进门时立刻获得被回应的感觉，并降低独处压力。",
+      ...(confirmedFieldFallbacks || {})
+    };
+    await expect(page.locator("[data-testid='vp-simplified-flow']")).toBeVisible({ timeout: 30000 });
+    await page.locator("[data-testid='vp-who-textarea']").fill(requiredFieldFallbacks.who_raw);
+    await page.locator("[data-testid='vp-pain-textarea']").fill(requiredFieldFallbacks.pain_raw);
+    await page.locator("[data-testid='vp-how-textarea']").fill(requiredFieldFallbacks.how_raw);
+    context.round1SynthesizedVp = [
+      `WHO：${requiredFieldFallbacks.who_raw}`,
+      `PAIN：${requiredFieldFallbacks.pain_raw}`,
+      `HOW：${requiredFieldFallbacks.how_raw}`
+    ].join("\n");
 
     tracker.reset();
     tracker.startCapture();
-    console.log("[E2E] VP submit: click");
-    logProgress(onProgress, "round1-step5-vp-submit-click");
-    await page.locator("[data-testid='vp-submit-btn']").click();
-    await expect(page.locator("[data-testid='vp-confirm-fields']")).toBeVisible({ timeout: 60000 });
-    console.log("[E2E] VP submit: confirm fields visible");
-    logProgress(onProgress, "round1-step5-vp-confirm-fields");
-    const requiredFieldFallbacks = {
-      who_raw: "",
-      pain_raw: "",
-      how_raw: "",
-      ...(confirmedFieldFallbacks || {})
-    };
-    for (const [fieldKey, fallbackValue] of Object.entries(requiredFieldFallbacks)) {
-      const field = page.locator(`[data-testid='vp-confirm-${fieldKey}']`);
-      if (!(await field.count())) continue;
-      const currentValue = String(await field.inputValue().catch(() => "")).trim();
-      if (!currentValue && String(fallbackValue || "").trim()) {
-        await field.fill(String(fallbackValue).trim());
-      }
-    }
-    await expect(page.locator("[data-testid='vp-confirm-who_raw']")).not.toHaveValue("", { timeout: 10000 });
-    await expect(page.locator("[data-testid='vp-confirm-pain_raw']")).not.toHaveValue("", { timeout: 10000 });
-    await expect(page.locator("[data-testid='vp-confirm-how_raw']")).not.toHaveValue("", { timeout: 10000 });
-    await tracker.waitForSettled(1500, {
-      timeoutMs: 15000,
-      ignoreUrls: ["/status", "/phase3/state"]
-    });
+    const feedbackResponsePromise = page.waitForResponse((response) =>
+      response.url().includes("/api/round1/vp-feedback") && response.request().method() === "POST"
+    );
+    logProgress(onProgress, "round1-step5-vp-feedback-click");
+    await page.locator("[data-testid='vp-feedback-submit-btn']").click();
+    await expect(page.locator("[data-testid='vp-final-submit-btn']")).toBeVisible({ timeout: 60000 });
+    const feedbackResponse = await feedbackResponsePromise;
+    expect(feedbackResponse.status()).toBe(200);
+    const feedbackJson = await feedbackResponse.json();
+    expect(String(feedbackJson?.feedback?.good || "").trim()).not.toBe("");
+    expect(String(feedbackJson?.feedback?.improve || "").trim()).not.toBe("");
+    expect(String(feedbackJson?.feedback?.suggest || "").trim()).not.toBe("");
     if (strictMonitoring) {
-      tracker.assertCallCount("extract-fields", 1);
+      expect(findApiCalls(tracker, "/phase3/chat")).toHaveLength(0);
+      expect(findApiCalls(tracker, "/synthesize-vp")).toHaveLength(0);
+      expect(findApiCalls(tracker, "/extract-fields")).toHaveLength(0);
       tracker.assertNoCancelled({ ignoreUrls: TEAM_POLL_IGNORE_URLS });
       tracker.assertAllSucceeded({ ignoreUrls: TEAM_POLL_IGNORE_URLS });
     }
-    await assertStable(page, "[data-testid='vp-confirm-fields']", { duration: 3000, checkInterval: 250 });
-    const mutations = await countDOMMutations(page, "[data-testid='vp-confirm-fields']", { duration: 3000, checkInterval: 200 });
+    await assertStable(page, "[data-testid='vp-simplified-flow']", { duration: 1500, checkInterval: 250 });
+    const mutations = await countDOMMutations(page, "[data-testid='vp-simplified-flow']", { duration: 1500, checkInterval: 200 });
     expect(mutations).toBeLessThan(10);
     if (strictMonitoring) {
-      monitor.assertClean("Step 5: VP Coach 对话");
+      monitor.assertClean("Step 5: VP 撰写与提交");
     }
 
     tracker.reset();
     tracker.startCapture();
-    const confirmScoreResponsePromise = page.waitForResponse((response) =>
-      response.url().includes("/api/vp/confirm-and-score") && response.request().method() === "POST"
+    const submitResponsePromise = page.waitForResponse((response) =>
+      response.url().includes("/api/round1/vp-submit") && response.request().method() === "POST"
     );
-    console.log("[E2E] VP confirm score: click");
-    logProgress(onProgress, "round1-step5-vp-confirm-score-click");
-    await page.locator("[data-testid='vp-confirm-btn']").click();
+    logProgress(onProgress, "round1-step5-vp-final-submit-click");
+    await page.locator("[data-testid='vp-final-submit-btn']").click();
     await expect(page.locator("[data-testid='r1-results-container']")).toBeVisible({ timeout: 60000 });
-    console.log("[E2E] VP confirm score: results visible");
     logProgress(onProgress, "round1-step5-vp-results-visible");
-    const confirmScoreResponse = await confirmScoreResponsePromise;
-    expect(confirmScoreResponse.status()).toBe(200);
-    context.round1ScoreResponse = await confirmScoreResponse.json();
-    expect(String(context.round1ScoreResponse?.feedback || "").trim()).not.toBe("");
+    const submitResponse = await submitResponsePromise;
+    expect(submitResponse.status()).toBe(200);
+    context.round1ScoreResponse = await submitResponse.json();
+    expect(String(context.round1ScoreResponse?.feedback_text || "").trim()).not.toBe("");
     expect("scores" in (context.round1ScoreResponse || {})).toBe(false);
     expect("vp_score" in (context.round1ScoreResponse || {})).toBe(false);
     expect("coverage" in (context.round1ScoreResponse || {})).toBe(false);
@@ -618,6 +578,10 @@ async function runRound1Flow({
     expect("effectiveness" in (context.round1ScoreResponse || {})).toBe(false);
     await tracker.waitForSettled(1000);
     if (strictMonitoring) {
+      expect(findApiCalls(tracker, "/api/vp/confirm-and-score")).toHaveLength(0);
+      expect(findApiCalls(tracker, "/phase3/chat")).toHaveLength(0);
+      expect(findApiCalls(tracker, "/synthesize-vp")).toHaveLength(0);
+      expect(findApiCalls(tracker, "/extract-fields")).toHaveLength(0);
       tracker.assertNoCancelled();
       tracker.assertAllSucceeded({ ignoreUrls: TEAM_POLL_IGNORE_URLS });
     }
