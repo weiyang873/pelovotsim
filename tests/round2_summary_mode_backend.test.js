@@ -335,6 +335,29 @@ test("summary-mode dynamic coverage ratio uses viewed report union and student m
   assert.equal("tags" in studentMerged, false);
 });
 
+test("team reading status payload includes per-member reading details without exposing coverage ratio", () => {
+  const payload = Round2.__test.buildStudentReadingStatusPayload({
+    allViewed: ["P1", "P3"],
+    myViewed: ["P1"],
+    totalReports: 3,
+    memberId: "m1",
+    members: [
+      { member_id: "m1", name: "成员1", reading_status: "completed", viewed: ["P1"] },
+      { member_id: "m2", name: "成员2", reading_status: "not_started", viewed: ["P1", "P3"] }
+    ]
+  });
+
+  assert.equal(payload.total_reports, 3);
+  assert.equal(payload.team_viewed_count, 2);
+  assert.deepEqual(payload.team_viewed_personas, ["P1", "P3"]);
+  assert.deepEqual(payload.my_viewed, ["P1"]);
+  assert.equal(payload.my_reading_status, "completed");
+  assert.equal(payload.all_completed, false);
+  assert.equal(payload.members.length, 2);
+  assert.deepEqual(payload.members[1].viewed, ["P1", "P3"]);
+  assert.equal("coverage_ratio" in payload, false);
+});
+
 test("sanitizeStudentTeamResult strips evi and WTP-family internals from result and radar", () => {
   const sanitizedResult = Round2.__test.sanitizeStudentTeamResult({
     flow_version: "merged_v1",

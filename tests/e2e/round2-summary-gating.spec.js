@@ -76,14 +76,30 @@ async function bootstrapRound2Team(request, interviewMode) {
   };
 }
 
+async function clickRound2RecapContinue(page) {
+  const recap = page.locator("[data-testid='r2-recap-container']");
+  await expect(recap).toBeVisible({ timeout: 30000 });
+  await recap.evaluate((root) => {
+    const button = Array.from(root.querySelectorAll("button"))
+      .find((item) => String(item.textContent || "").trim() === "继续");
+    if (!button) throw new Error("Round 2 recap continue button not found");
+    button.click();
+  });
+}
+
 test.describe.serial("Round 2 summary/live gating", () => {
   test("summary mode keeps card selection unlocked after reading report", async ({ page, request }) => {
     const ctx = await bootstrapRound2Team(request, "summary");
     await page.goto(ctx.round2Url);
-    await expect(page.locator("[data-testid='r2-recap-container']")).toBeVisible({ timeout: 30000 });
-    await page.getByRole("button", { name: "继续" }).click();
+    await clickRound2RecapContinue(page);
     await expect(page.locator("[data-testid='r2-interview-container']")).toBeVisible({ timeout: 30000 });
-    const continueButton = page.getByRole("button", { name: /^继续$/ });
+    await expect(page.getByText("你已阅读 1/3 份")).toBeVisible({ timeout: 30000 });
+    const completeReadingButton = page.getByRole("button", { name: "完成阅读，等待团队" });
+    await expect(completeReadingButton).toBeVisible({ timeout: 30000 });
+    await completeReadingButton.click();
+    await expect(page.getByText("团队调研汇总").first()).toBeVisible({ timeout: 30000 });
+    await expect(page.getByText("团队共覆盖 1/3 位受访者")).toBeVisible({ timeout: 30000 });
+    const continueButton = page.getByRole("button", { name: "继续，进入个人选卡" });
     await expect(continueButton).toBeVisible({ timeout: 30000 });
     await continueButton.click();
     await expect(page.locator("[data-testid='r2-card-selection-container']")).toBeVisible({ timeout: 30000 });

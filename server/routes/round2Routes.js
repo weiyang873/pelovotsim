@@ -504,6 +504,10 @@ function getDefaultPersonaReportIndex(teamId, gridId) {
   return pickDeterministicIndex(String(teamId || "").trim(), getStaticPersonaReportsForGrid(gridId).length);
 }
 
+function getInitialPersonaReportIndex(gridId) {
+  return 0;
+}
+
 function getStaticPersonaReportByIndex(gridId, reportIndex) {
   const reports = getStaticPersonaReportsForGrid(gridId);
   const index = Number(reportIndex);
@@ -787,6 +791,32 @@ async function getMemberViewedPersonas(teamId, memberId, sessionId = "default") 
   return rows.map((row) => String(row.persona_id || "").trim()).filter(Boolean);
 }
 
+async function getMemberReadingDetails(teamId, sessionId = "default") {
+  await ensureSchema();
+  const teamState = await getTeamRound2State(teamId);
+  const rows = await runSql(`
+    SELECT member_id, persona_id, MIN(viewed_at) AS first_viewed_at
+    FROM round2_persona_views
+    WHERE team_id = ${sqlQuote(teamId)}
+      AND session_id = ${sqlQuote(sessionId)}
+    GROUP BY member_id, persona_id
+    ORDER BY member_id ASC, MIN(viewed_at) ASC, persona_id ASC;
+  `);
+  const viewedByMember = new Map();
+  rows.forEach((row) => {
+    const key = String(row.member_id || "").trim();
+    if (!key) return;
+    if (!viewedByMember.has(key)) viewedByMember.set(key, []);
+    viewedByMember.get(key).push(String(row.persona_id || "").trim());
+  });
+  return (teamState?.members || []).map((member) => ({
+    member_id: String(member.id || "").trim(),
+    name: String(member.name || "").trim() || "成员",
+    reading_status: String(member.readingStatus || member.reading_status || "not_started").trim() || "not_started",
+    viewed: uniqueStrings(viewedByMember.get(String(member.id || "").trim()) || [])
+  }));
+}
+
 async function upsertTeamRadar(teamId, sessionId, radar) {
   const now = nowIso();
   await runSql(`
@@ -869,12 +899,28 @@ function isSummaryModeSession(sessionConfig) {
   return String(sessionConfig?.interview_mode || "summary").trim().toLowerCase() !== "live";
 }
 
-function buildStudentReadingStatusPayload({ allViewed, myViewed, totalReports }) {
+function buildStudentReadingStatusPayload({ allViewed, myViewed, totalReports, members = [], memberId = "" }) {
+  const normalizedMembers = (Array.isArray(members) ? members : []).map((member) => ({
+    member_id: String(member?.member_id || "").trim(),
+    name: String(member?.name || "").trim() || "成员",
+    reading_status: String(member?.reading_status || "not_started").trim() || "not_started",
+    viewed: uniqueStrings(member?.viewed)
+  })).filter((member) => member.member_id);
+  const requesterId = String(memberId || "").trim();
+  const completedCount = normalizedMembers.filter((member) => member.reading_status === "completed").length;
+  const allCompleted = normalizedMembers.length > 0 && completedCount >= normalizedMembers.length;
+  const teamViewed = uniqueStrings(allViewed);
+  const myViewedList = uniqueStrings(myViewed);
   return {
     total_reports: Number(totalReports || 0),
-    team_viewed_count: uniqueStrings(allViewed).length,
-    team_viewed_personas: uniqueStrings(allViewed),
-    my_viewed_personas: uniqueStrings(myViewed)
+    team_viewed_count: teamViewed.length,
+    team_viewed_personas: teamViewed,
+    members: normalizedMembers,
+    completed_count: completedCount,
+    all_completed: allCompleted,
+    my_reading_status: normalizedMembers.find((member) => member.member_id === requesterId)?.reading_status || "not_started",
+    my_viewed: myViewedList,
+    my_viewed_personas: myViewedList
   };
 }
 
@@ -887,6 +933,12 @@ function getDefaultStaticSummaryReportForTeam(team) {
     teamId,
     gridId: calcGridId
   });
+}
+
+function getInitialStaticSummaryReportForTeam(team) {
+  const calcGridId = toCalcGridId(team?.final_grid_id || "", team?.final_architecture || "");
+  if (!calcGridId) return null;
+  return getStaticPersonaReportByIndex(calcGridId, getInitialPersonaReportIndex(calcGridId));
 }
 
 async function freezeStaticSummaryChoiceForTeam(team, sessionId = "default", selectedBy = "system_summary_freeze") {
@@ -973,7 +1025,7 @@ async function listStudentPersonaReportsForTeam(team, sessionId = "default") {
       generated_at: choice.selected_at || null
     })];
   }
-  const defaultReport = getDefaultStaticSummaryReportForTeam(team);
+  const defaultReport = getInitialStaticSummaryReportForTeam(team);
   if (!defaultReport) return [];
   return [sanitizeStudentPersonaReport({
     ...defaultReport,
@@ -3580,7 +3632,7 @@ async function personaReportsApi(query) {
       team_id: teamId,
       session_id: sessionId,
       flow_version: SUMMARY_FLOW_VERSION,
-      default_report_index: getDefaultPersonaReportIndex(teamId, calcGridId),
+      default_report_index: getInitialPersonaReportIndex(calcGridId),
       available_reports: buildStudentPersonaCatalog(calcGridId),
       selected_archetype_id: choice?.persona_id || choice?.archetype_id || "",
       reports
@@ -3640,6 +3692,7 @@ async function teamReadingStatusApi(query) {
     const calcGridId = toCalcGridId(team?.final_grid_id || "", team?.final_architecture || "");
     const allViewed = await getTeamViewedPersonas(teamId, sessionId);
     const myViewed = await getMemberViewedPersonas(teamId, memberId, sessionId);
+    const members = await getMemberReadingDetails(teamId, sessionId);
     return makeResponse(200, {
       ok: true,
       team_id: teamId,
@@ -3647,6 +3700,52 @@ async function teamReadingStatusApi(query) {
       ...buildStudentReadingStatusPayload({
         allViewed,
         myViewed,
+        members,
+        memberId,
+        totalReports: getStaticPersonaReportsForGrid(calcGridId).length
+      })
+    });
+  } catch (e) {
+    return makeResponse(400, { ok: false, error: e.message });
+  }
+}
+
+async function completeSummaryReadingApi(body) {
+  try {
+    const teamId = String(body?.teamId || body?.team_id || "").trim();
+    const memberId = String(body?.memberId || body?.member_id || "").trim();
+    const sessionId = normalizeSessionId(body?.sessionId || body?.session_id);
+    if (!teamId || !memberId) {
+      return makeResponse(400, { ok: false, error: "teamId/memberId required" });
+    }
+
+    const team = await getTeam(teamId);
+    if (!team) return makeResponse(404, { ok: false, error: "team not found" });
+    const myViewed = await getMemberViewedPersonas(teamId, memberId, sessionId);
+    if (!myViewed.length) {
+      return makeResponse(400, { ok: false, error: "read at least one report before completing" });
+    }
+
+    await updateMemberProgress(teamId, memberId, {
+      reading_status: "completed",
+      interview_status: "completed",
+      interview_rounds: 1,
+      current_step: "interview_done",
+      last_activity_at: nowIso()
+    });
+
+    const calcGridId = toCalcGridId(team?.final_grid_id || "", team?.final_architecture || "");
+    const allViewed = await getTeamViewedPersonas(teamId, sessionId);
+    const members = await getMemberReadingDetails(teamId, sessionId);
+    return makeResponse(200, {
+      ok: true,
+      team_id: teamId,
+      session_id: sessionId,
+      ...buildStudentReadingStatusPayload({
+        allViewed,
+        myViewed,
+        members,
+        memberId,
         totalReports: getStaticPersonaReportsForGrid(calcGridId).length
       })
     });
@@ -3702,7 +3801,7 @@ async function assignDimensionsApi(body) {
     return makeResponse(200, {
       ok: true,
       assignments,
-      default_report_index: getDefaultPersonaReportIndex(teamId, calcGridId),
+      default_report_index: getInitialPersonaReportIndex(calcGridId),
       available_reports: buildStudentPersonaCatalog(calcGridId),
       persona_choice: sanitizeStudentPersonaChoice(await readPersonaChoice(teamId, sessionId)),
       persona_reports: await listStudentPersonaReportsForTeam(team, sessionId)
@@ -4596,7 +4695,7 @@ async function teamStatusApi(query) {
     const personaChoice = await readPersonaChoice(teamId, sessionId);
     const personaReports = await listStudentPersonaReportsForTeam(team, sessionId);
     const calcGridId = toCalcGridId(team?.final_grid_id || "", team?.final_architecture || "");
-    const defaultReportIndex = getDefaultPersonaReportIndex(teamId, calcGridId);
+    const defaultReportIndex = getInitialPersonaReportIndex(calcGridId);
     const availableReports = buildStudentPersonaCatalog(calcGridId);
 
     const teamState = await getTeamRound2State(teamId);
@@ -4758,6 +4857,7 @@ module.exports = {
   personaReportsApi,
   personaReportByIndexApi,
   teamReadingStatusApi,
+  completeSummaryReadingApi,
   selectPersonaArchetypeApi,
   interviewAuto,
   interviewSessionApi,
@@ -4797,6 +4897,7 @@ module.exports = {
     computeDynamicSummaryEvi,
     buildStaticSummaryModeRadarResult,
     buildStudentReadingStatusPayload,
+    completeSummaryReadingApi,
     freezeStaticSummaryChoiceForTeam,
     recordPersonaView,
     getTeamViewedPersonas,

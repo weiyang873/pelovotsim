@@ -2676,6 +2676,13 @@ function handleApi(req, res) {
     }
   }
 
+  if (req.method === "POST" && req.url === "/api/round2/complete-reading") {
+    return readBody(req)
+      .then((p) => Round2.completeSummaryReadingApi(p))
+      .then((out) => sendJson(res, out.status, out.body))
+      .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "round2 complete reading failed" }));
+  }
+
   if (req.method === "POST" && req.url === "/api/round2/persona-select") {
     return readBody(req)
       .then((p) => Round2.selectPersonaArchetypeApi(p))

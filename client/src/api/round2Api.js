@@ -114,6 +114,15 @@ export async function continueRound2SummaryReading(payload) {
   return asJson(res);
 }
 
+export async function completeRound2SummaryReading(payload) {
+  const res = await fetch(`${BASE}/round2/complete-reading`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {})
+  });
+  return asJson(res);
+}
+
 export async function round2InterviewAuto(payload) {
   const res = await fetch(`${BASE}/round2/interview/auto`, {
     method: "POST",

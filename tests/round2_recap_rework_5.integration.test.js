@@ -204,7 +204,17 @@ async function main() {
     });
     assert.equal(readingStatusRes.status, 200);
     assert.equal(readingStatusRes.body.team_viewed_count, 1);
+    assert.deepEqual(readingStatusRes.body.my_viewed, readingStatusRes.body.my_viewed_personas);
+    assert(Array.isArray(readingStatusRes.body.members), "reading status should include per-member details");
     assert.equal("coverage_ratio" in readingStatusRes.body, false);
+
+    const completeReadingRes = await Round2.completeSummaryReadingApi({
+      teamId,
+      memberId,
+      session_id: SESSION_ID
+    });
+    assert.equal(completeReadingRes.status, 200);
+    assert.equal(completeReadingRes.body.my_reading_status, "completed");
 
     const selectRes = await Round2.selectPersonaArchetypeApi({
       teamId,

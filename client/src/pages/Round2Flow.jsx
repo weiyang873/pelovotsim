@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import {
+  completeRound2SummaryReading,
   continueRound2SummaryReading,
   endRound2Interview,
   getRound2PersonaReport,
@@ -29,6 +30,8 @@ const DIMS = [
   { id:"ops", l:"可运营与可维护", icon:"🔧", c:"#4F46E5", desc:"远程监控、故障诊断、日常维护" },
 ];
 const DEFAULT_MEMBER_DIMS = ["interaction", "safety"];
+const SUMMARY_READING_INDIVIDUAL = "READING_INDIVIDUAL";
+const SUMMARY_READING_TEAM_SUMMARY = "READING_TEAM_SUMMARY";
 const IMP = { interaction:"高", perception:"高", motion:"中", safety:"中", extend:"低", ops:"中" };
 const IMP_C = { "高":"#DC2626", "中":"#D4A03C", "低":"#9CA3AF" };
 const STARTER_QUESTIONS = {
@@ -788,8 +791,14 @@ export default function App() {
     total_reports: 0,
     team_viewed_count: 0,
     team_viewed_personas: [],
-    my_viewed_personas: []
+    my_viewed_personas: [],
+    my_viewed: [],
+    members: [],
+    completed_count: 0,
+    all_completed: false,
+    my_reading_status: "not_started"
   });
+  const [summaryReadingSubStep, setSummaryReadingSubStep] = useState(SUMMARY_READING_INDIVIDUAL);
   const [selectedPersonaChoice, setSelectedPersonaChoice] = useState(null);
   const [isLoadingPersonaReports, setIsLoadingPersonaReports] = useState(false);
   const [isLoadingSummaryReport, setIsLoadingSummaryReport] = useState(false);
@@ -1093,12 +1102,23 @@ export default function App() {
     }
     try {
       const out = await getRound2TeamReadingStatus(teamId, memberId, sessionId, options);
-      setSummaryReadingStatus({
+      const nextStatus = {
         total_reports: Number(out?.total_reports || 0),
         team_viewed_count: Number(out?.team_viewed_count || 0),
         team_viewed_personas: Array.isArray(out?.team_viewed_personas) ? out.team_viewed_personas : [],
-        my_viewed_personas: Array.isArray(out?.my_viewed_personas) ? out.my_viewed_personas : []
+        my_viewed_personas: Array.isArray(out?.my_viewed_personas) ? out.my_viewed_personas : [],
+        my_viewed: Array.isArray(out?.my_viewed) ? out.my_viewed : (Array.isArray(out?.my_viewed_personas) ? out.my_viewed_personas : []),
+        members: Array.isArray(out?.members) ? out.members : [],
+        completed_count: Number(out?.completed_count || 0),
+        all_completed: out?.all_completed === true,
+        my_reading_status: String(out?.my_reading_status || "not_started")
+      };
+      setSummaryReadingStatus({
+        ...nextStatus
       });
+      if (nextStatus.my_reading_status === "completed" || nextStatus.all_completed) {
+        setSummaryReadingSubStep(SUMMARY_READING_TEAM_SUMMARY);
+      }
       return out;
     } finally {
       if (!silent) {
@@ -1301,7 +1321,9 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
   }, [personaReports]);
   const summaryReportReady = Boolean(selectedPersonaChoice?.summary_text || activeSummaryReport?.summary_text);
   const myViewedPersonaIds = useMemo(
-    () => Array.isArray(summaryReadingStatus?.my_viewed_personas) ? summaryReadingStatus.my_viewed_personas : [],
+    () => Array.isArray(summaryReadingStatus?.my_viewed)
+      ? summaryReadingStatus.my_viewed
+      : (Array.isArray(summaryReadingStatus?.my_viewed_personas) ? summaryReadingStatus.my_viewed_personas : []),
     [summaryReadingStatus]
   );
   const nextUnreadSummaryReport = useMemo(() => {
@@ -1321,9 +1343,20 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
   }, [activeSummaryReportIndex, availableSummaryReports, defaultSummaryReportIndex, myViewedPersonaIds]);
   const summaryProgressLabel = useMemo(() => {
     const total = Number(summaryReadingStatus?.total_reports || availableSummaryReports.length || 3);
-    const viewed = Number(summaryReadingStatus?.team_viewed_count || 0);
-    return `团队已阅读 ${viewed}/${total}`;
+    const viewed = myViewedPersonaIds.length;
+    return `你已阅读 ${viewed}/${total} 份`;
   }, [availableSummaryReports.length, summaryReadingStatus]);
+  const summaryTeamCoverageLabel = useMemo(() => {
+    const total = Number(summaryReadingStatus?.total_reports || availableSummaryReports.length || 3);
+    const viewed = Number(summaryReadingStatus?.team_viewed_count || 0);
+    return `团队共覆盖 ${viewed}/${total} 位受访者`;
+  }, [availableSummaryReports.length, summaryReadingStatus]);
+  const summaryReadingMembers = useMemo(
+    () => Array.isArray(summaryReadingStatus?.members) ? summaryReadingStatus.members : [],
+    [summaryReadingStatus]
+  );
+  const summaryAllMembersDone = summaryReadingStatus?.all_completed === true;
+  const mySummaryReadingDone = String(summaryReadingStatus?.my_reading_status || "") === "completed";
   const selectedPersonaRadar = selectedPersonaChoice?.radar || mergeData?.mergedInterview?.radar || null;
   const selectedPersonaScores = useMemo(
     () => radarToInterviewScores(selectedPersonaRadar),
@@ -1475,6 +1508,48 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
       setSummaryReportError(err.message || "客户调研报告加载失败");
     }
   }, [isLoadingSummaryReport, loadSummaryReport, nextUnreadSummaryReport, selectedPersonaChoice?.summary_text]);
+
+  const handleOpenTeamSummaryReport = useCallback(async (personaId) => {
+    const targetId = String(personaId || "").trim();
+    if (!targetId || selectedPersonaChoice?.summary_text || isLoadingSummaryReport) return;
+    const report = (availableSummaryReports || []).find((item) => String(item?.persona_id || "").trim() === targetId);
+    if (!report) return;
+    try {
+      await loadSummaryReport(Number(report.report_index));
+    } catch (err) {
+      setSummaryReportError(err.message || "客户调研报告加载失败");
+    }
+  }, [availableSummaryReports, isLoadingSummaryReport, loadSummaryReport, selectedPersonaChoice?.summary_text]);
+
+  const handleCompleteSummaryReading = useCallback(async () => {
+    if (!teamId || !memberId || !summaryReportReady || isFreezingSummary) return;
+    try {
+      setIsFreezingSummary(true);
+      setSummaryReportError("");
+      const out = await completeRound2SummaryReading({
+        teamId,
+        memberId,
+        session_id: sessionId
+      });
+      setSummaryReadingStatus({
+        total_reports: Number(out?.total_reports || 0),
+        team_viewed_count: Number(out?.team_viewed_count || 0),
+        team_viewed_personas: Array.isArray(out?.team_viewed_personas) ? out.team_viewed_personas : [],
+        my_viewed_personas: Array.isArray(out?.my_viewed_personas) ? out.my_viewed_personas : [],
+        my_viewed: Array.isArray(out?.my_viewed) ? out.my_viewed : [],
+        members: Array.isArray(out?.members) ? out.members : [],
+        completed_count: Number(out?.completed_count || 0),
+        all_completed: out?.all_completed === true,
+        my_reading_status: String(out?.my_reading_status || "completed")
+      });
+      setSummaryReadingSubStep(SUMMARY_READING_TEAM_SUMMARY);
+      setSystemNotice("已完成个人阅读，等待团队汇总。");
+    } catch (err) {
+      setSummaryReportError(err.message || "标记阅读完成失败");
+    } finally {
+      setIsFreezingSummary(false);
+    }
+  }, [isFreezingSummary, memberId, sessionId, summaryReportReady, teamId]);
 
   const handleContinueFromSummary = useCallback(async () => {
     if (!teamId || !memberId || !summaryReportReady || isFreezingSummary) return;
@@ -2585,7 +2660,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
             </div>
             <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
               {[
-                {title:"客户调研",desc:isSummaryMode ? "阅读系统为团队冻结的客户调研报告，确认你们究竟在为谁而造，再进入个人选卡。" : "与 AI 模拟的目标用户深度访谈，验证你们的需求假设，发现隐藏需求"},
+                {title:"客户调研",desc:isSummaryMode ? "先独立阅读客户调研报告，再汇总团队覆盖的受访者，确认你们究竟在为谁而造。" : "与 AI 模拟的目标用户深度访谈，验证你们的需求假设，发现隐藏需求"},
                 {title:"产品研发",desc:"为产品选择具体的技术能力组合，明确做什么、不做什么、做到什么程度"},
                 {title:"定价发布",desc:"制定价格策略，系统根据你们的产品和定价自动计算市场表现"},
               ].map(item => (
@@ -2617,10 +2692,10 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
         <div data-testid="r2-interview-container" style={{background:"#fff",borderRadius:14,padding:24,border:"1px solid #e5e7eb"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap",marginBottom:16}}>
             <div>
-              <h2 style={{fontSize:18,fontWeight:800,margin:"0 0 8px"}}>{isSummaryMode ? "客户调研报告" : "深度用户访谈"}</h2>
+              <h2 style={{fontSize:18,fontWeight:800,margin:"0 0 8px"}}>{isSummaryMode ? "阅读客户调研报告" : "深度用户访谈"}</h2>
               <p style={{fontSize:14,color:"#555",margin:0,lineHeight:1.8}}>
                 {isSummaryMode
-                  ? "系统已经为你们按团队分配并冻结一份客户调研报告。请先完整阅读，再进入个人选卡。"
+                  ? "每位成员先独立阅读客户调研报告，完成后进入团队调研汇总，再一起推进到个人选卡。"
                   : "每位成员至少完成 2 次访谈，最多 3 次。单次访谈前 4 轮必须继续提问，第 5 轮起可以手动结束，第 10 轮会自动收尾。"}
               </p>
             </div>
@@ -2649,8 +2724,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
               <div style={{fontSize:13,color:"#78350f",lineHeight:1.8}}>
               {isSummaryMode ? (
                 <>
-                  当前是 <strong>团队级</strong> 决策，团队会围绕同一组客户调研报告进入后续选卡。
-                  阅读完成后点击继续，系统将冻结本队的 Round 2 入口结果，不会重抽。
+                  先独立阅读客户调研报告，再进入团队调研汇总。团队确认继续后，系统会冻结本队已覆盖的报告范围。
                 </>
               ) : (
                 <>
@@ -2665,8 +2739,12 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
             <div style={{border:"1px solid #e5e7eb",borderRadius:16,background:"#fff",overflow:"hidden"}}>
               <div style={{padding:"18px 20px",background:"#f8fafc",borderBottom:"1px solid #e5e7eb",display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}>
                 <div>
-                  <div style={{fontSize:11,fontWeight:800,color:"#1a5c3a",letterSpacing:"0.04em",marginBottom:6}}>团队共享报告</div>
-                  <div style={{fontSize:20,fontWeight:800,color:"#111827"}}>{summaryReportTitle}</div>
+                  <div style={{fontSize:11,fontWeight:800,color:"#1a5c3a",letterSpacing:"0.04em",marginBottom:6}}>
+                    {summaryReadingSubStep === SUMMARY_READING_TEAM_SUMMARY ? "团队调研汇总" : "阅读客户调研报告"}
+                  </div>
+                  <div style={{fontSize:20,fontWeight:800,color:"#111827"}}>
+                    {summaryReadingSubStep === SUMMARY_READING_TEAM_SUMMARY ? "团队调研汇总" : summaryReportTitle}
+                  </div>
                 </div>
                 {selectedPersonaChoice?.summary_text ? (
                   <div style={{padding:"8px 12px",borderRadius:999,background:"#ecfdf5",color:"#166534",fontSize:12,fontWeight:800,border:"1px solid #bbf7d0"}}>
@@ -2683,6 +2761,67 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                   </div>
                 )}
               </div>
+              {summaryReadingSubStep === SUMMARY_READING_TEAM_SUMMARY && (
+                <div style={{padding:"18px 20px",borderBottom:"1px solid #e5e7eb",background:"#fff"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap",marginBottom:14}}>
+                    <div style={{fontSize:15,fontWeight:800,color:"#111827"}}>{summaryTeamCoverageLabel}</div>
+                    <div style={{fontSize:12,color:"#6b7280"}}>
+                      已完成阅读 {Number(summaryReadingStatus?.completed_count || 0)}/{summaryReadingMembers.length || 0} 人
+                    </div>
+                  </div>
+                  <div style={{overflowX:"auto"}}>
+                    <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+                      <thead>
+                        <tr>
+                          <th style={{textAlign:"left",padding:"10px",borderBottom:"1px solid #e5e7eb",color:"#6b7280"}}>成员</th>
+                          {(availableSummaryReports || []).map((report) => (
+                            <th key={`report_head_${report.persona_id}`} style={{textAlign:"center",padding:"10px",borderBottom:"1px solid #e5e7eb",color:"#6b7280"}}>
+                              {String(report.title || report.persona_id || "").trim() || "受访者"}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {summaryReadingMembers.map((member) => {
+                          const viewedSet = new Set((member.viewed || []).map((item) => String(item || "").trim()));
+                          return (
+                            <tr key={member.member_id}>
+                              <td style={{padding:"10px",borderBottom:"1px solid #f3f4f6",fontWeight:700,color:"#374151"}}>
+                                {member.name}{member.reading_status === "completed" ? " · 已完成" : " · 阅读中"}
+                              </td>
+                              {(availableSummaryReports || []).map((report) => {
+                                const personaId = String(report.persona_id || "").trim();
+                                const viewed = viewedSet.has(personaId);
+                                return (
+                                  <td key={`${member.member_id}_${personaId}`} style={{padding:"10px",borderBottom:"1px solid #f3f4f6",textAlign:"center",color:viewed ? "#166534" : "#d1d5db",fontWeight:800}}>
+                                    {viewed ? "✓" : ""}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:14}}>
+                    {(summaryReadingStatus?.team_viewed_personas || []).map((personaId) => {
+                      const report = (availableSummaryReports || []).find((item) => String(item?.persona_id || "").trim() === String(personaId || "").trim());
+                      return (
+                        <button
+                          key={`open_team_report_${personaId}`}
+                          type="button"
+                          onClick={() => handleOpenTeamSummaryReport(personaId)}
+                          disabled={Boolean(selectedPersonaChoice?.summary_text) || isLoadingSummaryReport}
+                          style={{padding:"9px 12px",borderRadius:999,border:"1px solid #bbf7d0",background:"#ecfdf5",color:"#166534",fontSize:12,fontWeight:800,cursor:"pointer"}}
+                        >
+                          查看 {String(report?.title || personaId || "").trim()}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               <div style={{padding:"22px 24px",fontSize:14,color:"#374151",lineHeight:1.95,whiteSpace:"pre-wrap",minHeight:340}}>
                 {isLoadingPersonaReports
                   ? "系统正在加载客户调研报告，请稍候..."
@@ -2717,11 +2856,15 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                 </button>
                 <button
                   type="button"
-                  onClick={handleContinueFromSummary}
-                  disabled={!summaryReportReady || isFreezingSummary}
-                  style={{padding:"12px 16px",borderRadius:10,background:summaryReportReady ? "#1a5c3a" : "#d1d5db",color:"#fff",border:"none",fontSize:14,fontWeight:700,cursor:summaryReportReady && !isFreezingSummary ? "pointer" : "not-allowed",opacity:summaryReportReady ? 1 : 0.6}}
+                  onClick={summaryReadingSubStep === SUMMARY_READING_TEAM_SUMMARY ? handleContinueFromSummary : handleCompleteSummaryReading}
+                  disabled={!summaryReportReady || isFreezingSummary || (summaryReadingSubStep === SUMMARY_READING_TEAM_SUMMARY && !summaryAllMembersDone && !isLeader)}
+                  style={{padding:"12px 16px",borderRadius:10,background:summaryReportReady && (summaryReadingSubStep !== SUMMARY_READING_TEAM_SUMMARY || summaryAllMembersDone || isLeader) ? "#1a5c3a" : "#d1d5db",color:"#fff",border:"none",fontSize:14,fontWeight:700,cursor:summaryReportReady && !isFreezingSummary && (summaryReadingSubStep !== SUMMARY_READING_TEAM_SUMMARY || summaryAllMembersDone || isLeader) ? "pointer" : "not-allowed",opacity:summaryReportReady ? 1 : 0.6}}
                 >
-                  {isFreezingSummary ? "正在冻结…" : (summaryReportReady ? "继续" : "等待报告加载")}
+                  {isFreezingSummary
+                    ? "处理中…"
+                    : summaryReadingSubStep === SUMMARY_READING_TEAM_SUMMARY
+                      ? (summaryAllMembersDone || isLeader ? "继续，进入个人选卡" : "等待团队完成阅读")
+                      : (mySummaryReadingDone ? "已完成阅读" : "完成阅读，等待团队")}
                 </button>
               </div>
             </div>

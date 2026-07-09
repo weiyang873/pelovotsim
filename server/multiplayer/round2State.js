@@ -126,6 +126,7 @@ async function ensureSchema() {
       ALTER TABLE team_members ADD COLUMN IF NOT EXISTS interview_rounds INTEGER DEFAULT 0;
       ALTER TABLE team_members ADD COLUMN IF NOT EXISTS card_status TEXT DEFAULT 'not_started';
       ALTER TABLE team_members ADD COLUMN IF NOT EXISTS cards_selected INTEGER DEFAULT 0;
+      ALTER TABLE team_members ADD COLUMN IF NOT EXISTS reading_status TEXT DEFAULT 'not_started';
       ALTER TABLE team_members ADD COLUMN IF NOT EXISTS current_step TEXT DEFAULT 'idle';
       ALTER TABLE team_members ADD COLUMN IF NOT EXISTS last_activity_at TIMESTAMPTZ;
       ALTER TABLE team_members ADD COLUMN IF NOT EXISTS forced_by_teacher BOOLEAN DEFAULT FALSE;
@@ -135,6 +136,7 @@ async function ensureSchema() {
           interview_rounds = COALESCE(interview_rounds, 0),
           card_status = COALESCE(card_status, 'not_started'),
           cards_selected = COALESCE(cards_selected, 0),
+          reading_status = COALESCE(reading_status, 'not_started'),
           current_step = COALESCE(current_step, 'idle'),
           forced_by_teacher = COALESCE(forced_by_teacher, FALSE),
           last_activity_at = COALESCE(last_activity_at, joined_at, NOW())
@@ -142,6 +144,7 @@ async function ensureSchema() {
         OR interview_rounds IS NULL
         OR card_status IS NULL
         OR cards_selected IS NULL
+        OR reading_status IS NULL
         OR current_step IS NULL
         OR forced_by_teacher IS NULL
         OR last_activity_at IS NULL;
@@ -200,6 +203,7 @@ async function updateMemberProgress(teamId, memberId, patch = {}) {
     interview_rounds: (value) => `${Math.max(0, Math.floor(toNumber(value, 0)))}`,
     card_status: (value) => sqlQuote(value),
     cards_selected: (value) => `${Math.max(0, Math.floor(toNumber(value, 0)))}`,
+    reading_status: (value) => sqlQuote(value),
     current_step: (value) => sqlQuote(value),
     last_activity_at: (value) => sqlQuote(value),
     forced_by_teacher: (value) => (value ? "TRUE" : "FALSE")
@@ -224,6 +228,7 @@ async function resetMemberFields(teamId, memberId, patch = {}) {
     interview_rounds: 0,
     card_status: "not_started",
     cards_selected: 0,
+    reading_status: "not_started",
     current_step: "idle",
     forced_by_teacher: false,
     last_activity_at: nowIso(),
@@ -451,6 +456,7 @@ async function loadRound2State(teamIds = null) {
       tm.interview_rounds,
       tm.card_status,
       tm.cards_selected,
+      tm.reading_status,
       tm.current_step,
       tm.last_activity_at,
       tm.forced_by_teacher
@@ -491,6 +497,7 @@ async function loadRound2State(teamIds = null) {
         interviewRoundsStored: toNumber(row.interview_rounds, 0),
         cardStatusStored: row.card_status,
         cardsSelectedStored: toNumber(row.cards_selected, 0),
+        readingStatusStored: row.reading_status,
         currentStepStored: row.current_step,
         lastActivityStored: row.last_activity_at,
         forcedByTeacher: toBool(row.forced_by_teacher)
@@ -634,6 +641,7 @@ async function loadRound2State(teamIds = null) {
         interviewStatus,
         interviewRounds: Math.max(member.interviewRoundsStored, toNumber(interviewStats?.latestRound, 0), toNumber(interview?.roundNo, 0)),
         completedInterviews: Math.max(0, toNumber(interviewStats?.completedCount, 0)),
+        readingStatus: String(member.readingStatusStored || "not_started").trim() || "not_started",
         cardStatus,
         cardsSelected,
         currentStep,
