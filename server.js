@@ -2434,8 +2434,10 @@ function handleApi(req, res) {
     return sendJson(res, 200, { ok: true, dbPath: DB_PATH });
   }
 
-  if (process.env.NODE_ENV !== "production" && req.method === "GET" && req.url === "/api/test/skip-to-r2") {
-    return TestRoutes.skipToRound2()
+  if (process.env.NODE_ENV !== "production" && req.method === "GET" && String(req.url || "").startsWith("/api/test/skip-to-r2")) {
+    const url = new URL(String(req.url || ""), `http://${req.headers.host || "127.0.0.1"}`);
+    const query = Object.fromEntries(url.searchParams.entries());
+    return TestRoutes.skipToRound2(query)
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "test skip-to-r2 failed" }));
   }

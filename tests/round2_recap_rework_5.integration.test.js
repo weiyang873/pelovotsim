@@ -224,6 +224,7 @@ async function main() {
     assert.equal(selectRes.status, 200);
     assert.equal("evi" in selectRes.body.choice, false);
     assert.equal("tags" in selectRes.body.choice, false);
+    assert.equal("radar" in selectRes.body.choice, false);
     assert.equal("coverage_ratio" in selectRes.body.choice, false);
 
     const frozenChoice = await Round2.__test.readPersonaChoice(teamId, SESSION_ID);

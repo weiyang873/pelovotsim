@@ -479,7 +479,6 @@ function sanitizeStudentPersonaChoice(choice) {
     grid_id: choice.grid_id || "",
     persona_id: choice.persona_id || choice.archetype_id || "",
     archetype_id: choice.persona_id || choice.archetype_id || "",
-    radar: normalizeRadarPayload(choice.radar),
     summary_text: String(choice.summary_text || "").trim(),
     flow_version: choice.flow_version || SUMMARY_FLOW_VERSION,
     selected_by: choice.selected_by || "",

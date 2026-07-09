@@ -503,6 +503,44 @@ function buildInterviewSummary(result, memberDims) {
   return dimText || tagText;
 }
 
+function renderInlineBold(text) {
+  const parts = String(text || "").split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, index) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return <strong key={index}>{part.slice(2, -2)}</strong>;
+    }
+    return <span key={index}>{part}</span>;
+  });
+}
+
+function renderReportText(text) {
+  return String(text || "").split(/\r?\n/).map((line, index) => {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      return <div key={index} style={{height:10}} />;
+    }
+    if (/^━+$/.test(trimmed)) {
+      return (
+        <div key={index} style={{color:"#cbd5e1",letterSpacing:1,textAlign:"center",lineHeight:1.4}}>
+          {trimmed}
+        </div>
+      );
+    }
+    if (trimmed.startsWith("▎")) {
+      return (
+        <div key={index} style={{borderLeft:"4px solid #1a5c3a",padding:"4px 0 4px 10px",margin:"10px 0 6px",fontWeight:800,color:"#111827",background:"#f8fafc"}}>
+          {renderInlineBold(trimmed.replace(/^▎\s*/, ""))}
+        </div>
+      );
+    }
+    return (
+      <div key={index} style={{margin:"0 0 8px"}}>
+        {renderInlineBold(line)}
+      </div>
+    );
+  });
+}
+
 function formatGridLabel(gridId) {
   const raw = String(gridId || "").trim();
   if (!raw) return "未确认";
@@ -1357,11 +1395,6 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
   );
   const summaryAllMembersDone = summaryReadingStatus?.all_completed === true;
   const mySummaryReadingDone = String(summaryReadingStatus?.my_reading_status || "") === "completed";
-  const selectedPersonaRadar = selectedPersonaChoice?.radar || mergeData?.mergedInterview?.radar || null;
-  const selectedPersonaScores = useMemo(
-    () => radarToInterviewScores(selectedPersonaRadar),
-    [selectedPersonaRadar]
-  );
   const selectedPersonaSummaryText = String(
     selectedPersonaChoice?.summary_text
       || activeSummaryReport?.summary_text
@@ -1531,7 +1564,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
         memberId,
         session_id: sessionId
       });
-      setSummaryReadingStatus({
+      const nextStatus = {
         total_reports: Number(out?.total_reports || 0),
         team_viewed_count: Number(out?.team_viewed_count || 0),
         team_viewed_personas: Array.isArray(out?.team_viewed_personas) ? out.team_viewed_personas : [],
@@ -1541,7 +1574,19 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
         completed_count: Number(out?.completed_count || 0),
         all_completed: out?.all_completed === true,
         my_reading_status: String(out?.my_reading_status || "completed")
-      });
+      };
+      setSummaryReadingStatus(nextStatus);
+      if (nextStatus.all_completed && nextStatus.members.length <= 1) {
+        const freezeOut = await continueRound2SummaryReading({
+          teamId,
+          memberId,
+          session_id: sessionId
+        });
+        setSelectedPersonaChoice(freezeOut?.choice || null);
+        setSystemNotice("已完成客户调研阅读，进入个人选卡。");
+        setStep(2);
+        return;
+      }
       setSummaryReadingSubStep(SUMMARY_READING_TEAM_SUMMARY);
       setSystemNotice("已完成个人阅读，等待团队汇总。");
     } catch (err) {
@@ -2822,10 +2867,10 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                   </div>
                 </div>
               )}
-              <div style={{padding:"22px 24px",fontSize:14,color:"#374151",lineHeight:1.95,whiteSpace:"pre-wrap",minHeight:340}}>
+              <div style={{padding:"22px 24px",fontSize:14,color:"#374151",lineHeight:1.95,minHeight:340}}>
                 {isLoadingPersonaReports
                   ? "系统正在加载客户调研报告，请稍候..."
-                  : (selectedPersonaSummaryText || "暂未分配客户调研报告。")}
+                  : renderReportText(selectedPersonaSummaryText || "暂未分配客户调研报告。")}
               </div>
               {(loadError || summaryReportError) && (
                 <div style={{padding:"0 20px 16px"}}>
@@ -3197,22 +3242,22 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                 ? (selectedPersonaSummaryText || "请先在上一步阅读调研报告，再根据这份报告选卡。")
                 : (buildInterviewSummary(interviewResult, memberDims) || "请先完成真实访谈，再根据提炼结果选卡。")}
             </div>
-            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-              {memberDims.map(d => {
-                const dm = DIMS.find(x=>x.id===d);
-                const interviewScores = isSummaryMode ? selectedPersonaScores : radarToInterviewScores(interviewResult?.radar);
-                const importance = (isSummaryMode
-                  ? Number.isFinite(Number(interviewScores[d]))
-                  : Boolean(interviewResult))
+            {!isSummaryMode && (
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                {memberDims.map(d => {
+                  const dm = DIMS.find(x=>x.id===d);
+                  const interviewScores = radarToInterviewScores(interviewResult?.radar);
+                  const importance = Boolean(interviewResult)
                     ? scoreToImportance(interviewScores[d])
                     : IMP[d];
-                return (
-                  <span key={d} style={{fontSize:11,padding:"3px 8px",borderRadius:4,background:IMP_C[importance]+"12",color:IMP_C[importance],fontWeight:600,border:`1px solid ${IMP_C[importance]}30`}}>
-                    {dm.icon} {dm.l}：{importance}
-                  </span>
-                );
-              })}
-            </div>
+                  return (
+                    <span key={d} style={{fontSize:11,padding:"3px 8px",borderRadius:4,background:IMP_C[importance]+"12",color:IMP_C[importance],fontWeight:600,border:`1px solid ${IMP_C[importance]}30`}}>
+                      {dm.icon} {dm.l}：{importance}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
             {individualSubmitError && (
               <div style={{fontSize:12,color:"#b91c1c",marginTop:10}}>
                 {individualSubmitError}

@@ -5,6 +5,7 @@ const TAG_MAP = require("../data/tag_map_v2_1.json");
 const Round2 = require("../server/routes/round2Routes");
 const SummaryMode = require("../server/multiplayer/round2SummaryMode");
 const TeamRoutes = require("../server/routes/teamRoutes");
+const SessionConfig = require("../server/multiplayer/sessionConfig");
 
 function makeLengthSafeNarrative() {
   return "她下班回家后总会先站在玄关里听几秒屋里的安静，确认没有任何熟悉的动静后，才慢慢把包放下、开灯、开电视。电视并不是为了看，而是为了让屋里有一点人声，像是有人在旁边陪着。她会给自己倒一杯温水，坐在沙发上刷手机，来回切换几个应用，却说不清自己到底看进去了什么。工作日里她在公司总是反应快、情绪稳，开会时能连续接住很多人的问题，也习惯把场面圆回来，可一回到家，整个人像突然泄了气。周末如果没有人约，她常常一整天不说话，直到晚上嗓子都有点发哑。她并不愿意承认自己在难受，只会说最近有点累，或者说睡得不好。其实真正让她撑不住的不是某一件大事，而是那种持续很久、又说不出口的空落感。她需要的不是热闹，而是一个能在她情绪往下掉的时候，给她一点回应、让她觉得自己没有被世界彻底晾在一边的存在。".repeat(2);
@@ -17,6 +18,12 @@ function makeSoftOverTargetNarrative() {
 function makeHardOverLimitNarrative() {
   return makeLengthSafeNarrative().repeat(3);
 }
+
+test("session config without interview_mode defaults to summary", () => {
+  assert.equal(SessionConfig.normalizeSessionConfig({}).interview_mode, "summary");
+  assert.equal(SessionConfig.normalizeSessionConfig({ reveal_r1_results: false }).interview_mode, "summary");
+  assert.equal(SessionConfig.normalizeSessionConfig({ interview_mode: "live" }).interview_mode, "live");
+});
 
 test("generatePersonaReports is idempotent for existing archetype rows", async () => {
   const archetypes = [
@@ -300,6 +307,7 @@ test("static summary evidence injection uses config evi and student choice sanit
   });
   assert.equal("evi" in studentChoice, false);
   assert.equal("tags" in studentChoice, false);
+  assert.equal("radar" in studentChoice, false);
   assert.equal("covered_keywords" in studentChoice, false);
   assert.equal("uncovered_keywords" in studentChoice, false);
   assert.equal(studentChoice.persona_id, "ToC_Diff_Elder_P1");
@@ -429,6 +437,9 @@ test("hideDeferredRound1Fields strips WTPmedian before reveal while preserving s
       WTPref: 16000
     },
     vp_score: 4.2,
+    coverage: 4.1,
+    generalizability: 4.2,
+    effectiveness: 4.3,
     vp_scores: { C: 4.1, G: 4.2, E: 4.3 },
     vp_feedback: "ok",
     vp_summary: { who: "A", pain: "B", how: "C", boundary: "D" }
@@ -438,6 +449,9 @@ test("hideDeferredRound1Fields strips WTPmedian before reveal while preserving s
   assert.equal(serialized.includes("WTPref"), false);
   assert.equal(serialized.includes("VPscore"), false);
   assert.equal(serialized.includes("\"vp_score\""), false);
+  assert.equal(serialized.includes("\"coverage\""), false);
+  assert.equal(serialized.includes("\"generalizability\""), false);
+  assert.equal(serialized.includes("\"effectiveness\""), false);
   assert.equal(serialized.includes("\"vp_scores\""), false);
   assert.equal(hidden.vp_feedback, "ok");
   assert.equal(hidden.team.status, "phase4");

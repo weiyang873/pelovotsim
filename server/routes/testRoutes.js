@@ -26,8 +26,9 @@ function extractErrorMessage(err) {
   return String(err);
 }
 
-async function skipToRound2() {
+async function skipToRound2(options = {}) {
   try {
+    const teamSize = Math.max(1, Math.min(6, Math.floor(Number(options.teamSize || options.team_size || 1))));
     const gridId = "ToB_Differentiation_Elder";
     const architecture = "Experience";
     const vpText = "养老院老板，护工不够老人出事赔不起，搞个能防摔倒的机器人";
@@ -35,7 +36,7 @@ async function skipToRound2() {
     const round1 = Engine.computeRound1V2(gridId, architecture, vpScores, 0);
     const compressedMult = compressWtpMult(round1.wtp_multiplier);
 
-    const createdTeam = await createTeam(`R2 测试队 ${Date.now()}`, 1);
+    const createdTeam = await createTeam(`R2 测试队 ${Date.now()}`, teamSize);
     const team = await getTeam(createdTeam.id);
     const member = Array.isArray(team?.members) ? team.members[0] : null;
     if (!team || !member) {
@@ -65,20 +66,27 @@ async function skipToRound2() {
     await ensureRound2Schema();
     const enteredAt = nowIso();
     await updateTeamRound2Status(team.id, "R2_INTERVIEWING", enteredAt);
-    await updateMemberProgress(team.id, member.id, {
-      interview_status: "in_progress",
-      interview_rounds: 0,
-      card_status: "not_started",
-      cards_selected: 0,
-      current_step: "interviewing",
-      forced_by_teacher: false,
-      last_activity_at: enteredAt
-    });
+    for (const teamMember of team.members || []) {
+      await updateMemberProgress(team.id, teamMember.id, {
+        interview_status: "in_progress",
+        interview_rounds: 0,
+        card_status: "not_started",
+        cards_selected: 0,
+        current_step: "interviewing",
+        forced_by_teacher: false,
+        last_activity_at: enteredAt
+      });
+    }
 
     return makeResponse(200, {
       ok: true,
       team_id: team.id,
       member_id: member.id,
+      member_links: (team.members || []).map((teamMember) => ({
+        member_id: teamMember.id,
+        member_name: teamMember.member_name,
+        member_index: teamMember.member_index
+      })),
       session_id: "default",
       redirect_url: `/multiplayer/round2?teamId=${encodeURIComponent(team.id)}&memberId=${encodeURIComponent(member.id)}&session_id=default`,
       round1_seed: {
