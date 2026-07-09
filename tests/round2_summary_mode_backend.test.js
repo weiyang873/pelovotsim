@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const TAG_MAP = require("../data/tag_map_v2_1.json");
 const Round2 = require("../server/routes/round2Routes");
 const SummaryMode = require("../server/multiplayer/round2SummaryMode");
+const TeamRoutes = require("../server/routes/teamRoutes");
 
 function makeLengthSafeNarrative() {
   return "她下班回家后总会先站在玄关里听几秒屋里的安静，确认没有任何熟悉的动静后，才慢慢把包放下、开灯、开电视。电视并不是为了看，而是为了让屋里有一点人声，像是有人在旁边陪着。她会给自己倒一杯温水，坐在沙发上刷手机，来回切换几个应用，却说不清自己到底看进去了什么。工作日里她在公司总是反应快、情绪稳，开会时能连续接住很多人的问题，也习惯把场面圆回来，可一回到家，整个人像突然泄了气。周末如果没有人约，她常常一整天不说话，直到晚上嗓子都有点发哑。她并不愿意承认自己在难受，只会说最近有点累，或者说睡得不好。其实真正让她撑不住的不是某一件大事，而是那种持续很久、又说不出口的空落感。她需要的不是热闹，而是一个能在她情绪往下掉的时候，给她一点回应、让她觉得自己没有被世界彻底晾在一边的存在。".repeat(2);
@@ -332,4 +333,83 @@ test("summary-mode dynamic coverage ratio uses viewed report union and student m
   const studentMerged = Round2.__test.sanitizeStudentMergedInterview(mergedInterview, { stripEvi: true, stripTags: true });
   assert.equal("evi" in studentMerged, false);
   assert.equal("tags" in studentMerged, false);
+});
+
+test("sanitizeStudentTeamResult strips evi and WTP-family internals from result and radar", () => {
+  const sanitizedResult = Round2.__test.sanitizeStudentTeamResult({
+    flow_version: "merged_v1",
+    units: 1200,
+    profit: 345678,
+    profit_per_unit: 288,
+    matched_grid: "B2C_Differentiation_Adult",
+    market_size_yi: 123,
+    hhi: 0.31,
+    hhi_label: "中等集中",
+    match_score_json: { hidden: 1 },
+    result: {
+      units: 1200,
+      profit: 345678,
+      P: 12800,
+      revenueNet: 888888,
+      variableCost: 222222,
+      fixedCost: 333333,
+      breakeven_q: 456,
+      unitMargin: 789,
+      dCOGS: 321,
+      risk: 0.2,
+      nre_total_wan: 18,
+      evi: 0.85,
+      WTP: 15000,
+      WTPref: 14000,
+      WTPref_adjusted: 14500,
+      wtpPrime: 1.2,
+      rawWtpMult: 1.1,
+      compressedWtpMult: 1.05,
+      result: {
+        profit: 345678,
+        V: 4.2,
+        coverCore: 0.8,
+        WTP: 15000
+      }
+    }
+  });
+  const serialized = JSON.stringify(sanitizedResult);
+  assert.equal(serialized.includes("\"evi\""), false);
+  assert.equal(serialized.includes("WTPref_adjusted"), false);
+  assert.equal(serialized.includes("rawWtpMult"), false);
+  assert.equal(serialized.includes("compressedWtpMult"), false);
+  assert.equal(serialized.includes("\"WTP\""), false);
+  assert.equal(sanitizedResult.price, 12800);
+  assert.equal(sanitizedResult.result.price, 12800);
+  assert.equal(sanitizedResult.result.result.coverCore, 0.8);
+
+  const sanitizedRadar = Round2.__test.sanitizeStudentStoredRadar({
+    radar: { interaction: 7, perception: 6, motion: 5, safety: 4, extend: 3, ops: 2 },
+    tags: [{ tag: "情感陪伴", polarity: 1 }],
+    evi: 0.7,
+    updated_at: "2026-07-09T00:00:00.000Z"
+  });
+  assert.equal("evi" in sanitizedRadar, false);
+  assert.deepEqual(sanitizedRadar.radar, { interaction: 7, perception: 6, motion: 5, safety: 4, extend: 3, ops: 2 });
+});
+
+test("hideDeferredRound1Fields strips WTPmedian before reveal while preserving safe summaries", () => {
+  const hidden = TeamRoutes.hideDeferredRound1Fields({
+    ok: true,
+    team: { id: "team_demo", status: "phase4" },
+    r1_result: {
+      C: 4.1,
+      G: 4.2,
+      E: 4.3,
+      WTPmedian: 15500,
+      WTPref: 16000
+    },
+    vp_feedback: "ok",
+    vp_summary: { who: "A", pain: "B", how: "C", boundary: "D" }
+  });
+  const serialized = JSON.stringify(hidden);
+  assert.equal(serialized.includes("WTPmedian"), false);
+  assert.equal(serialized.includes("WTPref"), false);
+  assert.equal(hidden.vp_feedback, "ok");
+  assert.equal(hidden.team.status, "phase4");
 });

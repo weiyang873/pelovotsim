@@ -1121,16 +1121,104 @@ function roundForLog(value, digits = 6) {
   return Number(n.toFixed(digits));
 }
 
+function pickFiniteNumber(...values) {
+  for (const value of values) {
+    const n = Number(value);
+    if (Number.isFinite(n)) return n;
+  }
+  return null;
+}
+
+function pickNonEmptyString(...values) {
+  for (const value of values) {
+    const text = String(value || "").trim();
+    if (text) return text;
+  }
+  return "";
+}
+
+function withDefinedEntries(entries) {
+  return Object.fromEntries(entries.filter(([, value]) => value !== null && value !== undefined && value !== ""));
+}
+
 function sanitizeStudentTeamResult(result) {
   if (!result || typeof result !== "object") return result;
-  const next = { ...result };
-  delete next.match_score_json;
-  if (next.result && typeof next.result === "object") {
-    const nested = { ...next.result };
-    delete nested.match_score_json;
-    next.result = nested;
-  }
-  return next;
+  const detail = result.result && typeof result.result === "object" ? result.result : {};
+  const nestedResult = detail.result && typeof detail.result === "object" ? detail.result : null;
+  const safeNestedResult = nestedResult
+    ? withDefinedEntries([
+        ["units", pickFiniteNumber(nestedResult.units)],
+        ["profit", pickFiniteNumber(nestedResult.profit)],
+        ["revenueNet", pickFiniteNumber(nestedResult.revenueNet)],
+        ["variableCost", pickFiniteNumber(nestedResult.variableCost)],
+        ["fixedCost", pickFiniteNumber(nestedResult.fixedCost, nestedResult.f_total)],
+        ["f_total", pickFiniteNumber(nestedResult.f_total, nestedResult.fixedCost)],
+        ["unitMargin", pickFiniteNumber(nestedResult.unitMargin, nestedResult.unitProfitHW)],
+        ["breakeven_q", pickFiniteNumber(nestedResult.breakeven_q)],
+        ["profitSub", pickFiniteNumber(nestedResult.profitSub)],
+        ["penalty", pickFiniteNumber(nestedResult.penalty)],
+        ["V", pickFiniteNumber(nestedResult.V)],
+        ["coverCore", pickFiniteNumber(nestedResult.coverCore)],
+        ["card_scores", nestedResult.card_scores && typeof nestedResult.card_scores === "object" ? nestedResult.card_scores : undefined]
+      ])
+    : null;
+  const safeDetail = withDefinedEntries([
+    ["units", pickFiniteNumber(detail.units, result.units)],
+    ["profit", pickFiniteNumber(detail.profit, result.profit)],
+    ["revenueNet", pickFiniteNumber(detail.revenueNet)],
+    ["variableCost", pickFiniteNumber(detail.variableCost)],
+    ["fixedCost", pickFiniteNumber(detail.fixedCost, detail.f_total)],
+    ["f_total", pickFiniteNumber(detail.f_total, detail.fixedCost)],
+    ["unitMargin", pickFiniteNumber(detail.unitMargin, detail.unitProfitHW, result.profit_per_unit)],
+    ["breakeven_q", pickFiniteNumber(detail.breakeven_q)],
+    ["profitSub", pickFiniteNumber(detail.profitSub)],
+    ["penalty", pickFiniteNumber(detail.penalty)],
+    ["price", pickFiniteNumber(detail.P, detail.price)],
+    ["dCOGS", pickFiniteNumber(detail.dCOGS)],
+    ["risk", pickFiniteNumber(detail.risk)],
+    ["nre_total_wan", pickFiniteNumber(detail.nre_total_wan)],
+    ["card_scores", detail.card_scores && typeof detail.card_scores === "object" ? detail.card_scores : undefined],
+    ["matched_grid", pickNonEmptyString(detail.matched_grid, result.matched_grid)],
+    ["market_size_yi", pickFiniteNumber(detail.market_size_yi, result.market_size_yi)],
+    ["hhi", pickFiniteNumber(detail.hhi, result.hhi)],
+    ["hhi_label", pickNonEmptyString(detail.hhi_label, result.hhi_label)],
+    ["result", safeNestedResult && Object.keys(safeNestedResult).length ? safeNestedResult : undefined]
+  ]);
+  return withDefinedEntries([
+    ["flow_version", pickNonEmptyString(result.flow_version)],
+    ["units", pickFiniteNumber(result.units, safeDetail.units)],
+    ["profit", pickFiniteNumber(result.profit, safeDetail.profit)],
+    ["profit_per_unit", pickFiniteNumber(result.profit_per_unit)],
+    ["unitMargin", pickFiniteNumber(safeDetail.unitMargin, result.profit_per_unit)],
+    ["revenueNet", pickFiniteNumber(safeDetail.revenueNet)],
+    ["variableCost", pickFiniteNumber(safeDetail.variableCost)],
+    ["fixedCost", pickFiniteNumber(safeDetail.fixedCost)],
+    ["f_total", pickFiniteNumber(safeDetail.f_total)],
+    ["nre_total_wan", pickFiniteNumber(safeDetail.nre_total_wan)],
+    ["breakeven_q", pickFiniteNumber(safeDetail.breakeven_q)],
+    ["profitSub", pickFiniteNumber(safeDetail.profitSub)],
+    ["penalty", pickFiniteNumber(safeDetail.penalty)],
+    ["price", pickFiniteNumber(safeDetail.price)],
+    ["dCOGS", pickFiniteNumber(safeDetail.dCOGS)],
+    ["risk_total", pickFiniteNumber(safeDetail.risk)],
+    ["vscore", pickFiniteNumber(result.vscore, safeNestedResult?.V)],
+    ["best_grid", pickNonEmptyString(result.best_grid, result.matched_grid)],
+    ["matched_grid", pickNonEmptyString(result.matched_grid, result.best_grid)],
+    ["market_size_yi", pickFiniteNumber(result.market_size_yi, safeDetail.market_size_yi)],
+    ["hhi", pickFiniteNumber(result.hhi, safeDetail.hhi)],
+    ["hhi_label", pickNonEmptyString(result.hhi_label, safeDetail.hhi_label)],
+    ["computed_at", result.computed_at || null],
+    ["result", Object.keys(safeDetail).length ? safeDetail : undefined]
+  ]);
+}
+
+function sanitizeStudentStoredRadar(radar) {
+  if (!radar || typeof radar !== "object") return radar;
+  return {
+    radar: normalizeRadarPayload(radar.radar),
+    tags: Array.isArray(radar.tags) ? radar.tags : [],
+    updated_at: radar.updated_at || null
+  };
 }
 
 function buildComputationContext({ teamId, sessionId, memberId, source = "web" }) {
@@ -4461,7 +4549,7 @@ async function teamSubmitApi(body) {
       team_id: teamId,
       session_id: sessionId,
       submission: snapshot.submission,
-      radar: snapshot.radar,
+      radar: sanitizeStudentStoredRadar(snapshot.radar),
       result: sanitizeStudentTeamResult(snapshot.result),
       flow_version: flowVersion,
       ...buildLeaderMeta(team, memberId)
@@ -4484,7 +4572,7 @@ async function teamResultApi(query) {
       team_id: teamId,
       session_id: sessionId,
       submission: snapshot?.submission || null,
-      radar: snapshot?.radar || null,
+      radar: sanitizeStudentStoredRadar(snapshot?.radar || null),
       result: sanitizeStudentTeamResult(snapshot?.result || null),
       selected_persona_id: personaChoice?.persona_id || personaChoice?.archetype_id || "",
       flow_version: personaChoice?.flow_version || ""
@@ -4715,6 +4803,8 @@ module.exports = {
     sanitizeStudentPersonaChoice,
     sanitizeStudentPersonaReport,
     sanitizeStudentMergedInterview,
+    sanitizeStudentTeamResult,
+    sanitizeStudentStoredRadar,
     getGridDimensionEvidenceRow
   }
 };

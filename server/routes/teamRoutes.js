@@ -154,6 +154,7 @@ function sanitizeStudentSettle(settle) {
 
 const DEFERRED_SENSITIVE_KEY_SET = new Set([
   "SAM_billion",
+  "WTPmedian",
   "WTPmean",
   "WTPref",
   "WTPadj",
@@ -171,7 +172,7 @@ function shouldStripDeferredKey(key) {
   if (lower.includes("margin")) return true;
   if (lower.includes("share")) return true;
   if (lower === "gm" || lower.startsWith("gm_") || lower.endsWith("_gm") || lower.includes("gmmax")) return true;
-  if (lower.includes("wtpref") || lower.includes("wtpadj") || lower.includes("wtpmean")) return true;
+  if (lower.includes("wtpref") || lower.includes("wtpadj") || lower.includes("wtpmean") || lower.includes("wtpmedian")) return true;
   return false;
 }
 
