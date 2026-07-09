@@ -126,8 +126,12 @@ function toInterviewMessage(message, fallbackIndex = 0) {
   };
 }
 
-const STEPS = ["第一轮回顾","用户访谈","个人选卡","团队合并","研发与定价","确认提交"];
-const SUMMARY_STEPS = ["第一轮回顾","客户调研报告","个人选卡","团队合并","研发与定价","确认提交"];
+const ROUND2_NARRATIVE_STAGES = [
+  { id: "research", label: "客户调研", steps: [0, 1] },
+  { id: "product", label: "产品研发", steps: [2, 3] },
+  { id: "pricing", label: "定价发布", steps: [4] },
+  { id: "review", label: "经营复盘", steps: [5] }
+];
 
 const F_BASE_WAN = 500;
 const F_BASE = F_BASE_WAN * 10000;
@@ -365,6 +369,19 @@ function hasUnlockedRound2Cards({
   }
   return Boolean(String(personaChoice?.summary_text || "").trim())
     || memberState?.card_status === "submitted";
+}
+
+function getRound2NarrativeStageIndex(step) {
+  if (step >= 5) return 3;
+  if (step >= 4) return 2;
+  if (step >= 2) return 1;
+  return 0;
+}
+
+function getRound2NarrativeTargetStep(stage, currentStep) {
+  const available = (Array.isArray(stage?.steps) ? stage.steps : []).filter((step) => step <= currentStep);
+  if (!available.length) return null;
+  return available[available.length - 1];
 }
 
 function teamStatusNotice(teamStatus) {
@@ -1372,7 +1389,6 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     : (interviewTransition
       ? `已完成 ${completedInterviewCount}/${Math.max(MIN_INTERVIEWS_REQUIRED, Number(interviewProgress.maxInterviews || 3))} 次访谈`
       : (showInterviewComposer ? `进行中 ${interviewRound}/${INTERVIEW_MAX_TURNS}` : (canEnterCards ? "访谈要求已满足" : "等待开始")));
-  const stepLabels = isSummaryMode ? SUMMARY_STEPS : STEPS;
   const isWaitingForTeacherRelease = Boolean(sessionConfig?.hold_before_r2 && teamStatus === "R2_NOT_STARTED");
   const pendingSubmission = useMemo(() => {
     if (isSubmittingFinal) {
@@ -2449,15 +2465,24 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
 
       {/* Step bar */}
       <div style={{display:"flex",alignItems:"center",margin:"8px 0 16px"}}>
-        {stepLabels.map((s,i) => (
-          <div key={i} style={{display:"flex",alignItems:"center",flex:i<stepLabels.length-1?1:"none"}}>
-            <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
-              <div onClick={()=>!isSubmissionBusy&&i<=step&&setStep(i)} style={{width:28,height:28,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,cursor:!isSubmissionBusy&&i<=step?"pointer":"default",background:i<step?"#2FAB6E":i===step?"#1a5c3a":"#e5e7eb",color:i<=step?"#fff":"#aaa",boxShadow:i===step?"0 0 0 3px #1a5c3a33":"none",opacity:isSubmissionBusy?0.55:1}}>{i<step?"✓":i+1}</div>
-              <span style={{fontSize:9,color:i===step?"#1a5c3a":i<step?"#2FAB6E":"#aaa",fontWeight:i===step?700:400,whiteSpace:"nowrap"}}>{s}</span>
+        {ROUND2_NARRATIVE_STAGES.map((stage, i) => {
+          const currentStage = getRound2NarrativeStageIndex(step);
+          const targetStep = getRound2NarrativeTargetStep(stage, step);
+          const completed = i < currentStage;
+          const active = i === currentStage;
+          return (
+            <div key={stage.id} style={{display:"flex",alignItems:"center",flex:i<ROUND2_NARRATIVE_STAGES.length-1?1:"none"}}>
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                <div
+                  onClick={()=>!isSubmissionBusy&&targetStep!=null&&setStep(targetStep)}
+                  style={{width:28,height:28,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,cursor:!isSubmissionBusy&&targetStep!=null?"pointer":"default",background:active?"#1a5c3a":completed?"#cbd5e1":"#e5e7eb",color:active||completed?"#fff":"#aaa",boxShadow:active?"0 0 0 3px #1a5c3a33":"none",opacity:isSubmissionBusy?0.55:(targetStep!=null?1:0.55)}}
+                >{completed?"✓":(active?"●":"")}</div>
+                <span style={{fontSize:11,color:active?"#1a5c3a":completed?"#64748b":"#aaa",fontWeight:active?700:500,whiteSpace:"nowrap"}}>{stage.label}</span>
+              </div>
+              {i<ROUND2_NARRATIVE_STAGES.length-1 && <div style={{flex:1,height:2,margin:"0 2px",marginBottom:18,background:completed?"#cbd5e1":"#e5e7eb"}}/>}
             </div>
-            {i<stepLabels.length-1 && <div style={{flex:1,height:2,margin:"0 2px",marginBottom:18,background:i<step?"#2FAB6E":"#e5e7eb"}}/>}
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* ═══ Step 0: 任务背景 + R1 回顾 + R2 预告 ═══ */}
@@ -2560,12 +2585,12 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
             </div>
             <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
               {[
-                {num:"1",title:isSummaryMode ? "阅读报告" : "挖掘需求",desc:isSummaryMode ? "阅读系统为团队冻结的客户调研报告，确认你们究竟在为谁而造，再进入个人选卡。" : "与 AI 模拟的目标用户深度访谈，验证你们的需求假设，发现隐藏需求"},
-                {num:"2",title:"技术决策",desc:"为产品选择具体的技术能力组合——做什么、不做什么、做到什么程度"},
-                {num:"3",title:"定价与结果",desc:"制定价格策略，系统根据你们的产品和定价自动计算市场表现"},
+                {title:"客户调研",desc:isSummaryMode ? "阅读系统为团队冻结的客户调研报告，确认你们究竟在为谁而造，再进入个人选卡。" : "与 AI 模拟的目标用户深度访谈，验证你们的需求假设，发现隐藏需求"},
+                {title:"产品研发",desc:"为产品选择具体的技术能力组合，明确做什么、不做什么、做到什么程度"},
+                {title:"定价发布",desc:"制定价格策略，系统根据你们的产品和定价自动计算市场表现"},
               ].map(item => (
-                <div key={item.num} style={{flex:"1 1 180px",padding:"12px",background:"rgba(255,255,255,0.08)",borderRadius:8}}>
-                  <div style={{width:24,height:24,borderRadius:6,background:"rgba(255,255,255,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,marginBottom:6}}>{item.num}</div>
+                <div key={item.title} style={{flex:"1 1 180px",padding:"12px",background:"rgba(255,255,255,0.08)",borderRadius:8}}>
+                  <div style={{width:24,height:24,borderRadius:999,background:"rgba(255,255,255,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,marginBottom:6}}>•</div>
                   <div style={{fontSize:13,fontWeight:700,marginBottom:4}}>{item.title}</div>
                   <div style={{fontSize:12,opacity:0.7,lineHeight:1.5}}>{item.desc}</div>
                 </div>
@@ -2582,7 +2607,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
             </div>
           )}
           <button onClick={()=>!isWaitingForTeacherRelease&&setStep(1)} disabled={isWaitingForTeacherRelease} style={{...BS,opacity:isWaitingForTeacherRelease?0.55:1,cursor:isWaitingForTeacherRelease?"not-allowed":"pointer"}}>
-            {isWaitingForTeacherRelease ? "等待教师放行..." : "进入第二轮 →"}
+            {isWaitingForTeacherRelease ? "等待教师放行..." : "继续"}
           </button>
         </div>
       )}
@@ -2696,7 +2721,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                   disabled={!summaryReportReady || isFreezingSummary}
                   style={{padding:"12px 16px",borderRadius:10,background:summaryReportReady ? "#1a5c3a" : "#d1d5db",color:"#fff",border:"none",fontSize:14,fontWeight:700,cursor:summaryReportReady && !isFreezingSummary ? "pointer" : "not-allowed",opacity:summaryReportReady ? 1 : 0.6}}
                 >
-                  {isFreezingSummary ? "正在冻结…" : (summaryReportReady ? "继续，进入个人选卡 →" : "等待报告加载")}
+                  {isFreezingSummary ? "正在冻结…" : (summaryReportReady ? "继续" : "等待报告加载")}
                 </button>
               </div>
             </div>
@@ -2782,7 +2807,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                           <div>接下来你将访谈另一位用户，试试从不同角度收集信息。</div>
                         )}
                         {interviewTransition.type === "choice_optional" && (
-                          <div>你已经完成最少 2 次访谈，可以进入下一步；如果愿意，也可以再访谈一位用户补充更多信息。</div>
+                          <div>你已经完成最少 2 次访谈，可以继续；如果愿意，也可以再访谈一位用户补充更多信息。</div>
                         )}
                         {interviewTransition.endedByLimit && (
                           <div>本次访谈已达 10 轮上限，系统已自动收尾。</div>
@@ -2797,7 +2822,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                         {interviewTransition.type === "choice_optional" && (
                           <>
                             <button type="button" onClick={() => setStep(2)} style={BS}>
-                              进入个人选卡 →
+                              继续
                             </button>
                             {interviewTransition.nextPersona && (
                               <button
@@ -2949,7 +2974,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                 )}
               </div>
               <button onClick={()=>canEnterCards&&setStep(2)} style={{...BS,opacity:canEnterCards?1:0.5,cursor:canEnterCards?"pointer":"not-allowed"}}>
-                {canEnterCards ? "访谈要求已满足，进入个人选卡 →" : "至少完成 2 次访谈后继续"}
+                {canEnterCards ? "继续" : "至少完成 2 次访谈后继续"}
               </button>
               {isSendingInterview && (
                 <div style={{marginTop:10,fontSize:12,color:"#92400e",lineHeight:1.7}}>
@@ -3216,14 +3241,14 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
 
           {currentGM < 25 && (
             <div style={{padding:"10px 14px",borderRadius:8,background:"#FEF2F2",border:"1px solid #FECACA",fontSize:13,color:"#991B1B",marginBottom:12}}>
-              ⚠ 当前技术选择成本过高，毛利率已降至危险区间。在下一步集体讨论中，你们需要砍掉或降档一些能力卡来恢复利润空间。
+              ⚠ 当前技术选择成本过高，毛利率已降至危险区间。在后续团队讨论中，你们需要砍掉或降档一些能力卡来恢复利润空间。
             </div>
           )}
 
           <div style={{padding:"10px 14px",borderRadius:8,background:"#FEF3C7",border:"1px solid #FDE68A",fontSize:12,color:"#92400E"}}>
             💡 接下来进入团队讨论和定价。你们已经能看到每张卡的具体 dCOGS 和 NRE，可以开始砍卡、降档或改价格。
           </div>
-          <button onClick={()=>setStep(4)} style={BS}>进入集体讨论 →</button>
+          <button onClick={()=>setStep(4)} style={BS}>继续</button>
         </div>
         );
       })()}
@@ -3455,7 +3480,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                   ? "预期毛利过低，请先调整选卡"
                   : teamCalc.cnt < MIN_TEAM_CARDS
                     ? `还需选 ${MIN_TEAM_CARDS-teamCalc.cnt} 张能力卡`
-                    : "确认产品方案与定价，查看结果 →"}
+                    : "提交并查看结果"}
             </button>
           </div>
         </div>

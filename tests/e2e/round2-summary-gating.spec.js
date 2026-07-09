@@ -81,9 +81,9 @@ test.describe.serial("Round 2 summary/live gating", () => {
     const ctx = await bootstrapRound2Team(request, "summary");
     await page.goto(ctx.round2Url);
     await expect(page.locator("[data-testid='r2-recap-container']")).toBeVisible({ timeout: 30000 });
-    await page.getByRole("button", { name: "进入第二轮 →" }).click();
+    await page.getByRole("button", { name: "继续" }).click();
     await expect(page.locator("[data-testid='r2-interview-container']")).toBeVisible({ timeout: 30000 });
-    const continueButton = page.getByRole("button", { name: "继续，进入个人选卡 →" });
+    const continueButton = page.getByRole("button", { name: /^继续$/ });
     await expect(continueButton).toBeVisible({ timeout: 30000 });
     await continueButton.click();
     await expect(page.locator("[data-testid='r2-card-selection-container']")).toBeVisible({ timeout: 30000 });

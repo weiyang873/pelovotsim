@@ -2012,8 +2012,10 @@ function listTeamMembers(team) {
 async function buildRound2Recap(teamId, phase4Body) {
   const team = await getTeam(teamId);
   if (!team) throw new Error("team not found");
+  const round2State = await getTeamRound2State(teamId).catch(() => null);
   const sessionConfig = await getSessionConfig(team.session_id || "default");
-  const revealR1Results = sessionConfig.reveal_r1_results === true || String(team.r2_status || "").trim() === "R2_SUBMITTED";
+  const effectiveRound2Status = String(round2State?.r2?.status || team.r2_status || "").trim();
+  const revealR1Results = sessionConfig.reveal_r1_results === true || effectiveRound2Status === "R2_SUBMITTED";
   console.log("[R2] 读取 WTPadj:", Number(team.final_wtp_adj || 0), "来源表:", "teams", "字段:", "final_wtp_adj");
 
   const parsed = parseGridId(team.final_grid_id);
@@ -3535,9 +3537,7 @@ async function recap(query) {
     }
 
     const data = await buildRound2Recap(teamId, p4.body);
-    const team = await getTeam(teamId);
-    const sessionConfig = await getSessionConfig(team?.session_id || "default");
-    const revealR1Results = sessionConfig.reveal_r1_results === true || String(team?.r2_status || "").trim() === "R2_SUBMITTED";
+    const revealR1Results = data?.r1_results_revealed === true;
     const responseBody = { ok: true, ...data };
     return makeResponse(200, revealR1Results ? responseBody : TeamRoutes.hideDeferredRound1Fields(responseBody));
   } catch (e) {

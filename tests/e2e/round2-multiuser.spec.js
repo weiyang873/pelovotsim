@@ -148,8 +148,8 @@ async function enterRound2FromRecap(page) {
   }
   await expect(page.locator("[data-testid='r2-recap-container']")).toBeVisible({ timeout: 120000 });
   await expect(page.locator("[data-testid='r2-recap-space-tier']")).not.toHaveText("", { timeout: 30000 });
-  await expect(page.getByText("VP 综合评分").first()).toBeVisible({ timeout: 30000 });
-  await page.getByRole("button", { name: "进入第二轮 →" }).click();
+  await expect(page.getByText("VP 综合评分").first()).toHaveCount(0);
+  await page.getByRole("button", { name: "继续" }).click();
   await expect(page.locator("[data-testid='r2-interview-container']")).toBeVisible({ timeout: 120000 });
 }
 
@@ -210,7 +210,7 @@ async function completeInterviewWithAssertions(page, expectedAgeGroup = "ELDER",
 
 async function resolvePostInterviewState(page) {
   const cardSelection = page.locator("[data-testid='r2-card-selection-container']");
-  const enterCardsButton = page.locator("button").filter({ hasText: /进入个人选卡/ }).first();
+  const enterCardsButton = page.locator("button").filter({ hasText: /^继续$/ }).first();
   const nextInterviewButton = page.locator("button").filter({ hasText: /开始下一次访谈|再访谈一位/ }).first();
   const interviewInput = page.locator("[data-testid='r2-interview-input']");
   const endButton = page.locator("button").filter({ hasText: /结束本次访谈/ }).first();
@@ -244,7 +244,7 @@ async function completeTwoInterviewsAndEnterCards(page, expectedAgeGroup = "ELDE
   });
   const firstPostState = await waitForActionablePostInterviewState(page, firstInterview?.postEndState);
   const cardSelection = page.locator("[data-testid='r2-card-selection-container']");
-  const enterCardsButton = page.locator("button").filter({ hasText: /进入个人选卡/ }).first();
+  const enterCardsButton = page.locator("button").filter({ hasText: /^继续$/ }).first();
   const nextInterviewButton = page.locator("button").filter({ hasText: /开始下一次访谈|再访谈一位/ }).first();
 
   if (firstPostState === "cards") {
@@ -373,15 +373,11 @@ test.describe.serial("Round 1 + Round 2 multiuser UI E2E", () => {
 
       expect(normalizeText(flowContext.round1SynthesizedVp)).not.toBe("");
       expect(flowContext.round1ScoreResponse?.ok).toBeTruthy();
-      expect(Number(flowContext.round1ScoreResponse?.scores?.C)).toBeGreaterThanOrEqual(1);
-      expect(Number(flowContext.round1ScoreResponse?.scores?.C)).toBeLessThanOrEqual(5);
-      expect(Number(flowContext.round1ScoreResponse?.scores?.G)).toBeGreaterThanOrEqual(1);
-      expect(Number(flowContext.round1ScoreResponse?.scores?.G)).toBeLessThanOrEqual(5);
-      expect(Number(flowContext.round1ScoreResponse?.scores?.E)).toBeGreaterThanOrEqual(1);
-      expect(Number(flowContext.round1ScoreResponse?.scores?.E)).toBeLessThanOrEqual(5);
+      expect(String(flowContext.round1ScoreResponse?.feedback || "").trim()).not.toBe("");
+      expect("scores" in (flowContext.round1ScoreResponse || {})).toBe(false);
       await expect(leaderPage.locator("[data-testid='r2-recap-container']")).toBeVisible({ timeout: 120000 });
       await expect(leaderPage.locator("[data-testid='r2-recap-space-tier']")).not.toHaveText("", { timeout: 30000 });
-      await expect(leaderPage.getByText("VP 综合评分").first()).toBeVisible({ timeout: 30000 });
+      await expect(leaderPage.getByText("VP 综合评分").first()).toHaveCount(0);
 
       const members = [...(flowContext.members || [])].sort((a, b) => a.index - b.index);
       expect(members).toHaveLength(TEAM_SIZE);
@@ -449,11 +445,11 @@ test.describe.serial("Round 1 + Round 2 multiuser UI E2E", () => {
       mergedCardCounts.forEach((count) => expect(count).toBeGreaterThan(0));
       expect((String(mergeText).match(/#[^\s#]+/g) || []).length).toBeGreaterThan(0);
 
-      await watchdog.run("round2-enter-merge-discussion", () => sessions[0].page.getByRole("button", { name: /进入集体讨论/ }).click(), 60000);
+      await watchdog.run("round2-enter-merge-discussion", () => sessions[0].page.getByRole("button", { name: /^继续$/ }).click(), 60000);
       console.log("[E2E] Leader entered merge discussion");
       await expect(sessions[0].page.locator("[data-testid='r2-price-input']")).toBeVisible({ timeout: 30000 });
       await setRangeValue(sessions[0].page, "[data-testid='r2-price-input']", ROUND2_PRICE);
-      await sessions[0].page.getByRole("button", { name: /确认产品方案与定价，查看结果/ }).click();
+      await sessions[0].page.getByRole("button", { name: /提交并查看结果/ }).click();
       await expect(sessions[0].page.locator("[data-testid='r2-final-submit']")).toBeVisible({ timeout: 30000 });
       await watchdog.run("round2-final-submit", () => sessions[0].page.locator("[data-testid='r2-final-submit']").click(), 60000);
       console.log("[E2E] Leader submitted Round 2 final decision");

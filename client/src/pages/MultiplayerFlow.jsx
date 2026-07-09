@@ -241,13 +241,10 @@ const GRID_LABELS = {
   age: ["儿童", "成人", "老人"],
 };
 
-const FLOW_STEPS = [
-  { id: 0, label: "建组", short: "建组" },
-  { id: 1, label: "个人锦囊", short: "锦囊" },
-  { id: 2, label: "选战略", short: "选战略" },
-  { id: 3, label: "战略分布", short: "分布" },
-  { id: 4, label: "价值主张", short: "价值主张" },
-  { id: 5, label: "结果", short: "结果" },
+const ROUND1_NARRATIVE_STAGES = [
+  { id: "positioning", label: "市场定位", steps: [0, 1, 2, 3] },
+  { id: "vp", label: "价值主张", steps: [4] },
+  { id: "confirm", label: "战略确认", steps: [5] },
 ];
 
 const MEMBER_COLORS = [
@@ -472,6 +469,18 @@ function normalizeStepValue(value, fallback = 0) {
   return Math.max(0, Math.min(5, Math.round(n)));
 }
 
+function getRound1NarrativeStageIndex(step) {
+  if (step >= 5) return 2;
+  if (step >= 4) return 1;
+  return 0;
+}
+
+function getRound1NarrativeTargetStep(stage, maxUnlocked) {
+  const available = (Array.isArray(stage?.steps) ? stage.steps : []).filter((step) => step <= maxUnlocked);
+  if (!available.length) return null;
+  return available[available.length - 1];
+}
+
 function stepFromTeamStatus(status, fallback = 0) {
   const s = String(status || "").toLowerCase();
   if (s === "phase4" || s === "frozen") return 5;
@@ -604,19 +613,23 @@ function JinnangCard({ card, size = "full", selected, onSelect, flipped, onFlip,
 
 // Step indicator
 function StepBar({ current, onStep, maxUnlocked = 0 }) {
+  const currentStage = getRound1NarrativeStageIndex(current);
   return (
     <div style={{
       display: "flex", alignItems: "center", gap: 0,
       margin: "0 auto 28px", maxWidth: 680,
     }}>
-      {FLOW_STEPS.map((s, i) => {
-        const unlocked = i <= maxUnlocked;
+      {ROUND1_NARRATIVE_STAGES.map((stage, i) => {
+        const targetStep = getRound1NarrativeTargetStep(stage, maxUnlocked);
+        const unlocked = targetStep != null;
+        const completed = i < currentStage;
+        const active = i === currentStage;
         return (
-        <div key={s.id} style={{ display: "flex", alignItems: "center", flex: i < FLOW_STEPS.length - 1 ? 1 : "none" }}>
+        <div key={stage.id} style={{ display: "flex", alignItems: "center", flex: i < ROUND1_NARRATIVE_STAGES.length - 1 ? 1 : "none" }}>
           <div
             onClick={() => {
               if (!unlocked) return;
-              onStep(s.id);
+              onStep(targetStep);
             }}
             style={{
               display: "flex",
@@ -631,24 +644,24 @@ function StepBar({ current, onStep, maxUnlocked = 0 }) {
                 width: 36, height: 36, borderRadius: "50%",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: 13, fontWeight: 700,
-                background: i < current ? "#2FAB6E" : i === current ? "#1a5c3a" : "#e5e7eb",
-                color: i <= current ? "#fff" : "#9ca3af",
+                background: active ? "#1a5c3a" : completed ? "#cbd5e1" : "#e5e7eb",
+                color: active || completed ? "#fff" : "#9ca3af",
                 transition: "all 0.3s",
-                boxShadow: i === current ? "0 0 0 3px #1a5c3a33" : "none",
+                boxShadow: active ? "0 0 0 3px #1a5c3a33" : "none",
                 opacity: unlocked ? 1 : 0.55,
               }}
-            >{i < current ? "✓" : i + 1}</div>
+            >{completed ? "✓" : (active ? "●" : "")}</div>
             <span style={{
-              fontSize: 11,
-              fontWeight: i === current ? 700 : 400,
-              color: i === current ? "#1a5c3a" : i < current ? "#2FAB6E" : "#aaa",
+              fontSize: 12,
+              fontWeight: active ? 700 : 500,
+              color: active ? "#1a5c3a" : completed ? "#64748b" : "#9ca3af",
               whiteSpace: "nowrap",
-            }}>{s.label}</span>
+            }}>{stage.label}</span>
           </div>
-          {i < FLOW_STEPS.length - 1 && (
+          {i < ROUND1_NARRATIVE_STAGES.length - 1 && (
             <div style={{
               flex: 1, height: 2, margin: "0 4px", marginBottom: 20,
-              background: i < current ? "#2FAB6E" : "#e5e7eb",
+              background: completed ? "#cbd5e1" : "#e5e7eb",
               transition: "all 0.3s",
             }} />
           )}
@@ -1978,7 +1991,7 @@ export default function App() {
           </button>
         </div>
         <p style={{ fontSize: 13, color: "#6b7280", marginTop: 4, marginBottom: 24 }}>
-          {statusLine || "请按步骤完成小组第一轮战略决策。"}
+          {statusLine || "请完成小组第一轮战略决策。"}
         </p>
 
         {teamId && memberId && (
@@ -2170,7 +2183,7 @@ export default function App() {
                   background: "#1a5c3a", color: "#fff", border: "none",
                   fontSize: 15, fontWeight: 700, cursor: "pointer",
                 }}
-              >确认，开始 Round 1 →</button>
+              >继续</button>
             </div>
           </div>
         )}
@@ -2257,7 +2270,7 @@ export default function App() {
                 fontSize: 15, fontWeight: 700, cursor: "pointer",
                 opacity: isCreatingTeam ? 0.7 : 1
               }}
-            >{isCreatingTeam ? "建组中..." : "确认建组，开始 Round 1 →"}</button>
+            >{isCreatingTeam ? "建组中..." : "继续"}</button>
           </div>
         )}
 
@@ -2325,10 +2338,10 @@ export default function App() {
                 fontSize: 15, fontWeight: 700, cursor: "pointer",
                 opacity: !isReadOnlyReview && cardsReady && cardsRevealed ? 1 : 0.4,
               }}
-            >{isReadOnlyReview ? "回看模式：不可修改" : (cardsReady && cardsRevealed ? "我看好了，去选战略 →" : "请先翻开两张锦囊")}</button>
+            >{isReadOnlyReview ? "回看模式：不可修改" : (cardsReady && cardsRevealed ? "继续" : "请先翻开两张锦囊")}</button>
             {cardsReady && cardsRevealed && (
               <p style={{ margin: "10px 0 0", fontSize: 12, color: "#999" }}>
-                下一步：选择目标市场和产品定位方向，并撰写你的价值主张草稿
+                继续后，你们将选择目标市场和产品定位方向，并撰写价值主张草稿
               </p>
             )}
           </div>
@@ -2621,7 +2634,7 @@ export default function App() {
                 fontSize: 15, fontWeight: 700, cursor: "pointer",
                 opacity: !round1TeamControlsLocked && teamCell && teamArch ? 1 : 0.4,
               }}
-            >{round1TeamControlsLocked ? "当前为只读视图" : (teamCell && teamArch ? "进入价值主张讨论 →" : "请先确定团队的目标市场和产品定位")}</button>
+            >{round1TeamControlsLocked ? "当前为只读视图" : (teamCell && teamArch ? "继续" : "请先确定团队的目标市场和产品定位")}</button>
           </div>
         )}
 
@@ -3304,7 +3317,7 @@ export default function App() {
                       marginBottom: 14
                     }}
                   >
-                    进入第二轮 →
+                    继续
                   </button>
                 </>
               )}

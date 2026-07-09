@@ -2679,8 +2679,10 @@ async function phase4Data(teamId, options = {}) {
     }
     const { settle_raw, ...studentData } = data;
     const team = await getTeam(teamId);
+    const round2State = await getTeamRound2State(teamId).catch(() => null);
     const sessionConfig = await getSessionConfig(team?.session_id || "default");
-    const revealR1Results = sessionConfig.reveal_r1_results === true || String(team?.r2_status || "").trim() === "R2_SUBMITTED";
+    const effectiveRound2Status = String(round2State?.r2?.status || team?.r2_status || "").trim();
+    const revealR1Results = sessionConfig.reveal_r1_results === true || effectiveRound2Status === "R2_SUBMITTED";
     const studentPayload = {
       ...studentData,
       r1_results_revealed: revealR1Results,

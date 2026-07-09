@@ -26,6 +26,14 @@ function normalizeText(value) {
   return String(value || "").replace(/\s+/g, " ").trim();
 }
 
+function hasDeepKey(value, targetKey) {
+  if (!value || typeof value !== "object") return false;
+  if (Array.isArray(value)) {
+    return value.some((item) => hasDeepKey(item, targetKey));
+  }
+  return Object.entries(value).some(([key, nested]) => key === targetKey || hasDeepKey(nested, targetKey));
+}
+
 function resolveBaseUrl() {
   return process.env.BASE_URL || process.env.TEST_URL || "http://localhost:8787";
 }
@@ -283,7 +291,7 @@ async function completeInterviewCycle(page, options = {}) {
   const endButton = page.getByRole("button", { name: /结束本次访谈/ });
   const cardSelection = page.locator("[data-testid='r2-card-selection-container']");
   const nextInterviewButton = page.locator("button").filter({ hasText: /开始下一次访谈|再访谈一位/ }).first();
-  const enterCardsButton = page.locator("button").filter({ hasText: /进入个人选卡/ }).first();
+  const enterCardsButton = page.locator("button").filter({ hasText: /^继续$/ }).first();
   const interviewInput = page.locator("[data-testid='r2-interview-input']");
   const personaMessages = page.locator("[data-testid='r2-interview-persona-msg']");
   const resolvePostInterviewState = async () => {
@@ -602,6 +610,12 @@ async function runRound1Flow({
     const confirmScoreResponse = await confirmScoreResponsePromise;
     expect(confirmScoreResponse.status()).toBe(200);
     context.round1ScoreResponse = await confirmScoreResponse.json();
+    expect(String(context.round1ScoreResponse?.feedback || "").trim()).not.toBe("");
+    expect("scores" in (context.round1ScoreResponse || {})).toBe(false);
+    expect("vp_score" in (context.round1ScoreResponse || {})).toBe(false);
+    expect("coverage" in (context.round1ScoreResponse || {})).toBe(false);
+    expect("generalizability" in (context.round1ScoreResponse || {})).toBe(false);
+    expect("effectiveness" in (context.round1ScoreResponse || {})).toBe(false);
     await tracker.waitForSettled(1000);
     if (strictMonitoring) {
       tracker.assertNoCancelled();
@@ -614,7 +628,19 @@ async function runRound1Flow({
     logProgress(onProgress, "round1-step6-results");
     const results = page.locator("[data-testid='r1-results-container']");
     await expect(results).toBeVisible();
-    await expect(results.getByText("VP 综合评分").first()).toBeVisible();
+    await expect(page.getByText("市场定位").first()).toBeVisible();
+    await expect(page.getByText("价值主张").first()).toBeVisible();
+    await expect(page.getByText("战略确认").first()).toBeVisible();
+    await expect(results.getByText("评分评语").first()).toBeVisible();
+    await expect(results.getByText("VP 综合评分").first()).toHaveCount(0);
+    const phase4Res = await request.get(`${resolveBaseUrl()}/api/team/${encodeURIComponent(context.teamId)}/phase4`);
+    expect(phase4Res.status()).toBe(200);
+    const phase4Json = await phase4Res.json();
+    expect(phase4Json.r1_results_revealed).toBe(false);
+    expect(String(phase4Json?.vp_feedback || "").trim()).not.toBe("");
+    ["vp_score", "vp_scores", "coverage", "generalizability", "effectiveness", "C", "G", "E", "VPscore"].forEach((key) => {
+      expect(hasDeepKey(phase4Json, key)).toBe(false);
+    });
     await assertStable(page, "[data-testid='r1-results-container']", { duration: 1500, checkInterval: 200 });
     tracker.reset();
     tracker.startCapture();
@@ -632,13 +658,23 @@ async function runRound1Flow({
       logProgress(onProgress, "round1-step-r20-freeze");
       tracker.startCapture();
       await page.locator("[data-testid='r1-freeze-btn']").click();
-      await expect(page.locator("[data-testid='r2-recap-container']")).toBeVisible({ timeout: 60000 });
+      await expect(page.locator("[data-testid='r1-results-container']")).toBeVisible({ timeout: 60000 });
+      await page.getByRole("button", { name: "继续" }).click();
+      await expect
+        .poll(async () => {
+          if (await page.locator("[data-testid='r2-recap-container']").count()) return "recap";
+          if (await page.locator("[data-testid='r2-interview-container']").count()) return "interview";
+          return "waiting";
+        }, {
+          timeout: 60000,
+          intervals: [500, 1000, 2000]
+        })
+        .not.toBe("waiting");
       await tracker.waitForSettled(1000);
       if (strictMonitoring) {
         expect(findApiCalls(tracker, "/freeze")).toHaveLength(1);
-        tracker.assertNoCancelled({ ignoreUrls: TEAM_POLL_IGNORE_URLS });
-        tracker.assertAllSucceeded({ ignoreUrls: TEAM_POLL_IGNORE_URLS });
-        monitor.assertClean("Step R2-0: 推进到 Round 2");
+        tracker.assertNoCancelled({ ignoreUrls: [...TEAM_POLL_IGNORE_URLS, "/api/round2/interview/start"] });
+        tracker.assertAllSucceeded({ ignoreUrls: [...TEAM_POLL_IGNORE_URLS, "/api/round2/interview/start"] });
       }
       return {};
     });
@@ -651,16 +687,21 @@ async function runRound2Flow({ page, request, monitor, tracker, stepResults, con
   const runStep = createStepRunner({ page, monitor, tracker, stepResults });
 
   await runStep("Step R2-1: R1 回顾页", async () => {
-    const recap = page.locator("[data-testid='r2-recap-container']");
-    await expect(recap).toBeVisible();
-    await expect(page.locator("[data-testid='r2-recap-vpscore']")).toBeVisible();
     const recapData = await request.get(`${resolveBaseUrl()}/api/round2/recap?teamId=${encodeURIComponent(context.teamId)}`);
     expect(recapData.status()).toBe(200);
     const recapJson = await recapData.json();
-    expect(Number(recapJson.vp_score || 0)).toBeGreaterThan(0);
-    expect(String(recapJson.market_space_tier || "")).not.toBe("");
+    expect("vp_score" in recapJson).toBe(false);
+    expect("vp_scores" in recapJson).toBe(false);
     context.round2Recap = recapJson;
-    await page.getByRole("button", { name: "进入第二轮 →" }).click();
+    const recap = page.locator("[data-testid='r2-recap-container']");
+    if (await recap.count()) {
+      await expect(recap).toBeVisible();
+      await expect(page.getByText("客户调研").first()).toBeVisible();
+      await expect(page.getByText("产品研发").first()).toBeVisible();
+      await expect(page.getByText("定价发布").first()).toBeVisible();
+      await expect(page.getByText("经营复盘").first()).toBeVisible();
+      await page.getByRole("button", { name: "继续" }).click();
+    }
     await expect(page.locator("[data-testid='r2-interview-container']")).toBeVisible();
     monitor.assertClean("Step R2-1: R1 回顾页");
     return {};
@@ -682,11 +723,11 @@ async function runRound2Flow({ page, request, monitor, tracker, stepResults, con
     await tracker.waitForSettled(1000);
     expect(findApiCalls(tracker, "/api/round2/interview/start").length).toBeGreaterThanOrEqual(1);
     expect(findApiCalls(tracker, "/api/round2/interview/reply").length).toBeGreaterThanOrEqual(ROUND2_INTERVIEW_SCRIPT.length);
-    await expect(page.getByRole("button", { name: /开始下一次访谈|进入个人选卡/ })).toBeVisible({ timeout: 90000 });
+    await expect(page.getByRole("button", { name: /开始下一次访谈|继续/ })).toBeVisible({ timeout: 90000 });
     await page.getByRole("button", { name: /开始下一次访谈/ }).click();
     await completeInterviewCycle(page);
-    await expect(page.getByRole("button", { name: /进入个人选卡/ })).toBeVisible({ timeout: 90000 });
-    await page.getByRole("button", { name: /进入个人选卡/ }).click();
+    await expect(page.getByRole("button", { name: /^继续$/ })).toBeVisible({ timeout: 90000 });
+    await page.getByRole("button", { name: /^继续$/ }).click();
     await expect(page.locator("[data-testid='r2-card-selection-container']")).toBeVisible();
     tracker.assertNoCancelled();
     monitor.assertClean("Step R2-3: Focus Group 访谈");
@@ -716,11 +757,11 @@ async function runRound2Flow({ page, request, monitor, tracker, stepResults, con
 
   await runStep("Step R2-5: 团队合并与讨论", async () => {
     await expect(page.locator("[data-testid='r2-merge-container']")).toBeVisible();
-    await page.getByRole("button", { name: /进入集体讨论/ }).click();
+    await page.getByRole("button", { name: /^继续$/ }).click();
     await expect(page.locator("[data-testid='r2-price-input']")).toBeVisible();
     const targetPrice = Math.max(5000, Math.min(20000, Math.round(Number(context.round2Recap?.Pmax || 12000) * 0.7 / 100) * 100));
     await setRangeValue(page, "[data-testid='r2-price-input']", targetPrice);
-    await page.getByRole("button", { name: /确认产品方案与定价/ }).click();
+    await page.getByRole("button", { name: /提交并查看结果/ }).click();
     await expect(page.locator("[data-testid='r2-final-submit']")).toBeVisible();
 
     tracker.reset();
@@ -729,8 +770,8 @@ async function runRound2Flow({ page, request, monitor, tracker, stepResults, con
     await expect(page.locator("[data-testid='r2-results-container']")).toBeVisible({ timeout: 90000 });
     await tracker.waitForSettled(1000);
     expect(findApiCalls(tracker, "/api/round2/team-submit").length).toBeGreaterThanOrEqual(1);
-    tracker.assertNoCancelled();
-    tracker.assertAllSucceeded({ ignoreUrls: TEAM_POLL_IGNORE_URLS });
+    tracker.assertNoCancelled({ ignoreUrls: [...TEAM_POLL_IGNORE_URLS, "/api/round2/team-merge"] });
+    tracker.assertAllSucceeded({ ignoreUrls: [...TEAM_POLL_IGNORE_URLS, "/api/round2/team-merge"] });
     monitor.assertClean("Step R2-5: 团队合并与讨论");
     return {};
   });
@@ -739,6 +780,8 @@ async function runRound2Flow({ page, request, monitor, tracker, stepResults, con
     const results = page.locator("[data-testid='r2-results-container']");
     await expect(results).toBeVisible();
     await expect(page.locator("[data-testid='r2-profit-value']")).toBeVisible();
+    await expect(results.getByText("VP 评分：").first()).toBeVisible();
+    await expect(results.getByText("待揭示").first()).toHaveCount(0);
     await assertStable(page, "[data-testid='r2-results-container']", { duration: 1500, checkInterval: 200 });
     const mutations = await countDOMMutations(page, "[data-testid='r2-results-container']", { duration: 3000, checkInterval: 200 });
     expect(mutations).toBeLessThan(10);
@@ -747,6 +790,20 @@ async function runRound2Flow({ page, request, monitor, tracker, stepResults, con
     expect(teamResultRes.status()).toBe(200);
     const teamResultJson = await teamResultRes.json();
     expect(Number(teamResultJson.result?.profit ?? teamResultJson.result?.result?.profit ?? 0)).not.toBeNaN();
+    let revealedRecapJson = null;
+    await expect.poll(async () => {
+      const revealedRecapRes = await request.get(`${resolveBaseUrl()}/api/round2/recap?teamId=${encodeURIComponent(context.teamId)}`);
+      if (revealedRecapRes.status() !== 200) return false;
+      revealedRecapJson = await revealedRecapRes.json();
+      return revealedRecapJson?.r1_results_revealed === true;
+    }, {
+      timeout: 15000,
+      intervals: [500, 1000, 2000]
+    }).toBe(true);
+    expect(Number(revealedRecapJson.vp_score || 0)).toBeGreaterThan(0);
+    expect(Number(revealedRecapJson?.vp_scores?.C || 0)).toBeGreaterThan(0);
+    expect(Number(revealedRecapJson?.vp_scores?.G || 0)).toBeGreaterThan(0);
+    expect(Number(revealedRecapJson?.vp_scores?.E || 0)).toBeGreaterThan(0);
     tracker.reset();
     tracker.startCapture();
     await page.waitForTimeout(5000);
