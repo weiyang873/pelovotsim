@@ -626,7 +626,7 @@ function vpFieldsToApi(fields) {
 }
 
 function VpGuidePanel({ guideOpen, setGuideOpen }) {
-  const [openExamples, setOpenExamples] = useState(new Set());
+  const [openExamples, setOpenExamples] = useState(() => new Set(VP_EXAMPLES.map((_, index) => index)));
   const c = VP_FLOW_COLORS;
   const toggleExample = (index) => {
     setOpenExamples((prev) => {

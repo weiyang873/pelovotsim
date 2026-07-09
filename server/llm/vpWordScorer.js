@@ -316,6 +316,7 @@ ${diagnosisSummary}
       scores
     });
   } catch (err) {
+    console.warn("[vpWordScorer.generateVpFeedback] LLM call failed; using fallback feedback:", err?.message || err);
     return buildFallbackVpFeedback({
       vpText,
       confirmedFields: { ...fields, _gridLabel: gridLabel },

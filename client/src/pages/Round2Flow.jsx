@@ -389,21 +389,21 @@ function getRound2NarrativeTargetStep(stage, currentStep) {
 
 function teamStatusNotice(teamStatus) {
   if (teamStatus === "R2_REVIEW") return "系统已同步到 Round 2 放行状态";
-  if (teamStatus === "R2_INTERVIEWING") return "系统已同步到用户访谈阶段";
-  if (teamStatus === "R2_INDIVIDUAL_CARDS") return "系统已同步到个人选卡阶段";
-  if (teamStatus === "R2_TEAM_MERGE") return "系统已推进到团队合并阶段";
-  if (teamStatus === "R2_TEAM_DISCUSSION") return "系统已推进到团队讨论阶段";
-  if (teamStatus === "R2_SUBMITTED") return "系统已同步到提交完成状态";
+  if (teamStatus === "R2_INTERVIEWING") return "系统已同步到客户调研阶段";
+  if (teamStatus === "R2_INDIVIDUAL_CARDS") return "系统已同步到产品研发阶段";
+  if (teamStatus === "R2_TEAM_MERGE") return "系统已推进到产品研发阶段";
+  if (teamStatus === "R2_TEAM_DISCUSSION") return "系统已推进到定价发布阶段";
+  if (teamStatus === "R2_SUBMITTED") return "系统已同步到经营复盘阶段";
   return "系统已同步到最新阶段";
 }
 
 function teamStatusLabel(teamStatus) {
   if (teamStatus === "R2_REVIEW") return "Round 2 放行阶段";
-  if (teamStatus === "R2_INTERVIEWING") return "访谈阶段";
-  if (teamStatus === "R2_INDIVIDUAL_CARDS") return "个人选卡阶段";
-  if (teamStatus === "R2_TEAM_MERGE") return "团队合并阶段";
-  if (teamStatus === "R2_TEAM_DISCUSSION") return "定价讨论阶段";
-  if (teamStatus === "R2_SUBMITTED") return "提交完成阶段";
+  if (teamStatus === "R2_INTERVIEWING") return "客户调研阶段";
+  if (teamStatus === "R2_INDIVIDUAL_CARDS") return "产品研发阶段";
+  if (teamStatus === "R2_TEAM_MERGE") return "产品研发阶段";
+  if (teamStatus === "R2_TEAM_DISCUSSION") return "定价发布阶段";
+  if (teamStatus === "R2_SUBMITTED") return "经营复盘阶段";
   return "当前阶段";
 }
 
@@ -3242,7 +3242,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
 
           {/* Interview summary for reference while selecting cards */}
           <div style={{padding:"14px 18px",borderRadius:10,background:"#f0fdf4",border:"1.5px solid #bbf7d0",marginBottom:8}}>
-            <div style={{fontSize:13,fontWeight:700,color:"#166534",marginBottom:6}}>{isSummaryMode ? "📄 团队共享调研报告" : "🎙️ 你的访谈洞察"}</div>
+            <div style={{fontSize:13,fontWeight:700,color:"#166534",marginBottom:6}}>{isSummaryMode ? "📄 已冻结调研报告摘录" : "🎙️ 你的访谈洞察"}</div>
             <div style={{fontSize:13,color:"#374151",lineHeight:1.8,marginBottom:10}}>
               {isSummaryMode
                 ? (selectedPersonaSummaryText || "请先在上一步阅读调研报告，再根据这份报告选卡。")
