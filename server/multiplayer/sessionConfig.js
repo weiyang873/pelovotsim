@@ -5,15 +5,23 @@ const DEFAULT_SESSION_CONFIG = {
   hold_before_r2: false,
   interview_mode: "summary"
 };
+let __sessionConfigSchemaPromise = null;
+const sessionConfigCache = new Map();
 
 async function ensureSessionConfigSchema() {
-  await runSql(`
-    CREATE TABLE IF NOT EXISTS session_config (
-      session_id TEXT PRIMARY KEY,
-      config JSONB NOT NULL DEFAULT '{}'::jsonb,
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-  `);
+  if (__sessionConfigSchemaPromise) return __sessionConfigSchemaPromise;
+  __sessionConfigSchemaPromise = runSql(`
+      CREATE TABLE IF NOT EXISTS session_config (
+        session_id TEXT PRIMARY KEY,
+        config JSONB NOT NULL DEFAULT '{}'::jsonb,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `)
+    .catch((err) => {
+      __sessionConfigSchemaPromise = null;
+      throw err;
+    });
+  return __sessionConfigSchemaPromise;
 }
 
 function normalizeSessionId(value) {
@@ -32,9 +40,22 @@ function normalizeSessionConfig(input) {
   };
 }
 
+function cloneSessionConfig(config) {
+  return {
+    reveal_r1_results: config?.reveal_r1_results === true,
+    hold_before_r2: config?.hold_before_r2 === true,
+    interview_mode: String(config?.interview_mode || DEFAULT_SESSION_CONFIG.interview_mode).trim().toLowerCase() === "live"
+      ? "live"
+      : "summary"
+  };
+}
+
 async function getSessionConfig(sessionId = "default") {
-  await ensureSessionConfigSchema();
   const normalizedSessionId = normalizeSessionId(sessionId);
+  if (sessionConfigCache.has(normalizedSessionId)) {
+    return cloneSessionConfig(sessionConfigCache.get(normalizedSessionId));
+  }
+  await ensureSessionConfigSchema();
   const rows = await runSql(`
     SELECT config
     FROM session_config
@@ -50,10 +71,12 @@ async function getSessionConfig(sessionId = "default") {
           return {};
         }
       })();
-  return normalizeSessionConfig({
+  const next = normalizeSessionConfig({
     ...DEFAULT_SESSION_CONFIG,
     ...(raw || {})
   });
+  sessionConfigCache.set(normalizedSessionId, next);
+  return cloneSessionConfig(next);
 }
 
 async function updateSessionConfig(sessionId = "default", patch = {}) {
@@ -75,7 +98,8 @@ async function updateSessionConfig(sessionId = "default", patch = {}) {
       config = EXCLUDED.config,
       updated_at = EXCLUDED.updated_at;
   `);
-  return next;
+  sessionConfigCache.set(normalizedSessionId, next);
+  return cloneSessionConfig(next);
 }
 
 module.exports = {

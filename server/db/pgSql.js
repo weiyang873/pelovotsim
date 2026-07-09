@@ -10,7 +10,7 @@ const pool = new Pool({
   ssl: String(process.env.PGSSL || "").toLowerCase() === "true"
     ? { rejectUnauthorized: false }
     : undefined,
-  max: 20,
+  max: 30,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000
 });

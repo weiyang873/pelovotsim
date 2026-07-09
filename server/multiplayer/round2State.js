@@ -1,4 +1,9 @@
 const { runSql, sqlQuote } = require("../db/pgSql");
+const {
+  clearTeamStateCache,
+  readThroughTeamStateCache,
+  refreshTeamStateCache
+} = require("../cache/teamStateCache");
 
 const TEAM_STATUS_ORDER = [
   "R2_NOT_STARTED",
@@ -194,6 +199,7 @@ async function updateTeamRound2Status(teamId, status, enteredAt = nowIso()) {
         r2_status_entered_at = ${sqlQuote(enteredAt)}
     WHERE id = ${sqlQuote(teamId)};
   `);
+  await refreshCachedTeamRound2State(teamId);
 }
 
 async function updateMemberProgress(teamId, memberId, patch = {}) {
@@ -220,6 +226,7 @@ async function updateMemberProgress(teamId, memberId, patch = {}) {
     SET ${assignments.join(", ")}
     WHERE team_id = ${sqlQuote(teamId)} AND id = ${sqlQuote(memberId)};
   `);
+  await refreshCachedTeamRound2State(teamId);
 }
 
 async function resetMemberFields(teamId, memberId, patch = {}) {
@@ -689,8 +696,30 @@ async function loadRound2State(teamIds = null) {
 }
 
 async function getTeamRound2State(teamId) {
-  const list = await loadRound2State([teamId]);
-  return list[0] || null;
+  const tid = String(teamId || "").trim();
+  if (!tid) return null;
+  return readThroughTeamStateCache(tid, async () => {
+    const list = await loadRound2State([tid]);
+    return list[0] || null;
+  });
+}
+
+async function refreshCachedTeamRound2State(teamId) {
+  const tid = String(teamId || "").trim();
+  if (!tid) return null;
+  try {
+    return await refreshTeamStateCache(tid, async () => {
+      const list = await loadRound2State([tid]);
+      return list[0] || null;
+    });
+  } catch (err) {
+    clearTeamStateCache(tid);
+    console.warn("[teamStateCache] refresh failed; cache cleared", {
+      team_id: tid,
+      error: err?.message || String(err)
+    });
+    return null;
+  }
 }
 
 async function getSessionStatusSummary() {
@@ -741,6 +770,15 @@ async function completeInterviewSession(sessionId, result = null) {
         updated_at = ${sqlQuote(nowIso())}
     WHERE session_id = ${sqlQuote(sessionId)};
   `);
+  const rows = await runSql(`
+    SELECT team_id
+    FROM round2_interview_sessions
+    WHERE session_id = ${sqlQuote(sessionId)}
+    LIMIT 1;
+  `);
+  if (rows[0]?.team_id) {
+    await refreshCachedTeamRound2State(rows[0].team_id);
+  }
 }
 
 async function getMemberSelectionRow(teamId, memberId) {
@@ -797,6 +835,7 @@ module.exports = {
   clearMemberRound2Artifacts,
   loadRound2State,
   getTeamRound2State,
+  refreshCachedTeamRound2State,
   getSessionStatusSummary,
   getLatestInterviewSession,
   completeInterviewSession,

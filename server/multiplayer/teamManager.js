@@ -4,6 +4,7 @@ const { dealJinang } = require("./jinangDealer");
 const { ensureSchema: ensureComputationLogSchema } = require("./computationLog");
 const { ensureSchema: ensureVpIterationSchema } = require("./vpIterationStore");
 const { runSql, sqlQuote } = require("../db/pgSql");
+const { clearTeamStateCache } = require("../cache/teamStateCache");
 
 const ROOT = path.join(__dirname, "..", "..");
 const TEAM_STATUSES = new Set(["forming", "phase1", "phase2", "phase3", "phase4", "frozen"]);
@@ -303,6 +304,7 @@ async function joinTeam(teamId, memberName) {
     SET member_name = ${sqlQuote(name)}
     WHERE id = ${sqlQuote(unclaimed.id)};
   `);
+  clearTeamStateCache(tid);
 
   const rows = await runSql(`
     SELECT id, team_id, member_name, member_index, is_leader, jinang_market_id, jinang_tech_id, joined_at
@@ -357,6 +359,7 @@ async function setTeamLeader(teamId, memberId) {
     SET is_leader = CASE WHEN id = ${sqlQuote(mid)} THEN TRUE ELSE FALSE END
     WHERE team_id = ${sqlQuote(tid)};
   `);
+  clearTeamStateCache(tid);
 
   return getTeam(tid);
 }
@@ -377,6 +380,7 @@ async function updateTeamStatus(teamId, newStatus) {
     SET status = ${sqlQuote(status)}
     WHERE id = ${sqlQuote(tid)};
   `);
+  clearTeamStateCache(tid);
 
   return getTeamRow(tid);
 }

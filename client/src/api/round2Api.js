@@ -33,6 +33,7 @@ export async function getRound2State(teamId, memberId = "", options = {}) {
     teamId: String(teamId || "").trim()
   });
   if (memberId) query.set("memberId", String(memberId || "").trim());
+  if (options?.lite === true) query.set("lite", "1");
   const res = await fetch(`${BASE}/round2/state?${query.toString()}`, {
     signal: options.signal
   });

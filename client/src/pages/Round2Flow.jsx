@@ -882,6 +882,11 @@ export default function App() {
   const systemNoticeTimerRef = useRef(null);
   const interviewStartGateRef = useRef({ memberId: "", startedAt: 0 });
   const summaryReportInitializedRef = useRef(false);
+  const selectedPersonaChoiceRef = useRef(null);
+  const commitSelectedPersonaChoice = (choice) => {
+    selectedPersonaChoiceRef.current = choice || null;
+    setSelectedPersonaChoice(choice || null);
+  };
 
   const isTeamMode = Boolean(teamId);
   const isSummaryMode = interviewMode !== "live";
@@ -927,7 +932,7 @@ export default function App() {
         const initialDefaultReportIndex = Number.isFinite(Number(stateRes?.default_report_index))
           ? Number(stateRes.default_report_index)
           : 0;
-        setSelectedPersonaChoice(initialChoice);
+        commitSelectedPersonaChoice(initialChoice);
         setAvailableSummaryReports(initialAvailableReports);
         setDefaultSummaryReportIndex(initialDefaultReportIndex);
         setPersonaReports(initialReports);
@@ -1009,6 +1014,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    selectedPersonaChoiceRef.current = selectedPersonaChoice;
+  }, [selectedPersonaChoice]);
+
+  useEffect(() => {
     if (!teamId || !memberId) return;
     mergeStudentSession({
       teamId,
@@ -1026,29 +1035,32 @@ export default function App() {
       try {
         currentController?.abort();
         currentController = new AbortController();
-        const data = await getRound2State(teamId, memberId, { signal: currentController.signal });
+        const data = await getRound2State(teamId, memberId, { signal: currentController.signal, lite: true });
         if (canceled) return;
 
         const nextStatus = String(data?.team_status || "");
         setMemberState(data?.member || null);
         setSessionConfig(data?.session_config || { reveal_r1_results: false, hold_before_r2: false, interview_mode: "summary" });
         setInterviewMode(String(data?.session_config?.interview_mode || readInterviewModeFromUrl() || "summary").trim().toLowerCase() === "live" ? "live" : "summary");
-        const nextChoice = data?.persona_choice || null;
-        const nextAvailableReports = Array.isArray(data?.available_reports) ? data.available_reports : [];
-        const nextDefaultReportIndex = Number.isFinite(Number(data?.default_report_index))
-          ? Number(data.default_report_index)
-          : 0;
-        setSelectedPersonaChoice(nextChoice);
-        setAvailableSummaryReports(nextAvailableReports);
-        setDefaultSummaryReportIndex(nextDefaultReportIndex);
+        const hasPersonaChoice = Object.prototype.hasOwnProperty.call(data || {}, "persona_choice");
+        const nextChoice = hasPersonaChoice ? (data?.persona_choice || null) : selectedPersonaChoiceRef.current;
+        commitSelectedPersonaChoice(nextChoice);
+        if (Array.isArray(data?.available_reports)) {
+          setAvailableSummaryReports(data.available_reports);
+        }
+        if (Number.isFinite(Number(data?.default_report_index))) {
+          setDefaultSummaryReportIndex(Number(data.default_report_index));
+        }
         if (nextChoice?.summary_text) {
-          const nextReports = Array.isArray(data?.persona_reports) ? data.persona_reports : [];
-          setPersonaReports(nextReports);
-          const frozenIndex = Number.isFinite(Number(nextReports[0]?.report_index))
-            ? Number(nextReports[0].report_index)
-            : nextDefaultReportIndex;
-          setActiveSummaryReportIndex(frozenIndex);
-          summaryReportInitializedRef.current = true;
+          if (Array.isArray(data?.persona_reports)) {
+            const nextReports = data.persona_reports;
+            setPersonaReports(nextReports);
+            const frozenIndex = Number.isFinite(Number(nextReports[0]?.report_index))
+              ? Number(nextReports[0].report_index)
+              : (Number.isFinite(Number(data?.default_report_index)) ? Number(data.default_report_index) : 0);
+            setActiveSummaryReportIndex(frozenIndex);
+            summaryReportInitializedRef.current = true;
+          }
         }
         setLeaderMemberId(String(data?.leader_member_id || ""));
         setLeaderName(String(data?.leader_name || ""));
@@ -1073,7 +1085,7 @@ export default function App() {
         const cardsUnlocked = hasUnlockedRound2Cards({
           interviewMode: nextInterviewMode,
           memberState: data?.member_state,
-          personaChoice: data?.persona_choice
+          personaChoice: nextChoice
         });
 
         setSubmitted(nextStatus === "R2_SUBMITTED");
@@ -1582,7 +1594,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
           memberId,
           session_id: sessionId
         });
-        setSelectedPersonaChoice(freezeOut?.choice || null);
+        commitSelectedPersonaChoice(freezeOut?.choice || null);
         setSystemNotice("已完成客户调研阅读，进入个人选卡。");
         setStep(2);
         return;
@@ -1606,7 +1618,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
         memberId,
         session_id: sessionId
       });
-      setSelectedPersonaChoice(out?.choice || null);
+      commitSelectedPersonaChoice(out?.choice || null);
       setSystemNotice("已阅读调研报告，进入个人选卡。");
       setStep(2);
     } catch (err) {

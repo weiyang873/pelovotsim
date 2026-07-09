@@ -2811,7 +2811,9 @@ function handleApi(req, res) {
       const url = new URL(String(req.url || ""), `http://${req.headers.host || "127.0.0.1"}`);
       return Round2.teamStatusApi({
         teamId: url.searchParams.get("teamId") || url.searchParams.get("team_id") || "",
-        memberId: url.searchParams.get("memberId") || url.searchParams.get("member_id") || ""
+        memberId: url.searchParams.get("memberId") || url.searchParams.get("member_id") || "",
+        sessionId: url.searchParams.get("sessionId") || url.searchParams.get("session_id") || "",
+        lite: url.searchParams.get("lite") || ""
       })
         .then((out) => sendJson(res, out.status, out.body))
         .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "round2 team status failed" }));
@@ -2825,7 +2827,9 @@ function handleApi(req, res) {
       const url = new URL(String(req.url || ""), `http://${req.headers.host || "127.0.0.1"}`);
       return Round2.teamStatusApi({
         teamId: url.searchParams.get("teamId") || url.searchParams.get("team_id") || "",
-        memberId: url.searchParams.get("memberId") || url.searchParams.get("member_id") || ""
+        memberId: url.searchParams.get("memberId") || url.searchParams.get("member_id") || "",
+        sessionId: url.searchParams.get("sessionId") || url.searchParams.get("session_id") || "",
+        lite: url.searchParams.get("lite") || ""
       })
         .then((out) => sendJson(res, out.status, out.body))
         .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "round2 state failed" }));

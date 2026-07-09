@@ -4686,6 +4686,57 @@ async function teamStatusApi(query) {
     const teamId = String(query?.teamId || query?.team_id || "").trim();
     const memberId = String(query?.memberId || query?.member_id || "").trim();
     if (!teamId) return makeResponse(400, { ok: false, error: "teamId required" });
+    const lite = query?.lite === "1" || query?.lite === 1 || query?.lite === true;
+
+    if (lite) {
+      const teamState = await getTeamRound2State(teamId);
+      if (!teamState) return makeResponse(404, { ok: false, error: "team not found" });
+      const sessionConfig = await getSessionConfig(normalizeSessionId(query?.sessionId || query?.session_id));
+      const member = memberId
+        ? (teamState.members || []).find((item) => item.id === memberId) || null
+        : null;
+      const memberState = member
+        ? {
+            id: member.id,
+            name: member.name,
+            dims: Array.isArray(member.dims) ? member.dims : [],
+            interview_status: member.interviewStatus,
+            interview_rounds: member.interviewRounds,
+            completed_interviews: Number(member.completedInterviews || 0),
+            completedInterviews: Number(member.completedInterviews || 0),
+            card_status: member.cardStatus,
+            cards_selected: member.cardsSelected,
+            current_step: member.currentStep,
+            forced_by_teacher: member.forcedByTeacher,
+            is_leader: Boolean(memberId && member.id === teamState.leaderMemberId)
+          }
+        : null;
+      return makeResponse(200, {
+        ok: true,
+        lite: true,
+        team_id: teamId,
+        team_status: teamState.r2.status,
+        team_status_label: teamState.r2.statusLabel,
+        entered_at: teamState.r2.enteredAt,
+        duration_minutes: teamState.r2.durationMinutes,
+        ...buildLeaderMeta(teamState, memberId),
+        session_config: sessionConfig,
+        member: memberState,
+        member_state: memberState,
+        members: teamState.members.map((item) => ({
+          id: item.id,
+          name: item.name,
+          dims: Array.isArray(item.dims) ? item.dims : [],
+          interview_status: item.interviewStatus,
+          interview_rounds: item.interviewRounds,
+          completed_interviews: Number(item.completedInterviews || 0),
+          card_status: item.cardStatus,
+          cards_selected: item.cardsSelected,
+          current_step: item.currentStep,
+          forced_by_teacher: item.forcedByTeacher
+        }))
+      });
+    }
 
     const team = await getTeam(teamId);
     if (!team) return makeResponse(404, { ok: false, error: "team not found" });
