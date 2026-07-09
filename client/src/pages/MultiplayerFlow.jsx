@@ -11,6 +11,8 @@ import {
   chatWithCoach,
   extractVpFields,
   confirmAndScoreVp,
+  requestRound1VpFeedback,
+  submitRound1Vp,
   finalizeDecision,
   getPhase3State,
   getResults,
@@ -245,6 +247,93 @@ const ROUND1_NARRATIVE_STAGES = [
   { id: "positioning", label: "市场定位", steps: [0, 1, 2, 3] },
   { id: "vp", label: "价值主张", steps: [4] },
   { id: "confirm", label: "战略确认", steps: [5] },
+];
+
+const VP_FLOW_COLORS = {
+  green: "#2d5a1e",
+  greenLight: "#4a8c3f",
+  greenBg: "#eef5eb",
+  greenBorder: "#c2d9bb",
+  warmBg: "#f5f2ed",
+  yellowBg: "#fffce5",
+  yellowBorder: "#e8d44d",
+  orange: "#d97706",
+  white: "#ffffff",
+  border: "#e5e0d8",
+  text: "#1a1a1a",
+  textSec: "#666666",
+  textMuted: "#999999",
+  textLight: "#bbbbbb"
+};
+
+const VP_MIN_CHARS = 20;
+
+const VP_THEORY_CARDS = [
+  {
+    label: "WHO", title: "目标客户",
+    brief: "一张足够清晰的肖像，让你能想象这个人的一天",
+    layers: [
+      "身份特征 — 年龄、职业、家庭结构、居住环境",
+      "情境约束 — 什么特定处境让他/她此刻对这个品类有需求？",
+      "行为信号 — 已经在做什么来应对？买了什么替代品？还是忍着？"
+    ],
+    trap: "写成了市场细分报告。\"一线城市中高收入家庭\" 换掉品类名仍然成立，说明还不够具体。"
+  },
+  {
+    label: "PAIN", title: "核心痛点",
+    brief: "一个发生在具体时空里的事件，能指向产品设计方向",
+    layers: [
+      "触发时刻 — 最后一次遇到这个问题是什么时候？当时在做什么？",
+      "失败链条 — 试了什么方案？为什么没用？问题的结构性原因是什么？",
+      "情绪后果 — 那次之后行为或心态变了吗？放弃了？妥协了？形成了什么信念？"
+    ],
+    trap: "太大（\"医疗资源不均\"——你解决不了）或太浅（\"找不到好 App\"——换一个就行）。好的痛点是反复发生的结构性问题。"
+  },
+  {
+    label: "HOW", title: "解决方式",
+    brief: "一条因果链：通过什么机制，改变了什么，使得痛点被缓解",
+    layers: [
+      "核心机制 — 你的产品通过什么具体手段解决问题？",
+      "因果逻辑 — 这个机制凭什么能缓解痛点？传导链条超过三步说明还没想清楚",
+      "替代品差异 — 客户现有方案是什么？你的方案跟它的本质区别在哪？"
+    ],
+    trap: "方案跟痛点之间缺因果链。\"用 AI 提供个性化推荐\" 听起来合理，但如果痛点是\"不知道吃什么\"，用户缺的可能是决策动力，不是更多选项。"
+  }
+];
+
+const VP_EXAMPLES = [
+  {
+    brand: "戴森吸尘器",
+    fields: [
+      { label: "WHO", text: "家里养了宠物、铺了地毯的中产家庭，每周吸尘 3-4 次。换过两三个牌子的吸尘器，都是用了几个月吸力明显下降，开始怀疑\"是不是所有吸尘器都这样\"。家里有小孩在地上爬，对灰尘和过敏原有焦虑但觉得无解。" },
+      { label: "PAIN", text: "传统吸尘器靠集尘袋或滤网拦截灰尘，随着袋和网堵塞，吸力不可避免地衰减——这是物理结构决定的，跟品牌无关。用户的体验是\"新的好用、用着用着就不行了\"，于是换品牌，发现还是一样，最终得出\"吸尘器就是消耗品\"的结论。更换集尘袋是持续成本，忘了换就等于白吸。真正令人沮丧的是：投入了时间和金钱，地板看起来干净了，但你知道其实并没有。" },
+      { label: "HOW", text: "气旋分离技术：空气高速旋转产生离心力，将灰尘甩到集尘桶壁上，气流通道不经过滤材，因此吸力不随使用而衰减。要点在于它消除了吸力衰减的物理成因，第 300 天的表现跟第一天一样。附带效果：没有集尘袋耗材，长期成本更低。跟传统吸尘器比的关键指标是持久性能曲线，不是峰值吸力。" }
+    ]
+  },
+  {
+    brand: "Keep（早期定位）",
+    fields: [
+      { label: "WHO", text: "一二线城市 22-30 岁上班族，想健身但没有稳定去健身房的习惯。办过年卡，去了不到十次就搁置——每次去的启动成本太高：通勤 30 分钟、换衣服、排队等器械、练完再通勤，一趟两个多小时，工作日挤不出来。在家想练，打开 YouTube 搜\"腹肌训练\"出来几千个视频，不知道选哪个、不知道动作对不对、不知道明天该练什么。" },
+      { label: "PAIN", text: "健身的核心障碍在决策成本：今天练什么部位？哪个视频靠谱？这个动作做对了吗？练多久算够？没有教练在旁边，每次训练前要自己做一串决策，大部分人在\"选课程\"这一步就放弃了。健身房年卡 70%+ 的浪费率说明人们的意愿够了，\"开始一次训练\"的摩擦力才是卡点。" },
+      { label: "HOW", text: "将专业课程拆解为 15-30 分钟跟练视频，全程语音指导加动作示范，零器械即可完成。系统根据目标、体能和历史记录推送课程，用户打开 App 点一下就开始——\"今天练什么\"的决策由算法完成。与健身房相比省去了通勤和等待，与 YouTube 相比提供了结构化的进阶路径和训练反馈，把启动训练的决策成本从 30 分钟压缩到 3 秒。" }
+    ]
+  },
+  {
+    brand: "韶音（Shokz）骨传导耳机",
+    fields: [
+      { label: "WHO", text: "每周跑步 3 次以上的城市跑者，跑步时一定要听音乐或播客，但路线经过城市道路和混合车流路段。同样适用于通勤骑行者和户外徒步者——共同特征是运动时需要持续听见周围环境的声音（车、人、路况提示）。" },
+      { label: "PAIN", text: "入耳式耳机物理封堵耳道，听音乐时听不见身后来车——每个城市跑者都有过\"差点被蹭到\"的经历。AirPods 通透模式用麦克风采集外部声音再混入耳内播放，有延迟、音质打折，且耳朵仍然被堵着，本质上是一个折中方案。只戴一只耳机，音乐体验直接减半。跑者被迫在\"听音乐\"和\"听见车\"之间做取舍，而两样都不想放弃。" },
+      { label: "HOW", text: "骨传导技术绕过耳道，声波通过颧骨振动直接传到内耳，耳朵物理上始终敞开。音乐和环境声走的是两条独立通道，互不干扰——跑者在安全和体验之间不需要做任何权衡。代价是低频弱于入耳式、旁边的人能听到漏音，但在运动场景下这两项的优先级远低于安全。跟通透模式的区别在于它在硬件层面取消了冲突，而不是在软件层面试图调和冲突。" }
+    ]
+  }
+];
+
+const VP_FORM_FIELDS = [
+  { key: "who_raw", apiKey: "who", label: "WHO — 目标客户", hint: "身份 + 处境，越具体越好", ph: "描述你的目标客户：他/她是谁、什么处境、什么生活状态……", required: true },
+  { key: "pain_raw", apiKey: "pain", label: "PAIN — 核心痛点", hint: "触发情境 + 结构性原因", ph: "描述客户最费神的问题：什么时候发生、为什么现有方案解决不了……", required: true },
+  { key: "how_raw", apiKey: "how", label: "HOW — 解决方式", hint: "机制 + 因果链 + 跟替代品的区别", ph: "描述你的方案怎么解决上述痛点：通过什么、在什么场景、达到什么效果……", required: true },
+  { key: "alternative_raw", apiKey: "alternative", label: "替代方案对比", hint: null, ph: "现在客户用什么替代品？你的方案比它好在哪？", required: false },
+  { key: "boundary_raw", apiKey: "boundary", label: "边界条件", hint: null, ph: "你的方案不适合什么情况？有什么前提假设？", required: false }
 ];
 
 const MEMBER_COLORS = [
@@ -512,6 +601,117 @@ function formatLeaderLockMessage(error) {
     return `当前只有组长 ${leader} 可以操作。`;
   }
   return error?.message || "操作失败";
+}
+
+function vpCharCount(value) {
+  return Array.from(String(value || "").trim()).length;
+}
+
+function vpRequiredFieldsValid(fields) {
+  const src = fields || {};
+  return vpCharCount(src.who_raw) >= VP_MIN_CHARS
+    && vpCharCount(src.pain_raw) >= VP_MIN_CHARS
+    && vpCharCount(src.how_raw) >= VP_MIN_CHARS;
+}
+
+function vpFieldsToApi(fields) {
+  const src = fields || {};
+  return {
+    who: String(src.who_raw || "").trim(),
+    pain: String(src.pain_raw || "").trim(),
+    how: String(src.how_raw || "").trim(),
+    alternative: String(src.alternative_raw || "").trim(),
+    boundary: String(src.boundary_raw || "").trim()
+  };
+}
+
+function VpGuidePanel({ guideOpen, setGuideOpen }) {
+  const [openExamples, setOpenExamples] = useState(new Set());
+  const c = VP_FLOW_COLORS;
+  const toggleExample = (index) => {
+    setOpenExamples((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  };
+
+  return (
+    <div style={{ background: c.yellowBg, border: `1px solid ${c.yellowBorder}`, borderRadius: 10, marginBottom: 24, overflow: "hidden" }}>
+      <div onClick={() => setGuideOpen(!guideOpen)} style={{ padding: "14px 18px", cursor: "pointer", userSelect: "none" }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: c.orange }}>
+          {guideOpen ? "▾" : "▸"} 撰写指南 — 如何写出一份好的价值主张
+        </div>
+      </div>
+
+      {guideOpen && (
+        <div style={{ padding: "0 18px 18px" }}>
+          <p style={{ fontSize: 13, color: c.textSec, lineHeight: 1.7, marginBottom: 20, marginTop: 0 }}>
+            一份好的价值主张回答三个问题：你要服务谁、这个人有什么问题、你打算怎么解决。
+          </p>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 10, marginBottom: 24 }}>
+            {VP_THEORY_CARDS.map((card) => (
+              <div key={card.label} style={{ background: c.white, border: `1px solid ${c.border}`, borderRadius: 8, padding: "14px 12px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, borderRadius: "50%", background: c.greenBg, color: c.green, fontSize: 10, fontWeight: 800 }}>{card.label}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700 }}>{card.title}</span>
+                </div>
+                <div style={{ fontSize: 12, color: c.textSec, lineHeight: 1.7, marginBottom: 10 }}>{card.brief}</div>
+                <div style={{ fontSize: 11, color: c.text, lineHeight: 1.8 }}>
+                  {card.layers.map((line, index) => (
+                    <div key={`${card.label}_${index}`} style={{ marginBottom: 4, paddingLeft: 8, borderLeft: `2px solid ${c.greenBorder}` }}>{line}</div>
+                  ))}
+                </div>
+                <div style={{ marginTop: 10, padding: "6px 8px", background: "#fff8f0", borderRadius: 4, fontSize: 10, color: "#8b5e3c", lineHeight: 1.5 }}>
+                  <strong>陷阱：</strong>{card.trap}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+            <div style={{ flex: 1, height: 1, background: c.border }} />
+            <span style={{ fontSize: 11, color: c.textMuted }}>看看别人怎么写的</span>
+            <div style={{ flex: 1, height: 1, background: c.border }} />
+          </div>
+
+          {VP_EXAMPLES.map((example, index) => {
+            const isOpen = openExamples.has(index);
+            return (
+              <div key={example.brand} style={{ marginBottom: 8 }}>
+                <div onClick={() => toggleExample(index)} style={{ padding: "10px 14px", cursor: "pointer", userSelect: "none", background: isOpen ? c.greenBg : c.white, border: `1px solid ${isOpen ? c.greenBorder : c.border}`, borderRadius: isOpen ? "8px 8px 0 0" : 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ color: c.greenLight, fontSize: 12 }}>{isOpen ? "▾" : "▸"}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700 }}>{example.brand}</span>
+                  </div>
+                  <span style={{ fontSize: 11, color: c.textMuted }}>完整 VP 示范</span>
+                </div>
+                {isOpen && (
+                  <div style={{ border: `1px solid ${c.greenBorder}`, borderTop: "none", borderRadius: "0 0 8px 8px", overflow: "hidden" }}>
+                    {example.fields.map((field, fieldIndex) => (
+                      <div key={`${example.brand}_${field.label}`} style={{ padding: "12px 16px", background: fieldIndex % 2 === 0 ? c.white : c.warmBg, borderBottom: fieldIndex < example.fields.length - 1 ? `1px solid ${c.border}` : "none" }}>
+                        <div style={{ fontSize: 10, fontWeight: 800, color: c.green, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>{field.label}</div>
+                        <div style={{ fontSize: 13, color: c.text, lineHeight: 1.9 }}>{field.text}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          <div style={{ marginTop: 16, padding: "12px 14px", background: c.white, borderRadius: 8, border: `1px solid ${c.border}`, fontSize: 12, color: c.textSec, lineHeight: 1.8 }}>
+            <strong style={{ color: c.orange }}>写完后的自检</strong>
+            <div style={{ marginTop: 4 }}>
+              把 WHO、PAIN、HOW 连起来读一遍。一个从未听说过你的产品的人读完后，能否回答：给谁用的？解决什么问题？怎么解决的？——能回答，及格；读完还想追问细节，说明写得好；读完觉得什么都说了但什么都没说，回去重写 PAIN。
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // Card component
@@ -863,6 +1063,7 @@ export default function App() {
   const [vpFeedbackText, setVpFeedbackText] = useState("");
   const [vpFeedbackError, setVpFeedbackError] = useState("");
   const [vpFeedbackRequest, setVpFeedbackRequest] = useState(null);
+  const [vpGuideOpen, setVpGuideOpen] = useState(true);
   const [isGeneratingVpFeedback, setIsGeneratingVpFeedback] = useState(false);
   const [vpPanelError, setVpPanelError] = useState("");
   const [coachBootstrapError, setCoachBootstrapError] = useState("");
@@ -1093,7 +1294,7 @@ export default function App() {
       setVpFeedbackRequest(null);
       setIsGeneratingVpFeedback(false);
       setVpPanelState(confirmation.status === "confirming" ? "confirming" : "scored");
-    } else if (vpPanelStateRef.current !== "confirming") {
+    } else if (!["confirming", "feedback"].includes(vpPanelStateRef.current)) {
       setVpConfirmedFields(emptyConfirmedFields());
       setVpConfirmedScores(null);
       setVpConfirmedAt("");
@@ -1435,6 +1636,8 @@ export default function App() {
   }, [memberId, step, teamId]);
 
   useEffect(() => {
+    // LEGACY: multi-round VP coach bootstrap, retained for research track but not used by the simplified flow.
+    return undefined;
     if (step !== 4 || !teamId) return;
     if (!phase3StateLoaded) return;
     if (coachBootstrappedRef.current) return;
@@ -1773,6 +1976,100 @@ export default function App() {
     } finally {
       setIsConfirmingVp(false);
     }
+  };
+
+  const handleSimplifiedVpFeedback = async () => {
+    const finalCell = teamCell || selectedCell;
+    const finalArch = teamArch || arch;
+    const confirmedFields = buildConfirmPayloadFields(vpConfirmedFields);
+    if (!teamId || !memberId || !finalCell || !finalArch || round1TeamControlsLocked) return;
+    if (!vpRequiredFieldsValid(confirmedFields)) {
+      setVpPanelError(`请先补全 WHO、PAIN、HOW，每项至少 ${VP_MIN_CHARS} 字。`);
+      return;
+    }
+    if (vpFeedbackRequest) {
+      await handleSimplifiedVpSubmit();
+      return;
+    }
+    const grid = toGridId(finalCell);
+    try {
+      setIsGeneratingVpFeedback(true);
+      setVpPanelError("");
+      setVpFeedbackError("");
+      const out = await requestRound1VpFeedback({
+        team_id: teamId,
+        member_id: memberId,
+        grid_id: grid,
+        architecture: finalArch,
+        ...vpFieldsToApi(confirmedFields)
+      });
+      setVpFeedbackRequest(out?.feedback || null);
+      setVpPanelState("feedback");
+    } catch (e) {
+      setVpPanelError(`获取反馈失败：${formatLeaderLockMessage(e)}`);
+    } finally {
+      setIsGeneratingVpFeedback(false);
+    }
+  };
+
+  const handleSimplifiedVpModify = () => {
+    if (round1TeamControlsLocked) return;
+    setVpPanelState("chatting");
+    setVpPanelError("");
+    setVpFeedbackError("");
+  };
+
+  const handleSimplifiedVpSubmit = async () => {
+    const finalCell = teamCell || selectedCell;
+    const finalArch = teamArch || arch;
+    const confirmedFields = buildConfirmPayloadFields(vpConfirmedFields);
+    if (!teamId || !memberId || !finalCell || !finalArch || isConfirmingVp || round1TeamControlsLocked) return;
+    if (!vpRequiredFieldsValid(confirmedFields)) {
+      setVpPanelError(`请先补全 WHO、PAIN、HOW，每项至少 ${VP_MIN_CHARS} 字。`);
+      setVpPanelState("chatting");
+      return;
+    }
+    const grid = toGridId(finalCell);
+    try {
+      setIsConfirmingVp(true);
+      setVpPanelError("");
+      const out = await submitRound1Vp({
+        team_id: teamId,
+        member_id: memberId,
+        grid_id: grid,
+        architecture: finalArch,
+        accepted_feedback: Boolean(vpFeedbackRequest),
+        ...vpFieldsToApi(confirmedFields)
+      });
+      const nextFields = normalizeEditableVpFields(out?.fields || confirmedFields);
+      setVpConfirmedFields(nextFields);
+      setVpConfirmedScores(null);
+      setVpConfirmedAt(String(out?.confirmed_at || out?.confirmedAt || ""));
+      setVpFeedbackText(String(out?.feedback_text || out?.feedback || "").trim());
+      setVpFeedbackError("");
+      setVpPanelState("scored");
+
+      await finalizeDecision(teamId, {
+        grid_id: grid,
+        architecture: finalArch,
+        memberId,
+        conversation_history: [],
+        vp_result: buildVpResultFromConfirmedFields(nextFields)
+      });
+      const latestResults = await getResults(teamId).catch(() => null);
+      if (latestResults) setResults(latestResults);
+      setTeamStatus("phase4");
+      setStatusLine("价值主张已提交并锁定。评分结果将在最终复盘时揭示。");
+      setStep(5);
+    } catch (e) {
+      setVpPanelError(`提交失败：${formatLeaderLockMessage(e)}`);
+    } finally {
+      setIsConfirmingVp(false);
+    }
+  };
+
+  const handleSimplifiedVpContinue = () => {
+    setStep(5);
   };
 
   const handleFreeze = async () => {
@@ -2638,8 +2935,205 @@ export default function App() {
           </div>
         )}
 
-        {/* ── Step 4: 价值主张讨论 ── */}
+        {/* ── Step 4: 简化价值主张流程 ── */}
         {step === 4 && (
+          <div data-testid="vp-simplified-flow" style={{
+            background: VP_FLOW_COLORS.warmBg,
+            borderRadius: 16,
+            padding: "28px 24px",
+            border: "1px solid #e5e7eb",
+            color: VP_FLOW_COLORS.text
+          }}>
+            {vpPanelState === "chatting" && (
+              <>
+                <h2 style={{ fontSize: 20, fontWeight: 800, marginTop: 0, marginBottom: 6 }}>撰写你的价值主张</h2>
+                <p style={{ fontSize: 14, color: VP_FLOW_COLORS.textSec, marginBottom: 20 }}>
+                  请根据你选择的市场定位，写出一份清晰的价值主张
+                </p>
+
+                <div style={{ background: VP_FLOW_COLORS.white, border: `1px solid ${VP_FLOW_COLORS.border}`, borderRadius: 10, padding: "12px 18px", marginBottom: 20, fontSize: 13, color: VP_FLOW_COLORS.textSec, display: "flex", gap: 24, flexWrap: "wrap" }}>
+                  <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: VP_FLOW_COLORS.greenLight, marginRight: 8, verticalAlign: "middle" }} />目标市场：{formatUiCellCn(teamCell || selectedCell || demoSelections[0]?.cell)}</span>
+                  <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: VP_FLOW_COLORS.orange, marginRight: 8, verticalAlign: "middle" }} />产品定位：{archToLabel(teamArch || arch)}</span>
+                </div>
+
+                {isLeaderLockedViewer && (
+                  <div style={{ marginBottom: 16, padding: "10px 12px", borderRadius: 8, background: "#fff7ed", border: "1px solid #fed7aa", color: "#92400e", fontSize: 13 }}>
+                    组长 {leaderBannerName(leaderName)} 正在操作，你可以口头讨论。
+                  </div>
+                )}
+
+                <VpGuidePanel guideOpen={vpGuideOpen} setGuideOpen={setVpGuideOpen} />
+
+                <div style={{ background: VP_FLOW_COLORS.white, border: `1px solid ${VP_FLOW_COLORS.border}`, borderRadius: 10, padding: "20px 18px" }}>
+                  {VP_FORM_FIELDS.map((field) => {
+                    const value = vpConfirmedFields[field.key] || "";
+                    const tooShort = field.required && value.trim() && vpCharCount(value) < VP_MIN_CHARS;
+                    return (
+                      <div key={field.key} style={{ marginBottom: 20 }}>
+                        <label style={{ fontSize: 14, fontWeight: 700, color: VP_FLOW_COLORS.text, display: "block", marginBottom: 4 }}>
+                          {field.label}
+                          {!field.required && <span style={{ fontSize: 12, color: VP_FLOW_COLORS.textLight, fontWeight: 400, marginLeft: 6 }}>（选填）</span>}
+                        </label>
+                        {field.hint && <span style={{ fontSize: 12, color: VP_FLOW_COLORS.textMuted, display: "block", marginBottom: 8 }}>{field.hint}</span>}
+                        <textarea
+                          data-testid={`vp-${field.apiKey}-textarea`}
+                          value={value}
+                          disabled={round1TeamControlsLocked || isGeneratingVpFeedback || isConfirmingVp}
+                          onChange={(e) => handleConfirmedFieldChange(field.key, e.target.value)}
+                          placeholder={field.ph}
+                          style={{
+                            width: "100%",
+                            boxSizing: "border-box",
+                            minHeight: field.required ? 88 : 58,
+                            padding: "10px 12px",
+                            fontSize: 14,
+                            lineHeight: 1.6,
+                            border: `1px solid ${tooShort ? VP_FLOW_COLORS.orange : VP_FLOW_COLORS.border}`,
+                            borderRadius: 8,
+                            resize: "vertical",
+                            fontFamily: "inherit",
+                            outline: "none",
+                            background: round1TeamControlsLocked ? "#f3f4f6" : VP_FLOW_COLORS.white
+                          }}
+                        />
+                        {tooShort && (
+                          <div style={{ fontSize: 12, color: VP_FLOW_COLORS.orange, marginTop: 4 }}>
+                            还需要 {VP_MIN_CHARS - vpCharCount(value)} 个字（至少 {VP_MIN_CHARS} 字）
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {vpPanelError && (
+                    <div style={{ marginBottom: 14, padding: "10px 12px", borderRadius: 8, background: "#fef2f2", border: "1px solid #fecaca", color: "#b91c1c", fontSize: 13 }}>
+                      {vpPanelError}
+                    </div>
+                  )}
+
+                  <button
+                    data-testid="vp-feedback-submit-btn"
+                    type="button"
+                    disabled={round1TeamControlsLocked || isGeneratingVpFeedback || isConfirmingVp || !vpRequiredFieldsValid(vpConfirmedFields)}
+                    onClick={handleSimplifiedVpFeedback}
+                    style={{
+                      width: "100%",
+                      padding: "14px 0",
+                      fontSize: 15,
+                      fontWeight: 700,
+                      border: "none",
+                      borderRadius: 8,
+                      background: !round1TeamControlsLocked && vpRequiredFieldsValid(vpConfirmedFields) ? VP_FLOW_COLORS.green : "#a3b89c",
+                      color: VP_FLOW_COLORS.white,
+                      cursor: !round1TeamControlsLocked && vpRequiredFieldsValid(vpConfirmedFields) ? "pointer" : "not-allowed"
+                    }}
+                  >
+                    {isGeneratingVpFeedback ? "正在获取反馈..." : (vpFeedbackRequest ? "提交定稿" : "提交初稿，获取反馈 →")}
+                  </button>
+                </div>
+              </>
+            )}
+
+            {vpPanelState === "feedback" && (
+              <>
+                <h2 style={{ fontSize: 20, fontWeight: 800, marginTop: 0, marginBottom: 6 }}>策略顾问反馈</h2>
+                <p style={{ fontSize: 14, color: VP_FLOW_COLORS.textSec, marginBottom: 20 }}>
+                  AI 策略顾问已阅读你的初稿，以下是反馈意见
+                </p>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16, marginBottom: 24 }}>
+                  <div style={{ background: VP_FLOW_COLORS.white, border: `1px solid ${VP_FLOW_COLORS.border}`, borderRadius: 10, padding: 18 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: VP_FLOW_COLORS.textMuted, marginBottom: 16 }}>你的初稿</div>
+                    {VP_FORM_FIELDS.filter((field) => ["who_raw", "pain_raw", "how_raw", "alternative_raw"].includes(field.key)).map((field) => (
+                      <div key={`review_${field.key}`} style={{ marginBottom: 12 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: VP_FLOW_COLORS.textLight, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>{field.label.split("—")[0].trim()}</div>
+                        <div style={{ fontSize: 13, color: VP_FLOW_COLORS.text, lineHeight: 1.7 }}>{vpConfirmedFields[field.key] || "(未填写)"}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ background: VP_FLOW_COLORS.greenBg, border: `1px solid ${VP_FLOW_COLORS.greenBorder}`, borderRadius: 10, padding: 18 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: VP_FLOW_COLORS.green, marginBottom: 16 }}>AI 策略顾问评语</div>
+                    {[
+                      { type: "good", label: "做得好的", text: vpFeedbackRequest?.good || "" },
+                      { type: "improve", label: "可以更好的", text: vpFeedbackRequest?.improve || "" },
+                      { type: "suggest", label: "一个建议", text: vpFeedbackRequest?.suggest || "" }
+                    ].map((item) => (
+                      <div key={item.type} style={{ marginBottom: 16 }}>
+                        <span style={{ display: "inline-block", fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 4, marginBottom: 6, background: item.type === "improve" ? VP_FLOW_COLORS.yellowBg : VP_FLOW_COLORS.greenBg, color: item.type === "improve" ? VP_FLOW_COLORS.orange : VP_FLOW_COLORS.green }}>
+                          {item.label}
+                        </span>
+                        <div style={{ fontSize: 13, color: VP_FLOW_COLORS.text, lineHeight: 1.8 }}>{item.text || "暂无反馈。"}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {vpPanelError && (
+                  <div style={{ marginBottom: 14, padding: "10px 12px", borderRadius: 8, background: "#fef2f2", border: "1px solid #fecaca", color: "#b91c1c", fontSize: 13 }}>
+                    {vpPanelError}
+                  </div>
+                )}
+
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                  <button
+                    data-testid="vp-modify-btn"
+                    type="button"
+                    onClick={handleSimplifiedVpModify}
+                    disabled={round1TeamControlsLocked || isConfirmingVp}
+                    style={{ flex: "1 1 220px", padding: "14px 0", fontSize: 15, fontWeight: 700, background: VP_FLOW_COLORS.white, color: VP_FLOW_COLORS.text, border: `1px solid ${VP_FLOW_COLORS.border}`, borderRadius: 8, cursor: "pointer" }}
+                  >
+                    我要修改
+                  </button>
+                  <button
+                    data-testid="vp-final-submit-btn"
+                    type="button"
+                    onClick={handleSimplifiedVpSubmit}
+                    disabled={round1TeamControlsLocked || isConfirmingVp}
+                    style={{ flex: "1 1 220px", padding: "14px 0", fontSize: 15, fontWeight: 700, background: VP_FLOW_COLORS.green, color: VP_FLOW_COLORS.white, border: "none", borderRadius: 8, cursor: "pointer", opacity: isConfirmingVp ? 0.7 : 1 }}
+                  >
+                    {isConfirmingVp ? "正在提交..." : "接受反馈，提交定稿"}
+                  </button>
+                </div>
+                <div style={{ fontSize: 12, color: VP_FLOW_COLORS.textMuted, textAlign: "center", marginTop: 12 }}>提交后将自动评分，评分结果在最终复盘时揭示</div>
+              </>
+            )}
+
+            {vpPanelState === "scored" && (
+              <>
+                <div style={{ background: VP_FLOW_COLORS.white, border: `1px solid ${VP_FLOW_COLORS.border}`, borderRadius: 10, padding: 20, marginBottom: 20 }}>
+                  <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 18, display: "flex", alignItems: "center", gap: 10 }}>
+                    价值主张已提交
+                    <span style={{ background: VP_FLOW_COLORS.greenBg, color: VP_FLOW_COLORS.green, fontSize: 12, fontWeight: 700, padding: "4px 12px", borderRadius: 4 }}>已锁定</span>
+                  </div>
+                  {VP_FORM_FIELDS.filter((field) => ["who_raw", "pain_raw", "how_raw"].includes(field.key)).map((field) => (
+                    <div key={`locked_${field.key}`} style={{ marginBottom: 12 }}>
+                      <div style={{ fontSize: 11, fontWeight: 800, color: VP_FLOW_COLORS.textLight, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>{field.label.split("—")[0].trim()}</div>
+                      <div style={{ fontSize: 13, color: VP_FLOW_COLORS.text, lineHeight: 1.7 }}>{vpConfirmedFields[field.key] || "(未填写)"}</div>
+                    </div>
+                  ))}
+                  <hr style={{ border: "none", borderTop: `1px solid ${VP_FLOW_COLORS.border}`, margin: "18px 0" }} />
+                  <div style={{ fontSize: 13, fontWeight: 700, color: VP_FLOW_COLORS.textMuted, marginBottom: 10 }}>策略顾问评语</div>
+                  <div style={{ background: VP_FLOW_COLORS.warmBg, borderRadius: 8, padding: "14px 16px", fontSize: 13, color: VP_FLOW_COLORS.text, lineHeight: 1.8 }}>
+                    {vpFeedbackText || "价值主张已锁定。评分结果将在最终复盘时揭示。"}
+                  </div>
+                  <div style={{ fontSize: 12, color: VP_FLOW_COLORS.textMuted, marginTop: 12 }}>评分结果将在最终复盘时揭示</div>
+                </div>
+
+                <button
+                  data-testid="vp-continue-btn"
+                  type="button"
+                  onClick={handleSimplifiedVpContinue}
+                  style={{ width: "100%", padding: "14px 0", fontSize: 15, fontWeight: 700, background: VP_FLOW_COLORS.green, color: VP_FLOW_COLORS.white, border: "none", borderRadius: 8, cursor: "pointer" }}
+                >
+                  继续 →
+                </button>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ── Step 4: 价值主张讨论（legacy research track, not rendered in simplified flow） ── */}
+        {false && step === 4 && (
           <div style={{
             background: "#fff", borderRadius: 16, padding: "32px 28px",
             border: "1px solid #e5e7eb",

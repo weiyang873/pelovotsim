@@ -159,6 +159,31 @@ export async function confirmAndScoreVp(payload) {
   return asJson(res);
 }
 
+export async function requestRound1VpFeedback(payload) {
+  const res = await fetch(`${BASE}/round1/vp-feedback`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {})
+  });
+  return asJson(res);
+}
+
+export async function submitRound1Vp(payload) {
+  const res = await fetch(`${BASE}/round1/vp-submit`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {})
+  });
+  const data = await res.json();
+  if (!res.ok || (data.ok === false)) {
+    const error = new Error(data.error || "请求失败");
+    error.code = data.error || "request_failed";
+    error.payload = data;
+    throw error;
+  }
+  return data;
+}
+
 export async function generateVpFeedback(payload) {
   const res = await fetch(`${BASE}/vp/generate-feedback`, {
     method: "POST",
