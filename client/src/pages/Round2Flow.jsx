@@ -1194,6 +1194,11 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
   );
   const vpRecapText = buildVpRecapSentence(vpSummary, summarizeVpText(vpRawText));
   const resultVpScore = normalizeScoreValue(teamRecap?.vp_score);
+  const recapVpC = normalizeScoreValue(teamRecap?.vp_scores?.C);
+  const recapVpG = normalizeScoreValue(teamRecap?.vp_scores?.G);
+  const recapVpE = normalizeScoreValue(teamRecap?.vp_scores?.E);
+  const hasRound1VpBreakdown = resultVpScore != null && recapVpC != null && recapVpG != null && recapVpE != null;
+  const round1ScoresRevealed = hasRound1VpBreakdown;
   const resultFeedbackText = String(teamRecap?.vp_feedback || "").trim();
   const wtpFinalPct = Number.isFinite(Number(teamRecap?.wtp_breakdown?.final_pct))
     ? Number(teamRecap.wtp_breakdown.final_pct)
@@ -2462,16 +2467,18 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
             </div>
           </div>
 
-          <div style={{padding:"16px 18px",borderRadius:10,border:"1px solid #e5e7eb",marginBottom:12}}>
-            <div style={{fontSize:14,fontWeight:700,color:"#374151",marginBottom:12}}>价值主张评分</div>
-            <div style={{maxWidth:340,margin:"0 auto",padding:"18px 16px",borderRadius:12,background:"#f9fafb",border:"1px solid #e5e7eb",textAlign:"center"}}>
-              <div style={{fontSize:12,color:"#6b7280",fontWeight:700,marginBottom:8}}>VP 综合评分</div>
-              <div data-testid="r2-recap-vpscore" style={{fontSize:42,fontWeight:800,color:"#111827",lineHeight:1}}>{resultVpScore.toFixed(1)}</div>
-              <div style={{marginTop:10}}>
-                <Round1StarRating score={resultVpScore} />
+          {round1ScoresRevealed && (
+            <div style={{padding:"16px 18px",borderRadius:10,border:"1px solid #e5e7eb",marginBottom:12}}>
+              <div style={{fontSize:14,fontWeight:700,color:"#374151",marginBottom:12}}>价值主张评分</div>
+              <div style={{maxWidth:340,margin:"0 auto",padding:"18px 16px",borderRadius:12,background:"#f9fafb",border:"1px solid #e5e7eb",textAlign:"center"}}>
+                <div style={{fontSize:12,color:"#6b7280",fontWeight:700,marginBottom:8}}>VP 综合评分</div>
+                <div data-testid="r2-recap-vpscore" style={{fontSize:42,fontWeight:800,color:"#111827",lineHeight:1}}>{resultVpScore.toFixed(1)}</div>
+                <div style={{marginTop:10}}>
+                  <Round1StarRating score={resultVpScore} />
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           <div style={{padding:"16px 18px",borderRadius:10,border:"1px solid #e5e7eb",marginBottom:12}}>
             <div style={{fontSize:14,fontWeight:700,color:"#374151",marginBottom:8}}>评分评语</div>
@@ -3569,7 +3576,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                   </div>
                   <div style={{fontSize:13,color:"#475569",lineHeight:1.8}}>
                     <div>市场锦囊反馈：<strong>{teamRecap?.jinang_market?.match_tier || "待揭示"}</strong></div>
-                    <div>VP 评分：<strong>C {normalizeScoreValue(teamRecap?.vp_scores?.C).toFixed(1)} / G {normalizeScoreValue(teamRecap?.vp_scores?.G).toFixed(1)} / E {normalizeScoreValue(teamRecap?.vp_scores?.E).toFixed(1)}</strong></div>
+                    <div>VP 评分：<strong>{round1ScoresRevealed ? `C ${recapVpC.toFixed(1)} / G ${recapVpG.toFixed(1)} / E ${recapVpE.toFixed(1)}` : "待揭示"}</strong></div>
                   </div>
                   {recapComparison.alignmentLabel && (
                     <div style={{marginTop:10,padding:"10px 12px",borderRadius:10,background:"#ffffff",border:"1px dashed #cbd5e1",fontSize:12,color:"#475569",lineHeight:1.7}}>

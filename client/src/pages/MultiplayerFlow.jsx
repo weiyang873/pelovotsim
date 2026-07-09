@@ -1747,11 +1747,6 @@ export default function App() {
         grid_id: grid,
         architecture: finalArch,
         memberId,
-        scores: normalizeApiScores({
-          coverage: out?.scores?.C,
-          generalizability: out?.scores?.G,
-          effectiveness: out?.scores?.E
-        }),
         conversation_history: coachHistory,
         vp_result: out?.vp_result || buildVpResultFromConfirmedFields(confirmedFields)
       });
@@ -1887,6 +1882,7 @@ export default function App() {
   const settleItems = Array.isArray(results?.settle?.settlements) ? results.settle.settlements : [];
   const r1 = results?.r1_result || {};
   const resultVpScore = normalizeScoreValue(results?.vp_scores?.VPscore ?? r1?.VPscore);
+  const round1ScoresRevealed = results?.r1_results_revealed === true || resultVpScore != null;
   const resultFeedbackText = String(results?.vp_feedback || vpFeedbackText || "").trim();
   const resultMarketJinang = results?.jinang?.market_jinang || null;
   const finalVpText = String(results?.team?.final_vp_text || "").trim();
@@ -3102,32 +3098,34 @@ export default function App() {
               </div>
             </div>
 
-            <div style={{
-              padding: "20px", borderRadius: 12,
-              border: "1.5px solid #e5e7eb",
-              marginBottom: 16
-            }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#374151", marginBottom: 14 }}>价值主张评分</div>
+            {round1ScoresRevealed && (
               <div style={{
-                maxWidth: 340,
-                margin: "0 auto 18px",
-                padding: "18px 16px",
-                borderRadius: 12,
-                background: "#f9fafb",
-                border: "1px solid #e5e7eb",
-                textAlign: "center"
+                padding: "20px", borderRadius: 12,
+                border: "1.5px solid #e5e7eb",
+                marginBottom: 16
               }}>
-                <div style={{ fontSize: 12, color: "#6b7280", fontWeight: 700, marginBottom: 8 }}>
-                  VP 综合评分
-                </div>
-                <div style={{ fontSize: 42, fontWeight: 800, color: "#111827", lineHeight: 1 }}>
-                  {formatScore(resultVpScore)}
-                </div>
-                <div style={{ marginTop: 10 }}>
-                  <StarRating score={resultVpScore} />
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#374151", marginBottom: 14 }}>价值主张评分</div>
+                <div style={{
+                  maxWidth: 340,
+                  margin: "0 auto 18px",
+                  padding: "18px 16px",
+                  borderRadius: 12,
+                  background: "#f9fafb",
+                  border: "1px solid #e5e7eb",
+                  textAlign: "center"
+                }}>
+                  <div style={{ fontSize: 12, color: "#6b7280", fontWeight: 700, marginBottom: 8 }}>
+                    VP 综合评分
+                  </div>
+                  <div style={{ fontSize: 42, fontWeight: 800, color: "#111827", lineHeight: 1 }}>
+                    {formatScore(resultVpScore)}
+                  </div>
+                  <div style={{ marginTop: 10 }}>
+                    <StarRating score={resultVpScore} />
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             <div style={{
               padding: "20px", borderRadius: 12,

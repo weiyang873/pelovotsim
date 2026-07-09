@@ -2096,6 +2096,7 @@ async function buildRound2Recap(teamId, phase4Body) {
   console.log("[R2 pricing] 显示给学生的 WTPadj:", displayedWtpAdj);
 
   return {
+    r1_results_revealed: revealR1Results,
     final_grid_id: team.final_grid_id,
     architecture: team.final_architecture || "",
     ...(revealR1Results

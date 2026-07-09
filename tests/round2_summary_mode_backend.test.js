@@ -401,15 +401,55 @@ test("hideDeferredRound1Fields strips WTPmedian before reveal while preserving s
       C: 4.1,
       G: 4.2,
       E: 4.3,
+      VPscore: 4.2,
       WTPmedian: 15500,
       WTPref: 16000
     },
+    vp_score: 4.2,
+    vp_scores: { C: 4.1, G: 4.2, E: 4.3 },
     vp_feedback: "ok",
     vp_summary: { who: "A", pain: "B", how: "C", boundary: "D" }
   });
   const serialized = JSON.stringify(hidden);
   assert.equal(serialized.includes("WTPmedian"), false);
   assert.equal(serialized.includes("WTPref"), false);
+  assert.equal(serialized.includes("VPscore"), false);
+  assert.equal(serialized.includes("\"vp_score\""), false);
+  assert.equal(serialized.includes("\"vp_scores\""), false);
   assert.equal(hidden.vp_feedback, "ok");
   assert.equal(hidden.team.status, "phase4");
+});
+
+test("sanitizeStudentVpConfirmationResponse keeps feedback text but strips numeric vp outputs", () => {
+  const sanitized = TeamRoutes.sanitizeStudentVpConfirmationResponse({
+    ok: true,
+    feedback: "评语保留",
+    confirmedAt: "2026-07-09T00:00:00.000Z",
+    fields: {
+      who_raw: "独居白领",
+      pain_raw: "下班后长期孤独",
+      how_raw: "通过主动陪伴降低情绪落差",
+      alternative_raw: "短视频和聊天软件",
+      boundary_raw: "不替代心理治疗"
+    },
+    session_id: "session_demo",
+    scores: { C: 4.2, G: 4.1, E: 4.0, VPscore: 4.1 },
+    wtp: { percentChange: 8 },
+    vp_result: {
+      target_customer: "独居白领",
+      scenario_pain: "下班后长期孤独",
+      value_creation: "通过主动陪伴降低情绪落差",
+      boundary: "不替代心理治疗",
+      scores: {
+        C: { score: 4.2, feedback: "" },
+        G: { score: 4.1, feedback: "" },
+        E: { score: 4.0, feedback: "" }
+      }
+    }
+  });
+  assert.equal(sanitized.feedback, "评语保留");
+  assert.equal("scores" in sanitized, false);
+  assert.equal("wtp" in sanitized, false);
+  assert.equal("scores" in sanitized.vp_result, false);
+  assert.equal(sanitized.session_id, "session_demo");
 });

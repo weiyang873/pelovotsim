@@ -164,6 +164,23 @@ const DEFERRED_SENSITIVE_KEY_SET = new Set([
   "match_strength"
 ]);
 
+const DEFERRED_VP_SCORE_KEY_SET = new Set([
+  "vp_score",
+  "vp_scores",
+  "VPscore",
+  "coverage",
+  "generalizability",
+  "effectiveness",
+  "C",
+  "G",
+  "E",
+  "Eadj",
+  "E_raw",
+  "raw_C",
+  "raw_G",
+  "raw_E"
+]);
+
 function shouldStripDeferredKey(key) {
   const text = String(key || "").trim();
   if (!text) return false;
@@ -174,6 +191,27 @@ function shouldStripDeferredKey(key) {
   if (lower === "gm" || lower.startsWith("gm_") || lower.endsWith("_gm") || lower.includes("gmmax")) return true;
   if (lower.includes("wtpref") || lower.includes("wtpadj") || lower.includes("wtpmean") || lower.includes("wtpmedian")) return true;
   return false;
+}
+
+function shouldStripDeferredVpScoreKey(key) {
+  const text = String(key || "").trim();
+  if (!text) return false;
+  if (DEFERRED_VP_SCORE_KEY_SET.has(text)) return true;
+  const lower = text.toLowerCase();
+  return lower === "vp_score"
+    || lower === "vp_scores"
+    || lower === "vpscore"
+    || lower === "coverage"
+    || lower === "generalizability"
+    || lower === "effectiveness"
+    || lower === "c"
+    || lower === "g"
+    || lower === "e"
+    || lower === "eadj"
+    || lower === "e_raw"
+    || lower === "raw_c"
+    || lower === "raw_g"
+    || lower === "raw_e";
 }
 
 function stripDeferredSensitiveFields(value) {
@@ -189,9 +227,22 @@ function stripDeferredSensitiveFields(value) {
   return next;
 }
 
+function stripDeferredVpScoreFields(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => stripDeferredVpScoreFields(item));
+  }
+  if (!value || typeof value !== "object") return value;
+  const next = {};
+  for (const [key, raw] of Object.entries(value)) {
+    if (shouldStripDeferredVpScoreKey(key)) continue;
+    next[key] = stripDeferredVpScoreFields(raw);
+  }
+  return next;
+}
+
 function hideDeferredRound1Fields(payload) {
   const src = payload && typeof payload === "object" ? payload : {};
-  const next = stripDeferredSensitiveFields(src);
+  const next = stripDeferredVpScoreFields(stripDeferredSensitiveFields(src));
 
   if (next.wtp_breakdown && typeof next.wtp_breakdown === "object") {
     const nextBreakdown = { ...next.wtp_breakdown };
@@ -1233,6 +1284,19 @@ function buildConfirmedVpResult(confirmedFields, scores = null) {
   return result;
 }
 
+function sanitizeStudentVpConfirmationResponse(payload) {
+  const src = payload && typeof payload === "object" ? payload : {};
+  const fields = normalizeConfirmedFieldsPayload(src.fields);
+  return {
+    ok: src.ok === true,
+    feedback: String(src.feedback || "").trim(),
+    confirmedAt: String(src.confirmedAt || "").trim(),
+    fields,
+    session_id: String(src.session_id || "").trim() || null,
+    vp_result: buildConfirmedVpResult(fields)
+  };
+}
+
 function extractTextValue(src, key) {
   const text = String(src || "");
   const re = new RegExp(`${key}\\s*[：:]\\s*([^\\n]+)`);
@@ -1911,45 +1975,14 @@ async function confirmAndScoreVp(body) {
       vp_text: vpText
     }).catch(() => {});
 
-    return makeResponse(200, {
+    return makeResponse(200, sanitizeStudentVpConfirmationResponse({
       ok: true,
-      scores: normalizedScores,
       feedback: feedback || "",
       confirmedAt,
       fields: confirmedFields,
       session_id: persisted.sessionId,
-      vp_result: buildConfirmedVpResult(confirmedFields, normalizedScores),
-      jinang: {
-        marketJinang: previewMarketJinang?.top ? toStudentFacingMatch({
-          id: previewMarketJinang.top.id,
-          name: previewMarketJinang.top.name,
-          member_id: previewMarketJinang.top.member_id,
-          member_name: previewMarketJinang.top.member_name,
-          match_strength: Number(previewMarketJinang.top.match_strength || 0),
-          bonus: Number(previewMarketJinang.top.bonus || 0)
-        }) : null,
-        marketJinangs: Array.isArray(previewMarketJinang?.items)
-          ? previewMarketJinang.items.map((item) => toStudentFacingMatch({
-              id: item.id,
-              name: item.name,
-              member_id: item.member_id,
-              member_name: item.member_name,
-              match_strength: Number(item.match_strength || 0),
-              bonus: Number(item.bonus || 0)
-            }))
-          : [],
-        marketJinangBonusTotal: round1Outcome.jinang_wtp_bonus
-      },
-      wtp: {
-        vpEffect: round1Outcome.wtp_vp_effect,
-        jinangBonus: round1Outcome.jinang_wtp_bonus,
-        multiplier: round1Outcome.wtp_multiplier,
-        lambdaG: round1Outcome.lambda_G,
-        lambdaE: round1Outcome.lambda_E,
-        rhoC: round1Outcome.rho_C,
-        percentChange: toCompressedPercent(round1Outcome.wtp_multiplier)
-      }
-    });
+      vp_result: buildConfirmedVpResult(confirmedFields)
+    }));
   } catch (e) {
     console.error("[confirm-and-score] error:", e);
     return makeResponse(500, { ok: false, error: "评分失败，请重试" });
@@ -2650,6 +2683,7 @@ async function phase4Data(teamId, options = {}) {
     const revealR1Results = sessionConfig.reveal_r1_results === true || String(team?.r2_status || "").trim() === "R2_SUBMITTED";
     const studentPayload = {
       ...studentData,
+      r1_results_revealed: revealR1Results,
       r1_result: sanitizeStudentR1Result(studentData.r1_result),
       wtp_breakdown: studentData?.wtp_breakdown
         ? {
@@ -2948,6 +2982,7 @@ module.exports = {
   getTeamStatus,
   getMemberJinangApi,
   hideDeferredRound1Fields,
+  sanitizeStudentVpConfirmationResponse,
   clipScore,
   lambdaMap,
   rhoDiscount,
