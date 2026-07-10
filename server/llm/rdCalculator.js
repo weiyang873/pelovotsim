@@ -51,6 +51,14 @@ function scaleGlobalMoneyParams(globalParams) {
   return next;
 }
 
+function scaleDefaultMoneyParams(params) {
+  const next = { ...(params || {}) };
+  ["cost_ref"].forEach((key) => {
+    if (next[key] != null) next[key] = scaleMoneyValue(next[key]);
+  });
+  return next;
+}
+
 function scaleCapabilityGroups(rawGroups) {
   const cloned = JSON.parse(JSON.stringify(rawGroups || { groups: [] }));
   (cloned.groups || []).forEach((group) => {
@@ -131,7 +139,7 @@ const GRID_PRIORS_V3 = (() => {
   }
 })();
 
-const DEFAULT_PARAMS = {
+const DEFAULT_PARAMS = scaleDefaultMoneyParams({
   kappa: 1.5,
   lambda: 0.3,
   tau_core: 0.18,
@@ -189,7 +197,7 @@ const DEFAULT_PARAMS = {
   slope_budget: 0.15,
   slope_cap: 0.1,
   risk_per_excess: 0.02
-};
+});
 
 const TIER_ORDER = { low: 1, mid: 2, high: 3 };
 const NRE_TIER_MULT = { low: 0.6, mid: 1.0, high: 1.6 };
@@ -524,7 +532,11 @@ function calculateCOGSbase(Q) {
 }
 
 function computeValueScore(coverCore, coverNice, subLift, risk, positiveDCOGS, cogsAnchor, params = DEFAULT_PARAMS) {
-  const costRatio = Number(positiveDCOGS || 0) / Number(params.cost_ref || 5000);
+  const costRef = Number(params.cost_ref);
+  if (!Number.isFinite(costRef) || costRef <= 0) {
+    throw new Error("params.cost_ref is required for computeValueScore");
+  }
+  const costRatio = Number(positiveDCOGS || 0) / costRef;
   const raw = params.omega_core * coverCore +
     params.omega_nice * coverNice +
     params.omega_sub * subLift -
