@@ -42,6 +42,7 @@ const ROOT = path.join(__dirname, "..", "..");
 let __round2RoutesSchemaPromise = null;
 const CONFIG_DIR = path.join(ROOT, "game_config_v0.1");
 const GRID_PRIOR_PATH = path.join(ROOT, "data", "grid_priors_v4_cap_weights.json");
+const ROUND2_ENGINE_PARAMS_PATH = path.join(CONFIG_DIR, "round2_engine_params.json");
 const STATIC_PERSONA_REPORTS_PATH = path.join(CONFIG_DIR, "persona_reports_v1.json");
 const GRID_DIMENSION_EVIDENCE_PATH = path.join(CONFIG_DIR, "grid_dimension_evidence_v1.json");
 let cachedEngineConfig = null;
@@ -50,6 +51,12 @@ let cachedStaticPersonaReports = null;
 let cachedGridDimensionEvidence = null;
 const ROUND2_PERSONA_POOL_VERSION = 5;
 const SUMMARY_DYNAMIC_EVI_MAX = 0.85;
+const DEFAULT_ROUND2_PRICING_CONTEXT = {
+  price_min: 1000,
+  price_max: 6000,
+  price_step: 100,
+  default_price: 3500
+};
 
 const DIM_KEYS_SHORT = ["interaction", "perception", "motion", "safety", "extend", "ops"];
 const DIM_SHORT_TO_GROUP = {
@@ -209,6 +216,61 @@ function scaleRound1MoneyValue(value) {
   const num = Number(value);
   if (!Number.isFinite(num) || num <= 0) return null;
   return Number((num * PRICE_SCALE).toFixed(6));
+}
+
+function clampNumber(value, min, max) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return min;
+  return Math.max(min, Math.min(max, num));
+}
+
+function loadRound2PricingContextConfig() {
+  let raw = {};
+  try {
+    raw = JSON.parse(fs.readFileSync(ROUND2_ENGINE_PARAMS_PATH, "utf8"));
+  } catch (_) {
+    raw = {};
+  }
+  const src = raw.pricing_ui && typeof raw.pricing_ui === "object"
+    ? raw.pricing_ui
+    : {};
+  const min = Number(src.price_min ?? DEFAULT_ROUND2_PRICING_CONTEXT.price_min);
+  const max = Number(src.price_max ?? DEFAULT_ROUND2_PRICING_CONTEXT.price_max);
+  const step = Number(src.price_step ?? DEFAULT_ROUND2_PRICING_CONTEXT.price_step);
+  const defaultPrice = Number(src.default_price ?? DEFAULT_ROUND2_PRICING_CONTEXT.default_price);
+  if (!Number.isFinite(min) || !Number.isFinite(max) || !Number.isFinite(step) || !Number.isFinite(defaultPrice) || min <= 0 || max <= min || step <= 0) {
+    throw new Error("round2 pricing_ui 配置无效");
+  }
+  return {
+    price_min: min,
+    price_max: max,
+    price_step: step,
+    default_price: clampNumber(defaultPrice, min, max)
+  };
+}
+
+function buildRound2PricingContextForTeam(_team) {
+  return loadRound2PricingContextConfig();
+}
+
+function validateRound2PriceForTeam(team, price) {
+  const pricing = buildRound2PricingContextForTeam(team);
+  const num = Number(price);
+  if (!Number.isFinite(num) || num <= 0) {
+    return {
+      ok: false,
+      pricing,
+      message: "请输入有效的产品售价"
+    };
+  }
+  if (num < pricing.price_min || num > pricing.price_max) {
+    return {
+      ok: false,
+      pricing,
+      message: `产品售价需在 ¥${pricing.price_min.toLocaleString()} 到 ¥${pricing.price_max.toLocaleString()} 之间`
+    };
+  }
+  return { ok: true, pricing };
 }
 
 function buildLeaderMeta(team, requesterMemberId = "") {
@@ -2116,6 +2178,7 @@ async function buildRound2Recap(teamId, phase4Body) {
   });
   const Pmax = Math.round(Number(round2Wtp.WTPref || base.pmax || base.P_max || 14200));
   const WTP = Math.round(Number(round2Wtp.WTPmedian || round2Wtp.WTPref || base.WTP || base.wtp_median_price || Pmax));
+  const pricingContext = buildRound2PricingContextForTeam(team);
   const e = Number(base.e || base.price_elasticity || 1.2);
   const f = getRound2ChannelFeeByGrid(team.final_grid_id);
   const COGSbase = Number(GLOBAL_PARAMS.V || base.cogs_proxy || base.COGS_proxy || 2000);
@@ -2214,8 +2277,13 @@ async function buildRound2Recap(teamId, phase4Body) {
       matched_market_count: matchedMarketCount,
       matched_tech_count: matchedTechCount
     },
-    P: Math.round(Number(Pmax || 0) * 0.85),
+    P: pricingContext.default_price,
     Pmax,
+    pricing_context: pricingContext,
+    price_min: pricingContext.price_min,
+    price_max: pricingContext.price_max,
+    price_step: pricingContext.price_step,
+    default_price: pricingContext.default_price,
     WTP,
     e,
     f,
@@ -4517,6 +4585,7 @@ async function mergeApi(body) {
         selections: teamSelections
       });
     }
+    const pricingContext = buildRound2PricingContextForTeam(team);
 
     const responseBody = {
       ok: true,
@@ -4531,6 +4600,11 @@ async function mergeApi(body) {
       mergedInterview,
       selected_persona_id: personaChoice?.persona_id || personaChoice?.archetype_id || "",
       team_draft: draft,
+      pricing_context: pricingContext,
+      price_min: pricingContext.price_min,
+      price_max: pricingContext.price_max,
+      price_step: pricingContext.price_step,
+      default_price: pricingContext.default_price,
       ...buildLeaderMeta(team, memberId)
     };
     console.log("[Round2][TeamMergeResponseBody]", JSON.stringify(responseBody));
@@ -4552,8 +4626,14 @@ async function saveTeamDraftApi(body) {
     const patch = {};
     if (body?.price !== undefined) {
       const price = Number(body.price);
-      if (!Number.isFinite(price) || price <= 0) {
-        return makeResponse(400, { ok: false, error: "valid price required" });
+      const priceCheck = validateRound2PriceForTeam(permission.team, price);
+      if (!priceCheck.ok) {
+        return makeResponse(400, {
+          ok: false,
+          error: "price_out_of_range",
+          message: priceCheck.message,
+          ...priceCheck.pricing
+        });
       }
       patch.price = price;
     }
@@ -4603,6 +4683,15 @@ async function teamSubmitApi(body) {
     }
     if (!Number.isFinite(price) || price <= 0) {
       return makeResponse(400, { ok: false, error: "valid price required" });
+    }
+    const priceCheck = validateRound2PriceForTeam(team, price);
+    if (!priceCheck.ok) {
+      return makeResponse(400, {
+        ok: false,
+        error: "price_out_of_range",
+        message: priceCheck.message,
+        ...priceCheck.pricing
+      });
     }
 
     const sessionConfig = await getSessionConfig(sessionId);
@@ -4706,6 +4795,7 @@ async function teamStatusApi(query) {
     if (lite) {
       const teamState = await getTeamRound2State(teamId);
       if (!teamState) return makeResponse(404, { ok: false, error: "team not found" });
+      const pricingContext = buildRound2PricingContextForTeam(teamState);
       const sessionConfig = await getSessionConfig(normalizeSessionId(query?.sessionId || query?.session_id));
       const member = memberId
         ? (teamState.members || []).find((item) => item.id === memberId) || null
@@ -4736,6 +4826,11 @@ async function teamStatusApi(query) {
         duration_minutes: teamState.r2.durationMinutes,
         ...buildLeaderMeta(teamState, memberId),
         session_config: sessionConfig,
+        pricing_context: pricingContext,
+        price_min: pricingContext.price_min,
+        price_max: pricingContext.price_max,
+        price_step: pricingContext.price_step,
+        default_price: pricingContext.default_price,
         member: memberState,
         member_state: memberState,
         members: teamState.members.map((item) => ({
@@ -4755,6 +4850,7 @@ async function teamStatusApi(query) {
 
     const team = await getTeam(teamId);
     if (!team) return makeResponse(404, { ok: false, error: "team not found" });
+    const pricingContext = buildRound2PricingContextForTeam(team);
     await ensureAssignments(team);
     const sessionId = normalizeSessionId(query?.sessionId || query?.session_id);
     const personaChoice = await readPersonaChoice(teamId, sessionId);
@@ -4839,6 +4935,11 @@ async function teamStatusApi(query) {
       duration_minutes: teamState.r2.durationMinutes,
       ...buildLeaderMeta(teamState, memberId),
       session_config: sessionConfig,
+      pricing_context: pricingContext,
+      price_min: pricingContext.price_min,
+      price_max: pricingContext.price_max,
+      price_step: pricingContext.price_step,
+      default_price: pricingContext.default_price,
       team_draft: teamDraft,
       persona_choice: sanitizeStudentPersonaChoice(personaChoice),
       persona_reports: personaReports,
@@ -4972,6 +5073,8 @@ module.exports = {
     sanitizeStudentMergedInterview,
     sanitizeStudentTeamResult,
     sanitizeStudentStoredRadar,
-    getGridDimensionEvidenceRow
+    getGridDimensionEvidenceRow,
+    buildRound2PricingContextForTeam,
+    validateRound2PriceForTeam
   }
 };

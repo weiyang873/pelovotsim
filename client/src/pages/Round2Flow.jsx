@@ -93,9 +93,6 @@ const MIN_INTERVIEWS_REQUIRED = 2;
 const MIN_TEAM_CARDS = 6;
 const INTERVIEW_START_DEBOUNCE_MS = 3000;
 const PRICE_SCALE = 0.3;
-const ROUND2_DEFAULT_PRICE = 4000;
-const ROUND2_PRICE_MIN = 2000;
-const ROUND2_PRICE_MAX = 5000;
 
 function createEmptyInterviewProgress() {
   return {
@@ -269,7 +266,6 @@ const calcCost = (s) => {
 
 // Real parameters from framework doc §12.2, §11.3, §16.1, scaled by PRICE_SCALE.
 const V = 2000 * PRICE_SCALE;         // variable cost per unit
-const F_PRICE = ROUND2_DEFAULT_PRICE; // demo reference price at current waterline
 // GM = (P×(1-f) - V - dCOGS) / P
 const calcGM = (dCOGS, price, f, baseCost = V) => {
   const netRev = price * (1 - f);
@@ -446,6 +442,36 @@ function parseFiniteNumberOrNull(value) {
 function parsePositiveNumberOrNull(value) {
   const num = parseFiniteNumberOrNull(value);
   return num != null && num > 0 ? num : null;
+}
+
+function normalizePricingContext(...sources) {
+  for (const src of sources) {
+    const ctx = src?.pricing_context || src;
+    if (!ctx || typeof ctx !== "object") continue;
+    const min = parsePositiveNumberOrNull(ctx.price_min);
+    const max = parsePositiveNumberOrNull(ctx.price_max);
+    if (min == null || max == null || max <= min) continue;
+    const step = parsePositiveNumberOrNull(ctx.price_step) || 100;
+    const defaultPrice = parsePositiveNumberOrNull(ctx.default_price)
+      || parsePositiveNumberOrNull(ctx.P)
+      || Math.round((min + max) / 2 / step) * step;
+    return {
+      price_min: min,
+      price_max: max,
+      price_step: step,
+      default_price: Math.max(min, Math.min(max, defaultPrice))
+    };
+  }
+  return null;
+}
+
+function clampPriceToContext(price, pricingContext) {
+  const parsed = parsePositiveNumberOrNull(price);
+  if (parsed == null) return parsePositiveNumberOrNull(pricingContext?.default_price) || 0;
+  const min = parsePositiveNumberOrNull(pricingContext?.price_min);
+  const max = parsePositiveNumberOrNull(pricingContext?.price_max);
+  if (min == null || max == null) return parsed;
+  return Math.max(min, Math.min(max, parsed));
 }
 
 function buildRadarFromSelections(sels) {
@@ -816,13 +842,14 @@ function formatInterviewExportMessage(message, fallbackSpeaker = "访谈对象")
 export default function App() {
   const [step, setStep] = useState(0);
   const [sel, setSel] = useState({});
-  const [teamPrice, setTeamPrice] = useState(ROUND2_DEFAULT_PRICE);
+  const [teamPrice, setTeamPrice] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [teamId, setTeamId] = useState("");
   const [memberId, setMemberId] = useState("");
   const [sessionId, setSessionId] = useState("default");
   const [teamInfo, setTeamInfo] = useState(null);
   const [teamRecap, setTeamRecap] = useState(null);
+  const [round2PricingContext, setRound2PricingContext] = useState(null);
   const [sessionConfig, setSessionConfig] = useState({ reveal_r1_results: false, hold_before_r2: false, interview_mode: "summary" });
   const [interviewMode, setInterviewMode] = useState("summary");
   const [personaReports, setPersonaReports] = useState([]);
@@ -926,6 +953,10 @@ export default function App() {
 
         setTeamInfo(teamRes.team);
         setTeamRecap(recapRes || null);
+        const initialPricingContext = normalizePricingContext(stateRes, recapRes);
+        if (initialPricingContext) {
+          setRound2PricingContext(initialPricingContext);
+        }
         setSessionConfig(stateRes?.session_config || { reveal_r1_results: false, hold_before_r2: false, interview_mode: "summary" });
         setMemberState(stateRes?.member || null);
         setTeamStatus(String(stateRes?.team_status || ""));
@@ -958,7 +989,7 @@ export default function App() {
           setTeamDraftSelections(mappedDraft);
           const draftPrice = parsePositiveNumberOrNull(stateRes?.team_draft?.price);
           if (draftPrice != null) {
-            setTeamPrice(draftPrice);
+            setTeamPrice(clampPriceToContext(draftPrice, initialPricingContext));
           }
         }
 
@@ -969,14 +1000,15 @@ export default function App() {
           setTeamResultSnapshot(snapshotRes.result || null);
           const submittedPrice = parsePositiveNumberOrNull(snapshotRes?.submission?.price);
           if (submittedPrice != null) {
-            setTeamPrice(submittedPrice);
+            setTeamPrice(clampPriceToContext(submittedPrice, initialPricingContext));
           }
           setStep(5);
           setSubmitted(true);
         } else {
-          const recapPrice = parsePositiveNumberOrNull(recapRes?.P);
+          const recapPrice = parsePositiveNumberOrNull(initialPricingContext?.default_price)
+            || parsePositiveNumberOrNull(recapRes?.P);
           if (recapPrice != null) {
-            setTeamPrice(recapPrice);
+            setTeamPrice(clampPriceToContext(recapPrice, initialPricingContext));
           }
         }
         if (stateRes?.team_status && !snapshotRes?.submission) {
@@ -1045,6 +1077,10 @@ export default function App() {
         const nextStatus = String(data?.team_status || "");
         setMemberState(data?.member || null);
         setSessionConfig(data?.session_config || { reveal_r1_results: false, hold_before_r2: false, interview_mode: "summary" });
+        const nextPricingContext = normalizePricingContext(data);
+        if (nextPricingContext) {
+          setRound2PricingContext(nextPricingContext);
+        }
         setInterviewMode(String(data?.session_config?.interview_mode || "summary").trim().toLowerCase() === "live" ? "live" : "summary");
         const hasPersonaChoice = Object.prototype.hasOwnProperty.call(data || {}, "persona_choice");
         const nextChoice = hasPersonaChoice ? (data?.persona_choice || null) : selectedPersonaChoiceRef.current;
@@ -1075,7 +1111,7 @@ export default function App() {
             setTeamDraftSelections(mappedDraft);
             const draftPrice = parsePositiveNumberOrNull(data?.team_draft?.price);
             if (draftPrice != null) {
-              setTeamPrice(draftPrice);
+              setTeamPrice(clampPriceToContext(draftPrice, nextPricingContext));
             }
           }
         }
@@ -1287,6 +1323,15 @@ export default function App() {
 
 const indCalc = useMemo(() => calcCost(sel), [sel]);
   const teamCalc = useMemo(() => calcCost(teamSel), [teamSel]);
+  const effectivePricingContext = useMemo(
+    () => normalizePricingContext(round2PricingContext, mergeData, teamRecap),
+    [round2PricingContext, mergeData, teamRecap]
+  );
+  const priceMin = parsePositiveNumberOrNull(effectivePricingContext?.price_min) || 0;
+  const priceMax = parsePositiveNumberOrNull(effectivePricingContext?.price_max) || 0;
+  const priceStep = parsePositiveNumberOrNull(effectivePricingContext?.price_step) || 100;
+  const fallbackPrice = parsePositiveNumberOrNull(effectivePricingContext?.default_price) || 0;
+  const priceSliderReady = priceMin > 0 && priceMax > priceMin;
   const baseCost = Number(teamRecap?.COGSbase || V);
   const channelFee = Number(
     teamRecap?.f != null
@@ -1296,7 +1341,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
   const teamUnitCost = baseCost + teamCalc.cost;
   const teamFixedCost = F_BASE + teamCalc.nreWan * 10000;
   const teamFixedCostWan = F_BASE_WAN + teamCalc.nreWan;
-  const previewUnitMargin = Math.round((teamPrice || F_PRICE) * (1 - channelFee) - teamUnitCost);
+  const previewUnitMargin = Math.round((teamPrice || fallbackPrice) * (1 - channelFee) - teamUnitCost);
   const previewBreakevenQ = previewUnitMargin > 0 ? Math.ceil(teamFixedCost / previewUnitMargin) : null;
   const submittedCalc = teamResultSnapshot?.result || null;
   const positionLabel = `${formatGridLabel(teamInfo?.final_grid_id || teamRecap?.final_grid_id)} · ${formatArchitectureLabel(teamInfo?.final_architecture)}`;
@@ -1360,6 +1405,10 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
   const isRound2TeamStage = Boolean(isTeamMode && step >= 3 && step <= 4 && !submitted);
   const memberDims = Array.isArray(memberState?.dims) && memberState.dims.length ? memberState.dims : DEFAULT_MEMBER_DIMS;
   const completedInterviewCount = Number(interviewProgress.completedCount || memberState?.completed_interviews || 0);
+  useEffect(() => {
+    if (!priceSliderReady || submitted) return;
+    setTeamPrice((prev) => clampPriceToContext(prev, effectivePricingContext));
+  }, [effectivePricingContext, priceSliderReady, submitted]);
   const interviewDimensionGuide = useMemo(
     () => buildDimensionGuideItems(memberDims),
     [memberDims]
@@ -1958,13 +2007,17 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
         setLeaderMemberId(String(out?.leader_member_id || leaderMemberId));
         setLeaderName(String(out?.leader_name || leaderName));
         setIsLeader(Boolean(out?.is_leader));
+        const mergePricingContext = normalizePricingContext(out);
+        if (mergePricingContext) {
+          setRound2PricingContext(mergePricingContext);
+        }
         const mapped = selectionsToMap(out?.team_draft?.selections?.length ? out.team_draft.selections : out.teamSelections);
         if (!serverSelections) {
           setTeamDraftSelections(mapped);
         }
         const draftPrice = parsePositiveNumberOrNull(out?.team_draft?.price);
         if (draftPrice != null) {
-          setTeamPrice(draftPrice);
+          setTeamPrice(clampPriceToContext(draftPrice, mergePricingContext));
         }
       } catch (err) {
         if (err?.name === "AbortError") return;
@@ -2250,7 +2303,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
       const submitSelections = toSubmitSelectionsMap(teamSel);
       const finalPrice = parsePositiveNumberOrNull(teamPrice)
         || parsePositiveNumberOrNull(teamRecap?.P)
-        || F_PRICE;
+        || fallbackPrice;
       const out = await submitRound2TeamDecision({
         team_id: teamId,
         member_id: memberId,
@@ -2268,6 +2321,10 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
       try {
         const refreshedRecap = await getRound2Recap(teamId);
         setTeamRecap(refreshedRecap || null);
+        const refreshedPricingContext = normalizePricingContext(refreshedRecap);
+        if (refreshedPricingContext) {
+          setRound2PricingContext(refreshedPricingContext);
+        }
       } catch (_) {}
       setSubmitted(true);
     } catch (err) {
@@ -2275,7 +2332,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     } finally {
       setIsSubmittingFinal(false);
     }
-  }, [hasMergedInterviewReady, isTeamMode, isSubmittingFinal, memberId, mergeData, round2TeamControlsLocked, sessionId, teamId, teamPrice, teamRecap, teamSel]);
+  }, [fallbackPrice, hasMergedInterviewReady, isTeamMode, isSubmittingFinal, memberId, mergeData, round2TeamControlsLocked, sessionId, teamId, teamPrice, teamRecap, teamSel]);
 
   // ── Render card (individual mode: no cost numbers) ──
   const renderCard = (card, dim, sels, showCost, mode) => {
@@ -3288,7 +3345,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
       {/* ═══ Step 3: 团队合并 (radar + dimension insights + margin status) ═══ */}
       {step===3 && (() => {
         // Margin calculation for display
-        const currentGM = calcGM(teamCalc.cost, teamPrice || F_PRICE, channelFee, baseCost);
+        const currentGM = calcGM(teamCalc.cost, teamPrice || fallbackPrice, channelFee, baseCost);
         const gmColor = currentGM >= 40 ? "#166534" : currentGM >= 25 ? "#D97706" : "#DC2626";
         const gmStatus = currentGM >= 40 ? "\u5065\u5EB7" : currentGM >= 25 ? "\u504F\u7D27" : "\u5371\u9669";
         return (
@@ -3459,7 +3516,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
 
       {/* ═══ Step 4: 集体讨论 (full cost info, adjustable) ═══ */}
       {step===4 && (() => {
-        const currentGM = calcGM(teamCalc.cost, teamPrice || F_PRICE, channelFee, baseCost);
+        const currentGM = calcGM(teamCalc.cost, teamPrice || fallbackPrice, channelFee, baseCost);
         const gmOk = currentGM >= GM_FLOOR;
         const gmTier = currentGM >= 40 ? "健康" : currentGM >= 30 ? "良好" : currentGM >= 20 ? "偏紧" : "危险";
         const gmColor = currentGM >= 40 ? "#166534" : currentGM >= 30 ? "#2FAB6E" : currentGM >= 20 ? "#D97706" : "#DC2626";
@@ -3615,10 +3672,10 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
               <input
                 data-testid="r2-price-input"
                 type="range"
-                min={ROUND2_PRICE_MIN}
-                max={ROUND2_PRICE_MAX}
-                step={100}
-                value={teamPrice}
+                min={priceMin}
+                max={priceMax}
+                step={priceStep}
+                value={clampPriceToContext(teamPrice, effectivePricingContext)}
                 onInput={e => {
                   round2DraftTouchedRef.current = true;
                   setTeamPrice(+e.target.value);
@@ -3627,12 +3684,12 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                   round2DraftTouchedRef.current = true;
                   setTeamPrice(+e.target.value);
                 }}
-                disabled={round2TeamControlsLocked}
-                style={{width:"100%",height:8,borderRadius:4,cursor:round2TeamControlsLocked ? "not-allowed" : "pointer"}}
+                disabled={round2TeamControlsLocked || !priceSliderReady}
+                style={{width:"100%",height:8,borderRadius:4,cursor:(round2TeamControlsLocked || !priceSliderReady) ? "not-allowed" : "pointer"}}
               />
               <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#999",marginTop:4}}>
-                <span>¥2,000（低价走量）</span>
-                <span>¥5,000（高端定位）</span>
+                <span>{priceSliderReady ? `¥${priceMin.toLocaleString()}（低价走量）` : "定价区间加载中"}</span>
+                <span>{priceSliderReady ? `¥${priceMax.toLocaleString()}（高端定位）` : ""}</span>
               </div>
             </div>
 
