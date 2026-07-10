@@ -1,4 +1,5 @@
 {
+  "PRICE_SCALE": 0.3,
   "global": {
     "Panchor": 30000,
     "Nsteps": 20,

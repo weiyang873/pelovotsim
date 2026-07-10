@@ -4,10 +4,10 @@ const {
   validateSelections,
   computeSoftPenalties,
   computeAdoption,
-  DEFAULT_PARAMS
+  DEFAULT_PARAMS,
+  CAP_GROUPS
 } = require("../llm/rdCalculator");
 const TeamManager = require("../multiplayer/teamManager");
-const capGroups = require("../../data/capability_groups_v2.json");
 const rules = require("../../data/compatibility_rules_v2.json");
 const gridPriors = require("../../data/grid_priors_v4_cap_weights.json");
 
@@ -119,7 +119,7 @@ async function validateRoute(body) {
 }
 
 async function cards() {
-  return makeResponse(200, { ok: true, ...capGroups });
+  return makeResponse(200, { ok: true, ...CAP_GROUPS });
 }
 
 async function rulesDetail() {

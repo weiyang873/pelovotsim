@@ -910,10 +910,10 @@ class PersonaStudent {
   }
 
   async generatePriceChoice(priceContext = {}) {
-    const base = Number(priceContext.basePrice || priceContext.P || priceContext.Pmax || 12000);
-    const min = Number(priceContext.min || Math.max(5000, Math.round(base * 0.7)));
+    const base = Number(priceContext.basePrice || priceContext.P || priceContext.Pmax || 4000);
+    const min = Number(priceContext.min || Math.max(2000, Math.round(base * 0.7)));
     const max = Number(priceContext.max || Math.max(min, Math.round(base * 1.15)));
-    const totalCOGS = Number(priceContext.totalCOGS || priceContext.COGSbase || 2000);
+    const totalCOGS = Number(priceContext.totalCOGS || priceContext.COGSbase || 600);
     const channelFee = Number(priceContext.channelFee || 0);
     const fallbackFactor = {
       A: 1.02,

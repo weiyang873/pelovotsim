@@ -15,7 +15,11 @@ const {
   computeProductMarketMatch,
   validateSelections,
   computeSoftPenalties,
-  getCapabilityParams
+  getCapabilityParams,
+  CAP_GROUPS,
+  PRICE_SCALE,
+  GLOBAL_PARAMS,
+  computeWTPParams
 } = require("../llm/rdCalculator");
 const { assignDimensions, mergeTeamSelections } = require("../multiplayer/rdTeamAdapter");
 const { getRound2MarketInfo } = require("../multiplayer/marketInfo");
@@ -32,7 +36,6 @@ const {
   buildSummaryModeRadarResult
 } = require("../multiplayer/round2SummaryMode");
 const { getSessionConfig } = require("../multiplayer/sessionConfig");
-const CAP_GROUPS = require("../../data/capability_groups_v2.json");
 const TAG_MAP = require("../../data/tag_map_v2_1.json");
 
 const ROOT = path.join(__dirname, "..", "..");
@@ -200,6 +203,12 @@ function matchStrengthToTier(value) {
   if (strength >= 0.7) return "高度契合";
   if (strength >= 0.5) return "部分契合";
   return "契合度有限";
+}
+
+function scaleRound1MoneyValue(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num) || num <= 0) return null;
+  return Number((num * PRICE_SCALE).toFixed(6));
 }
 
 function buildLeaderMeta(team, requesterMemberId = "") {
@@ -2100,11 +2109,16 @@ async function buildRound2Recap(teamId, phase4Body) {
   const share1 = Number(team.final_channel1_share || 60);
   const channelDesc = `${String(team.final_channel1 || "DIRECT").toUpperCase()} ${share1}% / ${String(team.final_channel2 || "ECOMMERCE").toUpperCase()} ${Math.max(0, 100 - share1)}%`;
 
-  const Pmax = Number(base.pmax || base.P_max || 14200);
-  const WTP = Number(base.WTP || base.wtp_median_price || Pmax);
+  const calcGridId = toCalcGridId(team.final_grid_id, team.final_architecture || "");
+  const round2Wtp = computeWTPParams(calcGridId, {
+    round1GridId: team.final_grid_id,
+    round1Context: { gridId: team.final_grid_id }
+  });
+  const Pmax = Math.round(Number(round2Wtp.WTPref || base.pmax || base.P_max || 14200));
+  const WTP = Math.round(Number(round2Wtp.WTPmedian || round2Wtp.WTPref || base.WTP || base.wtp_median_price || Pmax));
   const e = Number(base.e || base.price_elasticity || 1.2);
   const f = getRound2ChannelFeeByGrid(team.final_grid_id);
-  const COGSbase = Number(base.cogs_proxy || base.COGS_proxy || 2000);
+  const COGSbase = Number(GLOBAL_PARAMS.V || base.cogs_proxy || base.COGS_proxy || 2000);
   const budget_cap = Math.round(COGSbase * 0.13);
 
   const vpScores = phase4Body?.vp_scores || {};
@@ -2200,7 +2214,7 @@ async function buildRound2Recap(teamId, phase4Body) {
       matched_market_count: matchedMarketCount,
       matched_tech_count: matchedTechCount
     },
-    P: Number(base.P || 12800),
+    P: Math.round(Number(Pmax || 0) * 0.85),
     Pmax,
     WTP,
     e,
@@ -3424,11 +3438,11 @@ async function buildComputedTeamSnapshot(teamId, sessionId, submissionInput, rad
     Pmax: Number(recapData.Pmax || 0),
     WTP: Number(recapData.WTP || 0),
     e: Number(recapData.e || 1.2),
-    COGSbase: Number(recapData.COGSbase || 2000),
+    COGSbase: Number(recapData.COGSbase || GLOBAL_PARAMS.V || 600),
     TAM: Number(recapData.TAM || 50000),
     H: Number(recapData.H || 0.3),
     wtp_multiplier: Number(team?.final_wtp_multiplier || 1),
-    WTPref_override: Number(team?.final_wtp_ref || 0) || undefined,
+    WTPref_override: scaleRound1MoneyValue(team?.final_wtp_ref) || undefined,
     teamId,
     sessionId,
     source: "web"
@@ -4459,7 +4473,7 @@ async function mergeApi(body) {
     }));
 
     const validation = validateSelections(teamSelections);
-    const softPenalties = computeSoftPenalties(teamSelections, Number(body?.COGSbase || 2000));
+    const softPenalties = computeSoftPenalties(teamSelections, Number(body?.COGSbase || GLOBAL_PARAMS.V || 600));
     const sessionConfig = await getSessionConfig(sessionId);
     const personaChoice = isSummaryModeSession(sessionConfig)
       ? await freezeStaticSummaryChoiceForTeam(team, sessionId, memberId || "system_merge")

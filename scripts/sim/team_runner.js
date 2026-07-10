@@ -1,7 +1,6 @@
 "use strict";
 
-const CAP_GROUPS = require("../../data/capability_groups_v2.json");
-const { validateSelections } = require("../../server/llm/rdCalculator");
+const { CAP_GROUPS, PRICE_SCALE, validateSelections } = require("../../server/llm/rdCalculator");
 const { toCalcGridId } = require("../../server/routes/round2Routes");
 const { ApiError } = require("./api_client");
 const { DeepSeekStudent } = require("./deepseek_student");
@@ -159,14 +158,14 @@ function round2ChannelFeePercent(gridId) {
 
 function readTeamPricingBase(recap, tracker) {
   const candidates = [
-    tracker?.team?.r1_wtp_adj,
     recap?.wtp_breakdown?.final_result?.WTPadj,
     recap?.wtp_breakdown?.final_result?.WTPref_adjusted,
     recap?.WTPadj,
     recap?.WTP,
     recap?.Pmax,
     recap?.P,
-    12000
+    tracker?.team?.r1_wtp_adj ? Number(tracker.team.r1_wtp_adj) * PRICE_SCALE : null,
+    4000
   ];
   for (const value of candidates) {
     const numeric = Number(value);
@@ -174,7 +173,7 @@ function readTeamPricingBase(recap, tracker) {
       return numeric;
     }
   }
-  return 12000;
+  return 4000;
 }
 
 function normalizeVpDraftText(candidate, fallback = "") {
@@ -1163,7 +1162,7 @@ async function runRound2(result, api, teamId, members, memberActors, teamIndex, 
   async function validateMergedSelections(currentMergeData) {
     const data = await stepApi(api, "R2.6_validate").validateSelections({
       selections: currentMergeData.teamSelections,
-      COGSbase: recap.COGSbase || 2000
+      COGSbase: recap.COGSbase || 600
     });
     assert(data.ok === true, "validateSelections returned ok=false");
     return data;
@@ -1208,9 +1207,9 @@ async function runRound2(result, api, teamId, members, memberActors, teamIndex, 
   const channelFee = round2ChannelFeePercent(recap.final_grid_id);
   const price = await pricingStudent.generatePriceChoice({
     basePrice: pricingBase,
-    min: Math.max(5000, Math.round(pricingBase * 0.5)),
+    min: Math.max(2000, Math.round(pricingBase * 0.5)),
     max: Math.round(pricingBase * 1.2),
-    totalCOGS: recap.COGSbase || 2000,
+    totalCOGS: recap.COGSbase || 600,
     channelFee
   });
   const pricingWtp = Number(tracker.team.r1_wtp_adj || recap.wtp_breakdown?.final_result?.WTPadj || 0);
@@ -1229,11 +1228,11 @@ async function runRound2(result, api, teamId, members, memberActors, teamIndex, 
       Pmax: Number(recap.Pmax || 0),
       WTP: Number(recap.WTP || 0),
       e: Number(recap.e || 1.2),
-      COGSbase: Number(recap.COGSbase || 2000),
+      COGSbase: Number(recap.COGSbase || 600),
       TAM: Number(recap.TAM || 50000),
       H: Number(recap.H || 0.3),
       wtp_multiplier: tracker.team.r1_wtp_multiplier,
-      WTPref_override: tracker.team.r1_wtp_ref,
+      WTPref_override: Number(tracker.team.r1_wtp_ref || 0) > 0 ? Number(tracker.team.r1_wtp_ref) * PRICE_SCALE : undefined,
       teamId,
       sessionId: "preview"
     });

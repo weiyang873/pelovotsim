@@ -92,6 +92,10 @@ const INTERVIEW_MAX_TURNS = 10;
 const MIN_INTERVIEWS_REQUIRED = 2;
 const MIN_TEAM_CARDS = 6;
 const INTERVIEW_START_DEBOUNCE_MS = 3000;
+const PRICE_SCALE = 0.3;
+const ROUND2_DEFAULT_PRICE = 4000;
+const ROUND2_PRICE_MIN = 2000;
+const ROUND2_PRICE_MAX = 5000;
 
 function createEmptyInterviewProgress() {
   return {
@@ -136,7 +140,7 @@ const ROUND2_NARRATIVE_STAGES = [
   { id: "review", label: "经营复盘", steps: [5] }
 ];
 
-const F_BASE_WAN = 500;
+const F_BASE_WAN = 500 * PRICE_SCALE;
 const F_BASE = F_BASE_WAN * 10000;
 function deriveChannelFeeFromGrid(gridId) {
   const raw = String(gridId || "").trim().toLowerCase();
@@ -236,6 +240,12 @@ ops: [
     tiers:{ low:{l:"基础",d:"简单预警规则",cost:350,nre:103}, mid:{l:"标准",d:"基于数据的预警模型",cost:650,nre:172}, high:{l:"旗舰",d:"更完整的预测维护体系",cost:950,nre:275} } }
 ]
 };
+Object.values(CC).flat().forEach((card) => {
+  Object.values(card.tiers || {}).forEach((tier) => {
+    if (tier.cost != null) tier.cost = Math.round(Number(tier.cost || 0) * PRICE_SCALE);
+    if (tier.nre != null) tier.nre = Number((Number(tier.nre || 0) * PRICE_SCALE).toFixed(1));
+  });
+});
 const ALL = Object.values(CC).flat();
 const fc = id => ALL.find(c => c.id === id);
 const TI = {low:0,mid:1,high:2};
@@ -257,9 +267,9 @@ const calcCost = (s) => {
   return { cost, nreWan, cnt };
 };
 
-// Real parameters from framework doc §12.2, §11.3, §16.1
-const V = 2000;         // variable cost per unit
-const F_PRICE = 14000;  // demo reference price (ToB_DIFF_ELDER typical)
+// Real parameters from framework doc §12.2, §11.3, §16.1, scaled by PRICE_SCALE.
+const V = 2000 * PRICE_SCALE;         // variable cost per unit
+const F_PRICE = ROUND2_DEFAULT_PRICE; // demo reference price at current waterline
 // GM = (P×(1-f) - V - dCOGS) / P
 const calcGM = (dCOGS, price, f, baseCost = V) => {
   const netRev = price * (1 - f);
@@ -806,7 +816,7 @@ function formatInterviewExportMessage(message, fallbackSpeaker = "访谈对象")
 export default function App() {
   const [step, setStep] = useState(0);
   const [sel, setSel] = useState({});
-  const [teamPrice, setTeamPrice] = useState(12000);
+  const [teamPrice, setTeamPrice] = useState(ROUND2_DEFAULT_PRICE);
   const [submitted, setSubmitted] = useState(false);
   const [teamId, setTeamId] = useState("");
   const [memberId, setMemberId] = useState("");
@@ -3605,8 +3615,8 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
               <input
                 data-testid="r2-price-input"
                 type="range"
-                min={5000}
-                max={20000}
+                min={ROUND2_PRICE_MIN}
+                max={ROUND2_PRICE_MAX}
                 step={100}
                 value={teamPrice}
                 onInput={e => {
@@ -3621,8 +3631,8 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                 style={{width:"100%",height:8,borderRadius:4,cursor:round2TeamControlsLocked ? "not-allowed" : "pointer"}}
               />
               <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#999",marginTop:4}}>
-                <span>¥5,000（低价走量）</span>
-                <span>¥20,000（高端定位）</span>
+                <span>¥2,000（低价走量）</span>
+                <span>¥5,000（高端定位）</span>
               </div>
             </div>
 

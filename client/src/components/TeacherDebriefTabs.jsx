@@ -25,6 +25,7 @@ const GRID_ROWS = [
 ];
 
 const GRID_COLS = ["老人", "成人", "儿童"];
+const ROUND2_BASE_VARIABLE_COST = 600;
 
 const ARCH_DISPLAY = {
   Experience: { label: "体验●", color: "#8B5CF6", symbol: "●" },
@@ -277,7 +278,7 @@ function computeUnitEconomics(team) {
   const channelFee = price * feeRate;
   const netPrice = price - channelFee;
   const nrePerUnit = computeNrePerUnit(team);
-  const V = 2000;
+  const V = ROUND2_BASE_VARIABLE_COST;
   return {
     feeRate,
     price,
@@ -308,7 +309,7 @@ function computePricingBreakdown(team) {
   if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(dCOGS)) return null;
 
   const feeRate = getChannelFeeRate(team);
-  const V = 2000;
+  const V = ROUND2_BASE_VARIABLE_COST;
   const channelPct = feeRate * 100;
   const vPct = (V / price) * 100;
   const dcogsPct = (dCOGS / price) * 100;
@@ -429,7 +430,7 @@ function computeActualGm(team) {
   const dCOGS = Number(team?.r2?.dCOGS);
   if (!Number.isFinite(price) || !Number.isFinite(dCOGS) || price <= 0) return null;
   const f = /ToB|B2B/i.test(String(team?.r1?.grid || "")) ? 0.15 : 0.25;
-  return (price * (1 - f) - 2000 - dCOGS) / price;
+  return (price * (1 - f) - ROUND2_BASE_VARIABLE_COST - dCOGS) / price;
 }
 
 function isSubmittedR2(team) {

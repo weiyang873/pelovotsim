@@ -263,7 +263,7 @@ async function main() {
     const mergeRes = await Round2.mergeApi({
       teamId,
       memberId,
-      COGSbase: 2000
+      COGSbase: 600
     });
     assert.equal(mergeRes.status, 200);
     assert.equal("evi" in mergeRes.body.mergedInterview, false);
@@ -272,7 +272,7 @@ async function main() {
     const draftRes = await Round2.saveTeamDraftApi({
       teamId,
       memberId,
-      price: 12800,
+      price: 4000,
       selections: FINAL_SELECTIONS
     });
     assert.equal(draftRes.status, 200);
@@ -281,7 +281,7 @@ async function main() {
       team_id: teamId,
       member_id: memberId,
       session_id: SESSION_ID,
-      price: 12800,
+      price: 4000,
       selections: FINAL_SELECTIONS,
       best_grid: SPOOFED_GRID,
       mergedInterview: mergeRes.body.mergedInterview

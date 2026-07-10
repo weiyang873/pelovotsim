@@ -873,11 +873,11 @@ async function launchSharedBrowser() {
 }
 
 function choosePrice(recap) {
-  const pmax = safeNumber(recap?.Pmax, 12000);
+  const pmax = safeNumber(recap?.Pmax, 4000);
   const p = safeNumber(recap?.P, pmax);
   const wtp = safeNumber(recap?.WTP, pmax);
-  const target = Math.min(pmax, Math.max(5000, Math.round(Math.max(p * 0.95, wtp * 0.75) / 100) * 100));
-  return Number.isFinite(target) ? target : 12000;
+  const target = Math.min(5000, Math.min(pmax, Math.max(2000, Math.round(Math.max(p * 0.95, wtp * 0.75) / 100) * 100)));
+  return Number.isFinite(target) ? target : 4000;
 }
 
 async function fetchTeamExportJson(baseUrl, teamId) {

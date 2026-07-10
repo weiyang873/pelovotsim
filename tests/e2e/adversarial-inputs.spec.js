@@ -309,7 +309,7 @@ async function submitTeamSolution(api, { teamId, memberId, recap, selections }) 
     teamId,
     memberId
   });
-  const price = Math.max(6000, Math.min(Number(recap.Pmax || 12000), 9800));
+  const price = Math.max(2000, Math.min(Number(recap.Pmax || 4000), 5000));
   const submitted = await postJson(api, "/api/round2/team-submit", {
     teamId,
     memberId,

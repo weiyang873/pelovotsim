@@ -9,6 +9,7 @@ const { listTeamIterations } = require("../multiplayer/vpIterationStore");
 const { ensureSessionConfigSchema } = require("../multiplayer/sessionConfig");
 const Round2 = require("./round2Routes");
 const PROMPT_CACHE_VERSION = "teacher_debrief_v2";
+const ROUND2_BASE_VARIABLE_COST = 600;
 const TEAM_COLORS = [
   "#E8634A", "#3B82C4", "#2FAB6E", "#D4A03C", "#8B5CF6",
   "#EC4899", "#14B8A6", "#F97316", "#06B6D4", "#84CC16"
@@ -180,7 +181,7 @@ function computeCsvMetrics(team) {
   const units = Number(team?.r2?.units || 0);
   const profit = Number(team?.r2?.profit || 0);
   const f = grid.includes("B2B") ? 0.15 : 0.25;
-  const totalCost = 2000 + dCOGS;
+  const totalCost = ROUND2_BASE_VARIABLE_COST + dCOGS;
   const gmRatio = team?.r2?.actualGm != null
     ? Number(team.r2.actualGm)
     : (price > 0 ? ((price * (1 - f) - totalCost) / price) : 0);
@@ -1131,7 +1132,7 @@ function buildGlobalPrompt(round, data) {
     "",
     "## 注意事项",
     "- 语言风格同Round 1",
-    "- 毛利率公式：GM = (P×(1-f) - V - dCOGS) / P，其中 V=2000，ToB f=0.15，ToC f=0.25",
+    `- 毛利率公式：GM = (P×(1-f) - V - dCOGS) / P，其中 V=${ROUND2_BASE_VARIABLE_COST}，ToB f=0.15，ToC f=0.25`,
     "- 研发ROI = 利润 ÷ (销量 × dCOGS)",
     "- 不要暴露模型参数，只用自然语言描述因果",
     "- 若样本少，要直接说“当前有效样本较少”，但仍要完成比较，不要说“无法分析”或“暂无典型组别”"

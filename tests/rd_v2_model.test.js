@@ -9,7 +9,8 @@ const {
   calculateCOGSbase,
   calculateProfit,
   resolveTierNreWan,
-  NRE_TIER_MULT
+  NRE_TIER_MULT,
+  PRICE_SCALE
 } = require("../server/llm/rdCalculator");
 
 function approxRel(actual, expected, relTol) {
@@ -18,15 +19,15 @@ function approxRel(actual, expected, relTol) {
 
 function testWtpParams() {
   const p1 = computeWTPParams("ToC_DIFF_ELDER");
-  assert.equal(approxRel(p1.WTPmean, 18091, 0.02), true, `ToC_DIFF_ELDER WTPmean=${p1.WTPmean}`);
+  assert.equal(approxRel(p1.WTPmean, 18091 * PRICE_SCALE, 0.02), true, `ToC_DIFF_ELDER WTPmean=${p1.WTPmean}`);
   assert.equal(Math.abs(p1.gamma - 4.56) < 0.05, true, `ToC_DIFF_ELDER gamma=${p1.gamma}`);
 
   const p2 = computeWTPParams("ToC_COST_ADULT");
-  assert.equal(approxRel(p2.WTPmean, 12404, 0.02), true, `ToC_COST_ADULT WTPmean=${p2.WTPmean}`);
+  assert.equal(approxRel(p2.WTPmean, 12404 * PRICE_SCALE, 0.02), true, `ToC_COST_ADULT WTPmean=${p2.WTPmean}`);
   assert.equal(Math.abs(p2.gamma - 2.9) < 0.05, true, `ToC_COST_ADULT gamma=${p2.gamma}`);
 
   const p3 = computeWTPParams("ToB_DIFF_ELDER");
-  assert.equal(approxRel(p3.WTPref, 19268, 0.02), true, `ToB_DIFF_ELDER WTPref=${p3.WTPref}`);
+  assert.equal(approxRel(p3.WTPref, 19268 * PRICE_SCALE, 0.02), true, `ToB_DIFF_ELDER WTPref=${p3.WTPref}`);
 }
 
 function testVolumeBehavior() {
@@ -52,31 +53,32 @@ function testDiffGammaTransform() {
 }
 
 function testCostStructure() {
-  assert.equal(calculateCOGSbase(10000), 2000, `COGS@10000=${calculateCOGSbase(10000)}`);
-  assert.equal(calculateCOGSbase(1000), 2000, `COGS@1000=${calculateCOGSbase(1000)}`);
+  assert.equal(calculateCOGSbase(10000), 2000 * PRICE_SCALE, `COGS@10000=${calculateCOGSbase(10000)}`);
+  assert.equal(calculateCOGSbase(1000), 2000 * PRICE_SCALE, `COGS@1000=${calculateCOGSbase(1000)}`);
 }
 
 function testNreStructure() {
   assert.deepEqual(NRE_TIER_MULT, { low: 0.6, mid: 1.0, high: 1.6 });
-  assert.equal(resolveTierNreWan("voice_basic", "low"), 59);
-  assert.equal(resolveTierNreWan("voice_basic", "mid"), 98);
-  assert.equal(resolveTierNreWan("voice_basic", "high"), 157);
-  assert.equal(resolveTierNreWan("lidar_nav", "mid"), 184);
+  assert.equal(Math.abs(resolveTierNreWan("voice_basic", "low") - (98 * 0.6 * PRICE_SCALE)) < 1e-9, true);
+  assert.equal(Math.abs(resolveTierNreWan("voice_basic", "mid") - (98 * PRICE_SCALE)) < 1e-9, true);
+  assert.equal(Math.abs(resolveTierNreWan("voice_basic", "high") - (98 * 1.6 * PRICE_SCALE)) < 1e-9, true);
+  assert.equal(Math.abs(resolveTierNreWan("lidar_nav", "mid") - (184 * PRICE_SCALE)) < 1e-9, true);
 }
 
 function testProfitDirection() {
   const wtp = computeWTPParams("ToC_DIFF_ELDER");
-  const profitGood = calculateProfit(15000, "ToC_DIFF_ELDER", 5.0, 800, 0.8, 0.5, 0.3, 0.2, wtp, 0, 0, 120);
-  const profitBad = calculateProfit(15000, "ToC_DIFF_ELDER", 1.0, 800, 0.3, 0.1, 0.1, 0.5, wtp, 0, 0, 120);
+  const profitGood = calculateProfit(15000 * PRICE_SCALE, "ToC_DIFF_ELDER", 5.0, 800 * PRICE_SCALE, 0.8, 0.5, 0.3, 0.2, wtp, 0, 0, 120 * PRICE_SCALE);
+  const profitBad = calculateProfit(15000 * PRICE_SCALE, "ToC_DIFF_ELDER", 1.0, 800 * PRICE_SCALE, 0.3, 0.1, 0.1, 0.5, wtp, 0, 0, 120 * PRICE_SCALE);
   assert.equal(profitGood.totalProfit > profitBad.totalProfit, true, `good=${profitGood.totalProfit}, bad=${profitBad.totalProfit}`);
-  assert.equal(profitGood.F_total, 6200000);
+  assert.equal(profitGood.F_total, 6200000 * PRICE_SCALE);
   assert.equal(profitGood.breakeven_q > 0, true, `beq=${profitGood.breakeven_q}`);
 }
 
 function testProfitMarginExcludesSubscriptionLtv() {
   const wtp = computeWTPParams("ToC_DIFF_ELDER");
-  const result = calculateProfit(15000, "ToC_DIFF_ELDER", 5.0, 800, 0.8, 0.5, 0.3, 0.2, wtp, 0, 0, 120);
-  const hardwareUnitMargin = (15000 * (1 - result.f)) - result.COGS;
+  const price = 15000 * PRICE_SCALE;
+  const result = calculateProfit(price, "ToC_DIFF_ELDER", 5.0, 800 * PRICE_SCALE, 0.8, 0.5, 0.3, 0.2, wtp, 0, 0, 120 * PRICE_SCALE);
+  const hardwareUnitMargin = (price * (1 - result.f)) - result.COGS;
   const expectedProfit = result.profitHW + result.profitSub - result.F_total;
   const expectedBeq = hardwareUnitMargin > 0 ? Math.ceil(result.F_total / hardwareUnitMargin) : null;
 

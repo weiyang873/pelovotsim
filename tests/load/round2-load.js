@@ -103,12 +103,12 @@ const MEMBER_SELECTIONS = [
     { cap_id: "persona_dialog", tier: "low" }
   ],
   [
-    { cap_id: "percep_base", tier: "mid" },
-    { cap_id: "emotion_recog", tier: "low" }
+    { cap_id: "perception_base", tier: "mid" },
+    { cap_id: "emotion_recognition", tier: "low" }
   ],
   [
-    { cap_id: "basic_avoid", tier: "mid" },
-    { cap_id: "auto_follow", tier: "low" }
+    { cap_id: "basic_avoidance", tier: "mid" },
+    { cap_id: "follow_mode", tier: "low" }
   ],
   [
     { cap_id: "privacy_trust", tier: "mid" },
@@ -593,7 +593,7 @@ export default function (data) {
       const mergeRes = jsonPost(`${BASE_URL}/api/round2/merge`, {
         teamId: ctx.team.teamId,
         memberId: ctx.member.memberId,
-        COGSbase: Number(recap?.COGSbase || 2000)
+        COGSbase: Number(recap?.COGSbase || 600)
       });
       mergeBody = safeJson(mergeRes);
       const mergeOk = check(mergeRes, {
@@ -602,7 +602,7 @@ export default function (data) {
       recordMetric(mergeOk, mergeRes);
 
       const teamSelections = Array.isArray(mergeBody?.teamSelections) ? mergeBody.teamSelections : [];
-      const price = Math.max(5000, Math.round(Number(recap?.P || recap?.WTP || 12800)));
+      const price = Math.max(2000, Math.min(5000, Math.round(Number(recap?.P || recap?.WTP || 4000))));
 
       const draftRes = jsonPost(`${BASE_URL}/api/round2/team-draft`, {
         teamId: ctx.team.teamId,

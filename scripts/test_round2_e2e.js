@@ -15,7 +15,7 @@ const BASE = process.env.BASE_URL || "http://127.0.0.1:8787";
 const TEAM_SIZE = 4;
 const ROUND1_GRID_ID = "ToB_Differentiation_Elder";
 const ROUND1_ARCHITECTURE = "Experience";
-const FINAL_PRICE = 14999;
+const FINAL_PRICE = 4000;
 const MARKETING_MEMBER_COUNT = 3;
 
 const ROUND1_DRAFT = {
@@ -344,7 +344,7 @@ async function main() {
   check(Number.isFinite(Number(teamMerge.total_cost)), `合并后 total_cost 非数字: ${teamMerge.total_cost}`);
 
   console.log("[8/8] POST /api/round2/team-submit");
-  check(FINAL_PRICE >= 5000 && FINAL_PRICE <= 20000, `测试定价=${FINAL_PRICE}，超出 5000-20000`);
+  check(FINAL_PRICE >= 2000 && FINAL_PRICE <= 5000, `测试定价=${FINAL_PRICE}，超出 2000-5000`);
   const teamSubmit = await post(
     "/api/round2/team-submit",
     {

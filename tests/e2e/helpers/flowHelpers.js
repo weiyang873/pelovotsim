@@ -723,7 +723,7 @@ async function runRound2Flow({ page, request, monitor, tracker, stepResults, con
     await expect(page.locator("[data-testid='r2-merge-container']")).toBeVisible();
     await page.getByRole("button", { name: /^继续$/ }).click();
     await expect(page.locator("[data-testid='r2-price-input']")).toBeVisible();
-    const targetPrice = Math.max(5000, Math.min(20000, Math.round(Number(context.round2Recap?.Pmax || 12000) * 0.7 / 100) * 100));
+    const targetPrice = Math.max(2000, Math.min(5000, Math.round(Number(context.round2Recap?.Pmax || 4000) * 0.7 / 100) * 100));
     await setRangeValue(page, "[data-testid='r2-price-input']", targetPrice);
     await page.getByRole("button", { name: /提交并查看结果/ }).click();
     await expect(page.locator("[data-testid='r2-final-submit']")).toBeVisible();

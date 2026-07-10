@@ -135,7 +135,7 @@ test("vpResultToConfirmedFields falls back to vp text labels when vp_result is i
 });
 
 test("rhoDiscount applies customer clarity discount to WTP multiplier", () => {
-  assert.equal(lambdaMap(5), 1.1);
+  assert.equal(lambdaMap(5), 1.105);
   assert.equal(rhoDiscount(3), 0.9);
 
   const round1 = buildRound1Outcome(
@@ -148,12 +148,12 @@ test("rhoDiscount applies customer clarity discount to WTP multiplier", () => {
   assert.equal(round1.C, 3);
   assert.equal(round1.G, 5);
   assert.equal(round1.E_raw, 5);
-  assert.equal(round1.lambda_G, 1.1);
-  assert.equal(round1.lambda_E, 1.1);
+  assert.equal(round1.lambda_G, 1.105);
+  assert.equal(round1.lambda_E, 1.105);
   assert.equal(round1.rho_C, 0.9);
-  assert.equal(Number(round1.wtp_multiplier.toFixed(3)), 1.089);
+  assert.equal(Number(round1.wtp_multiplier.toFixed(4)), 1.0989);
   assert.equal(round1.jinang_wtp_bonus, 0);
-  assert.equal(round1.WTPadj, 18421);
+  assert.equal(round1.WTPadj, 18534);
 });
 
 test("buildRound1Outcome applies jinang bonus to WTP without changing E", () => {
@@ -166,8 +166,8 @@ test("buildRound1Outcome applies jinang bonus to WTP without changing E", () => 
 
   assert.equal(round1.E_raw, 4);
   assert.equal(round1.jinang_E_boost, 0);
-  assert.equal(round1.jinang_wtp_bonus, 0.035);
-  assert.equal(Number(round1.wtp_multiplier.toFixed(4)), 1.0246);
-  assert.equal(round1.WTPadj, 17686);
+  assert.equal(round1.jinang_wtp_bonus, 0.014);
+  assert.equal(Number(round1.wtp_multiplier.toFixed(4)), 1.0437);
+  assert.equal(round1.WTPadj, 17904);
   assert.equal(round1.VPscore, 3.7);
 });

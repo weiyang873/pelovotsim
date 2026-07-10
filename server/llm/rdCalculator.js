@@ -9,9 +9,6 @@ const { scheduleStages } = require("../multiplayer/computationLog");
 
 const dataDir = path.join(__dirname, "../../data");
 const configDir = path.join(__dirname, "../../game_config_v0.1");
-const CAP_GROUPS = JSON.parse(
-  fs.readFileSync(path.join(dataDir, "capability_groups_v2.json"), "utf8")
-);
 const COMPAT_RULES = JSON.parse(
   fs.readFileSync(path.join(dataDir, "compatibility_rules_v2.json"), "utf8")
 );
@@ -29,6 +26,48 @@ const ROUND2_ENGINE_PARAMS = (() => {
     return {};
   }
 })();
+
+function normalizePriceScale(value) {
+  const scale = Number(value);
+  return Number.isFinite(scale) && scale > 0 ? scale : 1;
+}
+
+const PRICE_SCALE = normalizePriceScale(
+  ROUND2_ENGINE_PARAMS.PRICE_SCALE ?? ROUND2_ENGINE_PARAMS.global?.PRICE_SCALE
+);
+
+function scaleMoneyValue(value, scale = PRICE_SCALE) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return value;
+  return Number((num * scale).toFixed(6));
+}
+
+function scaleGlobalMoneyParams(globalParams) {
+  const next = { ...(globalParams || {}) };
+  ["Panchor", "V", "F", "S_monthly"].forEach((key) => {
+    if (next[key] != null) next[key] = scaleMoneyValue(next[key]);
+  });
+  delete next.PRICE_SCALE;
+  return next;
+}
+
+function scaleCapabilityGroups(rawGroups) {
+  const cloned = JSON.parse(JSON.stringify(rawGroups || { groups: [] }));
+  (cloned.groups || []).forEach((group) => {
+    (group.capabilities || []).forEach((cap) => {
+      if (cap.nre != null) cap.nre = scaleMoneyValue(cap.nre);
+      Object.values(cap.tiers || {}).forEach((tier) => {
+        if (tier && tier.dCOGS != null) tier.dCOGS = scaleMoneyValue(tier.dCOGS);
+      });
+    });
+  });
+  return cloned;
+}
+
+const RAW_CAP_GROUPS = JSON.parse(
+  fs.readFileSync(path.join(dataDir, "capability_groups_v2.json"), "utf8")
+);
+const CAP_GROUPS = scaleCapabilityGroups(RAW_CAP_GROUPS);
 
 const DEFAULT_ENGINE_PARAMS = {
   global: {
@@ -62,8 +101,8 @@ const DEFAULT_ENGINE_PARAMS = {
 };
 
 const GLOBAL_PARAMS = {
-  ...DEFAULT_ENGINE_PARAMS.global,
-  ...((ROUND2_ENGINE_PARAMS && ROUND2_ENGINE_PARAMS.global) || {})
+  ...scaleGlobalMoneyParams(DEFAULT_ENGINE_PARAMS.global),
+  ...scaleGlobalMoneyParams((ROUND2_ENGINE_PARAMS && ROUND2_ENGINE_PARAMS.global) || {})
 };
 const SHAPE_PARAMS = {
   cv: {
@@ -540,7 +579,7 @@ function resolveTierNreWan(capId, tier) {
   const cap = findCapability(capId);
   const baseNre = Number(cap?.nre || 0);
   const tierMult = Number(NRE_TIER_MULT[tier] || 1);
-  return Math.round(baseNre * tierMult);
+  return roundForLog(baseNre * tierMult, 6);
 }
 
 function calculateProfit(price, gridId, X, dCOGS, coverCore, coverNice, subLift, risk, wtpParams, penalty = 0, Vscore = 0, totalNREWan = 0) {
@@ -669,7 +708,7 @@ function validatePrecomputedWtpPriors() {
       try {
         const calc = computeWTPParams(`${channel}_${strategy}_${age}`);
         const expected = byAge[age] || {};
-        const expectedWtp = Number(expected.WTPmean || 0);
+        const expectedWtp = Number(expected.WTPmean || 0) * PRICE_SCALE;
         const expectedGamma = Number(expected.gamma || 0);
         const deltaWtp = expectedWtp > 0 ? Math.abs(calc.WTPmean - expectedWtp) / expectedWtp : 0;
         const deltaGamma = expectedGamma > 0 ? Math.abs(calc.gamma - expectedGamma) / expectedGamma : 0;
@@ -1483,6 +1522,8 @@ module.exports = {
   resolveTierNreWan,
   getCapabilityParams,
   getCapTierParams: getCapabilityParams,
+  CAP_GROUPS,
+  PRICE_SCALE,
   GLOBAL_PARAMS,
   SHAPE_PARAMS,
   PERCENTILES,
