@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const { CAP_GROUPS, GLOBAL_PARAMS, NRE_TIER_MULT, PRICE_SCALE, validateSelections } = require("../../server/llm/rdCalculator");
 const { toCalcGridId } = require("../../server/routes/round2Routes");
+const { chatCompletion } = require("../../server/llm/deepseekClient");
 const { ApiError } = require("./api_client");
 const { DeepSeekStudent } = require("./deepseek_student");
 const { DecisionTracker, scoreProduct } = require("./decision_tracker");
@@ -26,6 +27,17 @@ const DIM_TO_GROUP = {
   extend: "expand_connect",
   ops: "ops_maintenance"
 };
+
+const DIM_LABELS = {
+  interaction: "交互与表达",
+  perception: "感知与理解",
+  motion: "移动与导航",
+  safety: "安全与信任",
+  extend: "扩展与连接",
+  ops: "运维与维护"
+};
+
+let lastSummaryLlMAt = 0;
 
 const GROUP_TO_CARDS = new Map(
   (CAP_GROUPS.groups || []).map((group) => [
@@ -182,6 +194,337 @@ function buildPricingDemandSummary(tracker, maxItems = 6) {
   }
 
   return "- 未记录到明确的消费能力或价格态度原话；请只根据已获得的客户痛点、采购语境和成本信息定价。";
+}
+
+function parseJsonObjectLocal(text) {
+  const raw = String(text || "").replace(/```json|```/g, "").trim();
+  const start = raw.indexOf("{");
+  const end = raw.lastIndexOf("}");
+  const candidate = start >= 0 && end > start ? raw.slice(start, end + 1) : raw;
+  try {
+    return JSON.parse(candidate);
+  } catch (_) {
+    return JSON.parse(candidate.replace(/[\u0000-\u001F]+/g, " "));
+  }
+}
+
+async function rateLimitedSummaryChat(messages, options = {}) {
+  const maxAttempts = 3;
+  let lastErr = null;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const now = Date.now();
+    const waitMs = Math.max(0, 220 - (now - lastSummaryLlMAt));
+    const retryWaitMs = attempt === 0 ? 0 : 1500 * attempt;
+    if (waitMs + retryWaitMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, waitMs + retryWaitMs));
+    }
+    try {
+      const out = await chatCompletion(messages, options);
+      lastSummaryLlMAt = Date.now();
+      return out;
+    } catch (err) {
+      lastErr = err;
+      const message = String(err?.message || err || "");
+      const transient = /ENOTFOUND|ECONNRESET|ETIMEDOUT|EAI_AGAIN|429|5\d\d/i.test(message);
+      if (!transient || attempt === maxAttempts - 1) {
+        throw err;
+      }
+    }
+  }
+  throw lastErr;
+}
+
+function logActorLLM(actor, entry) {
+  if (actor && typeof actor.logStudentLLM === "function") {
+    actor.logStudentLLM(entry);
+  }
+}
+
+async function requestStrictJson(actor, messages, options, meta, validate) {
+  if (!process.env.DEEPSEEK_API_KEY && !process.env.DEEPSEEK_API_KEY_1) {
+    throw new Error(`${meta.step}: DeepSeek API key missing`);
+  }
+
+  let activeMessages = messages;
+  let completion = "";
+  let lastErr = null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const startedAt = Date.now();
+    try {
+      completion = String(await rateLimitedSummaryChat(activeMessages, {
+        model: "deepseek-chat",
+        temperature: options.temperature,
+        max_tokens: options.max_tokens
+      }) || "").trim();
+      const data = parseJsonObjectLocal(completion);
+      const validated = validate ? validate(data) : { ok: true, value: data };
+      if (validated && validated.ok === true) {
+        logActorLLM(actor, {
+          caller: meta.caller,
+          step: meta.step,
+          prompt: activeMessages,
+          completion,
+          durationMs: Date.now() - startedAt,
+          usedFallback: false
+        });
+        return validated.value;
+      }
+      lastErr = new Error(validated?.error || "invalid JSON payload");
+    } catch (err) {
+      lastErr = err;
+    }
+
+    if (attempt >= 2) break;
+    activeMessages = [
+      ...messages,
+      { role: "assistant", content: completion || "(空输出)" },
+      {
+        role: "user",
+        content: [
+          `上一次输出无法通过校验：${String(lastErr?.message || lastErr || "")}`,
+          "请只输出同一决策的合法 JSON，不要 Markdown，不要解释。"
+        ].join("\n")
+      }
+    ];
+  }
+  throw new Error(`${meta.step} failed after retries: ${String(lastErr?.message || lastErr || "")}`);
+}
+
+function flattenCardsPayloadLocal(cards) {
+  const groups = Array.isArray(cards?.groups) ? cards.groups : [];
+  const catalog = [];
+  for (const group of groups) {
+    for (const capability of group.capabilities || []) {
+      catalog.push({
+        cap_id: capability.cap_id,
+        name: capability.name,
+        dimension: group.name || group.group_id,
+        dimensionId: group.group_id,
+        covers: Array.isArray(capability.covers) ? capability.covers : [],
+        tiers: {
+          low: capability.tiers?.low
+            ? { dCOGS: capability.tiers.low.dCOGS, risk: capability.tiers.low.risk, nre: capability.nre }
+            : null,
+          mid: capability.tiers?.mid
+            ? { dCOGS: capability.tiers.mid.dCOGS, risk: capability.tiers.mid.risk, nre: capability.nre }
+            : null,
+          high: capability.tiers?.high
+            ? { dCOGS: capability.tiers.high.dCOGS, risk: capability.tiers.high.risk, nre: capability.nre }
+            : null
+        }
+      });
+    }
+  }
+  return catalog;
+}
+
+function normalizeCardSelectionsLocal(rawSelections, validCards) {
+  const out = [];
+  const seen = new Set();
+  const list = Array.isArray(rawSelections) ? rawSelections : [];
+  for (const item of list) {
+    const capId = String(item?.cap_id || "").trim();
+    const tier = String(item?.tier || "").trim().toLowerCase();
+    if (!capId || seen.has(capId)) continue;
+    const card = validCards.get(capId);
+    if (!card) continue;
+    if (!["low", "mid", "high"].includes(tier) || !card.tiers?.[tier]) continue;
+    out.push({
+      cap_id: capId,
+      tier,
+      reason: String(item?.reason || "").trim()
+    });
+    seen.add(capId);
+  }
+  return out;
+}
+
+function reportTitle(report, fallbackIndex) {
+  return String(report?.persona_name || report?.persona_id || report?.title || `P${fallbackIndex + 1}`).trim();
+}
+
+function reportText(report) {
+  return String(report?.report_text || report?.text || report?.summary_text || "").trim();
+}
+
+function buildReportsInput(readReports) {
+  const reports = Array.isArray(readReports) ? readReports : [];
+  if (!reports.length) {
+    return "你还没有读到任何客户调研报告。";
+  }
+  return reports.map((item, idx) => {
+    const report = item.report || {};
+    return [
+      `### 已读报告 ${idx + 1}：${reportTitle(report, item.report_index ?? idx)}`,
+      reportText(report)
+    ].join("\n");
+  }).join("\n\n");
+}
+
+function buildPricingDemandSummaryFromReports(memberReports, maxItems = 8) {
+  const evidence = [];
+  const seen = new Set();
+  for (const item of memberReports || []) {
+    const memberName = item.memberName || "成员";
+    for (const reportItem of item.reports || []) {
+      const report = reportItem.report || {};
+      const lines = reportText(report).split(/\n+/).map((line) => line.trim()).filter(Boolean);
+      for (const line of lines) {
+        if (!containsPricingEvidence(line)) continue;
+        const key = trimEvidenceText(line, 90);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        evidence.push(`- ${memberName}读到的${reportTitle(report, reportItem.report_index || 0)}：${trimEvidenceText(line)}`);
+        if (evidence.length >= maxItems) break;
+      }
+      if (evidence.length >= maxItems) break;
+    }
+    if (evidence.length >= maxItems) break;
+  }
+  if (evidence.length > 0) return evidence.join("\n");
+  return "- 已读调研报告中没有直接价格原话；请只根据报告里的生活/采购语境和成本信息定价。";
+}
+
+function resolveSummarySessionId(options, stateData) {
+  return String(options.sessionId || options.session_id || stateData?.session_id || process.env.SESSION_ID || "default").trim() || "default";
+}
+
+function resolveExplicitSessionId(options) {
+  return String(options.sessionId || options.session_id || process.env.SESSION_ID || "").trim();
+}
+
+function buildSummaryQuery(params) {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && String(value) !== "") {
+      query.set(key, String(value));
+    }
+  });
+  return query.toString();
+}
+
+function normalizeInterviewMode(stateData) {
+  const raw = String(stateData?.session_config?.interview_mode || stateData?.interview_mode || "summary").trim().toLowerCase();
+  return raw === "live" ? "live" : "summary";
+}
+
+function memberDisplayName(member, fallbackIndex) {
+  return String(member?.member_name || member?.name || member?.memberName || `成员${fallbackIndex + 1}`).trim();
+}
+
+async function askContinueReading(actor, context) {
+  const messages = [
+    { role: "system", content: typeof actor?.buildLayeredSystemPrompt === "function" ? actor.buildLayeredSystemPrompt() : "你是一位认真的 EMBA 学员，请按自己的判断完成团队任务。" },
+    {
+      role: "user",
+      content: [
+        "## 当前任务：客户调研报告阅读决策",
+        "你面前有 3 份客户调研报告。你已经读了至少 1 份，时间有限，你的队友也在读。",
+        "你需要决定是否继续查看下一位受访者的报告。",
+        "",
+        `## 你的已读进度`,
+        `- 已读：${context.readCount}/3 份`,
+        `- 下一份：${context.nextLabel}`,
+        "",
+        "## 你已经读过的报告",
+        buildReportsInput(context.readReports),
+        "",
+        "请根据你的课堂画像、时间意识和信息需求做决定。",
+        "只输出可 JSON.parse 的 JSON：",
+        '{ "continue": true, "reason": "一句话理由" }'
+      ].join("\n")
+    }
+  ];
+
+  return requestStrictJson(actor, messages, {
+    temperature: 0.45,
+    max_tokens: 500
+  }, {
+    caller: "team_runner.askContinueReading",
+    step: "R2.summary_read_decision"
+  }, (data) => {
+    if (typeof data?.continue !== "boolean") {
+      return { ok: false, error: "continue must be boolean" };
+    }
+    return {
+      ok: true,
+      value: {
+        continue: data.continue,
+        reason: String(data.reason || "").trim()
+      }
+    };
+  });
+}
+
+async function generateSummaryCardSelection(actor, context) {
+  const cardCatalog = flattenCardsPayloadLocal(context.cards);
+  const validCards = new Map(cardCatalog.map((card) => [card.cap_id, card]));
+  const assignedDims = (Array.isArray(context.assignedDims) ? context.assignedDims : [])
+    .map((dim) => ({ id: dim, label: DIM_LABELS[dim] || dim }));
+  const validationIssues = normalizeViolationsList(context.validationIssues);
+  const previousSelections = Array.isArray(context.previousSelections) ? context.previousSelections : [];
+  const messages = [
+    { role: "system", content: typeof actor?.buildLayeredSystemPrompt === "function" ? actor.buildLayeredSystemPrompt() : "你是一位认真的 EMBA 学员，请按自己的判断完成团队任务。" },
+    {
+      role: "user",
+      content: [
+        "## 当前任务：根据你实际读过的客户调研报告选择研发能力卡",
+        "你只知道下面这些自己实际读过的报告。没有读过的报告不要假设、不要补全。",
+        "",
+        "## 你实际读过的报告原文",
+        buildReportsInput(context.readReports),
+        "",
+        validationIssues.length > 0 ? [
+          "## 你上次的选卡组合有以下问题",
+          validationIssues.map((item) => `- ${String(item?.message || item || "").trim()}`).filter(Boolean).join("\n"),
+          "",
+          "请修正后重新选卡，优先消除依赖或冲突问题。"
+        ].join("\n") : "",
+        previousSelections.length > 0 ? [
+          "## 你上次提交的选卡",
+          JSON.stringify(previousSelections, null, 2)
+        ].join("\n") : "",
+        "",
+        "## 你负责的维度",
+        assignedDims.length > 0
+          ? assignedDims.map((dim) => `- ${dim.label}（${dim.id}）`).join("\n")
+          : "- 综合判断",
+        "",
+        "## 可选卡列表",
+        JSON.stringify(cardCatalog, null, 2),
+        "",
+        "请选择 2-4 张卡，只输出可 JSON.parse 的 JSON：",
+        "{",
+        '  "selections": [',
+        '    { "cap_id": "xxx", "tier": "mid", "reason": "一句话理由" }',
+        "  ]",
+        "}",
+        "",
+        "选卡原则：",
+        "- 优先选跟你读过的报告证据相关的卡",
+        "- 你负责的维度必须有清晰覆盖",
+        "- 必须满足卡之间的依赖关系，不能选出硬性 requires/excludes 冲突",
+        "- tier 选择反映你的风险偏好和成本意识"
+      ].filter(Boolean).join("\n")
+    }
+  ];
+
+  return requestStrictJson(actor, messages, {
+    temperature: 0.65,
+    max_tokens: 1600
+  }, {
+    caller: "team_runner.generateSummaryCardSelection",
+    step: "R2.summary_card_selection"
+  }, (data) => {
+    const parsed = normalizeCardSelectionsLocal(data?.selections, validCards);
+    if (parsed.length < 2) {
+      return { ok: false, error: "at least 2 valid selections required" };
+    }
+    if (parsed.length > 4) {
+      return { ok: false, error: "at most 4 valid selections allowed" };
+    }
+    return { ok: true, value: parsed };
+  });
 }
 
 const WRITING_POWER = {
@@ -771,6 +1114,316 @@ function normalizeViolationsList(violations) {
   })).filter((item) => item.message);
 }
 
+async function runRound2Summary(result, api, teamId, members, memberActors, teamIndex, options, tracker, context) {
+  const { recap, stateData, assignments } = context;
+  const sessionId = resolveSummarySessionId(options, stateData);
+  const leaderMemberId = resolveLeaderMemberId(
+    stateData.leader_member_id,
+    stateData.leaderMemberId,
+    members[0]?.id
+  );
+
+  const reportsByMember = new Map();
+  const summaryQueryBase = {
+    teamId,
+    sessionId,
+    session_id: sessionId
+  };
+
+  const reportCatalogData = await runStep(result, "r2_summary_get_reports", async () => {
+    const query = buildSummaryQuery(summaryQueryBase);
+    const data = await stepApi(api, "R2.summary_get_reports").get(`/api/round2/persona-reports?${query}`);
+    assert(data.ok === true, "persona-reports returned ok=false");
+    assert(Array.isArray(data.reports), "persona-reports missing reports");
+    assert(data.reports.length > 0, "persona-reports returned no reports");
+    return data;
+  });
+
+  const reportCount = Math.max(
+    Array.isArray(reportCatalogData.available_reports) ? reportCatalogData.available_reports.length : 0,
+    Array.isArray(reportCatalogData.reports) ? reportCatalogData.reports.length : 0,
+    3
+  );
+  const totalReports = Math.min(3, reportCount);
+  const readingMembers = assignments.filter((assignment) => assignment.memberId);
+
+  const readingStatus = await runStep(result, "r2_summary_member_reading", async () => {
+    await Promise.all(readingMembers.map(async (assignment) => {
+      const memberIndex = members.findIndex((member) => member.id === assignment.memberId);
+      const actor = getStudentProfile(options, memberIndex)
+        ? memberActors[memberIndex]
+        : createStudentActor(options, teamIndex, memberIndex, teamId, assignment.memberId, assignment.memberName);
+      const readReports = [];
+
+      for (let reportIndex = 0; reportIndex < totalReports; reportIndex += 1) {
+        if (reportIndex > 0) {
+          const decision = await askContinueReading(actor, {
+            readCount: readReports.length,
+            nextLabel: `P${reportIndex + 1}`,
+            readReports
+          });
+          if (decision.continue !== true) {
+            break;
+          }
+        }
+
+        const query = buildSummaryQuery({
+          ...summaryQueryBase,
+          memberId: assignment.memberId
+        });
+        const data = await stepApi(api, "R2.summary_get_persona_report", assignment.memberId)
+          .get(`/api/round2/persona-report/${reportIndex}?${query}`);
+        assert(data.ok === true, `persona-report ${reportIndex + 1} failed for ${assignment.memberName}`);
+        assert(data.report && typeof data.report === "object", `persona-report ${reportIndex + 1} missing report for ${assignment.memberName}`);
+        assert(String(reportText(data.report)).trim(), `persona-report ${reportIndex + 1} empty text for ${assignment.memberName}`);
+        readReports.push({
+          report_index: reportIndex,
+          persona_id: data.report.persona_id || `P${reportIndex + 1}`,
+          report: data.report
+        });
+      }
+
+      assert(readReports.length > 0, `member ${assignment.memberName} read no reports`);
+      const completeData = await stepApi(api, "R2.summary_complete_reading", assignment.memberId)
+        .post("/api/round2/complete-reading", {
+          teamId,
+          memberId: assignment.memberId,
+          sessionId,
+          session_id: sessionId
+        });
+      assert(completeData.ok === true, `complete-reading failed for ${assignment.memberName}`);
+
+      const trackerMember = tracker.getMember(assignment.memberId);
+      if (trackerMember) {
+        trackerMember.r2_interview_turns = readReports.length;
+        trackerMember.r2_interview_summary = readReports.map((item) => reportTitle(item.report, item.report_index)).join(" | ");
+        trackerMember.interview_persona_id = readReports.map((item) => item.persona_id).join(" | ");
+        trackerMember.interview_persona_name = trackerMember.r2_interview_summary;
+        trackerMember.interviewLog = readReports.map((item, index) => ({
+          turn_number: index + 1,
+          role: "interviewee",
+          message_text: reportText(item.report),
+          interview_persona_id: item.persona_id,
+          interview_persona_name: reportTitle(item.report, item.report_index)
+        }));
+      }
+
+      reportsByMember.set(assignment.memberId, {
+        memberId: assignment.memberId,
+        memberName: assignment.memberName,
+        reports: readReports
+      });
+    }));
+
+    const query = buildSummaryQuery({
+      ...summaryQueryBase,
+      memberId: leaderMemberId
+    });
+    const data = await stepApi(api, "R2.summary_team_reading_status").get(`/api/round2/team-reading-status?${query}`);
+    assert(data.ok === true, "team-reading-status returned ok=false");
+    assert(Array.isArray(data.members), "team-reading-status missing members");
+    return data;
+  });
+
+  await runStep(result, "r2_summary_freeze_reports", async () => {
+    const data = await stepApi(api, "R2.summary_persona_select").post("/api/round2/persona-select", {
+      teamId,
+      memberId: leaderMemberId,
+      sessionId,
+      session_id: sessionId
+    });
+    assert(data.ok === true, "persona-select returned ok=false");
+    assert(data.locked === true, "persona-select did not lock summary reports");
+    return data;
+  });
+
+  const cardsData = await runStep(result, "r2_get_cards", async () => {
+    const cards = await stepApi(api, "R2.3_get_rd_cards").getRDCards();
+    assert(cards.ok === true, "getRDCards returned ok=false");
+    assert(Array.isArray(cards.groups), "getRDCards missing groups");
+    return cards;
+  });
+  const selectionContexts = assignments.map((assignment) => {
+    const member = tracker.getMember(assignment.memberId);
+    const memberIndex = members.findIndex((item) => item.id === assignment.memberId);
+    return {
+      assignment,
+      member,
+      memberIndex,
+      actor: getStudentProfile(options, memberIndex)
+        ? memberActors[memberIndex]
+        : createStudentActor(options, teamIndex, memberIndex, teamId, assignment.memberId, assignment.memberName),
+      readReports: reportsByMember.get(assignment.memberId)?.reports || []
+    };
+  });
+
+  async function saveSummarySelections(validationIssues = null) {
+    await Promise.all(selectionContexts.map(async (selectionContext) => {
+      const currentMember = tracker.getMember(selectionContext.assignment.memberId);
+      const generatedSelections = await generateSummaryCardSelection(selectionContext.actor, {
+        cards: cardsData,
+        readReports: selectionContext.readReports,
+        assignedDims: selectionContext.assignment.dims,
+        validationIssues,
+        previousSelections: currentMember?.r2_personal_selections || []
+      });
+      const apiSelections = generatedSelections.map((item) => ({
+        cap_id: item.cap_id,
+        tier: item.tier
+      }));
+      const data = await stepApi(api, "R2.4_member_selection", selectionContext.assignment.memberId).saveMemberSelection(
+        teamId,
+        selectionContext.assignment.memberId,
+        apiSelections
+      );
+      assert(data.ok === true, `saveMemberSelection failed for ${selectionContext.assignment.memberName}`);
+      assert(Number(data.count) === apiSelections.length, `selection count mismatch for ${selectionContext.assignment.memberName}`);
+      tracker.recordPersonalSelections(selectionContext.assignment.memberId, generatedSelections);
+    }));
+  }
+
+  async function mergeTeamSelectionsSummary() {
+    const data = await stepApi(api, "R2.5_merge_team").mergeTeam(teamId, recap.COGSbase || "");
+    assert(data.ok === true, "mergeTeam returned ok=false");
+    assert(Array.isArray(data.teamSelections), "mergeTeam missing teamSelections");
+    assert(data.teamSelections.length >= 6, `mergeTeam card_count=${data.teamSelections.length}, expected at least 6`);
+    tracker.recordMerge(data);
+    return data;
+  }
+
+  async function validateMergedSelectionsSummary(currentMergeData) {
+    const data = await stepApi(api, "R2.6_validate").validateSelections({
+      selections: currentMergeData.teamSelections,
+      COGSbase: recap.COGSbase || 600
+    });
+    assert(data.ok === true, "validateSelections returned ok=false");
+    return data;
+  }
+
+  await runStep(result, "r2_member_selections", async () => {
+    await saveSummarySelections();
+  });
+
+  let mergeData = await runStep(result, "r2_merge_team", async () => mergeTeamSelectionsSummary());
+
+  await runStep(result, "r2_validate", async () => {
+    let validation = await validateMergedSelectionsSummary(mergeData);
+    let retryCount = 0;
+    while (validation.valid !== true && retryCount < 2) {
+      await saveSummarySelections(validation.violations || []);
+      mergeData = await mergeTeamSelectionsSummary();
+      validation = await validateMergedSelectionsSummary(mergeData);
+      retryCount += 1;
+    }
+    assert(validation.valid === true, `validateSelections returned valid=${validation.valid}`);
+  });
+
+  const pricingStudent = memberActors[0] || createStudentActor(
+    options,
+    teamIndex,
+    0,
+    teamId,
+    members[0]?.id || null,
+    members[0]?.member_name || "成员1"
+  );
+  const pricingUi = loadPricingUiConfig();
+  const channelFee = round2ChannelFeePercent(recap.final_grid_id);
+  const costSummary = summarizeSelectionCosts(mergeData.teamSelections, recap.COGSbase || 600);
+  const memberReportRows = Array.from(reportsByMember.values());
+  const demandSummary = buildPricingDemandSummaryFromReports(memberReportRows);
+  if (costSummary.missingCapabilityIds.length > 0) {
+    warn(result, "pricing cost summary skipped unknown capabilities", {
+      missing_capability_ids: costSummary.missingCapabilityIds
+    });
+  }
+  const price = await pricingStudent.generatePriceChoice({
+    basePrice: pricingUi.default_price,
+    min: pricingUi.price_min,
+    max: pricingUi.price_max,
+    step: pricingUi.price_step,
+    defaultPrice: pricingUi.default_price,
+    totalCOGS: costSummary.unitVariableCost,
+    baseVariableCost: costSummary.baseVariableCost,
+    dCOGSTotal: costSummary.dCOGSTotal,
+    fbaseWan: costSummary.fbaseWan,
+    nreTotalWan: costSummary.nreTotalWan,
+    upfrontInvestmentWan: costSummary.upfrontInvestmentWan,
+    channelFee,
+    demandSummary
+  });
+  const pricingWtp = Number(tracker.team.r1_wtp_adj || recap.wtp_breakdown?.final_result?.WTPadj || 0);
+  tracker.recordPrice(price, pricingWtp > 0 ? Number((price / pricingWtp).toFixed(4)) : null);
+
+  const previewData = await runStep(result, "r2_calculate_preview", async () => {
+    const calcGridId = toCalcGridId(recap.final_grid_id, recap.architecture || stateData.round1_context?.architecture || "");
+    const data = await stepApi(api, "R2.7_calculate_preview").calculateRD({
+      gridId: calcGridId,
+      round1GridId: recap.final_grid_id,
+      selections: mergeData.teamSelections,
+      radar: mergeData.mergedInterview?.radar || {},
+      tags: mergeData.mergedInterview?.tags || [],
+      evi: Number.isFinite(Number(mergeData.mergedInterview?.evi)) ? Number(mergeData.mergedInterview.evi) : 0.7,
+      P: price,
+      Pmax: Number(recap.Pmax || 0),
+      WTP: Number(recap.WTP || 0),
+      e: Number(recap.e || 1.2),
+      COGSbase: Number(recap.COGSbase || 600),
+      TAM: Number(recap.TAM || 50000),
+      H: Number(recap.H || 0.3),
+      wtp_multiplier: tracker.team.r1_wtp_multiplier,
+      WTPref_override: Number(tracker.team.r1_wtp_ref || 0) > 0 ? Number(tracker.team.r1_wtp_ref) * PRICE_SCALE : undefined,
+      teamId,
+      sessionId: `${sessionId}_preview`
+    });
+    assert(data.ok === true, "calculateRD returned ok=false");
+    assert(Number.isFinite(Number(data.share)), "calculateRD missing share");
+    assert(Number.isFinite(Number(data.units)), "calculateRD missing units");
+    assert(Number.isFinite(Number(data.profit)), "calculateRD missing profit");
+    return data;
+  });
+  tracker.team.r2_coverCore = Number.isFinite(Number(previewData.coverCore)) ? Number(previewData.coverCore) : tracker.team.r2_coverCore;
+  tracker.team.r2_coverNice = Number.isFinite(Number(previewData.coverNice)) ? Number(previewData.coverNice) : tracker.team.r2_coverNice;
+
+  await runStep(result, "r2_submit_final", async () => {
+    const data = await stepApi(api, "R2.7_submit_final").submitFinal(teamId, {
+      member_id: leaderMemberId,
+      memberId: leaderMemberId,
+      sessionId,
+      session_id: sessionId,
+      price,
+      selections: mergeData.teamSelections,
+      radar: mergeData.mergedInterview?.radar || {},
+      tags: mergeData.mergedInterview?.tags || [],
+      evi: Number.isFinite(Number(mergeData.mergedInterview?.evi)) ? Number(mergeData.mergedInterview.evi) : 0.7,
+      bestGrid: recap.final_grid_id,
+      wtp_multiplier: tracker.team.r1_wtp_multiplier
+    });
+    assert(data.ok === true, "submitFinal returned ok=false");
+    assert(data.result && typeof data.result === "object", "submitFinal missing result");
+    assert(Number.isFinite(Number(data.result.profit)), "submitFinal missing result.profit");
+    assert(Number.isFinite(Number(data.result.units)), "submitFinal missing result.units");
+  });
+
+  const teamResultData = await runStep(result, "r2_get_team_result", async () => {
+    const data = await stepApi(api, "R2.7_get_team_result").getTeamResult(teamId, sessionId);
+    assert(data.ok === true, "getTeamResult returned ok=false");
+    assert(data.result && typeof data.result === "object", "getTeamResult missing result");
+    assert(Number.isFinite(Number(data.result.profit)), "team result profit is not finite");
+    return data;
+  });
+  tracker.recordFinalResult(previewData, teamResultData);
+
+  result.meta.round2 = {
+    interview_mode: "summary",
+    session_id: sessionId,
+    interview_member_count: 0,
+    report_reading_member_count: readingMembers.length,
+    team_viewed_count: Number(readingStatus.team_viewed_count || 0),
+    preview_profit: Number(previewData.profit || 0),
+    price
+  };
+}
+
 async function runRound1(result, api, teamSize, teamIndex, options, tracker) {
   const verbose = options.logLevel === "verbose";
   const teamName = buildTeamName(teamIndex);
@@ -1186,9 +1839,19 @@ async function runRound2(result, api, teamId, members, memberActors, teamIndex, 
 
   let assignedDimensionRows = [];
   const stateData = await runStep(result, "r2_get_state", async () => {
-    const assignData = await stepApi(api, "R2.0_assign_dimensions").assignDimensions(teamId, members.length);
+    const round2SessionId = resolveExplicitSessionId(options);
+    const assignData = round2SessionId
+      ? await stepApi(api, "R2.0_assign_dimensions").post("/api/round2/assign-dimensions", {
+          teamId,
+          memberCount: members.length,
+          sessionId: round2SessionId,
+          session_id: round2SessionId
+        })
+      : await stepApi(api, "R2.0_assign_dimensions").assignDimensions(teamId, members.length);
     assignedDimensionRows = Array.isArray(assignData.assignments) ? assignData.assignments : [];
-    const data = await stepApi(api, "R2.0_get_state").getRound2State(teamId);
+    const data = round2SessionId
+      ? await stepApi(api, "R2.0_get_state").get(`/api/round2/state?${buildSummaryQuery({ teamId, sessionId: round2SessionId, session_id: round2SessionId })}`)
+      : await stepApi(api, "R2.0_get_state").getRound2State(teamId);
     assert(data.ok === true, "round2 state returned ok=false");
     assert(Array.isArray(data.members), "round2 state missing members");
     return data;
@@ -1203,6 +1866,15 @@ async function runRound2(result, api, teamId, members, memberActors, teamIndex, 
     members
   );
   tracker.recordAssignments(assignments);
+
+  if (normalizeInterviewMode(stateData) !== "live") {
+    await runRound2Summary(result, api, teamId, members, memberActors, teamIndex, options, tracker, {
+      recap,
+      stateData,
+      assignments
+    });
+    return;
+  }
 
   const interviewMembers = assignments.filter((assignment) => assignment.dims.length > 0);
   const sessionIds = new Set();
