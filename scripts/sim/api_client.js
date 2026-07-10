@@ -228,6 +228,10 @@ class ApiClient {
     return this.post(`/api/team/${encodeURIComponent(teamId)}/phase3/submit-vp`, payload);
   }
 
+  async confirmAndScoreVP(payload) {
+    return this.post("/api/vp/confirm-and-score", payload);
+  }
+
   async getPhase3State(teamId) {
     return this.get(`/api/team/${encodeURIComponent(teamId)}/phase3/state`);
   }

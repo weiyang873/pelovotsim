@@ -1,6 +1,8 @@
 "use strict";
 
-const { CAP_GROUPS, PRICE_SCALE, validateSelections } = require("../../server/llm/rdCalculator");
+const fs = require("fs");
+const path = require("path");
+const { CAP_GROUPS, GLOBAL_PARAMS, NRE_TIER_MULT, PRICE_SCALE, validateSelections } = require("../../server/llm/rdCalculator");
 const { toCalcGridId } = require("../../server/routes/round2Routes");
 const { ApiError } = require("./api_client");
 const { DeepSeekStudent } = require("./deepseek_student");
@@ -32,6 +34,12 @@ const GROUP_TO_CARDS = new Map(
   ])
 );
 
+const CAPABILITY_BY_ID = new Map(
+  (CAP_GROUPS.groups || []).flatMap((group) => (
+    (group.capabilities || []).map((cap) => [cap.cap_id, cap])
+  ))
+);
+
 const SAFE_GROUP_CARDS = {
   interaction_expression: ["music_companion", "voice_basic", "touch_hug"],
   perception_understanding: ["perception_base", "memory_album", "adaptive_learning"],
@@ -40,6 +48,141 @@ const SAFE_GROUP_CARDS = {
   expand_connect: ["cloud_update", "api_iot", "edu_content"],
   ops_maintenance: ["self_diag", "remote_monitor", "predictive_maint"]
 };
+
+const DEFAULT_PRICING_UI = {
+  price_min: 1000,
+  price_max: 6000,
+  price_step: 100,
+  default_price: 3500
+};
+
+function loadPricingUiConfig() {
+  const fp = path.join(__dirname, "..", "..", "game_config_v0.1", "round2_engine_params.json");
+  let raw = {};
+  try {
+    raw = JSON.parse(fs.readFileSync(fp, "utf8"));
+  } catch (_) {
+    raw = {};
+  }
+  const src = raw.pricing_ui && typeof raw.pricing_ui === "object" ? raw.pricing_ui : {};
+  const min = Number(src.price_min ?? DEFAULT_PRICING_UI.price_min);
+  const max = Number(src.price_max ?? DEFAULT_PRICING_UI.price_max);
+  const step = Number(src.price_step ?? DEFAULT_PRICING_UI.price_step);
+  const defaultPrice = Number(src.default_price ?? DEFAULT_PRICING_UI.default_price);
+  if (!Number.isFinite(min) || !Number.isFinite(max) || !Number.isFinite(step) || !Number.isFinite(defaultPrice) || min <= 0 || max <= min || step <= 0) {
+    throw new Error("round2 pricing_ui config invalid");
+  }
+  return {
+    price_min: min,
+    price_max: max,
+    price_step: step,
+    default_price: Math.max(min, Math.min(max, defaultPrice))
+  };
+}
+
+function roundMoney(value, digits = 0) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return 0;
+  const factor = 10 ** digits;
+  return Math.round(num * factor) / factor;
+}
+
+function summarizeSelectionCosts(selections, cogsBase) {
+  let dCOGSTotal = 0;
+  let nreTotalWan = 0;
+  const missing = [];
+
+  for (const item of Array.isArray(selections) ? selections : []) {
+    const capId = String(item?.cap_id || "").trim();
+    const tier = String(item?.tier || "mid").trim() || "mid";
+    const cap = CAPABILITY_BY_ID.get(capId);
+    const tierParams = cap?.tiers?.[tier] || {};
+    if (!cap) {
+      missing.push(capId);
+      continue;
+    }
+    dCOGSTotal += Number(tierParams.dCOGS || 0);
+    nreTotalWan += Number(cap.nre || 0) * Number(NRE_TIER_MULT[tier] || 1);
+  }
+
+  const baseVariableCost = roundMoney(cogsBase || 600, 0);
+  const fbaseWan = roundMoney(Number(GLOBAL_PARAMS.F || 0) / 10000, 2);
+  const roundedDCOGS = roundMoney(dCOGSTotal, 0);
+  const roundedNREWan = roundMoney(nreTotalWan, 2);
+
+  return {
+    baseVariableCost,
+    dCOGSTotal: roundedDCOGS,
+    unitVariableCost: roundMoney(baseVariableCost + roundedDCOGS, 0),
+    fbaseWan,
+    nreTotalWan: roundedNREWan,
+    upfrontInvestmentWan: roundMoney(fbaseWan + roundedNREWan, 2),
+    missingCapabilityIds: missing
+  };
+}
+
+const PRICING_EVIDENCE_KEYWORDS = [
+  "价格",
+  "预算",
+  "贵",
+  "便宜",
+  "支付",
+  "付费",
+  "花钱",
+  "愿意",
+  "买",
+  "采购",
+  "审批",
+  "性价比",
+  "投入产出",
+  "人力成本",
+  "回本",
+  "万元",
+  "千元",
+  "元"
+];
+
+function containsPricingEvidence(text) {
+  const source = String(text || "");
+  return PRICING_EVIDENCE_KEYWORDS.some((keyword) => source.includes(keyword));
+}
+
+function trimEvidenceText(text, maxLen = 120) {
+  const source = String(text || "").replace(/\s+/g, " ").trim();
+  if (source.length <= maxLen) return source;
+  return `${source.slice(0, maxLen - 1)}…`;
+}
+
+function buildPricingDemandSummary(tracker, maxItems = 6) {
+  const evidence = [];
+  const members = Object.values(tracker?.members || {}).sort((a, b) => {
+    return Number(a.memberIndex || 0) - Number(b.memberIndex || 0);
+  });
+
+  for (const member of members) {
+    for (const item of Array.isArray(member.interviewLog) ? member.interviewLog : []) {
+      if (item.role !== "interviewee") continue;
+      if (!containsPricingEvidence(item.message_text)) continue;
+      const who = item.interview_persona_name || `受访者${item.interview_persona_id || ""}` || "受访者";
+      evidence.push(`- ${who}：${trimEvidenceText(item.message_text)}`);
+      if (evidence.length >= maxItems) break;
+    }
+    if (evidence.length >= maxItems) break;
+  }
+
+  if (evidence.length > 0) {
+    return evidence.join("\n");
+  }
+
+  const summaries = members
+    .map((member) => String(member.r2_interview_summary || "").trim())
+    .filter(Boolean);
+  if (summaries.length > 0) {
+    return Array.from(new Set(summaries)).slice(0, 4).map((item) => `- 访谈摘要标签：${item}`).join("\n");
+  }
+
+  return "- 未记录到明确的消费能力或价格态度原话；请只根据已获得的客户痛点、采购语境和成本信息定价。";
+}
 
 const WRITING_POWER = {
   "MBA（海外）": 9,
@@ -156,26 +299,6 @@ function round2ChannelFeePercent(gridId) {
   return raw.includes("TOB") || raw.includes("B2B") ? 15 : 25;
 }
 
-function readTeamPricingBase(recap, tracker) {
-  const candidates = [
-    recap?.wtp_breakdown?.final_result?.WTPadj,
-    recap?.wtp_breakdown?.final_result?.WTPref_adjusted,
-    recap?.WTPadj,
-    recap?.WTP,
-    recap?.Pmax,
-    recap?.P,
-    tracker?.team?.r1_wtp_adj ? Number(tracker.team.r1_wtp_adj) * PRICE_SCALE : null,
-    4000
-  ];
-  for (const value of candidates) {
-    const numeric = Number(value);
-    if (Number.isFinite(numeric) && numeric > 0) {
-      return numeric;
-    }
-  }
-  return 4000;
-}
-
 function normalizeVpDraftText(candidate, fallback = "") {
   if (candidate == null) return String(fallback || "").trim();
   if (typeof candidate === "string") {
@@ -197,22 +320,51 @@ function extractVpField(text, key) {
   return match ? match[1].trim() : "";
 }
 
+function extractMarkdownVpSection(text, labels) {
+  const source = String(text || "");
+  for (const label of labels) {
+    const escaped = String(label || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const pattern = new RegExp(`(?:^|\\n)\\s*(?:\\*\\*)?${escaped}(?:\\*\\*)?\\s*[：:]?\\s*([\\s\\S]*?)(?=\\n\\s*\\*\\*[^\\n]+\\*\\*|\\n\\s*---|$)`, "i");
+    const match = source.match(pattern);
+    if (match && String(match[1] || "").trim()) {
+      return String(match[1] || "")
+        .replace(/^\s*[：:]\s*/, "")
+        .replace(/\*\*/g, "")
+        .trim();
+    }
+  }
+  return "";
+}
+
 function buildVpResultFromText(vpText, fallback = null) {
   const source = fallback && typeof fallback === "object" ? fallback : {};
+  const scenario = extractMarkdownVpSection(vpText, ["在", "场景", "使用场景"]);
+  const promisedOutcome = extractMarkdownVpSection(vpText, ["让他们感受到", "让他们", "因此"]);
+  const painFromScenario = [scenario, promisedOutcome].filter(Boolean).join("；");
   return {
-    target_customer: extractVpField(vpText, "WHO") || source.target_customer || source.who || "",
-    scenario_pain: extractVpField(vpText, "PAIN") || source.scenario_pain || source.pain || "",
-    value_creation: extractVpField(vpText, "HOW") || source.value_creation || source.how || "",
-    boundary: String(source.boundary || "").trim()
+    target_customer: extractVpField(vpText, "WHO") || extractMarkdownVpSection(vpText, ["为谁", "目标客户", "WHO", "为"]) || source.target_customer || source.who || "",
+    scenario_pain: extractVpField(vpText, "PAIN") || extractMarkdownVpSection(vpText, ["核心痛点", "他们面临的是", "痛点", "场景痛点", "PAIN"]) || painFromScenario || source.scenario_pain || source.pain || "",
+    value_creation: extractVpField(vpText, "HOW") || extractMarkdownVpSection(vpText, ["我们提供", "提供", "在那一刻", "解决方式", "价值创造", "HOW"]) || source.value_creation || source.how || "",
+    alternative: extractMarkdownVpSection(vpText, ["相比", "替代方案", "现有方案"]) || source.alternative || "",
+    boundary: extractMarkdownVpSection(vpText, ["但请注意，这个方案在以下情况可能不奏效", "边界条件", "但请注意"]) || String(source.boundary || "").trim()
   };
+}
+
+function fallbackConfirmedFieldFromVpText(vpText, maxLength = 500) {
+  return String(vpText || "")
+    .replace(/\*\*/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLength);
 }
 
 function buildConfirmedFieldsFromVp(vpResult, vpText = "") {
   const result = vpResult && typeof vpResult === "object" ? vpResult : {};
+  const fallbackText = fallbackConfirmedFieldFromVpText(vpText);
   return {
-    who_raw: String(result.target_customer || result.who || extractVpField(vpText, "WHO") || "").trim(),
-    pain_raw: String(result.scenario_pain || result.pain || extractVpField(vpText, "PAIN") || "").trim(),
-    how_raw: String(result.value_creation || result.how || extractVpField(vpText, "HOW") || "").trim(),
+    who_raw: String(result.target_customer || result.who || extractVpField(vpText, "WHO") || fallbackText).trim(),
+    pain_raw: String(result.scenario_pain || result.pain || extractVpField(vpText, "PAIN") || fallbackText).trim(),
+    how_raw: String(result.value_creation || result.how || extractVpField(vpText, "HOW") || fallbackText).trim(),
     alternative_raw: String(result.alternative || "").trim(),
     boundary_raw: String(result.boundary || "").trim()
   };
@@ -340,13 +492,27 @@ async function confirmVPDraft(api, teamId, majority, vpDraft, jinangContext, opt
 
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     try {
-      const data = await stepApi(api, "R1.5_vp_confirm").submitVP(teamId, {
-        mode: "confirm",
+      const vpResult = buildVpResultFromText(vpDraft, fallbackVpResult);
+      const confirmedFields = buildConfirmedFieldsFromVp(vpResult, vpDraft);
+      const data = await stepApi(api, "R1.5_vp_confirm").confirmAndScoreVP({
+        teamId,
+        memberId: resolveLeaderMemberId(options.memberId, majority.leader_member_id, majority.member_id, majority.memberId),
         grid_id: majority.grid_id,
         architecture: majority.architecture,
-        vp_text: vpDraft,
+        vpText: vpDraft,
+        confirmedFields,
         jinang: jinangContext
       });
+      if (data?.ok === true) {
+        data.vp_text = data.vp_text || data.final_vp_text || vpDraft;
+        data.final_vp_text = data.final_vp_text || data.vp_text || vpDraft;
+        data.scores = data.scores || {
+          coverage: fallbackScores?.coverage ?? null,
+          generalizability: fallbackScores?.generalizability ?? null,
+          effectiveness: fallbackScores?.effectiveness ?? null
+        };
+        data.vp_result = data.vp_result || buildVpResultFromText(data.vp_text, fallbackVpResult);
+      }
       lastData = data;
       if (hasVpResultPayload(data)) return data;
       if (attempt < retries) {
@@ -833,6 +999,14 @@ async function runRound1(result, api, teamSize, teamIndex, options, tracker) {
   });
   tracker.team.vp_coach_turns_total = countUserTurns(chatHistory);
 
+  const preConfirmPhase3State = await stepApi(api, "R1.5_phase3_state_pre_confirm").getPhase3State(teamId);
+  const preConfirmLeaderMemberId = resolveLeaderMemberId(
+    preConfirmPhase3State.leader_member_id,
+    preConfirmPhase3State.leaderMemberId,
+    members[leadWriterIndex]?.id,
+    members[0]?.id
+  );
+
   const confirmData = await runStep(result, "r1_vp_confirm", async () => confirmVPDraft(
     api,
     teamId,
@@ -841,6 +1015,7 @@ async function runRound1(result, api, teamSize, teamIndex, options, tracker) {
     jinangContext,
     {
       retries: 2,
+      memberId: preConfirmLeaderMemberId,
       fallbackScores: lastValidVpScoreData?.scores || baselineScoreData?.scores || null,
       fallbackVpResult: buildVpResultFromText(vpDraft),
       onWarn: (message, details) => warn(result, message, details)
@@ -961,7 +1136,7 @@ async function runRound1(result, api, teamSize, teamIndex, options, tracker) {
   await runStep(result, "r1_get_phase4", async () => {
     const data = await stepApi(api, "R1.7_get_phase4").getPhase4(teamId);
     assert(data.ok === true, "getPhase4 returned ok=false");
-    assert(Number.isFinite(Number(data.r1_result?.WTPadj || data.gm_max || data.target_gm)), "phase4 missing core R1 number");
+    assert(data.team?.final_grid_id || data.r1_result?.grid_id, "phase4 missing final grid");
     assert(data.vp_scores || data.vp_summary, "phase4 missing VP result data");
     result.meta.round1 = {
       grid_id: majority.grid_id,
@@ -1009,8 +1184,10 @@ async function runRound2(result, api, teamId, members, memberActors, teamIndex, 
     throw err;
   }
 
+  let assignedDimensionRows = [];
   const stateData = await runStep(result, "r2_get_state", async () => {
-    await stepApi(api, "R2.0_assign_dimensions").assignDimensions(teamId, members.length);
+    const assignData = await stepApi(api, "R2.0_assign_dimensions").assignDimensions(teamId, members.length);
+    assignedDimensionRows = Array.isArray(assignData.assignments) ? assignData.assignments : [];
     const data = await stepApi(api, "R2.0_get_state").getRound2State(teamId);
     assert(data.ok === true, "round2 state returned ok=false");
     assert(Array.isArray(data.members), "round2 state missing members");
@@ -1018,9 +1195,9 @@ async function runRound2(result, api, teamId, members, memberActors, teamIndex, 
   });
 
   const assignments = normalizeAssignments(
-    stateData.members.map((member) => ({
-      memberId: member.id,
-      memberName: member.name,
+    (assignedDimensionRows.length > 0 ? assignedDimensionRows : stateData.members).map((member) => ({
+      memberId: member.memberId || member.id,
+      memberName: member.memberName || member.name,
       dims: Array.isArray(member.dims) ? member.dims : []
     })),
     members
@@ -1203,14 +1380,29 @@ async function runRound2(result, api, teamId, members, memberActors, teamIndex, 
     members[0]?.id || null,
     members[0]?.member_name || "成员1"
   );
-  const pricingBase = readTeamPricingBase(recap, tracker);
+  const pricingUi = loadPricingUiConfig();
   const channelFee = round2ChannelFeePercent(recap.final_grid_id);
+  const costSummary = summarizeSelectionCosts(mergeData.teamSelections, recap.COGSbase || 600);
+  const demandSummary = buildPricingDemandSummary(tracker);
+  if (costSummary.missingCapabilityIds.length > 0) {
+    warn(result, "pricing cost summary skipped unknown capabilities", {
+      missing_capability_ids: costSummary.missingCapabilityIds
+    });
+  }
   const price = await pricingStudent.generatePriceChoice({
-    basePrice: pricingBase,
-    min: Math.max(2000, Math.round(pricingBase * 0.5)),
-    max: Math.round(pricingBase * 1.2),
-    totalCOGS: recap.COGSbase || 600,
-    channelFee
+    basePrice: pricingUi.default_price,
+    min: pricingUi.price_min,
+    max: pricingUi.price_max,
+    step: pricingUi.price_step,
+    defaultPrice: pricingUi.default_price,
+    totalCOGS: costSummary.unitVariableCost,
+    baseVariableCost: costSummary.baseVariableCost,
+    dCOGSTotal: costSummary.dCOGSTotal,
+    fbaseWan: costSummary.fbaseWan,
+    nreTotalWan: costSummary.nreTotalWan,
+    upfrontInvestmentWan: costSummary.upfrontInvestmentWan,
+    channelFee,
+    demandSummary
   });
   const pricingWtp = Number(tracker.team.r1_wtp_adj || recap.wtp_breakdown?.final_result?.WTPadj || 0);
   tracker.recordPrice(price, pricingWtp > 0 ? Number((price / pricingWtp).toFixed(4)) : null);

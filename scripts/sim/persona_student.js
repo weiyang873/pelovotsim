@@ -126,6 +126,26 @@ function getVPLengthConstraint(education) {
   return "";
 }
 
+function extractPriceFromJsonCompletion(completion) {
+  const text = String(completion || "").trim();
+  if (!text) return null;
+  const jsonText = (text.match(/\{[\s\S]*\}/) || [])[0] || text;
+  try {
+    const parsed = JSON.parse(jsonText);
+    const price = Number(parsed?.price);
+    return Number.isFinite(price) ? price : null;
+  } catch (_) {
+    const matched = text.match(/"price"\s*:\s*(\d{3,6})/) || text.match(/\d{3,6}/);
+    return matched ? Number(matched[1] || matched[0]) : null;
+  }
+}
+
+function isValidSliderPrice(price, min, max, step) {
+  if (!Number.isFinite(price) || price < min || price > max) return false;
+  const delta = Math.abs((price - min) % step);
+  return delta < 1e-9 || Math.abs(delta - step) < 1e-9;
+}
+
 function seedMemoryToText(seed) {
   const memory = seed && typeof seed === "object" ? seed : {};
   return [
@@ -215,6 +235,32 @@ function parseJsonObject(text) {
   }
 }
 
+async function requestJsonObjectWithRepair(messages, options = {}, parseLabel = "JSON") {
+  let completion = String(await rateLimitedChat(messages, options) || "").trim();
+  try {
+    return { completion, data: parseJsonObject(completion), repairCount: 0 };
+  } catch (firstErr) {
+    const repairMessages = [
+      ...messages,
+      { role: "assistant", content: completion || "(空输出)" },
+      {
+        role: "user",
+        content: [
+          `上一次输出不是合法 ${parseLabel}，解析错误：${firstErr.message || String(firstErr)}`,
+          "请只把同一内容修正为可 JSON.parse 的合法 JSON。",
+          "不要新增解释，不要输出 Markdown 代码块。"
+        ].join("\n")
+      }
+    ];
+    completion = String(await rateLimitedChat(repairMessages, {
+      ...options,
+      temperature: 0.15,
+      max_tokens: Math.max(Number(options.max_tokens || 0), 600)
+    }) || "").trim();
+    return { completion, data: parseJsonObject(completion), repairCount: 1, prompt: repairMessages };
+  }
+}
+
 function flattenCardsPayload(cards) {
   const groups = Array.isArray(cards?.groups) ? cards.groups : [];
   const catalog = [];
@@ -285,14 +331,29 @@ function normalizeCardSelections(rawSelections, validCards) {
 }
 
 async function rateLimitedChat(messages, options) {
-  const now = Date.now();
-  const waitMs = Math.max(0, 220 - (now - lastDeepSeekAt));
-  if (waitMs > 0) {
-    await new Promise((resolve) => setTimeout(resolve, waitMs));
+  const maxAttempts = 3;
+  let lastErr = null;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const now = Date.now();
+    const waitMs = Math.max(0, 220 - (now - lastDeepSeekAt));
+    const retryWaitMs = attempt === 0 ? 0 : 1500 * attempt;
+    if (waitMs + retryWaitMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, waitMs + retryWaitMs));
+    }
+    try {
+      const out = await chatCompletion(messages, options);
+      lastDeepSeekAt = Date.now();
+      return out;
+    } catch (err) {
+      lastErr = err;
+      const message = String(err?.message || err || "");
+      const transient = /ENOTFOUND|ECONNRESET|ETIMEDOUT|EAI_AGAIN|429|5\d\d/i.test(message);
+      if (!transient || attempt === maxAttempts - 1) {
+        throw err;
+      }
+    }
   }
-  const out = await chatCompletion(messages, options);
-  lastDeepSeekAt = Date.now();
-  return out;
+  throw lastErr;
 }
 
 class PersonaStudent {
@@ -396,19 +457,20 @@ class PersonaStudent {
     }
 
     try {
-      const completion = await rateLimitedChat(messages, {
+      const jsonResult = await requestJsonObjectWithRepair(messages, {
         temperature: 0.9,
         max_tokens: 400
-      });
-      const parsed = parseJsonObject(completion);
+      }, "seed memory JSON");
+      const parsed = jsonResult.data;
       this.seedMemory = parsed;
       this.seedMemoryText = seedMemoryToText(parsed);
       this.logStudentLLM({
         caller: "persona_student.generateSeedMemory",
         step: "L0_seed_memory",
-        prompt: messages,
+        prompt: jsonResult.prompt || messages,
         completion: parsed,
-        durationMs: Date.now() - startedAt
+        durationMs: Date.now() - startedAt,
+        jsonRepairCount: jsonResult.repairCount
       });
       return parsed;
     } catch (err) {
@@ -485,19 +547,20 @@ class PersonaStudent {
     }
 
     try {
-      const completion = await rateLimitedChat(messages, {
+      const jsonResult = await requestJsonObjectWithRepair(messages, {
         temperature: 0.9,
         max_tokens: 400
-      });
-      const parsed = parseJsonObject(completion);
+      }, "classroom profile JSON");
+      const parsed = jsonResult.data;
       this.classroomProfile = parsed;
       this.classroomProfileText = JSON.stringify(parsed, null, 2);
       this.logStudentLLM({
         caller: "persona_student.generateClassroomProfile",
         step: "L1_classroom_profile",
-        prompt: messages,
+        prompt: jsonResult.prompt || messages,
         completion: parsed,
-        durationMs: Date.now() - startedAt
+        durationMs: Date.now() - startedAt,
+        jsonRepairCount: jsonResult.repairCount
       });
       return parsed;
     } catch (err) {
@@ -590,8 +653,8 @@ class PersonaStudent {
     }
 
     try {
-      const completion = await rateLimitedChat(messages, { temperature: 0.9, max_tokens: 320 });
-      const data = parseJsonObject(completion);
+      const jsonResult = await requestJsonObjectWithRepair(messages, { temperature: 0.9, max_tokens: 320 }, "phase1 JSON");
+      const data = jsonResult.data;
       const result = {
         grid_id: choice.grid_id,
         architecture: choice.architecture,
@@ -602,10 +665,11 @@ class PersonaStudent {
       this.logStudentLLM({
         caller: "persona_student.generatePhase1Choice",
         step: "R1.3_generate_phase1",
-        prompt: messages,
-        completion,
+        prompt: jsonResult.prompt || messages,
+        completion: jsonResult.completion,
         durationMs: Date.now() - startedAt,
-        usedFallback: false
+        usedFallback: false,
+        jsonRepairCount: jsonResult.repairCount
       });
       return result;
     } catch (err) {
@@ -910,11 +974,21 @@ class PersonaStudent {
   }
 
   async generatePriceChoice(priceContext = {}) {
-    const base = Number(priceContext.basePrice || priceContext.P || priceContext.Pmax || 4000);
+    const base = Number(priceContext.defaultPrice || priceContext.basePrice || priceContext.P || priceContext.Pmax || 4000);
     const min = Number(priceContext.min || Math.max(2000, Math.round(base * 0.7)));
     const max = Number(priceContext.max || Math.max(min, Math.round(base * 1.15)));
+    const step = Number(priceContext.step || 100);
     const totalCOGS = Number(priceContext.totalCOGS || priceContext.COGSbase || 600);
+    const baseVariableCost = Number(priceContext.baseVariableCost || priceContext.COGSbase || 600);
+    const dCOGSTotal = Number(priceContext.dCOGSTotal || Math.max(0, totalCOGS - baseVariableCost));
+    const fbaseWan = Number(priceContext.fbaseWan || 0);
+    const nreTotalWan = Number(priceContext.nreTotalWan || 0);
+    const upfrontInvestmentWan = Number(priceContext.upfrontInvestmentWan || (fbaseWan + nreTotalWan));
     const channelFee = Number(priceContext.channelFee || 0);
+    const channelExamplePrice = 4000;
+    const channelExampleNet = Math.round(channelExamplePrice * (1 - channelFee / 100));
+    const demandSummary = String(priceContext.demandSummary || "").trim() ||
+      "- 未记录到明确的消费能力或价格态度原话；请只根据已获得的客户痛点、采购语境和成本信息定价。";
     const fallbackFactor = {
       A: 1.02,
       B: 0.95,
@@ -935,13 +1009,21 @@ class PersonaStudent {
           `你的定价倾向：${this.student.pricingBias}`,
           "",
           "已知信息：",
-          `- 硬件成本：¥${totalCOGS}`,
-          `- 渠道抽成：${channelFee}%（定价 ¥10000，实际到手 ¥${Math.round(10000 * (1 - channelFee / 100))}）`,
-          "- 定价越高单台赚越多但愿意买的人越少，定价越低买的人越多但可能亏本",
+          "成本侧：",
+          `- 你的产品单台可变成本约 ¥${Math.round(totalCOGS)}（基础硬件 ¥${Math.round(baseVariableCost)} + 能力卡增量 dCOGS ¥${Math.round(dCOGSTotal)}）`,
+          `- 前期投入约 ${Math.round(upfrontInvestmentWan)} 万元（基础固定投入 Fbase ${Math.round(fbaseWan)} 万元 + 研发 NRE ${Math.round(nreTotalWan)} 万元）`,
+          `- 渠道抽成：${channelFee}%（例如定价 ¥${channelExamplePrice}，实际到手 ¥${channelExampleNet}）`,
+          "",
+          "需求侧：客户谈到的消费能力/价格态度线索",
+          demandSummary,
           "",
           `定价区间：¥${min} - ¥${max}`,
+          `滑块步长：¥${step}`,
+          "这个区间是课堂 UI 的硬边界，不是建议。低于最低值或高于最高值都会提交失败。",
+          "不要输出低于区间或高于区间的价格，也不要把区间端点当作建议价。",
           "",
-          "直接输出一个价格数字（整数），不要解释。"
+          "请输出 JSON，不要输出多余文字：",
+          "{\"price\": 4000, \"reason\": \"一句话说明你的定价依据\"}"
         ].join("\n")
       }
     ];
@@ -963,19 +1045,51 @@ class PersonaStudent {
     }
 
     try {
-      const completion = String(await rateLimitedChat(messages, { temperature: 0.4, max_tokens: 60 }) || "").trim();
-      const matched = completion.match(/\d{4,6}/);
-      const price = matched ? Number(matched[0]) : fallback;
-      const bounded = Math.max(min, Math.min(max, price));
+      let currentMessages = messages;
+      let completion = "";
+      let price = null;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        completion = String(await rateLimitedChat(currentMessages, { temperature: attempt === 0 ? 0.4 : 0.2, max_tokens: 160 }) || "").trim();
+        price = extractPriceFromJsonCompletion(completion);
+        if (isValidSliderPrice(price, min, max, step)) {
+          this.logStudentLLM({
+            caller: "persona_student.generatePriceChoice",
+            step: "R2.7_generate_price",
+            prompt: currentMessages,
+            completion,
+            durationMs: Date.now() - startedAt,
+            usedFallback: false,
+            retryCount: attempt
+          });
+          return price;
+        }
+        currentMessages = [
+          ...messages,
+          { role: "assistant", content: completion || "(空输出)" },
+          {
+            role: "user",
+            content: [
+              `你刚才输出的 price 不在课堂滑块区间 ¥${min} - ¥${max} 内，或不符合 ¥${step} 步长。`,
+              `请重新输出一个 ${min} 到 ${max} 之间、符合 ¥${step} 步长的整数价格。`,
+              "仍然只输出 JSON，不要输出多余文字：",
+              "{\"price\": 4000, \"reason\": \"一句话说明你的定价依据\"}"
+            ].join("\n")
+          }
+        ];
+      }
       this.logStudentLLM({
         caller: "persona_student.generatePriceChoice",
         step: "R2.7_generate_price",
         prompt: messages,
         completion,
         durationMs: Date.now() - startedAt,
-        usedFallback: false
+        usedFallback: false,
+        outOfRange: true
       });
-      return bounded;
+      if (this.strictMode) {
+        throw new Error(`Persona price out of range after retries: ${price}`);
+      }
+      return fallback;
     } catch (err) {
       if (this.strictMode) {
         throw new Error(`Persona price generation failed: ${err.message || err}`);
