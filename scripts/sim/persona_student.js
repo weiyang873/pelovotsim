@@ -126,6 +126,10 @@ function getVPLengthConstraint(education) {
   return "";
 }
 
+function stripVPLengthConstraint(text) {
+  return String(text || "").replace(/\n{0,2}输出约束(?:（[^）]*）)?：[\s\S]*$/u, "").trimEnd();
+}
+
 function extractPriceFromJsonCompletion(completion) {
   const text = String(completion || "").trim();
   if (!text) return null;
@@ -407,16 +411,17 @@ class PersonaStudent {
     });
   }
 
-  buildLayeredSystemPrompt() {
+  buildLayeredSystemPrompt(options = {}) {
     let prompt = this.seedMemoryText || buildBaseSystemPrompt(this.student);
     if (this.classroomProfileText) {
       prompt += `\n\n## 课堂行为画像\n${this.classroomProfileText}`;
     }
-    const lengthConstraint = getVPLengthConstraint(this.student?.education);
+    const includeVpLengthConstraint = options.includeVpLengthConstraint !== false;
+    const lengthConstraint = includeVpLengthConstraint ? getVPLengthConstraint(this.student?.education) : "";
     if (lengthConstraint) {
       prompt += `\n${lengthConstraint}`;
     }
-    return prompt;
+    return options.stripVpLengthConstraint === true ? stripVPLengthConstraint(prompt) : prompt;
   }
 
   async generateSeedMemory() {
@@ -1000,7 +1005,7 @@ class PersonaStudent {
     }[this.personaId] || 0.92;
     const fallback = Math.max(min, Math.min(max, Math.round(base * fallbackFactor)));
     const messages = [
-      { role: "system", content: this.buildLayeredSystemPrompt() },
+      { role: "system", content: this.buildLayeredSystemPrompt({ includeVpLengthConstraint: false, stripVpLengthConstraint: true }) },
       {
         role: "user",
         content: [

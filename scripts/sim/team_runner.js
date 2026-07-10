@@ -2044,7 +2044,7 @@ async function runRound2(result, api, teamId, members, memberActors, teamIndex, 
     assert(validation.valid === true, `validateSelections returned valid=${validation.valid}`);
   });
 
-  const pricingStudent = createStudentActor(
+  const pricingStudent = memberActors[0] || createStudentActor(
     options,
     teamIndex,
     0,
