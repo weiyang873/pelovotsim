@@ -44,6 +44,7 @@ const CONFIG_DIR = path.join(ROOT, "game_config_v0.1");
 
 let cachedEngineConfig = null;
 const VP_FEEDBACK_VERSION = 3;
+const VP_LLM_TIMEOUT_MS = 60000;
 
 function makeResponse(status, body) {
   return { status, body };
@@ -1437,7 +1438,11 @@ async function generateDraftVpFeedback({ teamId, memberId, gridLabel, archLabel,
       teamId,
       memberId,
       messages
-    }, () => chatCompletion(messages, { temperature: 0.2, max_tokens: 500 }));
+    }, () => chatCompletion(messages, {
+      temperature: 0.2,
+      max_tokens: 500,
+      timeoutMs: VP_LLM_TIMEOUT_MS
+    }));
     return parseFeedbackJson(raw) || buildFallbackDraftFeedback(src);
   } catch (err) {
     console.warn("[round1/vp-feedback] fallback:", err?.message || err);
@@ -1482,7 +1487,11 @@ async function generateFinalVpComment({ teamId, memberId, fields, scores }) {
       teamId,
       memberId,
       messages
-    }, () => chatCompletion(messages, { temperature: 0.3, max_tokens: 500 }));
+    }, () => chatCompletion(messages, {
+      temperature: 0.3,
+      max_tokens: 500,
+      timeoutMs: VP_LLM_TIMEOUT_MS
+    }));
     const cleaned = sanitizeGeneratedFeedback(raw);
     return fitFinalVpComment(cleaned, 150, 250);
   } catch (err) {
@@ -2215,7 +2224,8 @@ async function confirmAndScoreVp(body) {
       gridLabel: resolvePhase3Strategy(gridId, architecture).cell_label,
       archLabel: toArchitecturePromptLabel(architecture),
       teamId,
-      memberId
+      memberId,
+      timeoutMs: VP_LLM_TIMEOUT_MS
     });
     const persisted = await persistConfirmedVpResult({
       teamId,
@@ -2310,7 +2320,8 @@ async function generateVpFeedbackApi(body) {
       gridLabel,
       archLabel,
       teamId,
-      memberId
+      memberId,
+      timeoutMs: VP_LLM_TIMEOUT_MS
     });
 
     if (teamId && feedback) {

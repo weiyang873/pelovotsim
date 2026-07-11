@@ -203,7 +203,7 @@ function buildFallbackVpFeedback({ vpText, confirmedFields, scores }) {
   return fitFeedbackLength(`${mismatchLine}\n\n${strengths.join("")}\n\n${weaknesses.join("")}${direction}`);
 }
 
-async function generateVpFeedback({ vpText, confirmedFields, scores, details = null, gridLabel, archLabel, teamId = null, memberId = null }) {
+async function generateVpFeedback({ vpText, confirmedFields, scores, details = null, gridLabel, archLabel, teamId = null, memberId = null, timeoutMs = null }) {
   const fields = confirmedFields && typeof confirmedFields === "object" ? confirmedFields : {};
   const scoreSet = scores && typeof scores === "object" ? scores : {};
   function buildDiagnosisSummary(detailSet) {
@@ -299,7 +299,11 @@ ${diagnosisSummary}
       teamId,
       memberId,
       messages
-    }, () => chatCompletion(messages, { temperature: 0.3, max_tokens: 500 }));
+    }, () => chatCompletion(messages, {
+      temperature: 0.3,
+      max_tokens: 500,
+      timeoutMs: Number.isFinite(Number(timeoutMs)) ? Number(timeoutMs) : undefined
+    }));
     const cleaned = String(raw || "")
       .replace(/\r/g, "")
       .replace(/^[\-\d\.\s]+/, "")

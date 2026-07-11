@@ -1,4 +1,5 @@
 const BASE = "/api";
+const VP_REQUEST_TIMEOUT_MS = 70000;
 
 async function asJson(res) {
   const data = await res.json();
@@ -11,6 +12,29 @@ async function asJson(res) {
     throw error;
   }
   return data;
+}
+
+async function postJsonWithTimeout(path, payload, timeoutMs = VP_REQUEST_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeoutId = globalThis.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${BASE}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload || {}),
+      signal: controller.signal
+    });
+    return await asJson(res);
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      const timeoutError = new Error("请求超时，请重试");
+      timeoutError.code = "timeout";
+      throw timeoutError;
+    }
+    throw error;
+  } finally {
+    globalThis.clearTimeout(timeoutId);
+  }
 }
 
 export async function createTeam(teamName, teamSize) {
@@ -151,46 +175,19 @@ export async function extractVpFields(vpText, last5Turns = "") {
 }
 
 export async function confirmAndScoreVp(payload) {
-  const res = await fetch(`${BASE}/vp/confirm-and-score`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload || {})
-  });
-  return asJson(res);
+  return postJsonWithTimeout("/vp/confirm-and-score", payload);
 }
 
 export async function requestRound1VpFeedback(payload) {
-  const res = await fetch(`${BASE}/round1/vp-feedback`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload || {})
-  });
-  return asJson(res);
+  return postJsonWithTimeout("/round1/vp-feedback", payload);
 }
 
 export async function submitRound1Vp(payload) {
-  const res = await fetch(`${BASE}/round1/vp-submit`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload || {})
-  });
-  const data = await res.json();
-  if (!res.ok || (data.ok === false)) {
-    const error = new Error(data.error || "请求失败");
-    error.code = data.error || "request_failed";
-    error.payload = data;
-    throw error;
-  }
-  return data;
+  return postJsonWithTimeout("/round1/vp-submit", payload);
 }
 
 export async function generateVpFeedback(payload) {
-  const res = await fetch(`${BASE}/vp/generate-feedback`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload || {})
-  });
-  return asJson(res);
+  return postJsonWithTimeout("/vp/generate-feedback", payload);
 }
 
 export async function getResults(teamId, options = {}) {

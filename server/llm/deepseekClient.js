@@ -93,7 +93,7 @@ function hasAnyKey() {
   return DEEPSEEK_KEY_POOL.length > 0;
 }
 
-function performChatCompletionRequest(url, apiKey, body) {
+function performChatCompletionRequest(url, apiKey, body, timeoutMs = REQUEST_TIMEOUT_MS) {
   const transport = url.protocol === "http:" ? http : https;
 
   return new Promise((resolve, reject) => {
@@ -157,8 +157,8 @@ function performChatCompletionRequest(url, apiKey, body) {
       }
     );
 
-    req.setTimeout(REQUEST_TIMEOUT_MS, () => {
-      console.error(`[DeepSeek] Request timeout after ${REQUEST_TIMEOUT_MS}ms`);
+    req.setTimeout(timeoutMs, () => {
+      console.error(`[DeepSeek] Request timeout after ${timeoutMs}ms`);
       const timeoutError = createRequestError("DeepSeek API request timeout", { code: "ETIMEDOUT" });
       req.destroy(timeoutError);
     });
@@ -194,6 +194,9 @@ async function _chatCompletionInner(messages, options = {}) {
   });
   const url = new URL("/v1/chat/completions", DEEPSEEK_BASE_URL);
   const maxRetries = Number.isFinite(options.maxRetries) ? options.maxRetries : MAX_RETRIES;
+  const timeoutMs = Number.isFinite(Number(options.timeoutMs))
+    ? Math.max(1, Number(options.timeoutMs))
+    : REQUEST_TIMEOUT_MS;
   const startKeyIndex = Math.floor(Math.random() * DEEPSEEK_KEY_POOL.length);
 
   for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
@@ -201,7 +204,7 @@ async function _chatCompletionInner(messages, options = {}) {
     const apiKey = DEEPSEEK_KEY_POOL[keyIndex];
 
     try {
-      return await performChatCompletionRequest(url, apiKey, body);
+      return await performChatCompletionRequest(url, apiKey, body, timeoutMs);
     } catch (error) {
       const retryable = isRetryableError(error);
       const canRetry = retryable && attempt < maxRetries;

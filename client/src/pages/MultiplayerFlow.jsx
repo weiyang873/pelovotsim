@@ -603,6 +603,13 @@ function formatLeaderLockMessage(error) {
   return error?.message || "操作失败";
 }
 
+function formatVpRequestFailure(error) {
+  if (error?.code === "only_leader") {
+    return formatLeaderLockMessage(error);
+  }
+  return "请求超时，请重试";
+}
+
 function vpCharCount(value) {
   return Array.from(String(value || "").trim()).length;
 }
@@ -710,6 +717,41 @@ function VpGuidePanel({ guideOpen, setGuideOpen }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function VpWaitingNotice({ text }) {
+  return (
+    <div
+      data-testid="vp-waiting-notice"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        marginBottom: 14,
+        padding: "11px 12px",
+        borderRadius: 8,
+        background: VP_FLOW_COLORS.greenBg,
+        border: `1px solid ${VP_FLOW_COLORS.greenBorder}`,
+        color: VP_FLOW_COLORS.green,
+        fontSize: 13,
+        lineHeight: 1.6
+      }}
+    >
+      <span
+        aria-hidden="true"
+        style={{
+          width: 16,
+          height: 16,
+          borderRadius: "50%",
+          border: `2px solid ${VP_FLOW_COLORS.greenBorder}`,
+          borderTopColor: VP_FLOW_COLORS.green,
+          animation: "vp-wait-spin 0.8s linear infinite",
+          flex: "0 0 auto"
+        }}
+      />
+      <span>{text}</span>
     </div>
   );
 }
@@ -1972,7 +2014,7 @@ export default function App() {
       setStatusLine("VP 已评分并锁定。可点击上方“结果”查看团队结果。");
       setStep(5);
     } catch (e) {
-      setVpPanelError(`评分失败：${formatLeaderLockMessage(e)}`);
+      setVpPanelError(`评分失败：${formatVpRequestFailure(e)}`);
     } finally {
       setIsConfirmingVp(false);
     }
@@ -1982,7 +2024,7 @@ export default function App() {
     const finalCell = teamCell || selectedCell;
     const finalArch = teamArch || arch;
     const confirmedFields = buildConfirmPayloadFields(vpConfirmedFields);
-    if (!teamId || !memberId || !finalCell || !finalArch || round1TeamControlsLocked) return;
+    if (!teamId || !memberId || !finalCell || !finalArch || round1TeamControlsLocked || isGeneratingVpFeedback || isConfirmingVp) return;
     if (!vpRequiredFieldsValid(confirmedFields)) {
       setVpPanelError(`请先补全 WHO、PAIN、HOW，每项至少 ${VP_MIN_CHARS} 字。`);
       return;
@@ -2006,7 +2048,7 @@ export default function App() {
       setVpFeedbackRequest(out?.feedback || null);
       setVpPanelState("feedback");
     } catch (e) {
-      setVpPanelError(`获取反馈失败：${formatLeaderLockMessage(e)}`);
+      setVpPanelError(`获取反馈失败：${formatVpRequestFailure(e)}`);
     } finally {
       setIsGeneratingVpFeedback(false);
     }
@@ -2062,7 +2104,7 @@ export default function App() {
       setStatusLine("价值主张已提交并锁定。评分结果将在最终复盘时揭示。");
       setStep(5);
     } catch (e) {
-      setVpPanelError(`提交失败：${formatLeaderLockMessage(e)}`);
+      setVpPanelError(`提交失败：${formatVpRequestFailure(e)}`);
     } finally {
       setIsConfirmingVp(false);
     }
@@ -2260,6 +2302,12 @@ export default function App() {
       fontFamily: "'Noto Sans SC', 'SF Pro Display', -apple-system, sans-serif",
       background: "#fafaf8", minHeight: "100vh", padding: "24px 20px",
     }}>
+      <style>{`
+        @keyframes vp-wait-spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
         {/* Header */}
         <div style={{
@@ -3013,6 +3061,13 @@ export default function App() {
                     </div>
                   )}
 
+                  {isGeneratingVpFeedback && (
+                    <VpWaitingNotice text="AI 策略顾问正在阅读你们的初稿，约需 20-30 秒，请稍候…" />
+                  )}
+                  {isConfirmingVp && (
+                    <VpWaitingNotice text="正在生成评语并锁定价值主张，约需 20-30 秒…" />
+                  )}
+
                   <button
                     data-testid="vp-feedback-submit-btn"
                     type="button"
@@ -3025,12 +3080,12 @@ export default function App() {
                       fontWeight: 700,
                       border: "none",
                       borderRadius: 8,
-                      background: !round1TeamControlsLocked && vpRequiredFieldsValid(vpConfirmedFields) ? VP_FLOW_COLORS.green : "#a3b89c",
+                      background: !round1TeamControlsLocked && !isGeneratingVpFeedback && !isConfirmingVp && vpRequiredFieldsValid(vpConfirmedFields) ? VP_FLOW_COLORS.green : "#a3b89c",
                       color: VP_FLOW_COLORS.white,
-                      cursor: !round1TeamControlsLocked && vpRequiredFieldsValid(vpConfirmedFields) ? "pointer" : "not-allowed"
+                      cursor: !round1TeamControlsLocked && !isGeneratingVpFeedback && !isConfirmingVp && vpRequiredFieldsValid(vpConfirmedFields) ? "pointer" : "not-allowed"
                     }}
                   >
-                    {isGeneratingVpFeedback ? "正在获取反馈..." : (vpFeedbackRequest ? "提交定稿" : "提交初稿，获取反馈 →")}
+                    {isGeneratingVpFeedback ? "正在获取反馈..." : (isConfirmingVp ? "正在提交定稿..." : (vpFeedbackRequest ? "接受反馈，提交定稿" : "提交初稿，获取反馈"))}
                   </button>
                 </div>
               </>
@@ -3076,13 +3131,17 @@ export default function App() {
                   </div>
                 )}
 
+                {isConfirmingVp && (
+                  <VpWaitingNotice text="正在生成评语并锁定价值主张，约需 20-30 秒…" />
+                )}
+
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                   <button
                     data-testid="vp-modify-btn"
                     type="button"
                     onClick={handleSimplifiedVpModify}
                     disabled={round1TeamControlsLocked || isConfirmingVp}
-                    style={{ flex: "1 1 220px", padding: "14px 0", fontSize: 15, fontWeight: 700, background: VP_FLOW_COLORS.white, color: VP_FLOW_COLORS.text, border: `1px solid ${VP_FLOW_COLORS.border}`, borderRadius: 8, cursor: "pointer" }}
+                    style={{ flex: "1 1 220px", padding: "14px 0", fontSize: 15, fontWeight: 700, background: round1TeamControlsLocked || isConfirmingVp ? "#f3f4f6" : VP_FLOW_COLORS.white, color: VP_FLOW_COLORS.text, border: `1px solid ${VP_FLOW_COLORS.border}`, borderRadius: 8, cursor: round1TeamControlsLocked || isConfirmingVp ? "not-allowed" : "pointer" }}
                   >
                     我要修改
                   </button>
@@ -3091,7 +3150,7 @@ export default function App() {
                     type="button"
                     onClick={handleSimplifiedVpSubmit}
                     disabled={round1TeamControlsLocked || isConfirmingVp}
-                    style={{ flex: "1 1 220px", padding: "14px 0", fontSize: 15, fontWeight: 700, background: VP_FLOW_COLORS.green, color: VP_FLOW_COLORS.white, border: "none", borderRadius: 8, cursor: "pointer", opacity: isConfirmingVp ? 0.7 : 1 }}
+                    style={{ flex: "1 1 220px", padding: "14px 0", fontSize: 15, fontWeight: 700, background: round1TeamControlsLocked || isConfirmingVp ? "#a3b89c" : VP_FLOW_COLORS.green, color: VP_FLOW_COLORS.white, border: "none", borderRadius: 8, cursor: round1TeamControlsLocked || isConfirmingVp ? "not-allowed" : "pointer", opacity: isConfirmingVp ? 0.7 : 1 }}
                   >
                     {isConfirmingVp ? "正在提交..." : "接受反馈，提交定稿"}
                   </button>
@@ -3473,7 +3532,7 @@ export default function App() {
                       data-testid={`vp-confirm-${item.key}`}
                       value={vpConfirmedFields[item.key]}
                       onChange={(e) => handleConfirmedFieldChange(item.key, e.target.value)}
-                      disabled={vpPanelState === "scored" || round1TeamControlsLocked}
+                      disabled={vpPanelState === "scored" || round1TeamControlsLocked || isConfirmingVp}
                       placeholder={item.placeholder}
                       style={{
                         width: "100%",
@@ -3486,7 +3545,7 @@ export default function App() {
                         outline: "none",
                         fontFamily: "inherit",
                         boxSizing: "border-box",
-                        background: vpPanelState === "scored" || round1TeamControlsLocked ? "#f3f4f6" : "#fff",
+                        background: vpPanelState === "scored" || round1TeamControlsLocked || isConfirmingVp ? "#f3f4f6" : "#fff",
                         color: "#374151",
                         lineHeight: 1.6
                       }}
@@ -3495,45 +3554,50 @@ export default function App() {
                 ))}
 
                 {vpPanelState === "confirming" && (
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 6 }}>
-                    <button
-                      data-testid="vp-return-edit-btn"
-                      type="button"
-                      onClick={handleReturnToEditing}
-                      disabled={round1TeamControlsLocked}
-                      style={{
-                        padding: "11px 18px",
-                        borderRadius: 10,
-                        border: "1px solid #d1d5db",
-                        background: round1TeamControlsLocked ? "#f3f4f6" : "#fff",
-                        color: "#374151",
-                        fontSize: 14,
-                        fontWeight: 700,
-                        cursor: round1TeamControlsLocked ? "default" : "pointer"
-                      }}
-                    >
-                      返回修改
-                    </button>
-                    <button
-                      data-testid="vp-confirm-btn"
-                      type="button"
-                      onClick={handleConfirmAndScore}
-                      disabled={isConfirmingVp || round1TeamControlsLocked}
-                      style={{
-                        padding: "11px 18px",
-                        borderRadius: 10,
-                        border: "none",
-                        background: "#1a5c3a",
-                        color: "#fff",
-                        fontSize: 14,
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        opacity: isConfirmingVp || round1TeamControlsLocked ? 0.7 : 1
-                      }}
-                    >
-                      {isConfirmingVp ? "正在评分..." : "确认并评分"}
-                    </button>
-                  </div>
+                  <>
+                    {isConfirmingVp && (
+                      <VpWaitingNotice text="正在生成评语并锁定价值主张，约需 20-30 秒…" />
+                    )}
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 6 }}>
+                      <button
+                        data-testid="vp-return-edit-btn"
+                        type="button"
+                        onClick={handleReturnToEditing}
+                        disabled={round1TeamControlsLocked || isConfirmingVp}
+                        style={{
+                          padding: "11px 18px",
+                          borderRadius: 10,
+                          border: "1px solid #d1d5db",
+                          background: round1TeamControlsLocked || isConfirmingVp ? "#f3f4f6" : "#fff",
+                          color: "#374151",
+                          fontSize: 14,
+                          fontWeight: 700,
+                          cursor: round1TeamControlsLocked || isConfirmingVp ? "not-allowed" : "pointer"
+                        }}
+                      >
+                        返回修改
+                      </button>
+                      <button
+                        data-testid="vp-confirm-btn"
+                        type="button"
+                        onClick={handleConfirmAndScore}
+                        disabled={isConfirmingVp || round1TeamControlsLocked}
+                        style={{
+                          padding: "11px 18px",
+                          borderRadius: 10,
+                          border: "none",
+                          background: isConfirmingVp || round1TeamControlsLocked ? "#a3b89c" : "#1a5c3a",
+                          color: "#fff",
+                          fontSize: 14,
+                          fontWeight: 700,
+                          cursor: isConfirmingVp || round1TeamControlsLocked ? "not-allowed" : "pointer",
+                          opacity: isConfirmingVp || round1TeamControlsLocked ? 0.7 : 1
+                        }}
+                      >
+                        {isConfirmingVp ? "正在锁定..." : "确认并评分"}
+                      </button>
+                    </div>
+                  </>
                 )}
 
                 {vpPanelState === "scored" && (
