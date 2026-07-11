@@ -46,6 +46,7 @@ const TeacherDebrief = require("./server/routes/teacherDebrief");
 const TeacherConsole = require("./server/routes/teacherConsole");
 const ComputationLog = require("./server/multiplayer/computationLog");
 const { ensureSchema: ensureTeamSchema } = require("./server/multiplayer/teamManager");
+const SessionConfig = require("./server/multiplayer/sessionConfig");
 const EmbeddingService = require("./server/llm/embeddingService");
 
 const PORT = Number(process.env.PORT || 8787);
@@ -71,6 +72,12 @@ let vpEvaluateSchemaPromise = null;
 let shutdownHooksRegistered = false;
 
 const ROUND1_VP_FALLBACK_PROMPT_VERSION = "round1_vp_v1";
+const STARTUP_SUMMARY_SCHEMA_TABLES = [
+  "round2_persona_reports",
+  "round2_persona_choices",
+  "round2_persona_views",
+  "session_config"
+];
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -3313,18 +3320,41 @@ function registerShutdownHooks(server) {
   });
 }
 
+async function assertStartupTableEnsured(tableName) {
+  const rows = await runSql(`
+    SELECT to_regclass(${sqlQuote(`public.${tableName}`)}) AS table_name;
+  `);
+  if (!rows[0]?.table_name) {
+    throw new Error(`[ensure-schema] ${tableName} missing after startup ensure`);
+  }
+  console.log(`[ensure-schema] ${tableName} ensured`);
+}
+
+async function ensureStartupSchemas() {
+  try {
+    await initDb();
+    await ensureTeamSchema();
+    await Round2.ensureSchema();
+    await TeacherDebrief.ensureSchema();
+    await TeacherConsole.ensureSchema();
+    await Sessions.ensureSchema();
+    await MarketingSessions.ensureSchema();
+    await SessionConfig.ensureSessionConfigSchema();
+    for (const tableName of STARTUP_SUMMARY_SCHEMA_TABLES) {
+      await assertStartupTableEnsured(tableName);
+    }
+  } catch (err) {
+    console.error("[ensure-schema][FATAL] startup schema ensure failed:", err?.stack || err?.message || err);
+    throw err;
+  }
+}
+
 function startServer() {
   const server = createAppServer();
   registerShutdownHooks(server);
   const boot = async () => {
+    await ensureStartupSchemas();
     try {
-      await initDb();
-      await ensureTeamSchema();
-      await Round2.ensureSchema();
-      await TeacherDebrief.ensureSchema();
-      await TeacherConsole.ensureSchema();
-      await Sessions.ensureSchema();
-      await MarketingSessions.ensureSchema();
       await EmbeddingService.init();
       console.log("[Server] EmbeddingService 初始化完成");
     } catch (e) {
@@ -3337,6 +3367,7 @@ function startServer() {
   };
   boot().catch((err) => {
     console.error("[Server] 启动异常:", err?.message || err);
+    process.exitCode = 1;
   });
   return server;
 }
