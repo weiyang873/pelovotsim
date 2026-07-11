@@ -269,6 +269,22 @@ function sendJson(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
+function requireTeacherAuthBeforeBody(req, reqUrl) {
+  const url = new URL(reqUrl || req.url || "/", `http://${req.headers.host || "127.0.0.1"}`);
+  return TeacherDebrief.verifyTeacherAuth({
+    headers: req.headers,
+    query: url.searchParams,
+    body: null
+  });
+}
+
+function sendTeacherAuthFailureIfAny(req, res, reqUrl) {
+  const auth = requireTeacherAuthBeforeBody(req, reqUrl);
+  if (auth?.body?.ok) return false;
+  sendJson(res, auth.status, auth.body);
+  return true;
+}
+
 function httpError(status, message) {
   const err = new Error(message);
   err.status = status;
@@ -1915,12 +1931,9 @@ function handleApi(req, res) {
   }
 
   if (req.method === "POST" && /^\/api\/admin\/import\/?$/.test(reqPath)) {
+    if (sendTeacherAuthFailureIfAny(req, res, reqUrl)) return;
     return readBody(req)
-      .then((payload) => {
-        const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: null, body: payload });
-        if (!auth?.body?.ok) return auth;
-        return AdminRoutes.importStudents(payload);
-      })
+      .then((payload) => AdminRoutes.importStudents(payload))
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 400, { ok: false, error: err.message }));
   }
@@ -2023,45 +2036,33 @@ function handleApi(req, res) {
   }
 
   if (req.method === "POST" && /^\/api\/teacher\/generate-debrief\/?$/.test(reqPath)) {
+    if (sendTeacherAuthFailureIfAny(req, res, reqUrl)) return;
     return readBody(req)
-      .then((payload) => {
-        const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: null, body: payload });
-        if (!auth?.body?.ok) return auth;
-        return TeacherDebrief.generateDebriefApi(payload);
-      })
+      .then((payload) => TeacherDebrief.generateDebriefApi(payload))
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher generate debrief failed" }));
   }
 
   if (req.method === "POST" && /^\/api\/teacher\/generate-team-review\/?$/.test(reqPath)) {
+    if (sendTeacherAuthFailureIfAny(req, res, reqUrl)) return;
     return readBody(req)
-      .then((payload) => {
-        const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: null, body: payload });
-        if (!auth?.body?.ok) return auth;
-        return TeacherDebrief.generateTeamReviewApi(payload);
-      })
+      .then((payload) => TeacherDebrief.generateTeamReviewApi(payload))
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher generate team review failed" }));
   }
 
   if (req.method === "POST" && /^\/api\/teacher\/generate-lovot\/?$/.test(reqPath)) {
+    if (sendTeacherAuthFailureIfAny(req, res, reqUrl)) return;
     return readBody(req)
-      .then((payload) => {
-        const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: null, body: payload });
-        if (!auth?.body?.ok) return auth;
-        return TeacherDebrief.generateLovotApi(payload);
-      })
+      .then((payload) => TeacherDebrief.generateLovotApi(payload))
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher generate lovot failed" }));
   }
 
   if (req.method === "POST" && /^\/api\/teacher\/generate-lovot-batch\/?$/.test(reqPath)) {
+    if (sendTeacherAuthFailureIfAny(req, res, reqUrl)) return;
     return readBody(req)
-      .then((payload) => {
-        const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: null, body: payload });
-        if (!auth?.body?.ok) return auth;
-        return TeacherDebrief.generateLovotBatchApi(payload);
-      })
+      .then((payload) => TeacherDebrief.generateLovotBatchApi(payload))
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher batch lovot failed" }));
   }
@@ -2077,34 +2078,25 @@ function handleApi(req, res) {
   }
 
   if (req.method === "POST" && /^\/api\/teacher\/export-ppt\/?$/.test(reqPath)) {
+    if (sendTeacherAuthFailureIfAny(req, res, reqUrl)) return;
     return readBody(req)
-      .then((payload) => {
-        const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: null, body: payload });
-        if (!auth?.body?.ok) return auth;
-        return TeacherDebrief.exportPptApi(payload);
-      })
+      .then((payload) => TeacherDebrief.exportPptApi(payload))
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher export ppt failed" }));
   }
 
   if (req.method === "POST" && /^\/api\/teacher\/export-pdf\/?$/.test(reqPath)) {
+    if (sendTeacherAuthFailureIfAny(req, res, reqUrl)) return;
     return readBody(req)
-      .then((payload) => {
-        const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: null, body: payload });
-        if (!auth?.body?.ok) return auth;
-        return TeacherDebrief.exportPdfApi(payload);
-      })
+      .then((payload) => TeacherDebrief.exportPdfApi(payload))
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher export pdf failed" }));
   }
 
   if (req.method === "POST" && /^\/api\/teacher\/open-round2\/?$/.test(reqPath)) {
+    if (sendTeacherAuthFailureIfAny(req, res, reqUrl)) return;
     return readBody(req)
-      .then((payload) => {
-        const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: null, body: payload });
-        if (!auth?.body?.ok) return auth;
-        return TeacherConsole.openRound2Api(payload);
-      })
+      .then((payload) => TeacherConsole.openRound2Api(payload))
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher open round2 failed" }));
   }
@@ -2119,122 +2111,89 @@ function handleApi(req, res) {
   }
 
   if (req.method === "POST" && /^\/api\/teacher\/session-config\/?$/.test(reqPath)) {
+    if (sendTeacherAuthFailureIfAny(req, res, reqUrl)) return;
     return readBody(req)
-      .then((payload) => {
-        const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: null, body: payload });
-        if (!auth?.body?.ok) return auth;
-        return TeacherConsole.updateSessionConfigApi(payload);
-      })
+      .then((payload) => TeacherConsole.updateSessionConfigApi(payload))
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher update session config failed" }));
   }
 
   if (req.method === "POST" && /^\/api\/teacher\/set-leader\/?$/.test(reqPath)) {
+    if (sendTeacherAuthFailureIfAny(req, res, reqUrl)) return;
     return readBody(req)
-      .then((payload) => {
-        const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: null, body: payload });
-        if (!auth?.body?.ok) return auth;
-        return TeacherConsole.setLeaderApi(payload);
-      })
+      .then((payload) => TeacherConsole.setLeaderApi(payload))
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher set leader failed" }));
   }
 
   if (req.method === "POST" && /^\/api\/teacher\/force-end-interview\/?$/.test(reqPath)) {
+    if (sendTeacherAuthFailureIfAny(req, res, reqUrl)) return;
     return readBody(req)
-      .then((payload) => {
-        const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: null, body: payload });
-        if (!auth?.body?.ok) return auth;
-        return TeacherConsole.forceEndInterviewApi(payload);
-      })
+      .then((payload) => TeacherConsole.forceEndInterviewApi(payload))
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher force end interview failed" }));
   }
 
   if (req.method === "POST" && /^\/api\/teacher\/force-submit-cards\/?$/.test(reqPath)) {
+    if (sendTeacherAuthFailureIfAny(req, res, reqUrl)) return;
     return readBody(req)
-      .then((payload) => {
-        const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: null, body: payload });
-        if (!auth?.body?.ok) return auth;
-        return TeacherConsole.forceSubmitCardsApi(payload);
-      })
+      .then((payload) => TeacherConsole.forceSubmitCardsApi(payload))
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher force submit cards failed" }));
   }
 
   if (req.method === "POST" && /^\/api\/teacher\/mark-absent\/?$/.test(reqPath)) {
+    if (sendTeacherAuthFailureIfAny(req, res, reqUrl)) return;
     return readBody(req)
-      .then((payload) => {
-        const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: null, body: payload });
-        if (!auth?.body?.ok) return auth;
-        return TeacherConsole.markMemberAbsentApi(payload);
-      })
+      .then((payload) => TeacherConsole.markMemberAbsentApi(payload))
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher mark absent failed" }));
   }
 
   if (req.method === "POST" && /^\/api\/teacher\/force-merge\/?$/.test(reqPath)) {
+    if (sendTeacherAuthFailureIfAny(req, res, reqUrl)) return;
     return readBody(req)
-      .then((payload) => {
-        const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: null, body: payload });
-        if (!auth?.body?.ok) return auth;
-        return TeacherConsole.forceMergeApi(payload);
-      })
+      .then((payload) => TeacherConsole.forceMergeApi(payload))
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher force merge failed" }));
   }
 
   if (req.method === "POST" && /^\/api\/teacher\/force-merge-all\/?$/.test(reqPath)) {
+    if (sendTeacherAuthFailureIfAny(req, res, reqUrl)) return;
     return readBody(req)
-      .then((payload) => {
-        const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: null, body: payload });
-        if (!auth?.body?.ok) return auth;
-        return TeacherConsole.forceMergeAllApi(payload);
-      })
+      .then((payload) => TeacherConsole.forceMergeAllApi(payload))
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher force merge all failed" }));
   }
 
   if (req.method === "POST" && /^\/api\/teacher\/force-advance\/?$/.test(reqPath)) {
+    if (sendTeacherAuthFailureIfAny(req, res, reqUrl)) return;
     return readBody(req)
-      .then((payload) => {
-        const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: null, body: payload });
-        if (!auth?.body?.ok) return auth;
-        return TeacherConsole.forceAdvanceApi(payload);
-      })
+      .then((payload) => TeacherConsole.forceAdvanceApi(payload))
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher force advance failed" }));
   }
 
   if (req.method === "POST" && /^\/api\/teacher\/reset-member\/?$/.test(reqPath)) {
+    if (sendTeacherAuthFailureIfAny(req, res, reqUrl)) return;
     return readBody(req)
-      .then((payload) => {
-        const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: null, body: payload });
-        if (!auth?.body?.ok) return auth;
-        return TeacherConsole.resetMemberApi(payload);
-      })
+      .then((payload) => TeacherConsole.resetMemberApi(payload))
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher reset member failed" }));
   }
 
   if (req.method === "POST" && /^\/api\/teacher\/reset-team\/?$/.test(reqPath)) {
+    if (sendTeacherAuthFailureIfAny(req, res, reqUrl)) return;
     return readBody(req)
-      .then((payload) => {
-        const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: null, body: payload });
-        if (!auth?.body?.ok) return auth;
-        return TeacherConsole.resetTeamApi(payload);
-      })
+      .then((payload) => TeacherConsole.resetTeamApi(payload))
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher reset team failed" }));
   }
 
   if (req.method === "POST" && /^\/api\/teacher\/reset-session\/?$/.test(reqPath)) {
+    if (sendTeacherAuthFailureIfAny(req, res, reqUrl)) return;
     return readBody(req)
-      .then((payload) => {
-        const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: null, body: payload });
-        if (!auth?.body?.ok) return auth;
-        return TeacherConsole.resetSessionApi(payload);
-      })
+      .then((payload) => TeacherConsole.resetSessionApi(payload))
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher reset session failed" }));
   }
@@ -2435,6 +2394,7 @@ function handleApi(req, res) {
   }
 
   if (process.env.NODE_ENV !== "production" && req.method === "GET" && String(req.url || "").startsWith("/api/test/skip-to-r2")) {
+    if (sendTeacherAuthFailureIfAny(req, res, reqUrl)) return;
     const url = new URL(String(req.url || ""), `http://${req.headers.host || "127.0.0.1"}`);
     const query = Object.fromEntries(url.searchParams.entries());
     return TestRoutes.skipToRound2(query)
@@ -2582,16 +2542,10 @@ function handleApi(req, res) {
   }
 
   if (req.method === "POST" && req.url === "/api/computation-log") {
+    if (sendTeacherAuthFailureIfAny(req, res, reqUrl)) return;
     return readBody(req)
-      .then((p) => {
-        const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: null, body: p });
-        if (!auth?.body?.ok) return { __authFail: auth };
-        return ComputationLog.createLogs(p).then((body) => ({ __authFail: null, body }));
-      })
-      .then((out) => {
-        if (out.__authFail) return sendJson(res, out.__authFail.status, out.__authFail.body);
-        return sendJson(res, 200, out.body);
-      })
+      .then((p) => ComputationLog.createLogs(p))
+      .then((body) => sendJson(res, 200, body))
       .catch((err) => sendJson(res, 400, { ok: false, error: err.message || "computation log create failed" }));
   }
 
@@ -2885,6 +2839,7 @@ function handleApi(req, res) {
   }
 
   if (req.method === "GET" && /^\/api\/vp\/export\/[^/]+$/.test(String(req.url || ""))) {
+    if (sendTeacherAuthFailureIfAny(req, res, reqUrl)) return;
     const id = decodeURIComponent(String(req.url || "").split("/").pop() || "");
     return VpChat.exportSession(id)
       .then((out) => {
@@ -2906,6 +2861,7 @@ function handleApi(req, res) {
   }
 
   if (req.method === "GET" && /^\/api\/marketing\/export\/[^/]+$/.test(String(req.url || ""))) {
+    if (sendTeacherAuthFailureIfAny(req, res, reqUrl)) return;
     const id = decodeURIComponent(String(req.url || "").split("/").pop() || "");
     return Marketing.exportSession(id)
       .then((out) => {
@@ -3094,6 +3050,7 @@ function handleApi(req, res) {
   }
 
   if (req.method === "GET" && req.url === "/api/export") {
+    if (sendTeacherAuthFailureIfAny(req, res, reqUrl)) return;
     return Promise.all([
       runSql(`SELECT * FROM team_runs ORDER BY created_at DESC;`),
       runSql(`SELECT * FROM iteration_events ORDER BY created_at ASC;`),
