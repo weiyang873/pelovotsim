@@ -284,22 +284,32 @@ async function main() {
       price: 4000,
       selections: FINAL_SELECTIONS,
       best_grid: SPOOFED_GRID,
-      mergedInterview: mergeRes.body.mergedInterview
+      evi: 0.01,
+      mergedInterview: {
+        ...mergeRes.body.mergedInterview,
+        evi: 0.02
+      }
     });
     assert.equal(submitRes.status, 200);
     assert.equal(submitRes.body.result.best_grid, expectedMatch.bestGrid);
     assert.deepEqual(submitRes.body.result.result.card_scores, expectedCardScores);
     assert(warnLines.some((line) => line.includes("client best_grid ignored")), "spoofed best_grid should be logged and ignored");
+    assert(warnLines.some((line) => line.includes("EVIOverrideIgnored")), "spoofed summary evi should be logged and ignored");
 
     const resultRows = await runSql(`
-      SELECT best_grid, matched_grid, match_score_json
-      FROM round2_results
-      WHERE team_id = ${sqlQuote(teamId)} AND session_id = ${sqlQuote(SESSION_ID)}
+      SELECT r.best_grid, r.matched_grid, r.match_score_json, r.result_json, radar.evi
+      FROM round2_results r
+      LEFT JOIN fg_team_radar radar
+        ON radar.team_id = r.team_id AND radar.session_id = r.session_id
+      WHERE r.team_id = ${sqlQuote(teamId)} AND r.session_id = ${sqlQuote(SESSION_ID)}
       LIMIT 1;
     `);
     assert.equal(resultRows.length, 1);
     assert.equal(resultRows[0].best_grid, expectedMatch.bestGrid);
     assert.equal(resultRows[0].matched_grid, expectedMatch.bestGrid);
+    assert.equal(Number(resultRows[0].evi), Number(frozenChoice.evi));
+    const storedResult = JSON.parse(resultRows[0].result_json || "{}");
+    assert.equal(Number(storedResult.evi), Number(frozenChoice.evi));
     const matchScores = JSON.parse(resultRows[0].match_score_json || "{}");
     assert.equal(matchScores[expectedMatch.bestGrid], expectedMatch.allMatches[expectedMatch.bestGrid]);
 

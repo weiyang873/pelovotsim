@@ -51,6 +51,7 @@ let cachedStaticPersonaReports = null;
 let cachedGridDimensionEvidence = null;
 const ROUND2_PERSONA_POOL_VERSION = 5;
 const SUMMARY_DYNAMIC_EVI_MAX = 0.85;
+const LEGACY_LIVE_EVI_FALLBACK = 0.7;
 const DEFAULT_ROUND2_PRICING_CONTEXT = {
   price_min: 1000,
   price_max: 6000,
@@ -2862,12 +2863,50 @@ function buildMergedInterviewFromPersonaChoice(choice) {
   return {
     radar: normalizeRadarPayload(choice.radar),
     tags: Array.isArray(choice.tags) ? choice.tags : [],
-    evi: Number.isFinite(Number(choice.evi)) ? Number(choice.evi) : 0.7,
+    evi: Number.isFinite(Number(choice.evi)) ? Number(choice.evi) : null,
     sourceByDim: {},
     selectedArchetypeId: choice.persona_id || choice.archetype_id || "",
     summaryText: choice.summary_text || "",
     flowVersion: choice.flow_version || SUMMARY_FLOW_VERSION
   };
+}
+
+function resolveAuthoritativeSubmitEvi({ body, personaChoice, sessionConfig, teamId, sessionId }) {
+  const bodyEvi = Number(body?.evi);
+  const mergedEvi = Number(body?.mergedInterview?.evi);
+  const choiceEvi = Number(personaChoice?.evi);
+  const hasBodyEvi = Number.isFinite(bodyEvi);
+  const hasMergedEvi = Number.isFinite(mergedEvi);
+  const hasChoiceEvi = Number.isFinite(choiceEvi);
+
+  if (isSummaryModeSession(sessionConfig)) {
+    if (hasBodyEvi || hasMergedEvi) {
+      console.warn("[Round2][EVIOverrideIgnored]", JSON.stringify({
+        teamId,
+        sessionId,
+        interview_mode: sessionConfig?.interview_mode || "summary",
+        body_evi: hasBodyEvi ? bodyEvi : null,
+        merged_interview_evi: hasMergedEvi ? mergedEvi : null,
+        authoritative_evi: hasChoiceEvi ? choiceEvi : null
+      }));
+    }
+    if (!hasChoiceEvi) {
+      throw new Error("summary evi missing from frozen persona choice");
+    }
+    return choiceEvi;
+  }
+
+  if (hasBodyEvi) return bodyEvi;
+  if (hasMergedEvi) return mergedEvi;
+  if (hasChoiceEvi) return choiceEvi;
+
+  console.warn("[Round2][LegacyEviFallback]", JSON.stringify({
+    teamId,
+    sessionId,
+    interview_mode: sessionConfig?.interview_mode || "live",
+    fallback_evi: LEGACY_LIVE_EVI_FALLBACK
+  }));
+  return LEGACY_LIVE_EVI_FALLBACK;
 }
 
 function sanitizeStudentMergedInterview(mergedInterview, options = {}) {
@@ -4695,25 +4734,31 @@ async function teamSubmitApi(body) {
     }
 
     const sessionConfig = await getSessionConfig(sessionId);
-    const personaChoice = isSummaryModeSession(sessionConfig)
+    const isSummaryMode = isSummaryModeSession(sessionConfig);
+    const personaChoice = isSummaryMode
       ? await freezeStaticSummaryChoiceForTeam(team, sessionId, memberId || "system_submit")
       : await readPersonaChoice(teamId, sessionId);
     const flowVersion = personaChoice?.flow_version
       || (sessionConfig.interview_mode === "live" ? "twophase_v1" : SUMMARY_FLOW_VERSION);
     const fallbackRadar = personaChoice?.radar || {};
     const fallbackTags = Array.isArray(personaChoice?.tags) ? personaChoice.tags : [];
-    const fallbackEvi = personaChoice?.evi;
-    const radar = normalizeRadarPayload(body?.mergedInterview?.radar || body?.radar || fallbackRadar);
-    const tags = Array.isArray(body?.tags)
-      ? body.tags
-      : Array.isArray(body?.mergedInterview?.tags)
-        ? body.mergedInterview.tags
-        : fallbackTags;
-    const evi = Number.isFinite(Number(body?.evi))
-      ? Number(body.evi)
-      : Number.isFinite(Number(body?.mergedInterview?.evi))
-        ? Number(body.mergedInterview.evi)
-        : (Number.isFinite(Number(fallbackEvi)) ? Number(fallbackEvi) : 0.7);
+    const radar = isSummaryMode
+      ? normalizeRadarPayload(fallbackRadar)
+      : normalizeRadarPayload(body?.mergedInterview?.radar || body?.radar || fallbackRadar);
+    const tags = isSummaryMode
+      ? fallbackTags
+      : Array.isArray(body?.tags)
+        ? body.tags
+        : Array.isArray(body?.mergedInterview?.tags)
+          ? body.mergedInterview.tags
+          : fallbackTags;
+    const evi = resolveAuthoritativeSubmitEvi({
+      body,
+      personaChoice,
+      sessionConfig,
+      teamId,
+      sessionId
+    });
     const bestGrid = String(body?.bestGrid || body?.best_grid || "").trim();
 
     const submission = {
