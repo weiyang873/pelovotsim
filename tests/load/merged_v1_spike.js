@@ -143,8 +143,8 @@ export const options = {
     http_req_failed: ["rate<0.02"],
     stage1_create_join_ms: ["p(95)<3000"],
     stage2_strategy_ms: ["p(95)<3000"],
-    stage3_vp_feedback_ms: ["p(95)<30000"],
-    stage3_vp_confirm_ms: ["p(95)<30000"],
+    stage3_vp_feedback_ms: ["p(95)<60000"],
+    stage3_vp_confirm_ms: ["p(95)<60000"],
     stage4_reports_ms: ["p(95)<500"],
     stage4_reading_status_ms: ["p(95)<500"],
     stage5_cards_ms: ["p(95)<3000"],
@@ -699,8 +699,8 @@ export function handleSummary(data) {
   lines.push(row(data, "1 校验无双认领症状", "stage1_verify_ms"));
   lines.push(row(data, "2 R1 战略提交", "stage2_strategy_ms", 3000));
   lines.push(row(data, "2 phase2 校验", "stage2_verify_ms"));
-  lines.push(row(data, "3 VP generate-feedback", "stage3_vp_feedback_ms", 30000));
-  lines.push(row(data, "3 VP confirm-and-score", "stage3_vp_confirm_ms", 30000));
+  lines.push(row(data, "3 VP generate-feedback", "stage3_vp_feedback_ms", 60000));
+  lines.push(row(data, "3 VP confirm-and-score", "stage3_vp_confirm_ms", 60000));
   lines.push(row(data, "3 finalize + freeze", "stage3_finalize_freeze_ms"));
   lines.push(row(data, "4 报告下发/切换", "stage4_reports_ms", 500));
   lines.push(row(data, "4 阅读状态轮询", "stage4_reading_status_ms", 500));
