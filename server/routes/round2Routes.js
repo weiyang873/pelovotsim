@@ -1,5 +1,6 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const crypto = require("node:crypto");
 const { runSql, sqlQuote } = require("../db/pgSql");
 
 const Engine = require("../../engine");
@@ -44,7 +45,7 @@ const CONFIG_DIR = path.join(ROOT, "game_config_v0.1");
 const GRID_PRIOR_PATH = path.join(ROOT, "data", "grid_priors_v4_cap_weights.json");
 const ROUND2_ENGINE_PARAMS_PATH = path.join(CONFIG_DIR, "round2_engine_params.json");
 const STATIC_PERSONA_REPORTS_PATH = path.join(CONFIG_DIR, "persona_reports_v1.1.json");
-const GRID_DIMENSION_EVIDENCE_PATH = path.join(CONFIG_DIR, "grid_dimension_evidence_v1.json");
+const GRID_DIMENSION_EVIDENCE_PATH = path.join(CONFIG_DIR, "grid_dimension_evidence_v2.json");
 let cachedEngineConfig = null;
 let cachedGridPriors = null;
 let cachedStaticPersonaReports = null;
@@ -476,6 +477,23 @@ function readJsonFile(filePath) {
   return JSON.parse(fs.readFileSync(filePath, "utf8"));
 }
 
+function sha256File(filePath) {
+  return crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
+}
+
+function getSummarySourceMetadata() {
+  return {
+    tags_source: {
+      file: path.basename(GRID_DIMENSION_EVIDENCE_PATH),
+      sha256: sha256File(GRID_DIMENSION_EVIDENCE_PATH)
+    },
+    persona_reports: {
+      file: path.basename(STATIC_PERSONA_REPORTS_PATH),
+      sha256: sha256File(STATIC_PERSONA_REPORTS_PATH)
+    }
+  };
+}
+
 function loadStaticPersonaReportsConfig() {
   if (!cachedStaticPersonaReports) {
     cachedStaticPersonaReports = readJsonFile(STATIC_PERSONA_REPORTS_PATH);
@@ -486,6 +504,9 @@ function loadStaticPersonaReportsConfig() {
 function loadGridDimensionEvidenceConfig() {
   if (!cachedGridDimensionEvidence) {
     cachedGridDimensionEvidence = readJsonFile(GRID_DIMENSION_EVIDENCE_PATH);
+    if (String(cachedGridDimensionEvidence?.version || "").trim() !== "v2") {
+      throw new Error(`grid dimension evidence must be v2: ${GRID_DIMENSION_EVIDENCE_PATH}`);
+    }
   }
   return cachedGridDimensionEvidence;
 }
@@ -518,10 +539,17 @@ function getReportTextTitle(reportText) {
   return lines[0] || "客户调研报告";
 }
 
-function getGridDimensionEvidenceRow(gridId) {
-  const config = loadGridDimensionEvidenceConfig();
+function getGridDimensionEvidenceRow(gridId, config = loadGridDimensionEvidenceConfig()) {
   const normalizedGridId = String(gridId || "").trim();
   return (config?.grids || []).find((item) => String(item?.grid_id || "").trim() === normalizedGridId) || null;
+}
+
+function requireGridDimensionEvidenceRow(gridId, config = loadGridDimensionEvidenceConfig()) {
+  const row = getGridDimensionEvidenceRow(gridId, config);
+  if (!row) {
+    throw new Error(`grid dimension evidence v2 missing grid ${String(gridId || "").trim()}`);
+  }
+  return row;
 }
 
 function sanitizeStudentPersonaReport(report) {
@@ -652,13 +680,23 @@ function computeDynamicSummaryEvi(coverageRatio, maxEvi = SUMMARY_DYNAMIC_EVI_MA
 }
 
 function buildStaticSummaryModeRadarResult({ gridId, architecture, evidenceRow, mapEvidenceToResultFn, eviOverride = null }) {
+  const configuredTags = Array.isArray(evidenceRow?.tags)
+    ? evidenceRow.tags.map((tag) => String(tag || "").trim()).filter(Boolean)
+    : [];
+  if (!configuredTags.length) {
+    throw new Error(`grid dimension evidence v2 has no tags for grid ${String(gridId || "").trim()}`);
+  }
+  const invalidTags = configuredTags.filter((tag) => !ALLOWED_INTERVIEW_TAG_SET.has(tag));
+  if (invalidTags.length > 0 || new Set(configuredTags).size !== configuredTags.length) {
+    throw new Error(`grid dimension evidence v2 has invalid or duplicate tags for grid ${String(gridId || "").trim()}: ${invalidTags.join(",")}`);
+  }
   const extracted = {
     focused_dimensions: [],
     dimension_evidence: evidenceRow?.dimension_evidence && typeof evidenceRow.dimension_evidence === "object"
       ? evidenceRow.dimension_evidence
       : {},
     other_dimensions: {},
-    tags: Array.isArray(evidenceRow?.tags) ? evidenceRow.tags : [],
+    tags: configuredTags,
     interview_quality: {
       specificity: "medium",
       consistency: "medium",
@@ -673,6 +711,9 @@ function buildStaticSummaryModeRadarResult({ gridId, architecture, evidenceRow, 
     history: [],
     conversation: JSON.stringify(extracted.dimension_evidence)
   });
+  // Summary final tags are frozen configuration, so interview normalization must not append priors.
+  result.tags = configuredTags.map((tag) => ({ tag, polarity: 1, source: "evidence_v2" }));
+  if (result.eviMeta) result.eviMeta.tag_count = configuredTags.length;
   const nextEvi = Number(eviOverride);
   if (Number.isFinite(nextEvi)) {
     result.evi = nextEvi;
@@ -1041,10 +1082,7 @@ async function freezeStaticSummaryChoiceForTeam(team, sessionId = "default", sel
   const uncoveredKeywords = fullKeywords.filter((keyword) => !coveredKeywordSet.has(keyword));
   const coverageRatio = computeCoverageRatioForViewedReports(calcGridId, reportsViewed);
   const dynamicEvi = computeDynamicSummaryEvi(coverageRatio, SUMMARY_DYNAMIC_EVI_MAX);
-  const evidenceRow = getGridDimensionEvidenceRow(calcGridId);
-  if (!evidenceRow) {
-    throw new Error(`grid dimension evidence not found for grid ${calcGridId}`);
-  }
+  const evidenceRow = requireGridDimensionEvidenceRow(calcGridId);
 
   const summaryResult = buildStaticSummaryModeRadarResult({
     gridId: calcGridId,
@@ -5053,6 +5091,7 @@ async function reflectionApi(body) {
 
 module.exports = {
   ensureSchema,
+  getSummarySourceMetadata,
   normalizeSelectionsPayload,
   buildCardSummary,
   toCalcGridId,
@@ -5119,6 +5158,7 @@ module.exports = {
     sanitizeStudentTeamResult,
     sanitizeStudentStoredRadar,
     getGridDimensionEvidenceRow,
+    requireGridDimensionEvidenceRow,
     buildRound2PricingContextForTeam,
     validateRound2PriceForTeam
   }

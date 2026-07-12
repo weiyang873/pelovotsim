@@ -6,6 +6,7 @@ const { Pool } = require("pg");
 const CAP_GROUPS = require("../../data/capability_groups_v2.json");
 const { applyTechJinnang } = require("../../server/multiplayer/rdTeamAdapter");
 const { scoreProduct } = require("./decision_tracker");
+const { writeRunManifest } = require("./run_manifest");
 
 const CAPABILITY_MAP = new Map();
 for (const group of CAP_GROUPS.groups || []) {
@@ -38,7 +39,7 @@ const TEAM_CSV_COLUMNS = [
   "vp_who_specificity", "vp_pain_has_trigger", "vp_how_has_mechanism", "vp_coach_turns_total",
   "vp_iterations", "vp_initial_score", "vp_final_score", "vp_best_score", "vp_best_iteration", "vp_used_best", "vp_improvement_pct",
   "r2_cards", "r2_dCOGS", "r2_NRE", "r2_budget_utilization", "r2_high_tier_count", "r2_violation_count",
-  "r2_price", "r2_price_vs_wtp", "coverCore", "coverNice", "r2_gross_margin",
+  "r2_price", "r2_price_vs_wtp", "coverCore", "coverNice", "r2_vscore", "r2_gross_margin",
   "r2_share", "r2_units", "r2_profit_hw", "r2_profit_sub", "r2_profit", "r2_is_profitable",
   "jinang_dCOGS_saved_total", "total_llm_calls", "total_tokens"
 ];
@@ -152,10 +153,11 @@ function extractVpField(vpText, key) {
 }
 
 class DataExporter {
-  constructor(runId, outDir, logger) {
+  constructor(runId, outDir, logger, options = {}) {
     this.runId = runId;
     this.outDir = outDir;
     this.logger = logger || null;
+    this.options = options;
     this.pool = new Pool();
   }
 
@@ -606,6 +608,7 @@ class DataExporter {
         r2_price_vs_wtp: tracker.team.r2_price_vs_wtp,
         coverCore: tracker.team.r2_coverCore,
         coverNice: tracker.team.r2_coverNice,
+        r2_vscore: tracker.team.r2_vscore,
         r2_gross_margin: tracker.team.r2_gross_margin,
         r2_share: tracker.team.r2_share,
         r2_units: tracker.team.r2_units,
@@ -810,13 +813,20 @@ class DataExporter {
     const vpChatRows = await this.insertVpChatLogs(effectiveTrackers);
     const jinangCsvRows = await this.insertJinangEffects(jinangRows, effectiveTrackers);
     await this.pool.end();
+    const manifest = writeRunManifest({
+      runId: this.runId,
+      outDir: this.outDir,
+      trackers: effectiveTrackers,
+      context: this.options
+    });
     return {
       studentsRows: studentsRows.length,
       teamRows: teamRows.length,
       vpRows: vpRows.length,
       interviewRows: interviewRows.length,
       vpChatRows: vpChatRows.length,
-      jinangRows: jinangCsvRows.length
+      jinangRows: jinangCsvRows.length,
+      manifestPath: manifest.path
     };
   }
 }

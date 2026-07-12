@@ -1,0 +1,1556 @@
+{
+  "version": "v2",
+  "status": "pending_wy_quick_review",
+  "generated_at": "2026-07-12T15:34:10.714Z",
+  "generation_method": "deterministic_report_keyword_mapping_v1",
+  "source_reports": {
+    "file": "game_config_v0.1/persona_reports_v1.1.json",
+    "version": "v1.1",
+    "sha256": "900da996382e5eb5e2104e4da6871ceab861418ba1f3258931fa4691de431623"
+  },
+  "source_tag_map": {
+    "file": "data/tag_map_v2_1.json",
+    "schema_version": "2.1",
+    "sha256": "bfc9e1790c719946c31f302121f18066dd0e8d58e63e8b83b96dbd1cf0747dd7"
+  },
+  "source_capabilities": {
+    "file": "data/capability_groups_v2.json",
+    "schema_version": "2.0",
+    "sha256": "89d38b8f4fba9d2ee5cd2ba398b4f4e449a27a6aedc70224375590db02fd28a3"
+  },
+  "source_synonyms": {
+    "file": "game_config_v0.1/report_tag_synonyms_v1.json",
+    "version": "v1",
+    "sha256": "64f2802f9aa0fe0f88f630686cb5a061f8e2a1a756abd1d6ad219ef0a940c081"
+  },
+  "synonym_validation": {
+    "duplicate_terms": 1
+  },
+  "grids": [
+    {
+      "grid_id": "B2B_Differentiation_Elder",
+      "dimension_evidence": {
+        "interaction": {
+          "mentioned": true,
+          "strength": 0.2286
+        },
+        "perception": {
+          "mentioned": true,
+          "strength": 0.219
+        },
+        "safety": {
+          "mentioned": false,
+          "strength": 0.1619
+        },
+        "extend": {
+          "mentioned": false,
+          "strength": 0.1524
+        },
+        "motion": {
+          "mentioned": false,
+          "strength": 0.1238
+        },
+        "ops": {
+          "mentioned": false,
+          "strength": 0.1143
+        }
+      },
+      "evi": null,
+      "tags": [
+        "情绪识别",
+        "隐私保护",
+        "场景感知",
+        "安全与信任",
+        "语音交互",
+        "远程控制"
+      ],
+      "core_tag_count": 6,
+      "target_tag_count": 6,
+      "approved_tag_count_override": false,
+      "excluded_tags": [],
+      "content_gaps": [],
+      "tag_evidence": [
+        {
+          "tag": "情绪识别",
+          "source": "grid_prior_core",
+          "score": 13,
+          "matched_terms": [
+            "情绪波动",
+            "情绪管理",
+            "烦躁",
+            "焦虑",
+            "黄昏综合征",
+            "压力"
+          ],
+          "matched_term_counts": {
+            "情绪波动": 6,
+            "情绪管理": 1,
+            "烦躁": 1,
+            "焦虑": 1,
+            "黄昏综合征": 2,
+            "压力": 2
+          }
+        },
+        {
+          "tag": "隐私保护",
+          "source": "grid_prior_core",
+          "score": 11,
+          "matched_terms": [
+            "隐私",
+            "摄像头",
+            "监控",
+            "被偷看",
+            "侵入感",
+            "被监视"
+          ],
+          "matched_term_counts": {
+            "隐私": 2,
+            "摄像头": 2,
+            "监控": 2,
+            "被偷看": 1,
+            "侵入感": 3,
+            "被监视": 1
+          }
+        },
+        {
+          "tag": "场景感知",
+          "source": "grid_prior_core",
+          "score": 6,
+          "matched_terms": [
+            "夜间值班",
+            "离床",
+            "值班",
+            "突发疾病",
+            "误报"
+          ],
+          "matched_term_counts": {
+            "夜间值班": 1,
+            "离床": 2,
+            "值班": 1,
+            "突发疾病": 1,
+            "误报": 1
+          }
+        },
+        {
+          "tag": "安全与信任",
+          "source": "grid_prior_core",
+          "score": 4,
+          "matched_terms": [
+            "安全事故",
+            "放心",
+            "可靠"
+          ],
+          "matched_term_counts": {
+            "安全事故": 2,
+            "放心": 1,
+            "可靠": 1
+          }
+        },
+        {
+          "tag": "语音交互",
+          "source": "grid_prior_core",
+          "score": 2,
+          "matched_terms": [
+            "说话",
+            "唱歌"
+          ],
+          "matched_term_counts": {
+            "说话": 1,
+            "唱歌": 1
+          }
+        },
+        {
+          "tag": "远程控制",
+          "source": "grid_prior_core",
+          "score": 2,
+          "matched_terms": [
+            "远程关注",
+            "家属远程"
+          ],
+          "matched_term_counts": {
+            "远程关注": 1,
+            "家属远程": 1
+          }
+        }
+      ]
+    },
+    {
+      "grid_id": "B2B_Differentiation_Adult",
+      "dimension_evidence": {
+        "ops": {
+          "mentioned": false,
+          "strength": 0.1923
+        },
+        "perception": {
+          "mentioned": false,
+          "strength": 0.1827
+        },
+        "extend": {
+          "mentioned": false,
+          "strength": 0.1827
+        },
+        "safety": {
+          "mentioned": false,
+          "strength": 0.1731
+        },
+        "interaction": {
+          "mentioned": false,
+          "strength": 0.1538
+        },
+        "motion": {
+          "mentioned": false,
+          "strength": 0.1154
+        }
+      },
+      "evi": null,
+      "tags": [
+        "场景感知",
+        "语音交互",
+        "情绪识别",
+        "OTA更新",
+        "拍照功能"
+      ],
+      "core_tag_count": 2,
+      "target_tag_count": 6,
+      "approved_tag_count_override": false,
+      "excluded_tags": [],
+      "content_gaps": [
+        "报告文本仅支持 5/6 个有效且可覆盖标签，未回填无证据映射",
+        "报告文本支持的 prior core 仅 2/5，低于一半"
+      ],
+      "tag_evidence": [
+        {
+          "tag": "场景感知",
+          "source": "grid_prior_core",
+          "score": 7,
+          "matched_terms": [
+            "访客接待",
+            "候诊",
+            "等待场景"
+          ],
+          "matched_term_counts": {
+            "访客接待": 1,
+            "候诊": 1,
+            "等待场景": 5
+          }
+        },
+        {
+          "tag": "语音交互",
+          "source": "grid_prior_core",
+          "score": 2,
+          "matched_terms": [
+            "说话"
+          ],
+          "matched_term_counts": {
+            "说话": 2
+          }
+        },
+        {
+          "tag": "情绪识别",
+          "source": "report_text",
+          "score": 17,
+          "matched_terms": [
+            "焦虑",
+            "压力",
+            "疲劳"
+          ],
+          "matched_term_counts": {
+            "焦虑": 3,
+            "压力": 9,
+            "疲劳": 5
+          }
+        },
+        {
+          "tag": "OTA更新",
+          "source": "grid_prior_nice",
+          "score": 7,
+          "matched_terms": [
+            "维护",
+            "售后",
+            "部署"
+          ],
+          "matched_term_counts": {
+            "维护": 3,
+            "售后": 1,
+            "部署": 3
+          }
+        },
+        {
+          "tag": "拍照功能",
+          "source": "report_text",
+          "score": 3,
+          "matched_terms": [
+            "拍照"
+          ],
+          "matched_term_counts": {
+            "拍照": 3
+          }
+        }
+      ]
+    },
+    {
+      "grid_id": "B2B_Differentiation_Child",
+      "dimension_evidence": {
+        "perception": {
+          "mentioned": true,
+          "strength": 0.2404
+        },
+        "safety": {
+          "mentioned": true,
+          "strength": 0.2115
+        },
+        "extend": {
+          "mentioned": false,
+          "strength": 0.1635
+        },
+        "motion": {
+          "mentioned": false,
+          "strength": 0.1442
+        },
+        "interaction": {
+          "mentioned": false,
+          "strength": 0.1346
+        },
+        "ops": {
+          "mentioned": false,
+          "strength": 0.1058
+        }
+      },
+      "evi": null,
+      "tags": [
+        "情感陪伴",
+        "儿童安全",
+        "场景感知",
+        "语音交互",
+        "情绪识别",
+        "安全与信任"
+      ],
+      "core_tag_count": 4,
+      "target_tag_count": 6,
+      "approved_tag_count_override": false,
+      "excluded_tags": [],
+      "content_gaps": [],
+      "tag_evidence": [
+        {
+          "tag": "情感陪伴",
+          "source": "grid_prior_core",
+          "score": 10,
+          "matched_terms": [
+            "陪伴",
+            "分离焦虑",
+            "儿童哭闹"
+          ],
+          "matched_term_counts": {
+            "陪伴": 1,
+            "分离焦虑": 5,
+            "儿童哭闹": 4
+          }
+        },
+        {
+          "tag": "儿童安全",
+          "source": "grid_prior_core",
+          "score": 7,
+          "matched_terms": [
+            "不会倒砸",
+            "安全事故责任"
+          ],
+          "matched_term_counts": {
+            "不会倒砸": 3,
+            "安全事故责任": 4
+          }
+        },
+        {
+          "tag": "场景感知",
+          "source": "grid_prior_core",
+          "score": 3,
+          "matched_terms": [
+            "候诊",
+            "老师顾不过来"
+          ],
+          "matched_term_counts": {
+            "候诊": 1,
+            "老师顾不过来": 2
+          }
+        },
+        {
+          "tag": "语音交互",
+          "source": "grid_prior_core",
+          "score": 1,
+          "matched_terms": [
+            "回应"
+          ],
+          "matched_term_counts": {
+            "回应": 1
+          }
+        },
+        {
+          "tag": "情绪识别",
+          "source": "report_text",
+          "score": 28,
+          "matched_terms": [
+            "情绪管理",
+            "焦虑",
+            "哭闹",
+            "压力"
+          ],
+          "matched_term_counts": {
+            "情绪管理": 7,
+            "焦虑": 7,
+            "哭闹": 7,
+            "压力": 7
+          }
+        },
+        {
+          "tag": "安全与信任",
+          "source": "report_text",
+          "score": 7,
+          "matched_terms": [
+            "安全事故",
+            "踏实",
+            "可靠"
+          ],
+          "matched_term_counts": {
+            "安全事故": 5,
+            "踏实": 1,
+            "可靠": 1
+          }
+        }
+      ]
+    },
+    {
+      "grid_id": "B2B_Cost_Elder",
+      "dimension_evidence": {
+        "safety": {
+          "mentioned": true,
+          "strength": 0.2277
+        },
+        "ops": {
+          "mentioned": true,
+          "strength": 0.2178
+        },
+        "perception": {
+          "mentioned": false,
+          "strength": 0.1584
+        },
+        "interaction": {
+          "mentioned": false,
+          "strength": 0.1584
+        },
+        "extend": {
+          "mentioned": false,
+          "strength": 0.1287
+        },
+        "motion": {
+          "mentioned": false,
+          "strength": 0.1089
+        }
+      },
+      "evi": null,
+      "tags": [
+        "场景感知",
+        "OTA更新",
+        "安全与信任",
+        "隐私保护",
+        "远程控制",
+        "情绪识别"
+      ],
+      "core_tag_count": 5,
+      "target_tag_count": 6,
+      "approved_tag_count_override": false,
+      "excluded_tags": [],
+      "content_gaps": [],
+      "tag_evidence": [
+        {
+          "tag": "场景感知",
+          "source": "grid_prior_core",
+          "score": 11,
+          "matched_terms": [
+            "夜间值班",
+            "跌倒",
+            "巡检",
+            "值班",
+            "突发疾病",
+            "误报"
+          ],
+          "matched_term_counts": {
+            "夜间值班": 2,
+            "跌倒": 3,
+            "巡检": 1,
+            "值班": 2,
+            "突发疾病": 2,
+            "误报": 1
+          }
+        },
+        {
+          "tag": "OTA更新",
+          "source": "grid_prior_core",
+          "score": 8,
+          "matched_terms": [
+            "维护",
+            "故障",
+            "稳定可靠",
+            "稳定性"
+          ],
+          "matched_term_counts": {
+            "维护": 2,
+            "故障": 1,
+            "稳定可靠": 4,
+            "稳定性": 1
+          }
+        },
+        {
+          "tag": "安全与信任",
+          "source": "grid_prior_core",
+          "score": 6,
+          "matched_terms": [
+            "放心",
+            "可靠"
+          ],
+          "matched_term_counts": {
+            "放心": 1,
+            "可靠": 5
+          }
+        },
+        {
+          "tag": "隐私保护",
+          "source": "grid_prior_core",
+          "score": 4,
+          "matched_terms": [
+            "摄像头",
+            "监控",
+            "侵入感"
+          ],
+          "matched_term_counts": {
+            "摄像头": 1,
+            "监控": 2,
+            "侵入感": 1
+          }
+        },
+        {
+          "tag": "远程控制",
+          "source": "grid_prior_core",
+          "score": 2,
+          "matched_terms": [
+            "远程关注",
+            "家属远程"
+          ],
+          "matched_term_counts": {
+            "远程关注": 1,
+            "家属远程": 1
+          }
+        },
+        {
+          "tag": "情绪识别",
+          "source": "grid_prior_nice",
+          "score": 5,
+          "matched_terms": [
+            "情绪波动",
+            "焦虑",
+            "压力"
+          ],
+          "matched_term_counts": {
+            "情绪波动": 2,
+            "焦虑": 1,
+            "压力": 2
+          }
+        }
+      ]
+    },
+    {
+      "grid_id": "B2B_Cost_Adult",
+      "dimension_evidence": {
+        "ops": {
+          "mentioned": true,
+          "strength": 0.3
+        },
+        "safety": {
+          "mentioned": true,
+          "strength": 0.24
+        },
+        "extend": {
+          "mentioned": false,
+          "strength": 0.16
+        },
+        "perception": {
+          "mentioned": false,
+          "strength": 0.12
+        },
+        "motion": {
+          "mentioned": false,
+          "strength": 0.1
+        },
+        "interaction": {
+          "mentioned": false,
+          "strength": 0.08
+        }
+      },
+      "evi": null,
+      "tags": [
+        "OTA更新",
+        "情感陪伴",
+        "场景感知",
+        "情绪识别",
+        "隐私保护"
+      ],
+      "core_tag_count": 3,
+      "target_tag_count": 5,
+      "approved_tag_count_override": true,
+      "excluded_tags": [
+        "拍照功能"
+      ],
+      "content_gaps": [],
+      "tag_evidence": [
+        {
+          "tag": "OTA更新",
+          "source": "grid_prior_core",
+          "score": 20,
+          "matched_terms": [
+            "更新",
+            "升级",
+            "维护",
+            "故障",
+            "维修",
+            "售后",
+            "部署",
+            "稳定性"
+          ],
+          "matched_term_counts": {
+            "更新": 3,
+            "升级": 1,
+            "维护": 5,
+            "故障": 2,
+            "维修": 4,
+            "售后": 2,
+            "部署": 1,
+            "稳定性": 2
+          }
+        },
+        {
+          "tag": "情感陪伴",
+          "source": "grid_prior_core",
+          "score": 2,
+          "matched_terms": [
+            "疲惫",
+            "情绪支持"
+          ],
+          "matched_term_counts": {
+            "疲惫": 1,
+            "情绪支持": 1
+          }
+        },
+        {
+          "tag": "场景感知",
+          "source": "grid_prior_core",
+          "score": 1,
+          "matched_terms": [
+            "等待场景"
+          ],
+          "matched_term_counts": {
+            "等待场景": 1
+          }
+        },
+        {
+          "tag": "情绪识别",
+          "source": "report_text",
+          "score": 12,
+          "matched_terms": [
+            "焦虑",
+            "压力"
+          ],
+          "matched_term_counts": {
+            "焦虑": 4,
+            "压力": 8
+          }
+        },
+        {
+          "tag": "隐私保护",
+          "source": "grid_prior_nice",
+          "score": 1,
+          "matched_terms": [
+            "数据安全"
+          ],
+          "matched_term_counts": {
+            "数据安全": 1
+          }
+        }
+      ]
+    },
+    {
+      "grid_id": "B2B_Cost_Child",
+      "dimension_evidence": {
+        "safety": {
+          "mentioned": true,
+          "strength": 0.28
+        },
+        "ops": {
+          "mentioned": true,
+          "strength": 0.21
+        },
+        "perception": {
+          "mentioned": false,
+          "strength": 0.18
+        },
+        "extend": {
+          "mentioned": false,
+          "strength": 0.14
+        },
+        "motion": {
+          "mentioned": false,
+          "strength": 0.13
+        },
+        "interaction": {
+          "mentioned": false,
+          "strength": 0.06
+        }
+      },
+      "evi": null,
+      "tags": [
+        "OTA更新",
+        "场景感知",
+        "儿童安全",
+        "情绪识别",
+        "安全与信任",
+        "碰撞保护"
+      ],
+      "core_tag_count": 3,
+      "target_tag_count": 6,
+      "approved_tag_count_override": false,
+      "excluded_tags": [],
+      "content_gaps": [],
+      "tag_evidence": [
+        {
+          "tag": "OTA更新",
+          "source": "grid_prior_core",
+          "score": 6,
+          "matched_terms": [
+            "更新",
+            "维护",
+            "稳定可靠"
+          ],
+          "matched_term_counts": {
+            "更新": 1,
+            "维护": 2,
+            "稳定可靠": 3
+          }
+        },
+        {
+          "tag": "场景感知",
+          "source": "grid_prior_core",
+          "score": 4,
+          "matched_terms": [
+            "跌倒",
+            "候诊",
+            "老师顾不过来"
+          ],
+          "matched_term_counts": {
+            "跌倒": 1,
+            "候诊": 1,
+            "老师顾不过来": 2
+          }
+        },
+        {
+          "tag": "儿童安全",
+          "source": "grid_prior_core",
+          "score": 4,
+          "matched_terms": [
+            "不会倒砸",
+            "安全性硬性门槛",
+            "安全事故责任"
+          ],
+          "matched_term_counts": {
+            "不会倒砸": 2,
+            "安全性硬性门槛": 1,
+            "安全事故责任": 1
+          }
+        },
+        {
+          "tag": "情绪识别",
+          "source": "report_text",
+          "score": 8,
+          "matched_terms": [
+            "情绪管理",
+            "哭闹",
+            "压力",
+            "分离情绪"
+          ],
+          "matched_term_counts": {
+            "情绪管理": 1,
+            "哭闹": 4,
+            "压力": 2,
+            "分离情绪": 1
+          }
+        },
+        {
+          "tag": "安全与信任",
+          "source": "report_text",
+          "score": 5,
+          "matched_terms": [
+            "安全事故",
+            "放心",
+            "可靠"
+          ],
+          "matched_term_counts": {
+            "安全事故": 1,
+            "放心": 1,
+            "可靠": 3
+          }
+        },
+        {
+          "tag": "碰撞保护",
+          "source": "report_text",
+          "score": 5,
+          "matched_terms": [
+            "磕碰"
+          ],
+          "matched_term_counts": {
+            "磕碰": 5
+          }
+        }
+      ]
+    },
+    {
+      "grid_id": "B2C_Differentiation_Elder",
+      "dimension_evidence": {
+        "interaction": {
+          "mentioned": true,
+          "strength": 0.3429
+        },
+        "perception": {
+          "mentioned": true,
+          "strength": 0.2381
+        },
+        "ops": {
+          "mentioned": false,
+          "strength": 0.1333
+        },
+        "motion": {
+          "mentioned": false,
+          "strength": 0.1048
+        },
+        "extend": {
+          "mentioned": false,
+          "strength": 0.0952
+        },
+        "safety": {
+          "mentioned": false,
+          "strength": 0.0857
+        }
+      },
+      "evi": null,
+      "tags": [
+        "情感陪伴",
+        "语音交互",
+        "安全与信任",
+        "隐私保护",
+        "多轮对话"
+      ],
+      "core_tag_count": 3,
+      "target_tag_count": 6,
+      "approved_tag_count_override": false,
+      "excluded_tags": [],
+      "content_gaps": [
+        "报告文本仅支持 5/6 个有效且可覆盖标签，未回填无证据映射"
+      ],
+      "tag_evidence": [
+        {
+          "tag": "情感陪伴",
+          "source": "grid_prior_core",
+          "score": 19,
+          "matched_terms": [
+            "陪伴",
+            "孤独",
+            "独居",
+            "退休社交萎缩"
+          ],
+          "matched_term_counts": {
+            "陪伴": 8,
+            "孤独": 8,
+            "独居": 2,
+            "退休社交萎缩": 1
+          }
+        },
+        {
+          "tag": "语音交互",
+          "source": "grid_prior_core",
+          "score": 4,
+          "matched_terms": [
+            "说话",
+            "回应"
+          ],
+          "matched_term_counts": {
+            "说话": 3,
+            "回应": 1
+          }
+        },
+        {
+          "tag": "安全与信任",
+          "source": "grid_prior_core",
+          "score": 3,
+          "matched_terms": [
+            "踏实"
+          ],
+          "matched_term_counts": {
+            "踏实": 3
+          }
+        },
+        {
+          "tag": "隐私保护",
+          "source": "grid_prior_nice",
+          "score": 4,
+          "matched_terms": [
+            "摄像头",
+            "监控"
+          ],
+          "matched_term_counts": {
+            "摄像头": 2,
+            "监控": 2
+          }
+        },
+        {
+          "tag": "多轮对话",
+          "source": "grid_prior_nice",
+          "score": 1,
+          "matched_terms": [
+            "聊天"
+          ],
+          "matched_term_counts": {
+            "聊天": 1
+          }
+        }
+      ]
+    },
+    {
+      "grid_id": "B2C_Differentiation_Adult",
+      "dimension_evidence": {
+        "interaction": {
+          "mentioned": true,
+          "strength": 0.2692
+        },
+        "ops": {
+          "mentioned": true,
+          "strength": 0.2115
+        },
+        "perception": {
+          "mentioned": true,
+          "strength": 0.2019
+        },
+        "extend": {
+          "mentioned": false,
+          "strength": 0.125
+        },
+        "safety": {
+          "mentioned": false,
+          "strength": 0.0962
+        },
+        "motion": {
+          "mentioned": false,
+          "strength": 0.0962
+        }
+      },
+      "evi": null,
+      "tags": [
+        "情感陪伴",
+        "多轮对话",
+        "语音交互",
+        "场景感知",
+        "情绪识别",
+        "OTA更新"
+      ],
+      "core_tag_count": 4,
+      "target_tag_count": 6,
+      "approved_tag_count_override": false,
+      "excluded_tags": [],
+      "content_gaps": [],
+      "tag_evidence": [
+        {
+          "tag": "情感陪伴",
+          "source": "grid_prior_core",
+          "score": 15,
+          "matched_terms": [
+            "陪伴",
+            "孤独",
+            "独居",
+            "推开门没有声音",
+            "疲惫"
+          ],
+          "matched_term_counts": {
+            "陪伴": 10,
+            "孤独": 1,
+            "独居": 2,
+            "推开门没有声音": 1,
+            "疲惫": 1
+          }
+        },
+        {
+          "tag": "多轮对话",
+          "source": "grid_prior_core",
+          "score": 6,
+          "matched_terms": [
+            "主动互动"
+          ],
+          "matched_term_counts": {
+            "主动互动": 6
+          }
+        },
+        {
+          "tag": "语音交互",
+          "source": "grid_prior_core",
+          "score": 6,
+          "matched_terms": [
+            "回应"
+          ],
+          "matched_term_counts": {
+            "回应": 6
+          }
+        },
+        {
+          "tag": "场景感知",
+          "source": "grid_prior_core",
+          "score": 1,
+          "matched_terms": [
+            "主动响应"
+          ],
+          "matched_term_counts": {
+            "主动响应": 1
+          }
+        },
+        {
+          "tag": "情绪识别",
+          "source": "report_text",
+          "score": 8,
+          "matched_terms": [
+            "焦虑",
+            "压力"
+          ],
+          "matched_term_counts": {
+            "焦虑": 1,
+            "压力": 7
+          }
+        },
+        {
+          "tag": "OTA更新",
+          "source": "report_text",
+          "score": 3,
+          "matched_terms": [
+            "维护"
+          ],
+          "matched_term_counts": {
+            "维护": 3
+          }
+        }
+      ]
+    },
+    {
+      "grid_id": "B2C_Differentiation_Child",
+      "dimension_evidence": {
+        "perception": {
+          "mentioned": true,
+          "strength": 0.2596
+        },
+        "interaction": {
+          "mentioned": true,
+          "strength": 0.25
+        },
+        "safety": {
+          "mentioned": false,
+          "strength": 0.1346
+        },
+        "motion": {
+          "mentioned": false,
+          "strength": 0.125
+        },
+        "ops": {
+          "mentioned": false,
+          "strength": 0.125
+        },
+        "extend": {
+          "mentioned": false,
+          "strength": 0.1058
+        }
+      },
+      "evi": null,
+      "tags": [
+        "情感陪伴",
+        "表情显示",
+        "语音交互",
+        "儿童安全",
+        "场景感知",
+        "情绪识别"
+      ],
+      "core_tag_count": 5,
+      "target_tag_count": 6,
+      "approved_tag_count_override": false,
+      "excluded_tags": [],
+      "content_gaps": [],
+      "tag_evidence": [
+        {
+          "tag": "情感陪伴",
+          "source": "grid_prior_core",
+          "score": 13,
+          "matched_terms": [
+            "陪伴",
+            "孤独",
+            "疲惫",
+            "亲子关系紧张"
+          ],
+          "matched_term_counts": {
+            "陪伴": 8,
+            "孤独": 1,
+            "疲惫": 3,
+            "亲子关系紧张": 1
+          }
+        },
+        {
+          "tag": "表情显示",
+          "source": "grid_prior_core",
+          "score": 5,
+          "matched_terms": [
+            "外观安全可爱",
+            "可爱",
+            "吸引孩子"
+          ],
+          "matched_term_counts": {
+            "外观安全可爱": 1,
+            "可爱": 1,
+            "吸引孩子": 3
+          }
+        },
+        {
+          "tag": "语音交互",
+          "source": "grid_prior_core",
+          "score": 4,
+          "matched_terms": [
+            "说话",
+            "回应",
+            "孩子互动"
+          ],
+          "matched_term_counts": {
+            "说话": 2,
+            "回应": 1,
+            "孩子互动": 1
+          }
+        },
+        {
+          "tag": "儿童安全",
+          "source": "grid_prior_core",
+          "score": 2,
+          "matched_terms": [
+            "孩子会摔",
+            "孩子会扔"
+          ],
+          "matched_term_counts": {
+            "孩子会摔": 1,
+            "孩子会扔": 1
+          }
+        },
+        {
+          "tag": "场景感知",
+          "source": "grid_prior_core",
+          "score": 1,
+          "matched_terms": [
+            "放学后"
+          ],
+          "matched_term_counts": {
+            "放学后": 1
+          }
+        },
+        {
+          "tag": "情绪识别",
+          "source": "report_text",
+          "score": 15,
+          "matched_terms": [
+            "情绪管理",
+            "焦虑",
+            "哭闹"
+          ],
+          "matched_term_counts": {
+            "情绪管理": 4,
+            "焦虑": 5,
+            "哭闹": 6
+          }
+        }
+      ]
+    },
+    {
+      "grid_id": "B2C_Cost_Elder",
+      "dimension_evidence": {
+        "interaction": {
+          "mentioned": true,
+          "strength": 0.2772
+        },
+        "ops": {
+          "mentioned": true,
+          "strength": 0.2376
+        },
+        "perception": {
+          "mentioned": false,
+          "strength": 0.1782
+        },
+        "safety": {
+          "mentioned": false,
+          "strength": 0.1485
+        },
+        "motion": {
+          "mentioned": false,
+          "strength": 0.0891
+        },
+        "extend": {
+          "mentioned": false,
+          "strength": 0.0693
+        }
+      },
+      "evi": null,
+      "tags": [
+        "情感陪伴",
+        "安全与信任",
+        "情绪识别",
+        "语音交互",
+        "场景感知",
+        "隐私保护"
+      ],
+      "core_tag_count": 6,
+      "target_tag_count": 6,
+      "approved_tag_count_override": false,
+      "excluded_tags": [],
+      "content_gaps": [],
+      "tag_evidence": [
+        {
+          "tag": "情感陪伴",
+          "source": "grid_prior_core",
+          "score": 9,
+          "matched_terms": [
+            "陪伴",
+            "孤独",
+            "孤单",
+            "家里没声音"
+          ],
+          "matched_term_counts": {
+            "陪伴": 5,
+            "孤独": 1,
+            "孤单": 1,
+            "家里没声音": 2
+          }
+        },
+        {
+          "tag": "安全与信任",
+          "source": "grid_prior_core",
+          "score": 8,
+          "matched_terms": [
+            "可靠"
+          ],
+          "matched_term_counts": {
+            "可靠": 8
+          }
+        },
+        {
+          "tag": "情绪识别",
+          "source": "grid_prior_core",
+          "score": 2,
+          "matched_terms": [
+            "压力"
+          ],
+          "matched_term_counts": {
+            "压力": 2
+          }
+        },
+        {
+          "tag": "语音交互",
+          "source": "grid_prior_core",
+          "score": 2,
+          "matched_terms": [
+            "语音",
+            "说话"
+          ],
+          "matched_term_counts": {
+            "语音": 1,
+            "说话": 1
+          }
+        },
+        {
+          "tag": "场景感知",
+          "source": "grid_prior_core",
+          "score": 1,
+          "matched_terms": [
+            "跌倒"
+          ],
+          "matched_term_counts": {
+            "跌倒": 1
+          }
+        },
+        {
+          "tag": "隐私保护",
+          "source": "grid_prior_core",
+          "score": 1,
+          "matched_terms": [
+            "隐私"
+          ],
+          "matched_term_counts": {
+            "隐私": 1
+          }
+        }
+      ]
+    },
+    {
+      "grid_id": "B2C_Cost_Adult",
+      "dimension_evidence": {
+        "ops": {
+          "mentioned": true,
+          "strength": 0.32
+        },
+        "interaction": {
+          "mentioned": false,
+          "strength": 0.2
+        },
+        "safety": {
+          "mentioned": false,
+          "strength": 0.16
+        },
+        "perception": {
+          "mentioned": false,
+          "strength": 0.14
+        },
+        "extend": {
+          "mentioned": false,
+          "strength": 0.1
+        },
+        "motion": {
+          "mentioned": false,
+          "strength": 0.08
+        }
+      },
+      "evi": null,
+      "tags": [
+        "情感陪伴",
+        "语音交互",
+        "多轮对话",
+        "OTA更新",
+        "安全与信任",
+        "情绪识别"
+      ],
+      "core_tag_count": 3,
+      "target_tag_count": 6,
+      "approved_tag_count_override": false,
+      "excluded_tags": [],
+      "content_gaps": [],
+      "tag_evidence": [
+        {
+          "tag": "情感陪伴",
+          "source": "grid_prior_core",
+          "score": 16,
+          "matched_terms": [
+            "陪伴",
+            "孤独",
+            "独居",
+            "疲惫"
+          ],
+          "matched_term_counts": {
+            "陪伴": 9,
+            "孤独": 1,
+            "独居": 5,
+            "疲惫": 1
+          }
+        },
+        {
+          "tag": "语音交互",
+          "source": "grid_prior_core",
+          "score": 14,
+          "matched_terms": [
+            "语音",
+            "说话",
+            "开口",
+            "回应"
+          ],
+          "matched_term_counts": {
+            "语音": 2,
+            "说话": 5,
+            "开口": 1,
+            "回应": 6
+          }
+        },
+        {
+          "tag": "多轮对话",
+          "source": "grid_prior_core",
+          "score": 3,
+          "matched_terms": [
+            "聊天",
+            "主动互动"
+          ],
+          "matched_term_counts": {
+            "聊天": 1,
+            "主动互动": 2
+          }
+        },
+        {
+          "tag": "OTA更新",
+          "source": "report_text",
+          "score": 18,
+          "matched_terms": [
+            "维护",
+            "故障",
+            "维修",
+            "稳定可靠"
+          ],
+          "matched_term_counts": {
+            "维护": 10,
+            "故障": 3,
+            "维修": 2,
+            "稳定可靠": 3
+          }
+        },
+        {
+          "tag": "安全与信任",
+          "source": "report_text",
+          "score": 5,
+          "matched_terms": [
+            "放心",
+            "可靠"
+          ],
+          "matched_term_counts": {
+            "放心": 1,
+            "可靠": 4
+          }
+        },
+        {
+          "tag": "情绪识别",
+          "source": "report_text",
+          "score": 3,
+          "matched_terms": [
+            "压力"
+          ],
+          "matched_term_counts": {
+            "压力": 3
+          }
+        }
+      ]
+    },
+    {
+      "grid_id": "B2C_Cost_Child",
+      "dimension_evidence": {
+        "ops": {
+          "mentioned": true,
+          "strength": 0.23
+        },
+        "perception": {
+          "mentioned": false,
+          "strength": 0.2
+        },
+        "safety": {
+          "mentioned": false,
+          "strength": 0.2
+        },
+        "interaction": {
+          "mentioned": false,
+          "strength": 0.18
+        },
+        "motion": {
+          "mentioned": false,
+          "strength": 0.11
+        },
+        "extend": {
+          "mentioned": false,
+          "strength": 0.08
+        }
+      },
+      "evi": null,
+      "tags": [
+        "语音交互",
+        "场景感知",
+        "情感陪伴",
+        "儿童安全",
+        "表情显示",
+        "情绪识别"
+      ],
+      "core_tag_count": 5,
+      "target_tag_count": 6,
+      "approved_tag_count_override": false,
+      "excluded_tags": [],
+      "content_gaps": [],
+      "tag_evidence": [
+        {
+          "tag": "语音交互",
+          "source": "grid_prior_core",
+          "score": 8,
+          "matched_terms": [
+            "语音",
+            "说话",
+            "开口",
+            "回应"
+          ],
+          "matched_term_counts": {
+            "语音": 4,
+            "说话": 2,
+            "开口": 1,
+            "回应": 1
+          }
+        },
+        {
+          "tag": "场景感知",
+          "source": "grid_prior_core",
+          "score": 5,
+          "matched_terms": [
+            "看护",
+            "监护盲区",
+            "放学后"
+          ],
+          "matched_term_counts": {
+            "看护": 1,
+            "监护盲区": 1,
+            "放学后": 3
+          }
+        },
+        {
+          "tag": "情感陪伴",
+          "source": "grid_prior_core",
+          "score": 4,
+          "matched_terms": [
+            "疲惫",
+            "亲子关系紧张"
+          ],
+          "matched_term_counts": {
+            "疲惫": 3,
+            "亲子关系紧张": 1
+          }
+        },
+        {
+          "tag": "儿童安全",
+          "source": "grid_prior_core",
+          "score": 3,
+          "matched_terms": [
+            "孩子安全"
+          ],
+          "matched_term_counts": {
+            "孩子安全": 3
+          }
+        },
+        {
+          "tag": "表情显示",
+          "source": "grid_prior_core",
+          "score": 2,
+          "matched_terms": [
+            "外观安全可爱",
+            "可爱"
+          ],
+          "matched_term_counts": {
+            "外观安全可爱": 1,
+            "可爱": 1
+          }
+        },
+        {
+          "tag": "情绪识别",
+          "source": "report_text",
+          "score": 6,
+          "matched_terms": [
+            "焦虑",
+            "哭闹",
+            "压力"
+          ],
+          "matched_term_counts": {
+            "焦虑": 2,
+            "哭闹": 3,
+            "压力": 1
+          }
+        }
+      ]
+    }
+  ]
+}

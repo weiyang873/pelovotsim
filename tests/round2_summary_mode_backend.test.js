@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const TAG_MAP = require("../data/tag_map_v2_1.json");
+const GRID_DIMENSION_EVIDENCE_V2 = require("../game_config_v0.1/grid_dimension_evidence_v2.json");
 const Round2 = require("../server/routes/round2Routes");
 const SummaryMode = require("../server/multiplayer/round2SummaryMode");
 const TeamRoutes = require("../server/routes/teamRoutes");
@@ -23,6 +24,18 @@ test("session config without interview_mode defaults to summary", () => {
   assert.equal(SessionConfig.normalizeSessionConfig({}).interview_mode, "summary");
   assert.equal(SessionConfig.normalizeSessionConfig({ reveal_r1_results: false }).interview_mode, "summary");
   assert.equal(SessionConfig.normalizeSessionConfig({ interview_mode: "live" }).interview_mode, "live");
+});
+
+test("summary final fails loudly when evidence v2 is missing the selected grid", () => {
+  const missingGrid = "B2B_Differentiation_Elder";
+  const configWithoutGrid = {
+    ...GRID_DIMENSION_EVIDENCE_V2,
+    grids: GRID_DIMENSION_EVIDENCE_V2.grids.filter((row) => row.grid_id !== missingGrid)
+  };
+  assert.throws(
+    () => Round2.__test.requireGridDimensionEvidenceRow(missingGrid, configWithoutGrid),
+    /grid dimension evidence v2 missing grid B2B_Differentiation_Elder/
+  );
 });
 
 test("generatePersonaReports is idempotent for existing archetype rows", async () => {
@@ -290,7 +303,19 @@ test("static summary evidence injection uses config evi and student choice sanit
   assert.equal(result.eviMeta.raw_evi, expectedEvi);
   assert.equal(result.eviMeta.final_evi, expectedEvi);
   assert.equal(Array.isArray(result.tags), true);
-  assert.equal(result.tags.length > 0, true);
+  assert.deepEqual(result.tags.map((item) => item.tag), evidenceRow.tags);
+  assert.equal(result.tags.every((item) => item.source === "evidence_v2"), true);
+
+  const fiveTagRow = Round2.__test.getGridDimensionEvidenceRow("B2B_Cost_Adult");
+  const fiveTagResult = Round2.__test.buildStaticSummaryModeRadarResult({
+    gridId: "B2B_Cost_Adult",
+    architecture: "Function",
+    evidenceRow: fiveTagRow,
+    mapEvidenceToResultFn: Round2.__test.mapEvidenceToResult,
+    eviOverride: expectedEvi
+  });
+  assert.equal(fiveTagRow.tags.length, 5);
+  assert.deepEqual(fiveTagResult.tags.map((item) => item.tag), fiveTagRow.tags);
 
   const studentChoice = Round2.__test.sanitizeStudentPersonaChoice({
     session_id: "default",

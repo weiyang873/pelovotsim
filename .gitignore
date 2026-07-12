@@ -13,6 +13,7 @@ yarn-error.log*
 *.sqlite
 *.log
 artifacts/
+exports/
 client/dist/
 data/llm_logs/
 data/persona_sim_logs/

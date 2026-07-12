@@ -78,6 +78,10 @@ class DecisionTracker {
       r2_price_vs_wtp: null,
       r2_coverCore: null,
       r2_coverNice: null,
+      r2_vscore: null,
+      r2_previewProfit: null,
+      r2_previewUnits: null,
+      r2_previewVscore: null,
       r2_share: null,
       r2_units: null,
       r2_revenue: null,
@@ -381,6 +385,9 @@ class DecisionTracker {
 
   recordFinalResult(previewData, teamResultData) {
     const source = teamResultData?.result?.result || teamResultData?.result || previewData || {};
+    this.team.r2_previewProfit = safeNumber(previewData?.profit, this.team.r2_previewProfit);
+    this.team.r2_previewUnits = safeNumber(previewData?.units, this.team.r2_previewUnits);
+    this.team.r2_previewVscore = safeNumber(previewData?.V ?? previewData?.vscore, this.team.r2_previewVscore);
     this.team.r2_total_dCOGS = safeNumber(source.dCOGS, this.team.r2_total_dCOGS);
     this.team.r2_total_NRE = safeNumber(source.nre_total_wan, this.team.r2_total_NRE);
     if (source.budgetBenchmark != null && source.dCOGS != null) {
@@ -388,6 +395,7 @@ class DecisionTracker {
     }
     this.team.r2_coverCore = safeNumber(source.coverCore ?? previewData?.coverCore, this.team.r2_coverCore);
     this.team.r2_coverNice = safeNumber(source.coverNice ?? previewData?.coverNice, this.team.r2_coverNice);
+    this.team.r2_vscore = safeNumber(source.V ?? teamResultData?.result?.vscore, this.team.r2_vscore);
     this.team.r2_share = safeNumber(source.share ?? teamResultData?.result?.share);
     this.team.r2_units = safeNumber(source.units ?? teamResultData?.result?.units);
     this.team.r2_revenue = safeNumber(source.revenueNet);
