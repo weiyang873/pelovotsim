@@ -19,7 +19,7 @@ const {
 
 const VP_PROFILES = require("../game_config_v0.1/vp_anchor_profiles.json");
 
-const REVIEW_DUMP = path.join(ROOT, "data", "review_exports", "persona_reports_v1_review.md");
+const REVIEW_DUMP = path.join(ROOT, "data", "review_exports", "persona_reports_v1.1_review.md");
 const KEYWORD_AUDIT_DUMP = path.join(ROOT, "data", "review_exports", "persona_keyword_coverage_review.md");
 
 const SOFT_MAX_CHARS = 1200;

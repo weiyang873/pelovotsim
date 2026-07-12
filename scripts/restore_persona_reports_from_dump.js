@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const DUMP_PATH = "/tmp/persona_reports_review_dump.md";
-const OUTPUT_PATH = path.join(__dirname, "..", "game_config_v0.1", "persona_reports_v1.json");
+const OUTPUT_PATH = path.join(__dirname, "..", "game_config_v0.1", "persona_reports_v1.1.json");
 
 function main() {
   const raw = fs.readFileSync(DUMP_PATH, "utf8").replace(/\r\n/g, "\n");

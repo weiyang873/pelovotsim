@@ -17,7 +17,7 @@ const {
   writeJson
 } = require("./offline_report_utils");
 
-const REVIEW_DUMP = path.join(ROOT, "data", "review_exports", "persona_reports_v1_review.md");
+const REVIEW_DUMP = path.join(ROOT, "data", "review_exports", "persona_reports_v1.1_review.md");
 
 const STRATEGY_PROMPTS = {
   Differentiation: [
