@@ -40,6 +40,7 @@ const DIM_LABELS = {
 };
 
 const STRUCTURED_MODE = "layered_structured_v1";
+const STRUCTURED_VP_MODE = "layered_structured_vp_v1";
 const STRUCTURED_NO_PRICING_MODE = "structured_no_pricing_v1";
 const SIMPLE_PERSONA_MODE = "simple_persona_v1";
 const HARNESS_ENFORCED_MODE = "harness_enforced_v1";
@@ -545,6 +546,10 @@ function isStructuredMode(options) {
   return String(options?.mode || "").trim() === STRUCTURED_MODE;
 }
 
+function isVpConditionedMode(options) {
+  return String(options?.mode || "").trim() === STRUCTURED_VP_MODE;
+}
+
 function isStructuredNoPricingMode(options) {
   return String(options?.mode || "").trim() === STRUCTURED_NO_PRICING_MODE;
 }
@@ -558,7 +563,7 @@ function isHarnessEnforcedMode(options) {
 }
 
 function isR2PersonaOverrideMode(options) {
-  return isStructuredMode(options) || isStructuredNoPricingMode(options) || isSimplePersonaMode(options) || isHarnessEnforcedMode(options);
+  return isStructuredMode(options) || isVpConditionedMode(options) || isStructuredNoPricingMode(options) || isSimplePersonaMode(options) || isHarnessEnforcedMode(options);
 }
 
 function structuredMemberKey(teamIndex, memberIndex) {
@@ -566,7 +571,7 @@ function structuredMemberKey(teamIndex, memberIndex) {
 }
 
 function getStructuredProfile(options, teamIndex, memberIndex) {
-  if (!isStructuredMode(options) && !isStructuredNoPricingMode(options) && !isHarnessEnforcedMode(options)) return null;
+  if (!isStructuredMode(options) && !isVpConditionedMode(options) && !isStructuredNoPricingMode(options) && !isHarnessEnforcedMode(options)) return null;
   const key = structuredMemberKey(teamIndex, memberIndex);
   const source = options.structuredProfileMap || options.structuredProfiles || null;
   let profile = null;
@@ -656,7 +661,7 @@ function renderSimplePersonaPrompt(student) {
 }
 
 function getR2PersonaPromptText(options, teamIndex, memberIndex) {
-  if (isStructuredMode(options) || isStructuredNoPricingMode(options)) {
+  if (isStructuredMode(options) || isVpConditionedMode(options) || isStructuredNoPricingMode(options)) {
     const structuredProfile = getStructuredProfile(options, teamIndex, memberIndex);
     return {
       profile: structuredProfile,
@@ -701,29 +706,57 @@ function structuredSystemPrompt(context) {
 
 const SUBJECTIVE_ELICITATION_VERSION = "focused_v1";
 
-function buildFocusedWtpMessages({ structuredProfileText, reportsText }) {
+const VP_COMMITMENT_TEMPLATE = [
+  "【你们团队的既定战略承诺】",
+  "你们在上一阶段已确定价值主张：",
+  "- 目标客群（WHO）：{WHO}",
+  "- 核心痛点（PAIN）：{PAIN}",
+  "- 解决方式（HOW）：{HOW}",
+  "本阶段你们的任务是实现这个价值主张，并赚取最多的利润。"
+].join("\n");
+
+function requireVpCommitment(recap) {
+  const summary = recap?.vp_summary && typeof recap.vp_summary === "object" ? recap.vp_summary : {};
+  const who = String(summary.who || summary.WHO || "").trim();
+  const pain = String(summary.pain || summary.PAIN || "").trim();
+  const how = String(summary.how || summary.HOW || "").trim();
+  const missing = [["WHO", who], ["PAIN", pain], ["HOW", how]].filter(([, value]) => !value).map(([key]) => key);
+  if (missing.length > 0) {
+    throw new Error(`VP-conditioned R2 missing frozen VP fields: ${missing.join(", ")}`);
+  }
+  return VP_COMMITMENT_TEMPLATE.replace("{WHO}", who).replace("{PAIN}", pain).replace("{HOW}", how);
+}
+
+function buildFocusedWtpMessages({ structuredProfileText, reportsText, vpCommitmentText = "" }) {
+  const vpConditioned = Boolean(String(vpCommitmentText || "").trim());
   return [
     { role: "system", content: structuredProfileText },
     {
       role: "user",
       content: [
+        vpCommitmentText,
+        vpConditioned ? "" : null,
         "## 你实际读过的报告原文",
         reportsText,
         "",
-        "基于以上材料，回答一个问题：你估计该客群对这款产品的支付意愿是多少元？",
-        "先用一句话说明你依据了材料中的哪个信息，然后给出数字。",
+        vpConditioned
+          ? "基于以上材料：你们承诺服务的这群客户，愿意为你们承诺的这个产品支付多少元？"
+          : "基于以上材料，回答一个问题：你估计该客群对这款产品的支付意愿是多少元？",
+        vpConditioned ? "先说明依据，再给数字。" : "先用一句话说明你依据了材料中的哪个信息，然后给出数字。",
         "输出 JSON：{\"basis\": \"<一句话>\", \"estimated_wtp\": <数字>}"
-      ].join("\n")
+      ].filter((item) => item !== null).join("\n")
     }
   ];
 }
 
-function buildQualitativeSubjectiveMessages({ structuredProfileText, reportsText, estimatedWtp }) {
+function buildQualitativeSubjectiveMessages({ structuredProfileText, reportsText, estimatedWtp, vpCommitmentText = "" }) {
   return [
     { role: "system", content: structuredProfileText },
     {
       role: "user",
       content: [
+        vpCommitmentText,
+        vpCommitmentText ? "" : null,
         "## 你实际读过的报告原文",
         reportsText,
         "",
@@ -737,7 +770,7 @@ function buildQualitativeSubjectiveMessages({ structuredProfileText, reportsText
         '  "min_acceptable_coverage": "<覆盖等级>",',
         '  "planned_stop_rule": "<停止规则>"',
         "}"
-      ].join("\n")
+      ].filter((item) => item !== null).join("\n")
     }
   ];
 }
@@ -783,7 +816,8 @@ async function generateStructuredSubjectiveState(actor, context) {
   const reportsText = buildReportsInput(context.readReports);
   const focusedWtp = await requestStrictJson(actor, buildFocusedWtpMessages({
     structuredProfileText: context.structuredProfileText,
-    reportsText
+    reportsText,
+    vpCommitmentText: context.vpCommitmentText
   }), {
     temperature: 0.45,
     max_tokens: 400
@@ -794,7 +828,8 @@ async function generateStructuredSubjectiveState(actor, context) {
   const qualitative = await requestStrictJson(actor, buildQualitativeSubjectiveMessages({
     structuredProfileText: context.structuredProfileText,
     reportsText,
-    estimatedWtp: focusedWtp.estimated_wtp
+    estimatedWtp: focusedWtp.estimated_wtp,
+    vpCommitmentText: context.vpCommitmentText
   }), {
     temperature: 0.45,
     max_tokens: 700
@@ -830,6 +865,13 @@ function getSubjectiveElicitationMetadata() {
   return {
     version: SUBJECTIVE_ELICITATION_VERSION,
     template_sha256: subjectiveTemplateSha256()
+  };
+}
+
+function getVpConditioningMetadata() {
+  return {
+    vp_conditioned: true,
+    vp_template_sha256: crypto.createHash("sha256").update(VP_COMMITMENT_TEMPLATE).digest("hex")
   };
 }
 
@@ -928,7 +970,11 @@ async function generateSummaryCardSelection(actor, context) {
     {
       role: "user",
       content: [
-        "## 当前任务：根据你实际读过的客户调研报告选择研发能力卡",
+        context.vpCommitmentText || null,
+        context.vpCommitmentText ? "" : null,
+        context.vpCommitmentText
+          ? "## 当前任务：为实现你们的价值主张，从你负责的维度中选择能力卡"
+          : "## 当前任务：根据你实际读过的客户调研报告选择研发能力卡",
         "你只知道下面这些自己实际读过的报告。没有读过的报告不要假设、不要补全。",
         subjectiveState ? [
           "",
@@ -972,7 +1018,7 @@ async function generateSummaryCardSelection(actor, context) {
         "- 你负责的维度必须有清晰覆盖",
         "- 必须满足卡之间的依赖关系，不能选出硬性 requires/excludes 冲突",
         "- tier 选择反映你的风险偏好和成本意识"
-      ].filter(Boolean).join("\n")
+      ].filter((item) => item !== null && item !== "").join("\n")
     }
   ];
 
@@ -1021,7 +1067,11 @@ async function generateStructuredPriceChoice(actor, priceContext = {}) {
     {
       role: "user",
       content: [
-        "## 当前任务：团队定价决策",
+        priceContext.vpCommitmentText || null,
+        priceContext.vpCommitmentText ? "" : null,
+        priceContext.vpCommitmentText
+          ? "## 当前任务：为实现你们的价值主张并赚取最多利润，确定价格"
+          : "## 当前任务：团队定价决策",
         "你只能根据你的身份/persona信息、你的主观状态中间对象、已读报告中的价格线索和成本侧信息定价。",
         "",
         "## 执笔成员的主观状态中间对象",
@@ -1042,7 +1092,7 @@ async function generateStructuredPriceChoice(actor, priceContext = {}) {
         "",
         "请输出 JSON，不要输出多余文字：",
         "{\"price\": 4000, \"reason\": \"一句话说明你的定价依据\"}"
-      ].join("\n")
+      ].filter((item) => item !== null).join("\n")
     }
   ];
   const result = await requestStrictJson(actor, messages, {
@@ -1658,6 +1708,7 @@ function normalizeViolationsList(violations) {
 
 async function runRound2Summary(result, api, teamId, members, memberActors, teamIndex, options, tracker, context) {
   const { recap, stateData, assignments } = context;
+  const vpCommitmentText = isVpConditionedMode(options) ? requireVpCommitment(recap) : "";
   const sessionId = resolveSummarySessionId(options, stateData);
   const leaderMemberId = resolveLeaderMemberId(
     stateData.leader_member_id,
@@ -1813,6 +1864,7 @@ async function runRound2Summary(result, api, teamId, members, memberActors, team
       structuredProfile: r2PersonaPrompt.profile,
       structuredProfileText: r2PersonaPrompt.text,
       simplePromptTemplate: r2PersonaPrompt.simplePromptTemplate,
+      vpCommitmentText,
       harnessParams,
       subjectiveState: null,
       actor: getStudentProfile(options, memberIndex)
@@ -1827,7 +1879,8 @@ async function runRound2Summary(result, api, teamId, members, memberActors, team
       await Promise.all(selectionContexts.map(async (selectionContext) => {
         const subjectiveState = await generateStructuredSubjectiveState(selectionContext.actor, {
           structuredProfileText: selectionContext.structuredProfileText,
-          readReports: selectionContext.readReports
+          readReports: selectionContext.readReports,
+          vpCommitmentText: selectionContext.vpCommitmentText
         });
         selectionContext.subjectiveState = subjectiveState;
         const trackerMember = tracker.getMember(selectionContext.assignment.memberId);
@@ -1878,7 +1931,8 @@ async function runRound2Summary(result, api, teamId, members, memberActors, team
         validationIssues,
         previousSelections: currentMember?.r2_personal_selections || [],
         structuredProfileText: selectionContext.structuredProfileText,
-        subjectiveState: selectionContext.subjectiveState
+        subjectiveState: selectionContext.subjectiveState,
+        vpCommitmentText: selectionContext.vpCommitmentText
       });
       const apiSelections = generatedSelections.map((item) => ({
         cap_id: item.cap_id,
@@ -2049,7 +2103,8 @@ async function runRound2Summary(result, api, teamId, members, memberActors, team
     channelFee,
     demandSummary,
     structuredProfileText: pricingContext.structuredProfileText,
-    subjectiveState: pricingContext.subjectiveState
+    subjectiveState: pricingContext.subjectiveState,
+    vpCommitmentText: pricingContext.vpCommitmentText
   };
   const price = isR2PersonaOverrideMode(options)
     ? await generateStructuredPriceChoice(pricingStudent, pricePayload)
@@ -2884,11 +2939,13 @@ async function runTeam(teamIndex, teamSize, api, logger, log = console, options 
 
 module.exports = {
   getSubjectiveElicitationMetadata,
+  getVpConditioningMetadata,
   runTeam,
   __test: {
     buildFocusedWtpMessages,
     buildQualitativeSubjectiveMessages,
     frozenWtpStatement,
+    requireVpCommitment,
     validateFocusedWtp,
     validateQualitativeSubjectiveState
   }

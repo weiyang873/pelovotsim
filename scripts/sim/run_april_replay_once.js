@@ -7,6 +7,7 @@ const crypto = require("node:crypto");
 const ROOT = path.join(__dirname, "..", "..");
 const BASELINE_CSV = path.join(ROOT, "data/persona_sim_logs/2026-04-05T02-36-24-020Z/teams_summary.csv");
 const STRUCTURED_MODE = "layered_structured_v1";
+const STRUCTURED_VP_MODE = "layered_structured_vp_v1";
 const STRUCTURED_NO_PRICING_MODE = "structured_no_pricing_v1";
 const SIMPLE_PERSONA_MODE = "simple_persona_v1";
 const HARNESS_ENFORCED_MODE = "harness_enforced_v1";
@@ -135,11 +136,11 @@ function sha256File(filePath) {
 }
 
 function isSummaryRosterMode(mode) {
-  return mode === STRUCTURED_MODE || mode === STRUCTURED_NO_PRICING_MODE || mode === SIMPLE_PERSONA_MODE || mode === HARNESS_ENFORCED_MODE;
+  return mode === STRUCTURED_MODE || mode === STRUCTURED_VP_MODE || mode === STRUCTURED_NO_PRICING_MODE || mode === SIMPLE_PERSONA_MODE || mode === HARNESS_ENFORCED_MODE;
 }
 
 function isStructuredProfileMode(mode) {
-  return mode === STRUCTURED_MODE || mode === STRUCTURED_NO_PRICING_MODE || mode === HARNESS_ENFORCED_MODE;
+  return mode === STRUCTURED_MODE || mode === STRUCTURED_VP_MODE || mode === STRUCTURED_NO_PRICING_MODE || mode === HARNESS_ENFORCED_MODE;
 }
 
 function defaultProfilesForMode(mode) {
@@ -360,7 +361,7 @@ async function main() {
   const { SimLogger } = require("./logger");
   const { initializeAllStudents, PERSONAS } = require("./persona_pool");
   const { generateReport } = require("./report");
-  const { getSubjectiveElicitationMetadata, runTeam } = require("./team_runner");
+  const { getSubjectiveElicitationMetadata, getVpConditioningMetadata, runTeam } = require("./team_runner");
 
   const baseUrl = process.env.BASE_URL || "http://127.0.0.1:8787";
   process.env.STRICT_DEEPSEEK = "1";
@@ -370,11 +371,13 @@ async function main() {
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
   const runId = args.mode === STRUCTURED_MODE
     ? `sim_layered_structured_v1_${timestamp}`
-    : (args.mode === STRUCTURED_NO_PRICING_MODE
+    : (args.mode === STRUCTURED_VP_MODE
+      ? `sim_layered_structured_vp_v1_${timestamp}`
+      : (args.mode === STRUCTURED_NO_PRICING_MODE
       ? `sim_structured_no_pricing_v1_${timestamp}`
       : (args.mode === SIMPLE_PERSONA_MODE
         ? `sim_simple_persona_v1_${timestamp}`
-        : (args.mode === HARNESS_ENFORCED_MODE ? `sim_harness_enforced_v1_${timestamp}` : `sim_replay_april_${timestamp}`)));
+        : (args.mode === HARNESS_ENFORCED_MODE ? `sim_harness_enforced_v1_${timestamp}` : `sim_replay_april_${timestamp}`))));
   const logDir = path.join(ROOT, "data", "persona_sim_logs", runId);
   fs.mkdirSync(logDir, { recursive: true });
 
@@ -418,6 +421,9 @@ async function main() {
   const exportSummary = await exporter.exportAll(trackers);
   const profilesFileSha256 = isStructuredProfileMode(args.mode) ? sha256File(args.profiles) : null;
   const subjectiveElicitation = getSubjectiveElicitationMetadata();
+  const vpConditioning = args.mode === STRUCTURED_VP_MODE
+    ? getVpConditioningMetadata()
+    : { vp_conditioned: false, vp_template_sha256: "" };
   const actualCommit = require("node:child_process").spawnSync("git", ["rev-parse", "HEAD"], {
     cwd: ROOT,
     encoding: "utf8"
@@ -433,6 +439,8 @@ async function main() {
     profilesFile: isStructuredProfileMode(args.mode) ? args.profiles : "",
     profilesFileSha256,
     subjective_elicitation: subjectiveElicitation,
+    vp_conditioned: vpConditioning.vp_conditioned,
+    vp_template_sha256: vpConditioning.vp_template_sha256,
     rosterSource: isSummaryRosterMode(args.mode) ? args.roster : "",
     sourceRun: isSummaryRosterMode(args.mode) ? STRUCTURED_SOURCE_RUN : "",
     strict: true,
@@ -454,6 +462,8 @@ async function main() {
     ablatedFields: args.mode === STRUCTURED_NO_PRICING_MODE ? NO_PRICING_ABLATED_FIELDS : [],
     profilesFileSha256,
     subjective_elicitation: subjectiveElicitation,
+    vp_conditioned: vpConditioning.vp_conditioned,
+    vp_template_sha256: vpConditioning.vp_template_sha256,
     rosterSource: isSummaryRosterMode(args.mode) ? args.roster : "",
     rosterPath: isSummaryRosterMode(args.mode) ? args.roster : "",
     logDir,
