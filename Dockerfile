@@ -21,6 +21,8 @@ RUN npm ci --omit=dev \
 FROM node:20-bookworm-slim
 WORKDIR /app
 
+ARG GIT_COMMIT=unknown
+ENV GIT_COMMIT=$GIT_COMMIT
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=3000

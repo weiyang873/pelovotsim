@@ -2,7 +2,6 @@ const http = require("node:http");
 const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
-const { spawnSync } = require("node:child_process");
 const { pathToFileURL } = require("node:url");
 const { runSql, sqlQuote, shutdown } = require("./server/db/pgSql");
 
@@ -53,14 +52,7 @@ const EmbeddingService = require("./server/llm/embeddingService");
 const PORT = Number(process.env.PORT || 8787);
 const HOST = process.env.HOST || "127.0.0.1";
 const ROOT = __dirname;
-const SERVER_COMMIT = String(process.env.SERVER_COMMIT || spawnSync("git", ["rev-parse", "HEAD"], {
-  cwd: ROOT,
-  encoding: "utf8"
-}).stdout || "").trim();
-const SERVER_WORKTREE_DIRTY = String(spawnSync("git", ["status", "--porcelain"], {
-  cwd: ROOT,
-  encoding: "utf8"
-}).stdout || "").trim().length > 0;
+const SERVER_COMMIT = String(process.env.GIT_COMMIT || "unknown").trim() || "unknown";
 const DB_PATH = process.env.DATABASE_URL || [
   process.env.PGHOST || "localhost",
   process.env.PGPORT || "5432",
@@ -2408,10 +2400,8 @@ function handleApi(req, res) {
   if (req.method === "GET" && req.url === "/api/health") {
     return sendJson(res, 200, {
       ok: true,
-      dbPath: DB_PATH,
-      server_commit: SERVER_COMMIT,
-      server_worktree_dirty: SERVER_WORKTREE_DIRTY,
-      summary_sources: Round2.getSummarySourceMetadata()
+      summary_sources: Round2.getSummarySourceMetadata(),
+      server_commit: SERVER_COMMIT
     });
   }
 
