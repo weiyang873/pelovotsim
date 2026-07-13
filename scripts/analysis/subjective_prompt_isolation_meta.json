@@ -1,0 +1,16 @@
+{
+  "runId": "subjective_prompt_isolation_v1_2026-07-13",
+  "generatedAt": "2026-07-13T01:09:49.559Z",
+  "cells": 120,
+  "successful": 120,
+  "anchorRate": 0.7,
+  "exactExampleRate": 0.6833333333333333,
+  "contains4000Rate": 0.8833333333333333,
+  "verdict": "PROMPT_FORMAT_CAUSAL_CANDIDATE: anchor rate is at least 70%; the full multi-field example is sufficient to recreate collapse without pipeline context.",
+  "temperature": 0.45,
+  "maxTokens": 700,
+  "promptTemplateSha256": "17e772574ad9b43a67295ce98316fce50c86017a71059530c44be9ebf434722d",
+  "personaReportsSha256": "900da996382e5eb5e2104e4da6871ceab861418ba1f3258931fa4691de431623",
+  "externalContextMessages": 0,
+  "systemPersonaIncluded": false
+}
