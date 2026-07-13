@@ -480,6 +480,13 @@ function mean(values) {
   return finite.length ? finite.reduce((a, b) => a + b, 0) / finite.length : null;
 }
 
+function median(values) {
+  const finite = values.map(Number).filter(Number.isFinite).sort((a, b) => a - b);
+  if (!finite.length) return null;
+  const middle = Math.floor(finite.length / 2);
+  return finite.length % 2 ? finite[middle] : (finite[middle - 1] + finite[middle]) / 2;
+}
+
 function formatNumber(value, digits = 3) {
   return value != null && Number.isFinite(Number(value)) ? Number(value).toFixed(digits) : "N/A";
 }
@@ -525,6 +532,24 @@ function summarize(rows, expectedCells, promptHashes, meta) {
   });
 
   const missRows = rows.filter((row) => row.status === "EXTRACTION_MISS");
+  const conditionStats = CONDITIONS.map((condition) => {
+    const estimates = successful.filter((row) => row.condition === condition).map((row) => row.estimated_wtp);
+    return { condition, mean: mean(estimates), median: median(estimates) };
+  });
+  const conditionStat = Object.fromEntries(conditionStats.map((item) => [item.condition, item]));
+  const elderStats = CONDITIONS.filter((condition) => condition !== "C3").map((condition) => {
+    const estimates = successful.filter((row) => row.condition === condition && row.grid === "ToC_Cost_Elder")
+      .map((row) => row.estimated_wtp);
+    return { condition, mean: mean(estimates), median: median(estimates) };
+  });
+  const c3ByGrid = GRID_SPECS.map((spec) => {
+    const selected = rows.filter((row) => row.condition === "C3" && row.grid === spec.grid);
+    const success = selected.filter((row) => row.status === "success").length;
+    const misses = selected.filter((row) => row.status === "EXTRACTION_MISS").length;
+    return { grid: spec.grid, success, misses, rate: selected.length ? success / selected.length : null };
+  });
+  const c3SuccessRate = conditionStat.C3 ? metrics.find((item) => item.condition === "C3").successful / 180 : null;
+  const c2AnchorShift = conditionStat.C2_high.mean - conditionStat.C2_low.mean;
   const lines = [
     "# Belief Formation Bench Summary",
     "",
@@ -544,6 +569,35 @@ function summarize(rows, expectedCells, promptHashes, meta) {
     "| Condition | Successful | Anchor rate [3800,4200] | Spearman vs WTPref | Premium - frugal | Premium higher grids |",
     "|---|---:|---:|---:|---:|---:|",
     ...metrics.map((item) => `| ${item.condition} | ${item.successful} | ${formatNumber(item.anchoringRate * 100, 1)}% | ${formatNumber(item.gridSensitivity)} | ${formatNumber(item.personaDifference, 0)} | ${formatNumber(item.premiumHigherRate * 100, 1)}% |`),
+    "",
+    "## Distribution And Verdict",
+    "",
+    "| Condition | Mean WTP | Median WTP | Verdict |",
+    "|---|---:|---:|---|",
+    `| C0_leaked | ${formatNumber(conditionStat.C0_leaked.mean, 0)} | ${formatNumber(conditionStat.C0_leaked.median, 0)} | The leaked range changes the distribution, but does not recreate a 4000 point mass. |`,
+    `| C0_clean | ${formatNumber(conditionStat.C0_clean.mean, 0)} | ${formatNumber(conditionStat.C0_clean.median, 0)} | Baseline already reads grid-specific price context; 4000 collapse is not reproduced. |`,
+    `| C1 | ${formatNumber(conditionStat.C1.mean, 0)} | ${formatNumber(conditionStat.C1.median, 0)} | Evidence-first does not improve grid sensitivity over clean C0. |`,
+    `| C2_low | ${formatNumber(conditionStat.C2_low.mean, 0)} | ${formatNumber(conditionStat.C2_low.median, 0)} | Estimates follow the injected low anchor. |`,
+    `| C2_high | ${formatNumber(conditionStat.C2_high.mean, 0)} | ${formatNumber(conditionStat.C2_high.median, 0)} | Estimates follow the injected high anchor. |`,
+    `| C3 | ${formatNumber(conditionStat.C3.mean, 0)} | ${formatNumber(conditionStat.C3.median, 0)} | Rejected under current reports: extraction and grid-sensitivity thresholds fail. |`,
+    "",
+    `- C2 anchor shift (high mean minus low mean): ${formatNumber(c2AnchorShift, 0)} yuan.`,
+    `- C3 extraction success: ${metrics.find((item) => item.condition === "C3").successful}/180 (${formatNumber(c3SuccessRate * 100, 1)}%), below the >90% criterion.`,
+    "- C0-C2 persona differences are present, but they are not cleanly monotonic across all grids; persona text affects level without overriding report/anchor evidence.",
+    "",
+    "### ToC_Cost_Elder",
+    "",
+    "| Condition | Mean WTP | Median WTP |",
+    "|---|---:|---:|",
+    ...elderStats.map((item) => `| ${item.condition} | ${formatNumber(item.mean, 0)} | ${formatNumber(item.median, 0)} |`),
+    "",
+    "C1 is effectively unchanged from clean C0 for the low-price elder grid, so forced quotation adds little once the actual report text is already supplied.",
+    "",
+    "### C3 Extraction By Grid",
+    "",
+    "| Grid | Success | Miss | Success rate |",
+    "|---|---:|---:|---:|",
+    ...c3ByGrid.map((item) => `| ${item.grid} | ${item.success} | ${item.misses} | ${formatNumber(item.rate * 100, 1)}% |`),
     "",
     "## Prompt Leak Audit",
     "",

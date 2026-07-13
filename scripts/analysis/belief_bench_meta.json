@@ -1,0 +1,61 @@
+{
+  "runId": "belief_bench_v1_2026-07-13",
+  "createdAt": "2026-07-13T00:46:23.150Z",
+  "scriptSha256": "f44092d2094e8ebc1f51bf516588e5f117e165ec69b85bfd2aa3c3bdd132d870",
+  "personaReportsSha256": "900da996382e5eb5e2104e4da6871ceab861418ba1f3258931fa4691de431623",
+  "structuredProfilesSha256": "ed9d3c9a243f7e10009fccf32c63b22925396c6e60b894c1c5f32c0a4000f5e7",
+  "sourceRun": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+  "groundTruth": {
+    "ToC_Cost_Elder": {
+      "wtp_ref": 11714,
+      "wtp_adj": 12906
+    },
+    "ToC_Cost_Child": {
+      "wtp_ref": 11714,
+      "wtp_adj": 13263
+    },
+    "ToC_Differentiation_Adult": {
+      "wtp_ref": 17120,
+      "wtp_adj": 19846
+    },
+    "ToB_Cost_Adult": {
+      "wtp_ref": 15445,
+      "wtp_adj": 18460
+    },
+    "ToB_Differentiation_Elder": {
+      "wtp_ref": 19268,
+      "wtp_adj": 23122
+    },
+    "ToB_Differentiation_Child": {
+      "wtp_ref": 18732,
+      "wtp_adj": 22478
+    }
+  },
+  "conditions": [
+    "C0_leaked",
+    "C0_clean",
+    "C1",
+    "C2_low",
+    "C2_high",
+    "C3"
+  ],
+  "reps": 10,
+  "expectedCells": 1080,
+  "temperature": 0.45,
+  "model": "deepseek-chat",
+  "promptTemplateSha256": {
+    "original_subjective_state": "c0168f14731b5f02bc8e8fed6f58598c76267eec9c51a44d5a266173606db29e",
+    "c0_leaked": "10da7f3679eb5d9987cb7497e3ceab7447fb1c233a79b03a34691fe0fc7ea986",
+    "c0_clean": "fee7905ce7f11affb530e0ca1ff5c88b8dd279ae36b1adc55d1e0f12a92c5f50",
+    "c1_extract": "16f3bdbdc12ff5514008b42857dff7bd05534897be4f8c576f7fd82d63c9c46b",
+    "c1_estimate": "ea3b7e3d328cd48200d23e1639969fbe7a3a03c93a2d627d2339e15a5c283f9e",
+    "c2_low": "6132ca961f6f79e5d2ee2e6a7085d5eeb91cf56285a42baf1bce04fc8d2efe5d",
+    "c2_high": "b67a1cd5c6008b19acd1f5f6d6ed88036c1cb864ae86042673af5f6304c33ecc",
+    "c3_extract": "1685cf1edf094d8104fa461b48adb662ae5af9a0add5c2247e06488a98464be9"
+  },
+  "groundTruthPromptExposure": false,
+  "outputFiles": {
+    "csvPath": "/Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/scripts/analysis/belief_bench_results.csv",
+    "summaryPath": "/Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/scripts/analysis/belief_bench_summary.md"
+  }
+}
