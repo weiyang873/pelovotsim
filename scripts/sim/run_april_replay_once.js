@@ -360,7 +360,7 @@ async function main() {
   const { SimLogger } = require("./logger");
   const { initializeAllStudents, PERSONAS } = require("./persona_pool");
   const { generateReport } = require("./report");
-  const { runTeam } = require("./team_runner");
+  const { getSubjectiveElicitationMetadata, runTeam } = require("./team_runner");
 
   const baseUrl = process.env.BASE_URL || "http://127.0.0.1:8787";
   process.env.STRICT_DEEPSEEK = "1";
@@ -417,6 +417,7 @@ async function main() {
   const exporter = new DataExporter(runId, logDir, logger);
   const exportSummary = await exporter.exportAll(trackers);
   const profilesFileSha256 = isStructuredProfileMode(args.mode) ? sha256File(args.profiles) : null;
+  const subjectiveElicitation = getSubjectiveElicitationMetadata();
   const actualCommit = require("node:child_process").spawnSync("git", ["rev-parse", "HEAD"], {
     cwd: ROOT,
     encoding: "utf8"
@@ -431,6 +432,7 @@ async function main() {
     ablatedFields: args.mode === STRUCTURED_NO_PRICING_MODE ? NO_PRICING_ABLATED_FIELDS : [],
     profilesFile: isStructuredProfileMode(args.mode) ? args.profiles : "",
     profilesFileSha256,
+    subjective_elicitation: subjectiveElicitation,
     rosterSource: isSummaryRosterMode(args.mode) ? args.roster : "",
     sourceRun: isSummaryRosterMode(args.mode) ? STRUCTURED_SOURCE_RUN : "",
     strict: true,
@@ -451,6 +453,7 @@ async function main() {
     harness_version: args.mode === HARNESS_ENFORCED_MODE ? "v1" : "",
     ablatedFields: args.mode === STRUCTURED_NO_PRICING_MODE ? NO_PRICING_ABLATED_FIELDS : [],
     profilesFileSha256,
+    subjective_elicitation: subjectiveElicitation,
     rosterSource: isSummaryRosterMode(args.mode) ? args.roster : "",
     rosterPath: isSummaryRosterMode(args.mode) ? args.roster : "",
     logDir,

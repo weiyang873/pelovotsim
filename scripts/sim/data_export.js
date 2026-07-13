@@ -22,7 +22,7 @@ for (const group of CAP_GROUPS.groups || []) {
 const STUDENT_CSV_COLUMNS = [
   "run_id", "team_index", "member_index", "name", "persona", "gender", "mbti", "age", "education", "has_overseas", "industry",
   "seed_memory_json", "classroom_profile_json",
-  "subjective_state_json", "structured_profile_key", "simple_prompt_template",
+  "subjective_state_json", "swtp_basis", "swtp_value", "swtp_call_version", "structured_profile_key", "simple_prompt_template",
   "harness_reports_shown", "harness_reports_total", "harness_anchor_mode", "harness_price_hints_count",
   "harness_selection_rounds", "harness_triggered_revision", "harness_validate_depth",
   "harness_violations_detected", "harness_violations_actual", "harness_card_order",
@@ -123,6 +123,9 @@ function flattenStudentRow(runId, tracker, member, jinangSaving) {
     seed_memory_json: member.seed_memory_json ? JSON.stringify(member.seed_memory_json) : "",
     classroom_profile_json: member.classroom_profile_json ? JSON.stringify(member.classroom_profile_json) : "",
     subjective_state_json: member.subjective_state_json ? JSON.stringify(member.subjective_state_json) : "",
+    swtp_basis: member.swtp_basis || "",
+    swtp_value: member.swtp_value,
+    swtp_call_version: member.swtp_call_version || "",
     structured_profile_key: member.structured_profile_key || "",
     simple_prompt_template: member.simple_prompt_template || "",
     harness_reports_shown: member.harness_reports_shown,
@@ -204,6 +207,9 @@ class DataExporter {
         seed_memory_json TEXT,
         classroom_profile_json TEXT,
         subjective_state_json TEXT,
+        swtp_basis TEXT,
+        swtp_value REAL,
+        swtp_call_version TEXT,
         structured_profile_key TEXT,
         simple_prompt_template TEXT,
         harness_reports_shown INTEGER,
@@ -383,6 +389,9 @@ class DataExporter {
     await this.query("ALTER TABLE sim_students ADD COLUMN IF NOT EXISTS seed_memory_json TEXT");
     await this.query("ALTER TABLE sim_students ADD COLUMN IF NOT EXISTS classroom_profile_json TEXT");
     await this.query("ALTER TABLE sim_students ADD COLUMN IF NOT EXISTS subjective_state_json TEXT");
+    await this.query("ALTER TABLE sim_students ADD COLUMN IF NOT EXISTS swtp_basis TEXT");
+    await this.query("ALTER TABLE sim_students ADD COLUMN IF NOT EXISTS swtp_value REAL");
+    await this.query("ALTER TABLE sim_students ADD COLUMN IF NOT EXISTS swtp_call_version TEXT");
     await this.query("ALTER TABLE sim_students ADD COLUMN IF NOT EXISTS structured_profile_key TEXT");
     await this.query("ALTER TABLE sim_students ADD COLUMN IF NOT EXISTS simple_prompt_template TEXT");
     await this.query("ALTER TABLE sim_students ADD COLUMN IF NOT EXISTS harness_reports_shown INTEGER");
@@ -496,7 +505,7 @@ class DataExporter {
         await this.query(`
           INSERT INTO sim_students (
             run_id, team_id, team_index, member_id, member_index, name, persona_id, persona_label, gender, mbti, age,
-            education, has_overseas, role, industry, seed_memory_json, classroom_profile_json, subjective_state_json, structured_profile_key, simple_prompt_template,
+            education, has_overseas, role, industry, seed_memory_json, classroom_profile_json, subjective_state_json, swtp_basis, swtp_value, swtp_call_version, structured_profile_key, simple_prompt_template,
             harness_reports_shown, harness_reports_total, harness_anchor_mode, harness_price_hints_count, harness_selection_rounds,
             harness_triggered_revision, harness_validate_depth, harness_violations_detected, harness_violations_actual, harness_card_order,
             jinang_market_id, jinang_market_name, jinang_tech_id, jinang_tech_name,
@@ -508,7 +517,8 @@ class DataExporter {
             $12,$13,$14,$15,$16,$17,$18,$19,$20,$21,
             $22,$23,$24,$25,$26,$27,$28,$29,$30,$31,
             $32,$33,$34,$35,$36,$37,$38,$39,$40,$41,
-            $42,$43,$44,$45,$46,$47,$48,$49,$50,$51,$52,$53
+            $42,$43,$44,$45,$46,$47,$48,$49,$50,$51,
+            $52,$53,$54,$55,$56
           )
         `, [
           this.runId, tracker.teamId, tracker.teamIndex, member.memberId, member.memberIndex, member.name, member.persona,
@@ -516,6 +526,9 @@ class DataExporter {
           member.seed_memory_json ? JSON.stringify(member.seed_memory_json) : null,
           member.classroom_profile_json ? JSON.stringify(member.classroom_profile_json) : null,
           member.subjective_state_json ? JSON.stringify(member.subjective_state_json) : null,
+          member.swtp_basis || null,
+          member.swtp_value,
+          member.swtp_call_version || null,
           member.structured_profile_key || null,
           member.simple_prompt_template || null,
           member.harness_reports_shown, member.harness_reports_total, member.harness_anchor_mode || null,

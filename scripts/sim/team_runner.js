@@ -2,6 +2,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const crypto = require("node:crypto");
 const { CAP_GROUPS, GLOBAL_PARAMS, NRE_TIER_MULT, PRICE_SCALE, validateSelections } = require("../../server/llm/rdCalculator");
 const { toCalcGridId } = require("../../server/routes/round2Routes");
 const { chatCompletion } = require("../../server/llm/deepseekClient");
@@ -698,11 +699,60 @@ function structuredSystemPrompt(context) {
     : "你是一位认真的 EMBA 学员，请按自己的判断完成团队任务。";
 }
 
-function validateSubjectiveState(data) {
-  const range = Array.isArray(data?.estimated_wtp_range) ? data.estimated_wtp_range.map(Number) : [];
-  if (range.length !== 2 || !range.every(Number.isFinite) || range[0] > range[1]) {
-    return { ok: false, error: "estimated_wtp_range must be [low, high] finite numbers" };
+const SUBJECTIVE_ELICITATION_VERSION = "focused_v1";
+
+function buildFocusedWtpMessages({ structuredProfileText, reportsText }) {
+  return [
+    { role: "system", content: structuredProfileText },
+    {
+      role: "user",
+      content: [
+        "## 你实际读过的报告原文",
+        reportsText,
+        "",
+        "基于以上材料，回答一个问题：你估计该客群对这款产品的支付意愿是多少元？",
+        "先用一句话说明你依据了材料中的哪个信息，然后给出数字。",
+        "输出 JSON：{\"basis\": \"<一句话>\", \"estimated_wtp\": <数字>}"
+      ].join("\n")
+    }
+  ];
+}
+
+function buildQualitativeSubjectiveMessages({ structuredProfileText, reportsText, estimatedWtp }) {
+  return [
+    { role: "system", content: structuredProfileText },
+    {
+      role: "user",
+      content: [
+        "## 你实际读过的报告原文",
+        reportsText,
+        "",
+        `你已判断该客群支付意愿约为 ${estimatedWtp} 元。这是已冻结事实，不要重新估计或修改。`,
+        "",
+        "请继续形成选卡所需的四项定性判断。min_acceptable_coverage 必须是 high、medium、low 之一。",
+        "只输出可 JSON.parse 的 JSON：",
+        "{",
+        '  "top_needs": ["<需求>"],',
+        '  "primary_goal": "<目标>",',
+        '  "min_acceptable_coverage": "<覆盖等级>",',
+        '  "planned_stop_rule": "<停止规则>"',
+        "}"
+      ].join("\n")
+    }
+  ];
+}
+
+function validateFocusedWtp(data) {
+  const basis = String(data?.basis || "").trim();
+  const estimatedWtp = Number(data?.estimated_wtp);
+  if (!basis) return { ok: false, error: "basis is required" };
+  if (!Number.isFinite(estimatedWtp) || estimatedWtp < 0) {
+    return { ok: false, error: "estimated_wtp must be a non-negative finite number" };
   }
+  return { ok: true, value: { basis, estimated_wtp: estimatedWtp } };
+}
+
+function validateQualitativeSubjectiveState(data) {
   const topNeeds = Array.isArray(data?.top_needs)
     ? data.top_needs.map((item) => String(item || "").trim()).filter(Boolean).slice(0, 5)
     : [];
@@ -721,7 +771,6 @@ function validateSubjectiveState(data) {
   return {
     ok: true,
     value: {
-      estimated_wtp_range: [range[0], range[1]],
       top_needs: topNeeds,
       primary_goal: primaryGoal,
       min_acceptable_coverage: minCoverage,
@@ -731,35 +780,64 @@ function validateSubjectiveState(data) {
 }
 
 async function generateStructuredSubjectiveState(actor, context) {
-  const messages = [
-    { role: "system", content: context.structuredProfileText },
-    {
-      role: "user",
-      content: [
-        "## 当前任务：形成选卡前的主观状态",
-        "请只根据你的身份/persona信息和你已读报告内容，形成后续选卡与定价会使用的中间判断。",
-        "",
-        "## 你实际读过的报告原文",
-        buildReportsInput(context.readReports),
-        "",
-        "只输出可 JSON.parse 的 JSON：",
-        "{",
-        '  "estimated_wtp_range": [3000, 5000],',
-        '  "top_needs": ["需求1", "需求2"],',
-        '  "primary_goal": "一句话说明本轮最重要目标",',
-        '  "min_acceptable_coverage": "high|medium|low",',
-        '  "planned_stop_rule": "一句话说明你准备如何停止搜索"',
-        "}"
-      ].join("\n")
-    }
-  ];
-  return requestStrictJson(actor, messages, {
+  const reportsText = buildReportsInput(context.readReports);
+  const focusedWtp = await requestStrictJson(actor, buildFocusedWtpMessages({
+    structuredProfileText: context.structuredProfileText,
+    reportsText
+  }), {
+    temperature: 0.45,
+    max_tokens: 400
+  }, {
+    caller: "team_runner.generateFocusedWtp",
+    step: "R2.focused_swtp"
+  }, validateFocusedWtp);
+  const qualitative = await requestStrictJson(actor, buildQualitativeSubjectiveMessages({
+    structuredProfileText: context.structuredProfileText,
+    reportsText,
+    estimatedWtp: focusedWtp.estimated_wtp
+  }), {
     temperature: 0.45,
     max_tokens: 700
   }, {
-    caller: "team_runner.generateStructuredSubjectiveState",
-    step: "R2.structured_subjective_state"
-  }, validateSubjectiveState);
+    caller: "team_runner.generateQualitativeSubjectiveState",
+    step: "R2.subjective_qualitative"
+  }, validateQualitativeSubjectiveState);
+  return {
+    swtp_basis: focusedWtp.basis,
+    swtp_value: focusedWtp.estimated_wtp,
+    swtp_call_version: SUBJECTIVE_ELICITATION_VERSION,
+    estimated_wtp: focusedWtp.estimated_wtp,
+    ...qualitative
+  };
+}
+
+function subjectiveTemplateSha256() {
+  const messages = {
+    focused_wtp: buildFocusedWtpMessages({ structuredProfileText: "{PERSONA}", reportsText: "{REPORTS}" }),
+    qualitative: buildQualitativeSubjectiveMessages({
+      structuredProfileText: "{PERSONA}",
+      reportsText: "{REPORTS}",
+      estimatedWtp: "{ESTIMATED_WTP}"
+    })
+  };
+  return Object.fromEntries(Object.entries(messages).map(([key, value]) => [
+    key,
+    crypto.createHash("sha256").update(JSON.stringify(value)).digest("hex")
+  ]));
+}
+
+function getSubjectiveElicitationMetadata() {
+  return {
+    version: SUBJECTIVE_ELICITATION_VERSION,
+    template_sha256: subjectiveTemplateSha256()
+  };
+}
+
+function frozenWtpStatement(subjectiveState) {
+  const value = Number(subjectiveState?.swtp_value ?? subjectiveState?.estimated_wtp);
+  return Number.isFinite(value)
+    ? `你此前判断该客群支付意愿约为 ${value} 元。这是已冻结事实，不要重新估计。`
+    : "";
 }
 
 function resolveSummarySessionId(options, stateData) {
@@ -854,6 +932,8 @@ async function generateSummaryCardSelection(actor, context) {
         "你只知道下面这些自己实际读过的报告。没有读过的报告不要假设、不要补全。",
         subjectiveState ? [
           "",
+          frozenWtpStatement(subjectiveState),
+          "",
           "## 你的主观状态中间对象",
           JSON.stringify(subjectiveState, null, 2)
         ].join("\n") : "",
@@ -945,6 +1025,7 @@ async function generateStructuredPriceChoice(actor, priceContext = {}) {
         "你只能根据你的身份/persona信息、你的主观状态中间对象、已读报告中的价格线索和成本侧信息定价。",
         "",
         "## 执笔成员的主观状态中间对象",
+        frozenWtpStatement(subjectiveState),
         subjectiveState ? JSON.stringify(subjectiveState, null, 2) : "{}",
         "",
         "成本侧：",
@@ -1718,24 +1799,6 @@ async function runRound2Summary(result, api, teamId, members, memberActors, team
     return data;
   });
 
-  await runStep(result, "r2_summary_freeze_reports", async () => {
-    const data = await stepApi(api, "R2.summary_persona_select").post("/api/round2/persona-select", {
-      teamId,
-      memberId: leaderMemberId,
-      sessionId,
-      session_id: sessionId
-    });
-    assert(data.ok === true, "persona-select returned ok=false");
-    assert(data.locked === true, "persona-select did not lock summary reports");
-    return data;
-  });
-
-  const cardsData = await runStep(result, "r2_get_cards", async () => {
-    const cards = await stepApi(api, "R2.3_get_rd_cards").getRDCards();
-    assert(cards.ok === true, "getRDCards returned ok=false");
-    assert(Array.isArray(cards.groups), "getRDCards missing groups");
-    return cards;
-  });
   const selectionContexts = assignments.map((assignment) => {
     const member = tracker.getMember(assignment.memberId);
     const memberIndex = members.findIndex((item) => item.id === assignment.memberId);
@@ -1770,6 +1833,9 @@ async function runRound2Summary(result, api, teamId, members, memberActors, team
         const trackerMember = tracker.getMember(selectionContext.assignment.memberId);
         if (trackerMember) {
           trackerMember.subjective_state_json = subjectiveState;
+          trackerMember.swtp_basis = subjectiveState.swtp_basis;
+          trackerMember.swtp_value = subjectiveState.swtp_value;
+          trackerMember.swtp_call_version = subjectiveState.swtp_call_version;
           trackerMember.structured_profile_key = selectionContext.structuredProfile?.member_key || structuredMemberKey(teamIndex, selectionContext.memberIndex);
           if (selectionContext.simplePromptTemplate) {
             trackerMember.simple_prompt_template = selectionContext.simplePromptTemplate;
@@ -1780,6 +1846,24 @@ async function runRound2Summary(result, api, teamId, members, memberActors, team
     });
   }
 
+  await runStep(result, "r2_summary_freeze_reports", async () => {
+    const data = await stepApi(api, "R2.summary_persona_select").post("/api/round2/persona-select", {
+      teamId,
+      memberId: leaderMemberId,
+      sessionId,
+      session_id: sessionId
+    });
+    assert(data.ok === true, "persona-select returned ok=false");
+    assert(data.locked === true, "persona-select did not lock summary reports");
+    return data;
+  });
+
+  const cardsData = await runStep(result, "r2_get_cards", async () => {
+    const cards = await stepApi(api, "R2.3_get_rd_cards").getRDCards();
+    assert(cards.ok === true, "getRDCards returned ok=false");
+    assert(Array.isArray(cards.groups), "getRDCards missing groups");
+    return cards;
+  });
   async function saveSummarySelections(validationIssues = null) {
     await Promise.all(selectionContexts.map(async (selectionContext) => {
       const currentMember = tracker.getMember(selectionContext.assignment.memberId);
@@ -2799,5 +2883,13 @@ async function runTeam(teamIndex, teamSize, api, logger, log = console, options 
 }
 
 module.exports = {
-  runTeam
+  getSubjectiveElicitationMetadata,
+  runTeam,
+  __test: {
+    buildFocusedWtpMessages,
+    buildQualitativeSubjectiveMessages,
+    frozenWtpStatement,
+    validateFocusedWtp,
+    validateQualitativeSubjectiveState
+  }
 };
