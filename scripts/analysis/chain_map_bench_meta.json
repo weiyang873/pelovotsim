@@ -1,0 +1,30 @@
+{
+  "runId": "chain_map_bench_v1_2026-07-13",
+  "createdAt": "2026-07-13T15:52:28.247Z",
+  "gitCommit": "6173124e33edcbb9249d6dfb6482a6435f5f870f",
+  "scriptSha256": "ce594bdbb093498d08acd16492ddf03db3fe1647987619f3cead5d93a3b08ba7",
+  "executionGitCommit": "6173124e33edcbb9249d6dfb6482a6435f5f870f",
+  "executionScriptSha256": "dd098692380a85f32012fb0306cba9fc783cbe108034ac8b12b517b77aabf63a",
+  "personaReportsFile": "game_config_v0.1/persona_reports_v1.1.json",
+  "personaReportsSha256": "900da996382e5eb5e2104e4da6871ceab861418ba1f3258931fa4691de431623",
+  "reportGrid": "B2B_Differentiation_Elder",
+  "reportCount": 3,
+  "maps": {
+    "草根老板": {
+      "file": "scripts/analysis/cognitive_map_caogen_min.json",
+      "sha256": "40d8de670d52d202a344232ddd33099f755f92c6479501d07fc988371ea26f3d"
+    },
+    "二代接班人": {
+      "file": "scripts/analysis/cognitive_map_erdai_min.json",
+      "sha256": "97fa4be7f5bdced117e53eae1646b5ed18286ffc0ee1535770574d3989265151"
+    }
+  },
+  "temperature": 0.45,
+  "requestedChains": 32,
+  "completedChains": 32,
+  "failedChains": 0,
+  "totalCalls": 173,
+  "expectedBaseCalls": 160,
+  "invalidReferences": 0,
+  "invalidReferenceDetails": []
+}

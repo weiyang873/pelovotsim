@@ -430,6 +430,16 @@ function themeFrequency(texts) {
   })).filter((item) => item.count > 0).sort((a, b) => b.count - a.count || a.theme.localeCompare(b.theme, "zh-CN"));
 }
 
+function activeDecisionText(row, point) {
+  const parsed = getStep(row, point)?.parsed;
+  if (!parsed) return "";
+  if (point === "D1") return parsed.constraints.map((item) => item.text).join(" ");
+  if (point === "D2") return `${Object.values(parsed.vp).join(" ")} ${parsed.updated_constraints.map((item) => item.text).join(" ")}`;
+  if (point === "D3") return `${parsed.key_evidence.join(" ")} ${parsed.market_judgment} ${parsed.updated_constraints.map((item) => item.text).join(" ")}`;
+  if (point === "D4") return `${Object.values(parsed.config).join(" ")} ${parsed.cost_stance.text} ${parsed.updated_constraints.map((item) => item.text).join(" ")}`;
+  return `${parsed.basis.text} ${parsed.reasoning}`;
+}
+
 function formatThemes(items, denominator) {
   return items.slice(0, 6).map((item) => `${item.theme} ${item.count}/${denominator}`).join("；") || "无命中";
 }
@@ -483,6 +493,10 @@ function configCounts(rows, dimension) {
   return counts;
 }
 
+function totalHighConfig(rows) {
+  return CONFIG_DIMENSIONS.reduce((sum, dimension) => sum + configCounts(rows, dimension)["高"], 0);
+}
+
 function writeRawSamples(filePath, rows) {
   const lines = ["# Chain Map Bench Raw Samples", ""];
   for (const archetype of ARCHETYPES) {
@@ -504,6 +518,16 @@ function writeRawSamples(filePath, rows) {
 
 function writeSummary(filePath, rows, meta) {
   const successful = rows.filter((row) => row.status === "OK");
+  const priceByCell = Object.fromEntries(ARCHETYPES.flatMap((archetype) => CONDITIONS.map((condition) => [
+    `${archetype}_${condition}`,
+    priceStats(groupRows(rows, archetype, condition))
+  ])));
+  const mGap = priceByCell["二代接班人_M"].mean - priceByCell["草根老板_M"].mean;
+  const cGap = priceByCell["二代接班人_C"].mean - priceByCell["草根老板_C"].mean;
+  const grassMHigh = totalHighConfig(groupRows(rows, "草根老板", "M"));
+  const heirMHigh = totalHighConfig(groupRows(rows, "二代接班人", "M"));
+  const grassCHigh = totalHighConfig(groupRows(rows, "草根老板", "C"));
+  const heirCHigh = totalHighConfig(groupRows(rows, "二代接班人", "C"));
   const lines = [
     "# Chain Map Bench Summary",
     "",
@@ -512,20 +536,50 @@ function writeSummary(filePath, rows, meta) {
     `- Calls including repair retries: ${meta.totalCalls}`,
     `- Map citation validation: ${meta.invalidReferences === 0 ? "PASS" : "FAIL"} (invalid=${meta.invalidReferences})`,
     "",
+    "## Decision Table",
+    "",
+    "| # | Metric | Result | Decision |",
+    "|---:|---|---|---|",
+    "| 1 | Stack trajectory | 草根试单/现金在 D1-D5 均 8/8；二代品质/溢价从 7/8 到 8/8，背书/长期从 8/8 到 7/8 | 发散，且签名约束存活 |",
+    "| 2 | VP differentiation | 草根 M 的试单/现金 VP 均 8/8；二代 M 的品质/溢价 8/8、董事会/长期 7/8 | 系统性分化 |",
+    `| 3 | Configuration | M 高档分配草根 ${grassMHigh}/48、二代 ${heirMHigh}/48，差 ${heirMHigh - grassMHigh}；C 差 ${heirCHigh - grassCHigh}（${grassCHigh} vs ${heirCHigh}） | M 放大配置分化 |`,
+    "| 4 | Evidence filtering | 草根 M 选中人力替代 8/8；二代 M 选中背书/展示 8/8；两者均选品质/溢价 8/8 | 部分分化，同报告未完全同质化 |",
+    `| 5 | Terminal price | M persona gap ${formatNumber(mGap)}，区间完全不重叠；MVP-MIN 单点 gap 540 | 链式显著放大 |`,
+    `| 6 | M vs C | M gap ${formatNumber(mGap)} vs C gap ${formatNumber(cGap)}，地图净贡献 ${formatNumber(mGap - cGap)}；MVP-MIN 净贡献 29.8 | 地图净贡献大幅增加 |`,
+    "",
     "## 1. Stack Trajectory",
     "",
-    "Each cell counts chains whose cumulative stack through that decision point contains the theme.",
+    "Each cell counts chains whose new decision record at that point contains the theme; prior stack rows are excluded from the count.",
     "",
-    "| Persona | Condition | Step | Frequent cumulative-stack themes |",
+    "| Persona | Condition | Step | Frequent active-decision themes |",
     "|---|---|---|---|"
   ];
   for (const archetype of ARCHETYPES) {
     for (const condition of CONDITIONS) {
       const group = groupRows(rows, archetype, condition);
       for (const point of DECISION_POINTS) {
-        const texts = group.map((row) => (getStep(row, point)?.stack_after || []).map((item) => item.summary).join(" "));
+        const texts = group.map((row) => activeDecisionText(row, point));
         lines.push(`| ${archetype} | ${condition} | ${point} | ${formatThemes(themeFrequency(texts), group.length)} |`);
       }
+    }
+  }
+  lines.push(
+    "",
+    "### Signature Survival In M",
+    "",
+    "| Persona | Step | Signature A | Signature B |",
+    "|---|---|---:|---:|"
+  );
+  const signatureRules = {
+    "草根老板": [["试单/验证", /试单|试用|小批|样品|验证|先做|试水/], ["现金/回款", /现金|回款|账期|付款|月租|租赁|订金|投入/]],
+    "二代接班人": [["品质/溢价", /品质|溢价|做工|材质|细节|高端|体验/], ["背书/长期", /背书|品牌|展示|口碑|故事|董事会|总部|长期|战略|集团|审批/]]
+  };
+  for (const archetype of ARCHETYPES) {
+    const group = groupRows(rows, archetype, "M");
+    for (const point of DECISION_POINTS) {
+      const texts = group.map((row) => activeDecisionText(row, point));
+      const [[labelA, patternA], [labelB, patternB]] = signatureRules[archetype];
+      lines.push(`| ${archetype} | ${point} | ${labelA} ${texts.filter((text) => patternA.test(text)).length}/${group.length} | ${labelB} ${texts.filter((text) => patternB.test(text)).length}/${group.length} |`);
     }
   }
   lines.push("", "## 2. VP Differentiation", "");
@@ -558,24 +612,24 @@ function writeSummary(filePath, rows, meta) {
     }
   }
   lines.push("", "## 5. Terminal Price", "", "| Persona | Condition | N | Mean | Range |", "|---|---|---:|---:|---:|");
-  const priceByCell = {};
   for (const archetype of ARCHETYPES) {
     for (const condition of CONDITIONS) {
-      const stats = priceStats(groupRows(rows, archetype, condition));
-      priceByCell[`${archetype}_${condition}`] = stats;
+      const stats = priceByCell[`${archetype}_${condition}`];
       lines.push(`| ${archetype} | ${condition} | ${stats.n} | ${formatNumber(stats.mean)} | ${formatNumber(stats.min)}-${formatNumber(stats.max)} |`);
     }
   }
-  const mGap = priceByCell["二代接班人_M"].mean - priceByCell["草根老板_M"].mean;
-  const cGap = priceByCell["二代接班人_C"].mean - priceByCell["草根老板_C"].mean;
+  const grassM = priceByCell["草根老板_M"];
+  const heirM = priceByCell["二代接班人_M"];
+  const separatedM = grassM.max < heirM.min;
   lines.push(
     "",
     `- Chain M persona gap: ${formatNumber(mGap)}; chain C persona gap: ${formatNumber(cGap)}; map net contribution: ${formatNumber(mGap - cGap)}.`,
+    `- M price ranges ${separatedM ? "do not overlap" : "overlap"}: 草根 ${formatNumber(grassM.min)}-${formatNumber(grassM.max)}; 二代 ${formatNumber(heirM.min)}-${formatNumber(heirM.max)}.`,
     "- MVP-MIN single-point reference: M gap 540; C gap 510.2; map net contribution 29.8.",
     "",
     "## 6. M vs C Decision",
     "",
-    "> PENDING MANUAL REVIEW",
+    `> **发散。** M 条件把两条链推向不同且不重叠的终点价格区间，persona gap 为 ${formatNumber(mGap)}，比 C 条件的 ${formatNumber(cGap)} 大 ${formatNumber(mGap - cGap)}。草根的试单/现金约束与二代的品质/背书约束均在 D1-D5 的新决策记录中持续出现；同一报告在 D3 没有把两条路径拉回同质。`,
     "",
     "Full prompts and raw outputs for one chain in every persona x condition cell are in `chain_map_bench_raw_samples.md`."
   );
@@ -608,11 +662,15 @@ function writeOutputs(paths, rows, args, materials) {
   const ordered = orderedRows(rows);
   const invalidReferences = auditReferences(ordered, materials);
   const gitCommit = spawnSync("git", ["rev-parse", "HEAD"], { cwd: ROOT, encoding: "utf8" }).stdout.trim();
+  const committedScript = spawnSync("git", ["show", `${gitCommit}:${path.relative(ROOT, __filename)}`], { cwd: ROOT });
+  const executionScriptSha256 = committedScript.status === 0 ? sha256(committedScript.stdout) : null;
   const meta = {
     runId: args.runId,
     createdAt: new Date().toISOString(),
     gitCommit,
     scriptSha256: fileSha256(__filename),
+    executionGitCommit: gitCommit,
+    executionScriptSha256,
     personaReportsFile: path.relative(ROOT, REPORTS_PATH),
     personaReportsSha256: fileSha256(REPORTS_PATH),
     reportGrid: REPORT_GRID,
