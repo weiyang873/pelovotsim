@@ -5,6 +5,12 @@ function safeNumber(value, fallback = null) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+function budgetUtilization(numerator, denominator) {
+  const raw = Number(numerator) / Math.max(1, Number(denominator));
+  if (!Number.isFinite(raw) || raw <= 0) return null;
+  return Number(Math.min(1, raw).toFixed(4));
+}
+
 function cloneJson(value, fallback = null) {
   if (value == null) return fallback;
   try {
@@ -116,6 +122,19 @@ class DecisionTracker {
       industry: s.industry || null,
       seed_memory_json: null,
       classroom_profile_json: null,
+      subjective_state_json: null,
+      structured_profile_key: null,
+      simple_prompt_template: null,
+      harness_reports_shown: null,
+      harness_reports_total: null,
+      harness_anchor_mode: null,
+      harness_price_hints_count: null,
+      harness_selection_rounds: null,
+      harness_triggered_revision: null,
+      harness_validate_depth: null,
+      harness_violations_detected: null,
+      harness_violations_actual: null,
+      harness_card_order: null,
       jinang_market: null,
       jinang_tech: null,
       r1_grid_id: null,
@@ -374,7 +393,7 @@ class DecisionTracker {
       (Array.isArray(mergeData?.violations) ? mergeData.violations.length : 0) +
       safeNumber(mergeData?.hardViolationCount, 0);
     if (budgetBenchmark != null && this.team.r2_total_dCOGS != null) {
-      this.team.r2_budget_utilization = Number((this.team.r2_total_dCOGS / Math.max(1, budgetBenchmark)).toFixed(4));
+      this.team.r2_budget_utilization = budgetUtilization(this.team.r2_total_dCOGS, budgetBenchmark);
     }
   }
 
@@ -391,7 +410,7 @@ class DecisionTracker {
     this.team.r2_total_dCOGS = safeNumber(source.dCOGS, this.team.r2_total_dCOGS);
     this.team.r2_total_NRE = safeNumber(source.nre_total_wan, this.team.r2_total_NRE);
     if (source.budgetBenchmark != null && source.dCOGS != null) {
-      this.team.r2_budget_utilization = Number((Number(source.dCOGS) / Math.max(1, Number(source.budgetBenchmark))).toFixed(4));
+      this.team.r2_budget_utilization = budgetUtilization(source.dCOGS, source.budgetBenchmark);
     }
     this.team.r2_coverCore = safeNumber(source.coverCore ?? previewData?.coverCore, this.team.r2_coverCore);
     this.team.r2_coverNice = safeNumber(source.coverNice ?? previewData?.coverNice, this.team.r2_coverNice);

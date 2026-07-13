@@ -10,6 +10,7 @@ const { DeepSeekStudent } = require("./deepseek_student");
 const { DecisionTracker, scoreProduct } = require("./decision_tracker");
 const { PersonaStudent } = require("./persona_student");
 const { getStudentGridChoice } = require("./persona_pool");
+const { filterReports, getHarnessParams } = require("./harness_controller");
 const {
   assert,
   createTeamResult,
@@ -35,6 +36,69 @@ const DIM_LABELS = {
   safety: "安全与信任",
   extend: "扩展与连接",
   ops: "运维与维护"
+};
+
+const STRUCTURED_MODE = "layered_structured_v1";
+const STRUCTURED_NO_PRICING_MODE = "structured_no_pricing_v1";
+const SIMPLE_PERSONA_MODE = "simple_persona_v1";
+const HARNESS_ENFORCED_MODE = "harness_enforced_v1";
+
+const STRUCTURED_ATTENTION_LABELS = {
+  customer_visible_value: "客户可感知价值",
+  technical_dependencies: "技术依赖",
+  cost_structure: "成本结构",
+  brand_signal: "品牌信号",
+  constraint_checking: "约束检查"
+};
+
+const STRUCTURED_LEVEL_CN = {
+  high: "高",
+  medium: "中",
+  low: "低"
+};
+
+const STRUCTURED_WTP_ANCHOR_CN = {
+  report_numbers: "主要依据调研报告里的数字线索",
+  premium_analogy: "用高端产品或溢价类比来估计",
+  budget_analogy: "用预算约束或低价参照来估计",
+  gut_feel: "主要凭经验直觉估计"
+};
+
+const STRUCTURED_CONFIDENCE_CN = {
+  overconfident: "过度自信",
+  calibrated: "校准",
+  underconfident: "偏保守"
+};
+
+const STRUCTURED_OBJECTIVE_CN = {
+  profit: "利润",
+  volume: "销量",
+  brand: "品牌",
+  coverage: "需求覆盖",
+  risk_control: "风险控制"
+};
+
+const STRUCTURED_PRICE_CN = {
+  premium: "高端",
+  mid: "中端",
+  budget: "预算"
+};
+
+const STRUCTURED_BREADTH_CN = {
+  narrow: "窄",
+  wide: "宽"
+};
+
+const STRUCTURED_STOP_CN = {
+  first_satisfying: "找到第一个够好方案就停止",
+  compare_few: "比较少数几个方案后停止",
+  exhaustive: "尽量穷尽比较后再停止"
+};
+
+const STRUCTURED_DEP_CN = {
+  full: "完整",
+  partial: "部分",
+  minimal: "最少"
 };
 
 let lastSummaryLlMAt = 0;
@@ -385,6 +449,319 @@ function buildPricingDemandSummaryFromReports(memberReports, maxItems = 8) {
   return "- 已读调研报告中没有直接价格原话；请只根据报告里的生活/采购语境和成本信息定价。";
 }
 
+const PRICE_ANCHOR_RE = /\d+(?:\.\d+)?\s*(?:元|块|万|万元|千元)/g;
+
+function redactPriceAnchors(text) {
+  return String(text || "").replace(PRICE_ANCHOR_RE, "[某个价格]");
+}
+
+function extractPriceAnchorsFromReports(memberReports) {
+  const anchors = [];
+  const seen = new Set();
+  for (const item of memberReports || []) {
+    for (const reportItem of item.reports || []) {
+      const matches = reportText(reportItem.report || {}).match(PRICE_ANCHOR_RE) || [];
+      for (const match of matches) {
+        const clean = match.replace(/\s+/g, "");
+        if (seen.has(clean)) continue;
+        seen.add(clean);
+        anchors.push(clean);
+      }
+    }
+  }
+  return anchors;
+}
+
+function buildHarnessPricingDemandSummary(memberReports, harnessParams) {
+  const anchor = harnessParams?.anchor || {};
+  let summary = buildPricingDemandSummaryFromReports(memberReports);
+  const priceHints = extractPriceAnchorsFromReports(memberReports);
+  let hintText = "";
+  if (anchor.anchorMode === "redacted") {
+    summary = redactPriceAnchors(summary);
+  }
+  if (anchor.anchorStyle === "report_numbers" || anchor.anchorMode === "extracted") {
+    hintText = priceHints.length > 0
+      ? ["", "报告中出现过的价格数字清单：", priceHints.map((item) => `- ${item}`).join("\n")].join("\n")
+      : "";
+  } else if (anchor.anchorStyle === "premium_analogy") {
+    hintText = "\n参考同品类高端产品的定价逻辑。";
+  } else if (anchor.anchorStyle === "budget_analogy") {
+    hintText = "\n参考目标客群的日常消费水平。";
+  }
+  return {
+    demandSummary: `${summary}${hintText}`,
+    priceHintsCount: priceHints.length
+  };
+}
+
+function dimToGroupId(dim) {
+  return DIM_TO_GROUP[dim] || dim;
+}
+
+function reorderTierObject(tiers, order) {
+  const tierOrder = order === "high_first"
+    ? ["high", "mid", "low"]
+    : ["low", "mid", "high"];
+  const out = {};
+  for (const tier of tierOrder) {
+    if (tiers?.[tier]) out[tier] = tiers[tier];
+  }
+  return out;
+}
+
+function buildHarnessCardCatalog(cardsData, assignedDims, harnessParams) {
+  let catalog = flattenCardsPayloadLocal(cardsData);
+  const search = harnessParams?.search || {};
+  const cardOrder = harnessParams?.cardPresentationOrder || "default";
+  if (search.breadth === "narrow") {
+    const groupIds = new Set((Array.isArray(assignedDims) ? assignedDims : []).map(dimToGroupId));
+    const narrowed = [];
+    for (const groupId of groupIds) {
+      narrowed.push(...catalog.filter((card) => card.dimensionId === groupId).slice(0, 3));
+    }
+    if (narrowed.length >= 2) catalog = narrowed;
+  }
+  return catalog.map((card) => ({
+    ...card,
+    tiers: reorderTierObject(card.tiers, cardOrder)
+  }));
+}
+
+function actualViolationsForSelections(selections) {
+  const validation = validateSelections(selections);
+  return Array.isArray(validation.violations) ? validation.violations : [];
+}
+
+function visibleViolationsForDepth(violations, depth) {
+  const list = Array.isArray(violations) ? violations : [];
+  if (depth === "minimal") return [];
+  if (depth === "partial") return list.filter((item) => item?.type === "group_min");
+  return list;
+}
+
+function isStructuredMode(options) {
+  return String(options?.mode || "").trim() === STRUCTURED_MODE;
+}
+
+function isStructuredNoPricingMode(options) {
+  return String(options?.mode || "").trim() === STRUCTURED_NO_PRICING_MODE;
+}
+
+function isSimplePersonaMode(options) {
+  return String(options?.mode || "").trim() === SIMPLE_PERSONA_MODE;
+}
+
+function isHarnessEnforcedMode(options) {
+  return String(options?.mode || "").trim() === HARNESS_ENFORCED_MODE;
+}
+
+function isR2PersonaOverrideMode(options) {
+  return isStructuredMode(options) || isStructuredNoPricingMode(options) || isSimplePersonaMode(options) || isHarnessEnforcedMode(options);
+}
+
+function structuredMemberKey(teamIndex, memberIndex) {
+  return `t${teamIndex}_m${memberIndex}`;
+}
+
+function getStructuredProfile(options, teamIndex, memberIndex) {
+  if (!isStructuredMode(options) && !isStructuredNoPricingMode(options) && !isHarnessEnforcedMode(options)) return null;
+  const key = structuredMemberKey(teamIndex, memberIndex);
+  const source = options.structuredProfileMap || options.structuredProfiles || null;
+  let profile = null;
+  if (source instanceof Map) {
+    profile = source.get(key);
+  } else if (Array.isArray(source)) {
+    profile = source.find((item) => item?.member_key === key);
+  } else if (source && typeof source === "object") {
+    profile = source[key] || null;
+  }
+  if (!profile) {
+    throw new Error(`Missing structured profile for ${key}`);
+  }
+  return profile;
+}
+
+function renderHarnessPersonaPrompt(student) {
+  return `你是一位"${String(student?.label || "").trim()}"型的企业管理者。`;
+}
+
+function valuesByLevel(obj, labels, wanted) {
+  return Object.entries(labels)
+    .filter(([key]) => obj?.[key] === wanted)
+    .map(([, label]) => label);
+}
+
+function listOrNone(items) {
+  return items && items.length ? items.join("、") : "无特别项";
+}
+
+function renderStructuredProfile(profile) {
+  const attention = profile?.attention || {};
+  const belief = profile?.belief_policy && typeof profile.belief_policy === "object" ? profile.belief_policy : null;
+  const aspirations = profile?.aspirations || {};
+  const search = profile?.search_policy || {};
+  const risk = profile?.risk_policy || {};
+  const constraint = profile?.constraint_policy || {};
+  const highAttention = valuesByLevel(attention, STRUCTURED_ATTENTION_LABELS, "high");
+  const lowAttention = valuesByLevel(attention, STRUCTURED_ATTENTION_LABELS, "low");
+  const objectives = (Array.isArray(profile?.objectives_rank) ? profile.objectives_rank : [])
+    .map((item) => STRUCTURED_OBJECTIVE_CN[item] || item)
+    .join("、");
+  const aspirationParts = [
+    `核心需求覆盖${STRUCTURED_LEVEL_CN[aspirations.minimum_core_coverage] || aspirations.minimum_core_coverage}即可`
+  ];
+  if (Object.prototype.hasOwnProperty.call(aspirations, "acceptable_margin")) {
+    aspirationParts.push(`可接受毛利${STRUCTURED_LEVEL_CN[aspirations.acceptable_margin] || aspirations.acceptable_margin}`);
+  }
+  aspirationParts.push(`对前期研发投入的容忍度${STRUCTURED_LEVEL_CN[aspirations.nre_tolerance] || aspirations.nre_tolerance}`);
+  if (Object.prototype.hasOwnProperty.call(aspirations, "price_position")) {
+    aspirationParts.push(`你倾向的价格站位是${STRUCTURED_PRICE_CN[aspirations.price_position] || aspirations.price_position}`);
+  }
+
+  const lines = [
+    "【你的决策方式档案】",
+    `注意力分配：你高度关注${listOrNone(highAttention)}；较少关注${listOrNone(lowAttention)}。`
+  ];
+  if (belief) {
+    lines.push(`判断形成：你估计客户支付意愿的方式是${STRUCTURED_WTP_ANCHOR_CN[belief.wtp_anchor_style] || belief.wtp_anchor_style}；你对调研报告的信任度${STRUCTURED_LEVEL_CN[belief.trust_in_reports] || belief.trust_in_reports}；你的自信程度${STRUCTURED_CONFIDENCE_CN[belief.confidence_calibration] || belief.confidence_calibration}。`);
+  }
+  if (objectives) {
+    lines.push(`目标优先级（从高到低）：${objectives}。`);
+  }
+  lines.push(
+    `你的"够好"标准：${aspirationParts.join("；")}。`,
+    `搜索与停止：你比较方案的广度${STRUCTURED_BREADTH_CN[search.breadth] || search.breadth}；你的停止规则是${STRUCTURED_STOP_CN[search.stop_rule] || search.stop_rule}；低于预期时${search.revise_if_below_aspiration === true ? "会" : "不会"}回头修改。`,
+    `风险：市场不确定性容忍${STRUCTURED_LEVEL_CN[risk.market_uncertainty_tolerance] || risk.market_uncertainty_tolerance}；技术不确定性容忍${STRUCTURED_LEVEL_CN[risk.technical_uncertainty_tolerance] || risk.technical_uncertainty_tolerance}。`,
+    `约束检查：你检查卡片依赖关系的深度是${STRUCTURED_DEP_CN[constraint.dependency_check_depth] || constraint.dependency_check_depth}；你${constraint.assumes_teammate_checked === "high" ? "倾向" : "不倾向"}假设队友已经检查过。`
+  );
+  return lines.join("\n");
+}
+
+function renderSimplePersonaPrompt(student) {
+  const s = student && typeof student === "object" ? student : {};
+  return [
+    "你是一位EMBA学员，基本信息如下：",
+    `- 姓名：${String(s.name || "").trim()}`,
+    `- 性别：${String(s.gender || "").trim()}，${Number(s.age || 0)}岁`,
+    `- MBTI：${String(s.mbti || "").trim()}`,
+    `- 学历：${String(s.education || "").trim()}`,
+    `- 行业背景：${String(s.industry || "").trim()}`,
+    `- 海外经历：${s.overseas?.hasOverseas === true ? "有" : "无"}`,
+    `- 你是一位典型的"${String(s.label || "").trim()}"型企业管理者`,
+    "",
+    "请基于以上身份背景做出你的决策。"
+  ].join("\n");
+}
+
+function getR2PersonaPromptText(options, teamIndex, memberIndex) {
+  if (isStructuredMode(options) || isStructuredNoPricingMode(options)) {
+    const structuredProfile = getStructuredProfile(options, teamIndex, memberIndex);
+    return {
+      profile: structuredProfile,
+      text: renderStructuredProfile(structuredProfile),
+      key: structuredProfile.member_key,
+      simplePromptTemplate: ""
+    };
+  }
+  if (isHarnessEnforcedMode(options)) {
+    const structuredProfile = getStructuredProfile(options, teamIndex, memberIndex);
+    return {
+      profile: structuredProfile,
+      text: renderHarnessPersonaPrompt(getStudentProfile(options, memberIndex)),
+      key: structuredProfile.member_key,
+      simplePromptTemplate: ""
+    };
+  }
+  if (isSimplePersonaMode(options)) {
+    const text = renderSimplePersonaPrompt(getStudentProfile(options, memberIndex));
+    return {
+      profile: null,
+      text,
+      key: "",
+      simplePromptTemplate: text
+    };
+  }
+  return {
+    profile: null,
+    text: "",
+    key: "",
+    simplePromptTemplate: ""
+  };
+}
+
+function structuredSystemPrompt(context) {
+  if (context?.structuredProfileText) return context.structuredProfileText;
+  const actor = context?.actor;
+  return typeof actor?.buildLayeredSystemPrompt === "function"
+    ? actor.buildLayeredSystemPrompt()
+    : "你是一位认真的 EMBA 学员，请按自己的判断完成团队任务。";
+}
+
+function validateSubjectiveState(data) {
+  const range = Array.isArray(data?.estimated_wtp_range) ? data.estimated_wtp_range.map(Number) : [];
+  if (range.length !== 2 || !range.every(Number.isFinite) || range[0] > range[1]) {
+    return { ok: false, error: "estimated_wtp_range must be [low, high] finite numbers" };
+  }
+  const topNeeds = Array.isArray(data?.top_needs)
+    ? data.top_needs.map((item) => String(item || "").trim()).filter(Boolean).slice(0, 5)
+    : [];
+  if (topNeeds.length === 0) {
+    return { ok: false, error: "top_needs must be a non-empty string array" };
+  }
+  const minCoverage = String(data?.min_acceptable_coverage || "").trim();
+  if (!["high", "medium", "low"].includes(minCoverage)) {
+    return { ok: false, error: "min_acceptable_coverage invalid" };
+  }
+  const primaryGoal = String(data?.primary_goal || "").trim();
+  const plannedStopRule = String(data?.planned_stop_rule || "").trim();
+  if (!primaryGoal || !plannedStopRule) {
+    return { ok: false, error: "primary_goal and planned_stop_rule are required" };
+  }
+  return {
+    ok: true,
+    value: {
+      estimated_wtp_range: [range[0], range[1]],
+      top_needs: topNeeds,
+      primary_goal: primaryGoal,
+      min_acceptable_coverage: minCoverage,
+      planned_stop_rule: plannedStopRule
+    }
+  };
+}
+
+async function generateStructuredSubjectiveState(actor, context) {
+  const messages = [
+    { role: "system", content: context.structuredProfileText },
+    {
+      role: "user",
+      content: [
+        "## 当前任务：形成选卡前的主观状态",
+        "请只根据你的身份/persona信息和你已读报告内容，形成后续选卡与定价会使用的中间判断。",
+        "",
+        "## 你实际读过的报告原文",
+        buildReportsInput(context.readReports),
+        "",
+        "只输出可 JSON.parse 的 JSON：",
+        "{",
+        '  "estimated_wtp_range": [3000, 5000],',
+        '  "top_needs": ["需求1", "需求2"],',
+        '  "primary_goal": "一句话说明本轮最重要目标",',
+        '  "min_acceptable_coverage": "high|medium|low",',
+        '  "planned_stop_rule": "一句话说明你准备如何停止搜索"',
+        "}"
+      ].join("\n")
+    }
+  ];
+  return requestStrictJson(actor, messages, {
+    temperature: 0.45,
+    max_tokens: 700
+  }, {
+    caller: "team_runner.generateStructuredSubjectiveState",
+    step: "R2.structured_subjective_state"
+  }, validateSubjectiveState);
+}
+
 function resolveSummarySessionId(options, stateData) {
   return String(options.sessionId || options.session_id || stateData?.session_id || process.env.SESSION_ID || "default").trim() || "default";
 }
@@ -414,7 +791,7 @@ function memberDisplayName(member, fallbackIndex) {
 
 async function askContinueReading(actor, context) {
   const messages = [
-    { role: "system", content: typeof actor?.buildLayeredSystemPrompt === "function" ? actor.buildLayeredSystemPrompt() : "你是一位认真的 EMBA 学员，请按自己的判断完成团队任务。" },
+    { role: "system", content: structuredSystemPrompt({ actor, structuredProfileText: context.structuredProfileText }) },
     {
       role: "user",
       content: [
@@ -429,7 +806,9 @@ async function askContinueReading(actor, context) {
         "## 你已经读过的报告",
         buildReportsInput(context.readReports),
         "",
-        "请根据你的课堂画像、时间意识和信息需求做决定。",
+        context.structuredProfileText
+          ? "请根据你的决策方式档案、时间意识和信息需求做决定。"
+          : "请根据你的课堂画像、时间意识和信息需求做决定。",
         "只输出可 JSON.parse 的 JSON：",
         '{ "continue": true, "reason": "一句话理由" }'
       ].join("\n")
@@ -457,19 +836,27 @@ async function askContinueReading(actor, context) {
 }
 
 async function generateSummaryCardSelection(actor, context) {
-  const cardCatalog = flattenCardsPayloadLocal(context.cards);
+  const cardCatalog = Array.isArray(context.cardCatalog)
+    ? context.cardCatalog
+    : flattenCardsPayloadLocal(context.cards);
   const validCards = new Map(cardCatalog.map((card) => [card.cap_id, card]));
   const assignedDims = (Array.isArray(context.assignedDims) ? context.assignedDims : [])
     .map((dim) => ({ id: dim, label: DIM_LABELS[dim] || dim }));
   const validationIssues = normalizeViolationsList(context.validationIssues);
   const previousSelections = Array.isArray(context.previousSelections) ? context.previousSelections : [];
+  const subjectiveState = context.subjectiveState && typeof context.subjectiveState === "object" ? context.subjectiveState : null;
   const messages = [
-    { role: "system", content: typeof actor?.buildLayeredSystemPrompt === "function" ? actor.buildLayeredSystemPrompt() : "你是一位认真的 EMBA 学员，请按自己的判断完成团队任务。" },
+    { role: "system", content: structuredSystemPrompt({ actor, structuredProfileText: context.structuredProfileText }) },
     {
       role: "user",
       content: [
         "## 当前任务：根据你实际读过的客户调研报告选择研发能力卡",
         "你只知道下面这些自己实际读过的报告。没有读过的报告不要假设、不要补全。",
+        subjectiveState ? [
+          "",
+          "## 你的主观状态中间对象",
+          JSON.stringify(subjectiveState, null, 2)
+        ].join("\n") : "",
         "",
         "## 你实际读过的报告原文",
         buildReportsInput(context.readReports),
@@ -525,6 +912,78 @@ async function generateSummaryCardSelection(actor, context) {
     }
     return { ok: true, value: parsed };
   });
+}
+
+function isValidStructuredPrice(price, min, max, step) {
+  if (!Number.isFinite(price) || price < min || price > max) return false;
+  const delta = Math.abs((price - min) % step);
+  return delta < 1e-9 || Math.abs(delta - step) < 1e-9;
+}
+
+async function generateStructuredPriceChoice(actor, priceContext = {}) {
+  const min = Number(priceContext.min || DEFAULT_PRICING_UI.price_min);
+  const max = Number(priceContext.max || DEFAULT_PRICING_UI.price_max);
+  const step = Number(priceContext.step || DEFAULT_PRICING_UI.price_step);
+  const totalCOGS = Number(priceContext.totalCOGS || priceContext.COGSbase || 600);
+  const baseVariableCost = Number(priceContext.baseVariableCost || priceContext.COGSbase || 600);
+  const dCOGSTotal = Number(priceContext.dCOGSTotal || Math.max(0, totalCOGS - baseVariableCost));
+  const fbaseWan = Number(priceContext.fbaseWan || 0);
+  const nreTotalWan = Number(priceContext.nreTotalWan || 0);
+  const upfrontInvestmentWan = Number(priceContext.upfrontInvestmentWan || (fbaseWan + nreTotalWan));
+  const channelFee = Number(priceContext.channelFee || 0);
+  const demandSummary = String(priceContext.demandSummary || "").trim() ||
+    "- 已读调研报告中没有直接价格原话；请只根据报告里的生活/采购语境和成本信息定价。";
+  const subjectiveState = priceContext.subjectiveState && typeof priceContext.subjectiveState === "object"
+    ? priceContext.subjectiveState
+    : null;
+  const messages = [
+    { role: "system", content: String(priceContext.structuredProfileText || "").trim() },
+    {
+      role: "user",
+      content: [
+        "## 当前任务：团队定价决策",
+        "你只能根据你的身份/persona信息、你的主观状态中间对象、已读报告中的价格线索和成本侧信息定价。",
+        "",
+        "## 执笔成员的主观状态中间对象",
+        subjectiveState ? JSON.stringify(subjectiveState, null, 2) : "{}",
+        "",
+        "成本侧：",
+        `- 产品单台可变成本约 ¥${Math.round(totalCOGS)}（基础硬件 ¥${Math.round(baseVariableCost)} + 能力卡增量 dCOGS ¥${Math.round(dCOGSTotal)}）`,
+        `- 前期投入约 ${Math.round(upfrontInvestmentWan)} 万元（基础固定投入 Fbase ${Math.round(fbaseWan)} 万元 + 研发 NRE ${Math.round(nreTotalWan)} 万元）`,
+        `- 渠道抽成：${channelFee}%`,
+        "",
+        "需求侧：客户谈到的消费能力/价格态度线索",
+        demandSummary,
+        "",
+        `定价区间：¥${min} - ¥${max}`,
+        `滑块步长：¥${step}`,
+        "这个区间是课堂 UI 的硬边界，不是建议。低于最低值或高于最高值都会提交失败。",
+        "",
+        "请输出 JSON，不要输出多余文字：",
+        "{\"price\": 4000, \"reason\": \"一句话说明你的定价依据\"}"
+      ].join("\n")
+    }
+  ];
+  const result = await requestStrictJson(actor, messages, {
+    temperature: 0.4,
+    max_tokens: 500
+  }, {
+    caller: "team_runner.generateStructuredPriceChoice",
+    step: "R2.structured_generate_price"
+  }, (data) => {
+    const price = Number(data?.price);
+    if (!isValidStructuredPrice(price, min, max, step)) {
+      return { ok: false, error: `price must be within ${min}-${max} by step ${step}` };
+    }
+    return {
+      ok: true,
+      value: {
+        price,
+        reason: String(data.reason || "").trim()
+      }
+    };
+  });
+  return result.price;
 }
 
 const WRITING_POWER = {
@@ -980,6 +1439,8 @@ function createStudentActor(options, teamIndex, memberIndex, teamId, memberId, f
       teamId,
       memberId,
       student: studentProfile,
+      seedMemory: studentProfile.seedMemory || null,
+      classroomProfile: studentProfile.classroomProfile || null,
       teamIndex,
       memberIndex
     });
@@ -1153,14 +1614,21 @@ async function runRound2Summary(result, api, teamId, members, memberActors, team
       const actor = getStudentProfile(options, memberIndex)
         ? memberActors[memberIndex]
         : createStudentActor(options, teamIndex, memberIndex, teamId, assignment.memberId, assignment.memberName);
+      const r2PersonaPrompt = getR2PersonaPromptText(options, teamIndex, memberIndex);
+      const structuredProfile = r2PersonaPrompt.profile;
+      const structuredProfileText = r2PersonaPrompt.text;
+      const harnessParams = isHarnessEnforcedMode(options) && structuredProfile
+        ? getHarnessParams(structuredProfile, "reading")
+        : null;
       const readReports = [];
 
       for (let reportIndex = 0; reportIndex < totalReports; reportIndex += 1) {
-        if (reportIndex > 0) {
+        if (!harnessParams && reportIndex > 0) {
           const decision = await askContinueReading(actor, {
             readCount: readReports.length,
             nextLabel: `P${reportIndex + 1}`,
-            readReports
+            readReports,
+            structuredProfileText
           });
           if (decision.continue !== true) {
             break;
@@ -1183,7 +1651,11 @@ async function runRound2Summary(result, api, teamId, members, memberActors, team
         });
       }
 
-      assert(readReports.length > 0, `member ${assignment.memberName} read no reports`);
+      const visibleReportData = harnessParams
+        ? filterReports(structuredProfile, readReports, structuredMemberKey(teamIndex, memberIndex))
+        : { reports: readReports, shown: readReports.length, total: readReports.length };
+      const visibleReports = visibleReportData.reports;
+      assert(visibleReports.length > 0, `member ${assignment.memberName} read no reports`);
       const completeData = await stepApi(api, "R2.summary_complete_reading", assignment.memberId)
         .post("/api/round2/complete-reading", {
           teamId,
@@ -1195,11 +1667,30 @@ async function runRound2Summary(result, api, teamId, members, memberActors, team
 
       const trackerMember = tracker.getMember(assignment.memberId);
       if (trackerMember) {
-        trackerMember.r2_interview_turns = readReports.length;
-        trackerMember.r2_interview_summary = readReports.map((item) => reportTitle(item.report, item.report_index)).join(" | ");
-        trackerMember.interview_persona_id = readReports.map((item) => item.persona_id).join(" | ");
+        if (structuredProfile) {
+          trackerMember.structured_profile_key = structuredProfile.member_key;
+        }
+        if (r2PersonaPrompt.simplePromptTemplate) {
+          trackerMember.simple_prompt_template = r2PersonaPrompt.simplePromptTemplate;
+        }
+        if (harnessParams) {
+          trackerMember.structured_profile_key = structuredProfile?.member_key || structuredMemberKey(teamIndex, memberIndex);
+          trackerMember.harness_reports_shown = visibleReportData.shown;
+          trackerMember.harness_reports_total = visibleReportData.total;
+          trackerMember.harness_anchor_mode = harnessParams.anchor.anchorMode;
+          trackerMember.harness_price_hints_count = 0;
+          trackerMember.harness_validate_depth = harnessParams.constraint.validateDepth;
+          trackerMember.harness_card_order = harnessParams.cardPresentationOrder;
+          trackerMember.harness_selection_rounds = 0;
+          trackerMember.harness_triggered_revision = false;
+          trackerMember.harness_violations_detected = 0;
+          trackerMember.harness_violations_actual = 0;
+        }
+        trackerMember.r2_interview_turns = visibleReports.length;
+        trackerMember.r2_interview_summary = visibleReports.map((item) => reportTitle(item.report, item.report_index)).join(" | ");
+        trackerMember.interview_persona_id = visibleReports.map((item) => item.persona_id).join(" | ");
         trackerMember.interview_persona_name = trackerMember.r2_interview_summary;
-        trackerMember.interviewLog = readReports.map((item, index) => ({
+        trackerMember.interviewLog = visibleReports.map((item, index) => ({
           turn_number: index + 1,
           role: "interviewee",
           message_text: reportText(item.report),
@@ -1211,7 +1702,9 @@ async function runRound2Summary(result, api, teamId, members, memberActors, team
       reportsByMember.set(assignment.memberId, {
         memberId: assignment.memberId,
         memberName: assignment.memberName,
-        reports: readReports
+        reports: visibleReports,
+        totalReports: visibleReportData.total,
+        shownReports: visibleReportData.shown
       });
     }));
 
@@ -1246,10 +1739,19 @@ async function runRound2Summary(result, api, teamId, members, memberActors, team
   const selectionContexts = assignments.map((assignment) => {
     const member = tracker.getMember(assignment.memberId);
     const memberIndex = members.findIndex((item) => item.id === assignment.memberId);
+    const r2PersonaPrompt = getR2PersonaPromptText(options, teamIndex, memberIndex);
+    const harnessParams = isHarnessEnforcedMode(options) && r2PersonaPrompt.profile
+      ? getHarnessParams(r2PersonaPrompt.profile, "selection")
+      : null;
     return {
       assignment,
       member,
       memberIndex,
+      structuredProfile: r2PersonaPrompt.profile,
+      structuredProfileText: r2PersonaPrompt.text,
+      simplePromptTemplate: r2PersonaPrompt.simplePromptTemplate,
+      harnessParams,
+      subjectiveState: null,
       actor: getStudentProfile(options, memberIndex)
         ? memberActors[memberIndex]
         : createStudentActor(options, teamIndex, memberIndex, teamId, assignment.memberId, assignment.memberName),
@@ -1257,15 +1759,42 @@ async function runRound2Summary(result, api, teamId, members, memberActors, team
     };
   });
 
+  if (isR2PersonaOverrideMode(options)) {
+    await runStep(result, "r2_structured_subjective_state", async () => {
+      await Promise.all(selectionContexts.map(async (selectionContext) => {
+        const subjectiveState = await generateStructuredSubjectiveState(selectionContext.actor, {
+          structuredProfileText: selectionContext.structuredProfileText,
+          readReports: selectionContext.readReports
+        });
+        selectionContext.subjectiveState = subjectiveState;
+        const trackerMember = tracker.getMember(selectionContext.assignment.memberId);
+        if (trackerMember) {
+          trackerMember.subjective_state_json = subjectiveState;
+          trackerMember.structured_profile_key = selectionContext.structuredProfile?.member_key || structuredMemberKey(teamIndex, selectionContext.memberIndex);
+          if (selectionContext.simplePromptTemplate) {
+            trackerMember.simple_prompt_template = selectionContext.simplePromptTemplate;
+            trackerMember.structured_profile_key = "";
+          }
+        }
+      }));
+    });
+  }
+
   async function saveSummarySelections(validationIssues = null) {
     await Promise.all(selectionContexts.map(async (selectionContext) => {
       const currentMember = tracker.getMember(selectionContext.assignment.memberId);
+      const cardCatalog = selectionContext.harnessParams
+        ? buildHarnessCardCatalog(cardsData, selectionContext.assignment.dims, selectionContext.harnessParams)
+        : null;
       const generatedSelections = await generateSummaryCardSelection(selectionContext.actor, {
         cards: cardsData,
+        cardCatalog,
         readReports: selectionContext.readReports,
         assignedDims: selectionContext.assignment.dims,
         validationIssues,
-        previousSelections: currentMember?.r2_personal_selections || []
+        previousSelections: currentMember?.r2_personal_selections || [],
+        structuredProfileText: selectionContext.structuredProfileText,
+        subjectiveState: selectionContext.subjectiveState
       });
       const apiSelections = generatedSelections.map((item) => ({
         cap_id: item.cap_id,
@@ -1279,6 +1808,12 @@ async function runRound2Summary(result, api, teamId, members, memberActors, team
       assert(data.ok === true, `saveMemberSelection failed for ${selectionContext.assignment.memberName}`);
       assert(Number(data.count) === apiSelections.length, `selection count mismatch for ${selectionContext.assignment.memberName}`);
       tracker.recordPersonalSelections(selectionContext.assignment.memberId, generatedSelections);
+      const trackerMember = tracker.getMember(selectionContext.assignment.memberId);
+      if (trackerMember && selectionContext.harnessParams) {
+        trackerMember.harness_selection_rounds = Number(trackerMember.harness_selection_rounds || 0) + 1;
+        trackerMember.harness_validate_depth = selectionContext.harnessParams.constraint.validateDepth;
+        trackerMember.harness_card_order = selectionContext.harnessParams.cardPresentationOrder;
+      }
     }));
   }
 
@@ -1300,6 +1835,47 @@ async function runRound2Summary(result, api, teamId, members, memberActors, team
     return data;
   }
 
+  function updateHarnessViolationLogs(actualViolations) {
+    for (const selectionContext of selectionContexts) {
+      if (!selectionContext.harnessParams) continue;
+      const trackerMember = tracker.getMember(selectionContext.assignment.memberId);
+      if (!trackerMember) continue;
+      const depth = selectionContext.harnessParams.constraint.validateDepth;
+      const detected = visibleViolationsForDepth(actualViolations, depth);
+      trackerMember.harness_violations_actual = actualViolations.length;
+      trackerMember.harness_violations_detected = detected.length;
+    }
+  }
+
+  async function validateMergedSelectionsHarness(currentMergeData) {
+    const actualViolations = actualViolationsForSelections(currentMergeData.teamSelections);
+    const shouldCallApi = selectionContexts.some((item) => item.harnessParams?.constraint?.validateDepth !== "minimal");
+    if (shouldCallApi) {
+      const apiValidation = await validateMergedSelectionsSummary(currentMergeData);
+      const apiViolations = Array.isArray(apiValidation.violations) ? apiValidation.violations : actualViolations;
+      updateHarnessViolationLogs(apiViolations);
+      return {
+        actualViolations: apiViolations,
+        detectedViolations: selectionContexts.flatMap((item) => visibleViolationsForDepth(
+          apiViolations,
+          item.harnessParams?.constraint?.validateDepth || "full"
+        ))
+      };
+    }
+    updateHarnessViolationLogs(actualViolations);
+    return {
+      actualViolations,
+      detectedViolations: []
+    };
+  }
+
+  function harnessRevisionLimit(selectionContext) {
+    const search = selectionContext.harnessParams?.search || {};
+    if (search.stopRule === "exhaustive") return 3;
+    if (search.stopRule === "compare_few") return 1;
+    return search.reviseIfBelowAspiration ? 1 : 0;
+  }
+
   await runStep(result, "r2_member_selections", async () => {
     await saveSummarySelections();
   });
@@ -1307,6 +1883,28 @@ async function runRound2Summary(result, api, teamId, members, memberActors, team
   let mergeData = await runStep(result, "r2_merge_team", async () => mergeTeamSelectionsSummary());
 
   await runStep(result, "r2_validate", async () => {
+    if (isHarnessEnforcedMode(options)) {
+      let harnessValidation = await validateMergedSelectionsHarness(mergeData);
+      let retryCount = 0;
+      const maxRevision = Math.max(0, ...selectionContexts.map(harnessRevisionLimit));
+      while (harnessValidation.detectedViolations.length > 0 && retryCount < maxRevision) {
+        for (const selectionContext of selectionContexts) {
+          const trackerMember = tracker.getMember(selectionContext.assignment.memberId);
+          if (trackerMember) trackerMember.harness_triggered_revision = true;
+        }
+        await saveSummarySelections(harnessValidation.detectedViolations);
+        mergeData = await mergeTeamSelectionsSummary();
+        harnessValidation = await validateMergedSelectionsHarness(mergeData);
+        retryCount += 1;
+      }
+      return {
+        ok: true,
+        valid: harnessValidation.actualViolations.length === 0,
+        violations: harnessValidation.actualViolations,
+        detectedViolations: harnessValidation.detectedViolations
+      };
+    }
+
     let validation = await validateMergedSelectionsSummary(mergeData);
     let retryCount = 0;
     while (validation.valid !== true && retryCount < 2) {
@@ -1316,6 +1914,7 @@ async function runRound2Summary(result, api, teamId, members, memberActors, team
       retryCount += 1;
     }
     assert(validation.valid === true, `validateSelections returned valid=${validation.valid}`);
+    return validation;
   });
 
   const pricingStudent = memberActors[0] || createStudentActor(
@@ -1330,13 +1929,28 @@ async function runRound2Summary(result, api, teamId, members, memberActors, team
   const channelFee = round2ChannelFeePercent(recap.final_grid_id);
   const costSummary = summarizeSelectionCosts(mergeData.teamSelections, recap.COGSbase || 600);
   const memberReportRows = Array.from(reportsByMember.values());
-  const demandSummary = buildPricingDemandSummaryFromReports(memberReportRows);
+  const pricingContext = selectionContexts.find((item) => item.memberIndex === 0) || selectionContexts[0] || {};
+  const harnessPricing = pricingContext.harnessParams
+    ? buildHarnessPricingDemandSummary(memberReportRows, pricingContext.harnessParams)
+    : null;
+  const demandSummary = harnessPricing
+    ? harnessPricing.demandSummary
+    : buildPricingDemandSummaryFromReports(memberReportRows);
   if (costSummary.missingCapabilityIds.length > 0) {
     warn(result, "pricing cost summary skipped unknown capabilities", {
       missing_capability_ids: costSummary.missingCapabilityIds
     });
   }
-  const price = await pricingStudent.generatePriceChoice({
+  if (harnessPricing) {
+    for (const selectionContext of selectionContexts) {
+      const trackerMember = tracker.getMember(selectionContext.assignment.memberId);
+      if (trackerMember && selectionContext.harnessParams) {
+        trackerMember.harness_anchor_mode = selectionContext.harnessParams.anchor.anchorMode;
+        trackerMember.harness_price_hints_count = harnessPricing.priceHintsCount;
+      }
+    }
+  }
+  const pricePayload = {
     basePrice: pricingUi.default_price,
     min: pricingUi.price_min,
     max: pricingUi.price_max,
@@ -1349,8 +1963,13 @@ async function runRound2Summary(result, api, teamId, members, memberActors, team
     nreTotalWan: costSummary.nreTotalWan,
     upfrontInvestmentWan: costSummary.upfrontInvestmentWan,
     channelFee,
-    demandSummary
-  });
+    demandSummary,
+    structuredProfileText: pricingContext.structuredProfileText,
+    subjectiveState: pricingContext.subjectiveState
+  };
+  const price = isR2PersonaOverrideMode(options)
+    ? await generateStructuredPriceChoice(pricingStudent, pricePayload)
+    : await pricingStudent.generatePriceChoice(pricePayload);
   const pricingWtp = Number(tracker.team.r1_wtp_adj || recap.wtp_breakdown?.final_result?.WTPadj || 0);
   tracker.recordPrice(price, pricingWtp > 0 ? Number((price / pricingWtp).toFixed(4)) : null);
 
@@ -1383,6 +2002,8 @@ async function runRound2Summary(result, api, teamId, members, memberActors, team
   });
   tracker.team.r2_coverCore = Number.isFinite(Number(previewData.coverCore)) ? Number(previewData.coverCore) : tracker.team.r2_coverCore;
   tracker.team.r2_coverNice = Number.isFinite(Number(previewData.coverNice)) ? Number(previewData.coverNice) : tracker.team.r2_coverNice;
+  tracker.team.r2_total_dCOGS = Number.isFinite(Number(previewData.dCOGS)) ? Number(previewData.dCOGS) : tracker.team.r2_total_dCOGS;
+  tracker.recordMerge(mergeData, previewData.budgetBenchmark);
 
   await runStep(result, "r2_submit_final", async () => {
     const data = await stepApi(api, "R2.7_submit_final").submitFinal(teamId, {
@@ -1857,7 +2478,7 @@ async function runRound2(result, api, teamId, members, memberActors, teamIndex, 
     return data;
   });
 
-  const assignments = normalizeAssignments(
+  let assignments = normalizeAssignments(
     (assignedDimensionRows.length > 0 ? assignedDimensionRows : stateData.members).map((member) => ({
       memberId: member.memberId || member.id,
       memberName: member.memberName || member.name,
@@ -1865,6 +2486,14 @@ async function runRound2(result, api, teamId, members, memberActors, teamIndex, 
     })),
     members
   );
+  if (options.rosterAssignments && typeof options.rosterAssignments === "object") {
+    assignments = assignments.map((assignment) => {
+      const memberIndex = members.findIndex((member) => member.id === assignment.memberId);
+      const key = structuredMemberKey(teamIndex, memberIndex);
+      const dims = options.rosterAssignments[key];
+      return Array.isArray(dims) ? { ...assignment, dims: dims.slice() } : assignment;
+    });
+  }
   tracker.recordAssignments(assignments);
 
   if (normalizeInterviewMode(stateData) !== "live") {

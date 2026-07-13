@@ -1,0 +1,2234 @@
+[
+  {
+    "member_key": "t0_m0",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "草根老板",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "low",
+      "cost_structure": "high",
+      "brand_signal": "medium",
+      "constraint_checking": "low"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "low",
+      "nre_tolerance": "high"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "high",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "minimal",
+      "assumes_teammate_checked": "high"
+    },
+    "source_sha256": "f0daa2f7c8e9ac94b205419280c4a232b0f8c477c1139eac3c57f478730c266c",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t0_m1",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "销售铁军",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "low",
+      "cost_structure": "medium",
+      "brand_signal": "medium",
+      "constraint_checking": "low"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "high",
+      "nre_tolerance": "low"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "high",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "minimal",
+      "assumes_teammate_checked": "high"
+    },
+    "source_sha256": "f32a9b91ca4b64bdd08492cb55f738d2caf8a83fa0c5c3ecdda22222558efb96",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t0_m2",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "二代接班人",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "medium",
+      "cost_structure": "low",
+      "brand_signal": "high",
+      "constraint_checking": "low"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "low",
+      "nre_tolerance": "high"
+    },
+    "search_policy": {
+      "breadth": "wide",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "high",
+      "technical_uncertainty_tolerance": "medium"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "minimal",
+      "assumes_teammate_checked": "high"
+    },
+    "source_sha256": "2d8079d0b73694871a49df2b484a010f51286a28aa0f9fd572dfe9a3d78a4404",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t0_m3",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "销售铁军",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "low",
+      "cost_structure": "medium",
+      "brand_signal": "low",
+      "constraint_checking": "low"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "low",
+      "nre_tolerance": "high"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "high",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "minimal",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "022e460b5c89fce7570f31847fd53462d8573d9ca04e363cd8815064fe67a47a",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t0_m4",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "体制转型者",
+    "attention": {
+      "customer_visible_value": "medium",
+      "technical_dependencies": "medium",
+      "cost_structure": "medium",
+      "brand_signal": "low",
+      "constraint_checking": "high"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "medium",
+      "nre_tolerance": "low"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": false
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "medium",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "full",
+      "assumes_teammate_checked": "high"
+    },
+    "source_sha256": "967c6f7c0104798ea303666a611d86b9e0ca5279b04db5e3974a3b13b7d06f73",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t0_m5",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "草根老板",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "low",
+      "cost_structure": "high",
+      "brand_signal": "low",
+      "constraint_checking": "low"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "low",
+      "nre_tolerance": "high"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": false
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "high",
+      "technical_uncertainty_tolerance": "high"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "minimal",
+      "assumes_teammate_checked": "high"
+    },
+    "source_sha256": "8b2fa46c571e74f5c51fbbf2cf255a85c5a7623ab4f5f7d540332ca6cfea15e3",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t1_m0",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "二代接班人",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "low",
+      "cost_structure": "low",
+      "brand_signal": "high",
+      "constraint_checking": "low"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "low",
+      "nre_tolerance": "high"
+    },
+    "search_policy": {
+      "breadth": "wide",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": false
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "high",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "minimal",
+      "assumes_teammate_checked": "high"
+    },
+    "source_sha256": "516c1bfd503e85cee71a76fa25491be4e649868ffa586ae61690f62b4b3094cc",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t1_m1",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "职业经理人",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "low",
+      "cost_structure": "high",
+      "brand_signal": "medium",
+      "constraint_checking": "high"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "medium",
+      "nre_tolerance": "low"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "compare_few",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "low",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "full",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "c1ff0a938c23f5948dc04e83212d71cec46c883337d9d9263750d0af226b43c4",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t1_m2",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "技术创业者",
+    "attention": {
+      "customer_visible_value": "low",
+      "technical_dependencies": "high",
+      "cost_structure": "low",
+      "brand_signal": "low",
+      "constraint_checking": "high"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "low",
+      "nre_tolerance": "high"
+    },
+    "search_policy": {
+      "breadth": "wide",
+      "stop_rule": "exhaustive",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "low",
+      "technical_uncertainty_tolerance": "high"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "full",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "2498491231b87e6f2d388d392bd5cf02c0137174ab043f355810ff95cf7f3d82",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t1_m3",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "二代接班人",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "high",
+      "cost_structure": "medium",
+      "brand_signal": "high",
+      "constraint_checking": "medium"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "medium",
+      "nre_tolerance": "high"
+    },
+    "search_policy": {
+      "breadth": "wide",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "high",
+      "technical_uncertainty_tolerance": "high"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "partial",
+      "assumes_teammate_checked": "high"
+    },
+    "source_sha256": "3a0d3a29af4b800d4741adccdb350d0a624d35ba67ebb6e454695516540a4db0",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t1_m4",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "职业经理人",
+    "attention": {
+      "customer_visible_value": "medium",
+      "technical_dependencies": "medium",
+      "cost_structure": "high",
+      "brand_signal": "medium",
+      "constraint_checking": "high"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "high",
+      "nre_tolerance": "low"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "low",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "full",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "6545164a06cd08249a752e9e41b0caeda9d5a8e30b9ff3c03800599c9f81d019",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t1_m5",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "互联网PM转型",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "medium",
+      "cost_structure": "medium",
+      "brand_signal": "medium",
+      "constraint_checking": "low"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "medium",
+      "nre_tolerance": "medium"
+    },
+    "search_policy": {
+      "breadth": "wide",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "medium",
+      "technical_uncertainty_tolerance": "high"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "partial",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "6069b5179d4ff8b3ba61cb8845233a2ce117b4389526a1698ed4477d84d9aca4",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t2_m0",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "二代接班人",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "medium",
+      "cost_structure": "low",
+      "brand_signal": "high",
+      "constraint_checking": "low"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "medium",
+      "nre_tolerance": "high"
+    },
+    "search_policy": {
+      "breadth": "wide",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "low",
+      "technical_uncertainty_tolerance": "medium"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "minimal",
+      "assumes_teammate_checked": "high"
+    },
+    "source_sha256": "528d3b5054bf9ab52bba86724c524d4a35af6c595b20e84096dea6ee1884a334",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t2_m1",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "体制转型者",
+    "attention": {
+      "customer_visible_value": "low",
+      "technical_dependencies": "medium",
+      "cost_structure": "medium",
+      "brand_signal": "low",
+      "constraint_checking": "high"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "medium",
+      "nre_tolerance": "low"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": false
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "low",
+      "technical_uncertainty_tolerance": "medium"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "full",
+      "assumes_teammate_checked": "high"
+    },
+    "source_sha256": "f1aa76eb02a7a361a68a2539ac469ed8d67822eb404b2506f81917689ac3983d",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t2_m2",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "互联网PM转型",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "medium",
+      "cost_structure": "medium",
+      "brand_signal": "medium",
+      "constraint_checking": "medium"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "high",
+      "nre_tolerance": "medium"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "medium",
+      "technical_uncertainty_tolerance": "medium"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "partial",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "e7a8aeb6431d638ffd60ef13da1ea06aaee770d5a80b51e4f61231973e6d728f",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t2_m3",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "二代接班人",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "low",
+      "cost_structure": "low",
+      "brand_signal": "high",
+      "constraint_checking": "low"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "high",
+      "nre_tolerance": "high"
+    },
+    "search_policy": {
+      "breadth": "wide",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "high",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "minimal",
+      "assumes_teammate_checked": "high"
+    },
+    "source_sha256": "0c6acd2e76516beab1659cf4e9c372de21a74b7a2dd3342b6e7827869e10151f",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t2_m4",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "互联网PM转型",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "medium",
+      "cost_structure": "low",
+      "brand_signal": "medium",
+      "constraint_checking": "low"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "medium",
+      "nre_tolerance": "high"
+    },
+    "search_policy": {
+      "breadth": "wide",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "high",
+      "technical_uncertainty_tolerance": "high"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "minimal",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "baf9b7b0d714ff7d87a86fd4ecb9264dce2202fd767a93f3c591f92d02486c69",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t2_m5",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "草根老板",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "low",
+      "cost_structure": "high",
+      "brand_signal": "low",
+      "constraint_checking": "low"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "medium",
+      "nre_tolerance": "medium"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": false
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "high",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "minimal",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "1c65580a55cbeaab894854e2bdcb4dc103efb5df5539157f6e11a45d4e35f295",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t3_m0",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "草根老板",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "low",
+      "cost_structure": "high",
+      "brand_signal": "low",
+      "constraint_checking": "low"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "medium",
+      "nre_tolerance": "low"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": false
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "high",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "minimal",
+      "assumes_teammate_checked": "high"
+    },
+    "source_sha256": "71722a726531348574c6bef46ed6a27b4624558d4b4f0c9d3cac54d1d710b99b",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t3_m1",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "销售铁军",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "low",
+      "cost_structure": "medium",
+      "brand_signal": "low",
+      "constraint_checking": "medium"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "high",
+      "nre_tolerance": "low"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "high",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "partial",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "8abb85aa19c5c5b12fba90c1b47552471f9f40be07fa43521083b1fcc364aa24",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t3_m2",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "体制转型者",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "low",
+      "cost_structure": "medium",
+      "brand_signal": "low",
+      "constraint_checking": "high"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "medium",
+      "nre_tolerance": "low"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": false
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "low",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "full",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "0a530308303cb9ce0554c9296eaaf55fa44346135b59d4ca095c4d51d2d76551",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t3_m3",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "草根老板",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "low",
+      "cost_structure": "high",
+      "brand_signal": "low",
+      "constraint_checking": "low"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "low",
+      "nre_tolerance": "medium"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "high",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "minimal",
+      "assumes_teammate_checked": "high"
+    },
+    "source_sha256": "33fb66652607eac77125210217c044ace830c2bfe5712236a64ca3668cd848f6",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t3_m4",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "体制转型者",
+    "attention": {
+      "customer_visible_value": "low",
+      "technical_dependencies": "medium",
+      "cost_structure": "medium",
+      "brand_signal": "medium",
+      "constraint_checking": "high"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "medium",
+      "nre_tolerance": "low"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "low",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "full",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "9caa04e2dafcfddb0883f58381ff59ce2ec0fcb10e2e227cfd6ac6801a74407a",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t3_m5",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "二代接班人",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "low",
+      "cost_structure": "low",
+      "brand_signal": "high",
+      "constraint_checking": "low"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "high",
+      "nre_tolerance": "high"
+    },
+    "search_policy": {
+      "breadth": "wide",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "high",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "minimal",
+      "assumes_teammate_checked": "high"
+    },
+    "source_sha256": "3f3f80959ffe9acf57096a774dbbec22d0d652d7db17bea9019690953d1d426e",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t4_m0",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "职业经理人",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "low",
+      "cost_structure": "medium",
+      "brand_signal": "medium",
+      "constraint_checking": "high"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "medium",
+      "nre_tolerance": "low"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": false
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "low",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "full",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "8e17394af3507f1b0f833433efd7a0b37f673701a020b1118483d85eded9e79a",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t4_m1",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "互联网PM转型",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "medium",
+      "cost_structure": "medium",
+      "brand_signal": "high",
+      "constraint_checking": "high"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "high",
+      "nre_tolerance": "medium"
+    },
+    "search_policy": {
+      "breadth": "wide",
+      "stop_rule": "exhaustive",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "high",
+      "technical_uncertainty_tolerance": "medium"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "full",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "e31d271cca8f167ffedd1e638754ab9a2da723d4374ba438e5ac04134a1fc651",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t4_m2",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "技术创业者",
+    "attention": {
+      "customer_visible_value": "low",
+      "technical_dependencies": "high",
+      "cost_structure": "medium",
+      "brand_signal": "low",
+      "constraint_checking": "high"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "low",
+      "nre_tolerance": "high"
+    },
+    "search_policy": {
+      "breadth": "wide",
+      "stop_rule": "exhaustive",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "low",
+      "technical_uncertainty_tolerance": "high"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "full",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "c79abbfa5c8df4d9a2e895444d312ac32a5ceaaea43b3c39ccbcb83ebe258679",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t4_m3",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "草根老板",
+    "attention": {
+      "customer_visible_value": "low",
+      "technical_dependencies": "low",
+      "cost_structure": "high",
+      "brand_signal": "low",
+      "constraint_checking": "low"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "medium",
+      "nre_tolerance": "low"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": false
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "high",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "minimal",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "1d33a042fc1cd7355dc04baea120db61887fd49f6cd47acbcb57930c8a184641",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t4_m4",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "职业经理人",
+    "attention": {
+      "customer_visible_value": "low",
+      "technical_dependencies": "medium",
+      "cost_structure": "high",
+      "brand_signal": "medium",
+      "constraint_checking": "high"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "medium",
+      "nre_tolerance": "low"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "low",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "full",
+      "assumes_teammate_checked": "high"
+    },
+    "source_sha256": "b830966af65d769774c7178628199a3eb48bd98610b6d5a03da952b2d2de56f2",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t4_m5",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "销售铁军",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "low",
+      "cost_structure": "medium",
+      "brand_signal": "low",
+      "constraint_checking": "low"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "high",
+      "nre_tolerance": "low"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "high",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "minimal",
+      "assumes_teammate_checked": "high"
+    },
+    "source_sha256": "fcbc4e5ab1cfb567e67f726b0c739f2a99a04a454dadeba22c8f21b4db9e949e",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t5_m0",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "技术创业者",
+    "attention": {
+      "customer_visible_value": "low",
+      "technical_dependencies": "high",
+      "cost_structure": "low",
+      "brand_signal": "low",
+      "constraint_checking": "high"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "high",
+      "nre_tolerance": "low"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "low",
+      "technical_uncertainty_tolerance": "high"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "full",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "feb9ec1a5b99a08c38aee94c544e7fd0a64505e98f070a5ffe1cad5dead9b739",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t5_m1",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "互联网PM转型",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "medium",
+      "cost_structure": "low",
+      "brand_signal": "medium",
+      "constraint_checking": "medium"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "high",
+      "nre_tolerance": "low"
+    },
+    "search_policy": {
+      "breadth": "wide",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "high",
+      "technical_uncertainty_tolerance": "medium"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "partial",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "e1c1367d21e63fc7ddda22d1415aa64f40ac46baa69abab06d6b3206e75f1a94",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t5_m2",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "技术创业者",
+    "attention": {
+      "customer_visible_value": "low",
+      "technical_dependencies": "high",
+      "cost_structure": "low",
+      "brand_signal": "low",
+      "constraint_checking": "high"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "low",
+      "nre_tolerance": "high"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "exhaustive",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "low",
+      "technical_uncertainty_tolerance": "high"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "full",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "4559937063a5b06a528cf7ff5d7a2bd2d9af661bb63e65f90d2091da9efe85be",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t5_m3",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "销售铁军",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "low",
+      "cost_structure": "medium",
+      "brand_signal": "low",
+      "constraint_checking": "medium"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "high",
+      "nre_tolerance": "medium"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "high",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "minimal",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "9488074ff7fe31059303de9e9237f95245c2c715a6ba0c15298eeef03655484c",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t5_m4",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "销售铁军",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "low",
+      "cost_structure": "medium",
+      "brand_signal": "medium",
+      "constraint_checking": "low"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "high",
+      "nre_tolerance": "low"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "medium",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "minimal",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "f1f6de4a4531757bf4344d488762a3a9571b7ee596bc0ba306dfd08db355d7f6",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t5_m5",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "互联网PM转型",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "medium",
+      "cost_structure": "medium",
+      "brand_signal": "medium",
+      "constraint_checking": "low"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "medium",
+      "nre_tolerance": "medium"
+    },
+    "search_policy": {
+      "breadth": "wide",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "high",
+      "technical_uncertainty_tolerance": "medium"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "minimal",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "29186e6ff62f988b533106b32eb1151952bcb4d1f7da705bd61e5d8f2e232aca",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t6_m0",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "职业经理人",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "medium",
+      "cost_structure": "high",
+      "brand_signal": "medium",
+      "constraint_checking": "high"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "medium",
+      "nre_tolerance": "low"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "medium",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "full",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "bddee3396944cc8d7b82e14fe713a7ebefc79b15f73029a7d612b3d80529f361",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t6_m1",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "体制转型者",
+    "attention": {
+      "customer_visible_value": "low",
+      "technical_dependencies": "low",
+      "cost_structure": "medium",
+      "brand_signal": "low",
+      "constraint_checking": "high"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "high",
+      "nre_tolerance": "low"
+    },
+    "search_policy": {
+      "breadth": "wide",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "low",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "full",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "6d4026f8f3ccdf2f0c0453a24add4ac429a098a57a9259a6a103b0621f8a67c0",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t6_m2",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "技术创业者",
+    "attention": {
+      "customer_visible_value": "low",
+      "technical_dependencies": "high",
+      "cost_structure": "low",
+      "brand_signal": "medium",
+      "constraint_checking": "high"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "low",
+      "nre_tolerance": "medium"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "exhaustive",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "low",
+      "technical_uncertainty_tolerance": "high"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "full",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "89056c4ac008f88d54098b1b1c94e38180d47048a7e70fd8c5983526f05100ae",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t6_m3",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "体制转型者",
+    "attention": {
+      "customer_visible_value": "low",
+      "technical_dependencies": "low",
+      "cost_structure": "medium",
+      "brand_signal": "medium",
+      "constraint_checking": "high"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "medium",
+      "nre_tolerance": "low"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "low",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "full",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "38548b8eeb7a4fb0f010e0877e21558e32f2b7e0709b300badb53cadade7416a",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t6_m4",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "职业经理人",
+    "attention": {
+      "customer_visible_value": "low",
+      "technical_dependencies": "medium",
+      "cost_structure": "high",
+      "brand_signal": "medium",
+      "constraint_checking": "high"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "high",
+      "nre_tolerance": "low"
+    },
+    "search_policy": {
+      "breadth": "wide",
+      "stop_rule": "compare_few",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "low",
+      "technical_uncertainty_tolerance": "medium"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "full",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "42b56d8b6310f6d27f3c21dd908ca7e80109135d013b781bf901de944c49d4f2",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t6_m5",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "技术创业者",
+    "attention": {
+      "customer_visible_value": "low",
+      "technical_dependencies": "high",
+      "cost_structure": "low",
+      "brand_signal": "low",
+      "constraint_checking": "high"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "low",
+      "nre_tolerance": "high"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": false
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "low",
+      "technical_uncertainty_tolerance": "high"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "full",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "f37fab2681a0e673285fc81b8a84729444bf353cbf1d73d9a3288ff03f2c3cce",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t7_m0",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "职业经理人",
+    "attention": {
+      "customer_visible_value": "medium",
+      "technical_dependencies": "high",
+      "cost_structure": "high",
+      "brand_signal": "medium",
+      "constraint_checking": "high"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "high",
+      "nre_tolerance": "low"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "low",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "full",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "6a3c6d08a8791f638038b8b29d1ef0de458a7e58b5e3a7ab3c1508c4235a08e3",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t7_m1",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "互联网PM转型",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "medium",
+      "cost_structure": "medium",
+      "brand_signal": "medium",
+      "constraint_checking": "high"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "high",
+      "nre_tolerance": "medium"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "medium",
+      "technical_uncertainty_tolerance": "medium"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "full",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "1758744ff7bfff036661444ad372f3e4b865c99ea73eb29b5149a1f766386d8b",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t7_m2",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "体制转型者",
+    "attention": {
+      "customer_visible_value": "low",
+      "technical_dependencies": "medium",
+      "cost_structure": "medium",
+      "brand_signal": "medium",
+      "constraint_checking": "high"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "medium",
+      "nre_tolerance": "low"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "low",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "full",
+      "assumes_teammate_checked": "high"
+    },
+    "source_sha256": "6deb88ba10a297a521bc28b0e050ee3ea48c085ae4e89bb08e574dcadb33b22b",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t7_m3",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "互联网PM转型",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "medium",
+      "cost_structure": "low",
+      "brand_signal": "medium",
+      "constraint_checking": "low"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "high",
+      "nre_tolerance": "low"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "high",
+      "technical_uncertainty_tolerance": "high"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "minimal",
+      "assumes_teammate_checked": "high"
+    },
+    "source_sha256": "25a65d7928ef0fa0e805b032415f1ba6000c74c47ea32fbf9cb7fcab16bc3779",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t7_m4",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "二代接班人",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "low",
+      "cost_structure": "low",
+      "brand_signal": "high",
+      "constraint_checking": "low"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "medium",
+      "nre_tolerance": "high"
+    },
+    "search_policy": {
+      "breadth": "wide",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "high",
+      "technical_uncertainty_tolerance": "medium"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "minimal",
+      "assumes_teammate_checked": "high"
+    },
+    "source_sha256": "c7253afdc9bded13195134625d9b96d1f029e88d3f6da6060e5c8201e8675843",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t7_m5",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "销售铁军",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "low",
+      "cost_structure": "low",
+      "brand_signal": "medium",
+      "constraint_checking": "low"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "high",
+      "nre_tolerance": "low"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "high",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "minimal",
+      "assumes_teammate_checked": "high"
+    },
+    "source_sha256": "5b2da83785a99a4035ae324136060fdfdf59df0af17fc5cb31e1054e2237c6a5",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t8_m0",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "草根老板",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "low",
+      "cost_structure": "high",
+      "brand_signal": "medium",
+      "constraint_checking": "low"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "medium",
+      "nre_tolerance": "high"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "high",
+      "technical_uncertainty_tolerance": "high"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "minimal",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "aae8b7f6f91075bf6871c6eefac31d501a91da0736197bc38b108c320510fef3",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t8_m1",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "体制转型者",
+    "attention": {
+      "customer_visible_value": "low",
+      "technical_dependencies": "low",
+      "cost_structure": "medium",
+      "brand_signal": "medium",
+      "constraint_checking": "high"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "medium",
+      "nre_tolerance": "low"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": false
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "low",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "full",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "4c2bd933b63a5d5ddc872e438801538ebe288e57ad800503e5e2e4a181e1c4b3",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t8_m2",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "草根老板",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "low",
+      "cost_structure": "high",
+      "brand_signal": "low",
+      "constraint_checking": "low"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "medium",
+      "nre_tolerance": "medium"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": false
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "high",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "minimal",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "5b735502de088336669815df11fe5716b5255f4755c3b20e0b515d8f0e435b18",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t8_m3",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "技术创业者",
+    "attention": {
+      "customer_visible_value": "low",
+      "technical_dependencies": "high",
+      "cost_structure": "low",
+      "brand_signal": "low",
+      "constraint_checking": "high"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "low",
+      "nre_tolerance": "high"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "exhaustive",
+      "revise_if_below_aspiration": false
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "low",
+      "technical_uncertainty_tolerance": "high"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "full",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "184367b497115ee2e11933f348859372295c9b6ad7b3270da27cae0d16d0b8d2",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t8_m4",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "二代接班人",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "low",
+      "cost_structure": "low",
+      "brand_signal": "high",
+      "constraint_checking": "low"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "medium",
+      "nre_tolerance": "high"
+    },
+    "search_policy": {
+      "breadth": "wide",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": false
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "high",
+      "technical_uncertainty_tolerance": "high"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "minimal",
+      "assumes_teammate_checked": "high"
+    },
+    "source_sha256": "ab0e48083668a85f7f6bc15580a497de13e1a2bcfd6a3a26ef975a749873e2ee",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t8_m5",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "技术创业者",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "high",
+      "cost_structure": "low",
+      "brand_signal": "medium",
+      "constraint_checking": "high"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "high",
+      "nre_tolerance": "high"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "low",
+      "technical_uncertainty_tolerance": "high"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "full",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "01f1b2d96878b98385def1f174cb0daab02b4e5f0c73805620323915ef3b8acb",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t9_m0",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "技术创业者",
+    "attention": {
+      "customer_visible_value": "low",
+      "technical_dependencies": "high",
+      "cost_structure": "medium",
+      "brand_signal": "low",
+      "constraint_checking": "high"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "high",
+      "nre_tolerance": "high"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "low",
+      "technical_uncertainty_tolerance": "high"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "full",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "e8940d9d3252fb4899bb83bad2947055bb60c27ef5088e7d278bb3af0091e709",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t9_m1",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "体制转型者",
+    "attention": {
+      "customer_visible_value": "low",
+      "technical_dependencies": "medium",
+      "cost_structure": "medium",
+      "brand_signal": "medium",
+      "constraint_checking": "high"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "medium",
+      "nre_tolerance": "low"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": false
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "low",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "full",
+      "assumes_teammate_checked": "high"
+    },
+    "source_sha256": "9cb13993632b3cb97ea51bf1209c77448f2cb6f92b64d97ee1d98fbf8b854c42",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t9_m2",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "二代接班人",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "low",
+      "cost_structure": "low",
+      "brand_signal": "high",
+      "constraint_checking": "low"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "high",
+      "nre_tolerance": "high"
+    },
+    "search_policy": {
+      "breadth": "wide",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "high",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "partial",
+      "assumes_teammate_checked": "high"
+    },
+    "source_sha256": "71a62e67d0aa44e59d062fe940752fa1ef8b83ee3833c2e14e78881fe066bade",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t9_m3",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "销售铁军",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "low",
+      "cost_structure": "medium",
+      "brand_signal": "medium",
+      "constraint_checking": "low"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "low",
+      "nre_tolerance": "low"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "high",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "minimal",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "008920fbd59cb2b929b322c7e293893720a58c343d82309d8e7a66373e1f7b24",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t9_m4",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "职业经理人",
+    "attention": {
+      "customer_visible_value": "medium",
+      "technical_dependencies": "medium",
+      "cost_structure": "high",
+      "brand_signal": "medium",
+      "constraint_checking": "high"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "medium",
+      "nre_tolerance": "low"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "compare_few",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "low",
+      "technical_uncertainty_tolerance": "medium"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "full",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "5960c751cb8ad4c3eadc2670188fcd030fed4425c559981828d675e7ec262b09",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t9_m5",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "体制转型者",
+    "attention": {
+      "customer_visible_value": "medium",
+      "technical_dependencies": "high",
+      "cost_structure": "medium",
+      "brand_signal": "medium",
+      "constraint_checking": "high"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "high",
+      "nre_tolerance": "low"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "low",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "full",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "eedeee4c2682597d61bec70461e0aa61e1ed908fa49bea752b8a5c03d2a8b0eb",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t10_m0",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "二代接班人",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "low",
+      "cost_structure": "low",
+      "brand_signal": "high",
+      "constraint_checking": "low"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "low",
+      "nre_tolerance": "low"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": false
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "high",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "minimal",
+      "assumes_teammate_checked": "high"
+    },
+    "source_sha256": "ee44641ea9ae0fb684c01194e9d5d332de9777b80fe428ab7016c4324af67e4b",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t10_m1",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "草根老板",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "low",
+      "cost_structure": "high",
+      "brand_signal": "low",
+      "constraint_checking": "low"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "medium",
+      "nre_tolerance": "low"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "high",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "minimal",
+      "assumes_teammate_checked": "high"
+    },
+    "source_sha256": "b0d895416250c6bfb5a4e4360b58153b8286db7ff6de0974c7d72953ae1585be",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t10_m2",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "职业经理人",
+    "attention": {
+      "customer_visible_value": "low",
+      "technical_dependencies": "medium",
+      "cost_structure": "high",
+      "brand_signal": "medium",
+      "constraint_checking": "high"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "medium",
+      "nre_tolerance": "low"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "low",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "full",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "d083584583efea9ab760a15d8e0324ad42392f8c27fb0bdec201bc07aae5d59b",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t10_m3",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "互联网PM转型",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "medium",
+      "cost_structure": "low",
+      "brand_signal": "medium",
+      "constraint_checking": "low"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "medium",
+      "nre_tolerance": "medium"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "high",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "minimal",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "f9f1bbe6ca67465f2b7460b24b78263ec65b9759036e072dd8a2ddefc7586cef",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t10_m4",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "互联网PM转型",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "medium",
+      "cost_structure": "medium",
+      "brand_signal": "low",
+      "constraint_checking": "high"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "high",
+      "nre_tolerance": "high"
+    },
+    "search_policy": {
+      "breadth": "wide",
+      "stop_rule": "compare_few",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "high",
+      "technical_uncertainty_tolerance": "high"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "full",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "6c195f23b4adacba13286732e05912bf5b7a127a343fabd308c3122abd61ef8b",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t10_m5",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "职业经理人",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "low",
+      "cost_structure": "medium",
+      "brand_signal": "medium",
+      "constraint_checking": "high"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "medium",
+      "nre_tolerance": "low"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": false
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "medium",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "full",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "fd58f66dedded66291d156aefd363f5abe83a07d8ae07ae231a58ab3346bc902",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t11_m0",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "技术创业者",
+    "attention": {
+      "customer_visible_value": "low",
+      "technical_dependencies": "high",
+      "cost_structure": "medium",
+      "brand_signal": "low",
+      "constraint_checking": "high"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "high",
+      "nre_tolerance": "low"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "compare_few",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "low",
+      "technical_uncertainty_tolerance": "high"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "full",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "0019339565337393faee674fffa728ecfd5c12acc8ebfeb9186ba1a22934f17e",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t11_m1",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "销售铁军",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "low",
+      "cost_structure": "medium",
+      "brand_signal": "medium",
+      "constraint_checking": "low"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "high",
+      "nre_tolerance": "high"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "high",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "minimal",
+      "assumes_teammate_checked": "high"
+    },
+    "source_sha256": "0bbc905fc19ca509cf37787745331da3c410c99bff57943c5143739fa084dd3e",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t11_m2",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "草根老板",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "low",
+      "cost_structure": "high",
+      "brand_signal": "low",
+      "constraint_checking": "medium"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "medium",
+      "nre_tolerance": "low"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "high",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "minimal",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "bc3ebc786fce4a757e24fbc3f3b99ba30b9717e2e8080fbb1ded442829789b5b",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t11_m3",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "草根老板",
+    "attention": {
+      "customer_visible_value": "high",
+      "technical_dependencies": "low",
+      "cost_structure": "high",
+      "brand_signal": "medium",
+      "constraint_checking": "low"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "medium",
+      "nre_tolerance": "high"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "high",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "minimal",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "c9567e82253acc4e49cee61c45a188ce6b28f00761492f500c447cd59cc2e6dd",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t11_m4",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "二代接班人",
+    "attention": {
+      "customer_visible_value": "low",
+      "technical_dependencies": "low",
+      "cost_structure": "low",
+      "brand_signal": "high",
+      "constraint_checking": "low"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "low",
+      "nre_tolerance": "high"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "first_satisfying",
+      "revise_if_below_aspiration": false
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "high",
+      "technical_uncertainty_tolerance": "low"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "minimal",
+      "assumes_teammate_checked": "high"
+    },
+    "source_sha256": "4052084f0761c27a39fc840a8d1fcd78860db6242a8dfcb2bc95a5c7fcfd7756",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  },
+  {
+    "member_key": "t11_m5",
+    "source_run": "sim_layered_newflow_2026-07-10T23-54-52-761Z",
+    "archetype": "职业经理人",
+    "attention": {
+      "customer_visible_value": "low",
+      "technical_dependencies": "high",
+      "cost_structure": "high",
+      "brand_signal": "medium",
+      "constraint_checking": "high"
+    },
+    "aspirations": {
+      "minimum_core_coverage": "medium",
+      "nre_tolerance": "low"
+    },
+    "search_policy": {
+      "breadth": "narrow",
+      "stop_rule": "exhaustive",
+      "revise_if_below_aspiration": true
+    },
+    "risk_policy": {
+      "market_uncertainty_tolerance": "low",
+      "technical_uncertainty_tolerance": "high"
+    },
+    "constraint_policy": {
+      "dependency_check_depth": "full",
+      "assumes_teammate_checked": "low"
+    },
+    "source_sha256": "53d3f46f0fcdbd55e7976cbc672ad96a99f43ed7d61fde09d69ce6b437b0e20b",
+    "compiler_prompt_sha256": "6a82a7b70563e665971c81daa7e124590e95ef04da24aa6ed4f2666ee9ec35f5"
+  }
+]
