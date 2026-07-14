@@ -1,0 +1,99 @@
+{
+  "runId": "ai_generated_persona_maps_v1_2026-07-14",
+  "createdAt": "2026-07-14T04:25:31.004Z",
+  "status": "FAIL",
+  "stage": "map_generation_or_validation",
+  "blocker": "职业经理人",
+  "paths": {
+    "maps": "/Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/scripts/analysis/ai_generated_persona_maps_v1_2026-07-14_maps.json",
+    "jsonl": "/Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/scripts/analysis/ai_generated_persona_maps_v1_2026-07-14.jsonl",
+    "summary": "/Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/scripts/analysis/ai_generated_persona_maps_v1_2026-07-14_summary.md",
+    "samples": "/Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/scripts/analysis/ai_generated_persona_maps_v1_2026-07-14_raw_samples.md",
+    "meta": "/Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/scripts/analysis/ai_generated_persona_maps_v1_2026-07-14_meta.json",
+    "failure": "/Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/scripts/analysis/ai_generated_persona_maps_v1_2026-07-14_failure.json"
+  },
+  "gitCommit": "6f7317202b7c359e12bac52c3c4f62479cb796c0",
+  "gitCommitObjectSha256": "63580166e39b90f4f30cb06b6999497b1f343d1e91cfd363206cd73c5e55842a",
+  "gitStatusPorcelainSha256": "71852455cbb7b37413269957ba7db833f19b15f3fe0fe0f44fe7899f3695c5d4",
+  "script": {
+    "file": "scripts/analysis/ai_generated_persona_maps.js",
+    "sha256": "0c70db35d13e55751ba805f6b324c48de120fff023661fbfe490374d0d0c8fdb"
+  },
+  "failureArtifact": {
+    "file": "scripts/analysis/ai_generated_persona_maps_v1_2026-07-14_failure.json",
+    "sha256": "391bb0e972250b6a68f74cca6737de58d7dbc3a1aa1ca8e43e2d99cbb5ed97d6"
+  },
+  "inputs": {
+    "personaPool": {
+      "file": "scripts/sim/persona_pool.js",
+      "sha256": "d6ae384e887aaf723ae2d351efe9895c52b5a5412a481d757964fb8767872c74"
+    },
+    "personaReports": {
+      "file": "game_config_v0.1/persona_reports_v1.1.json",
+      "sha256": "900da996382e5eb5e2104e4da6871ceab861418ba1f3258931fa4691de431623"
+    },
+    "capabilityGroups": {
+      "file": "data/capability_groups_v2.json",
+      "sha256": "89d38b8f4fba9d2ee5cd2ba398b4f4e449a27a6aedc70224375590db02fd28a3"
+    },
+    "compatibilityRules": {
+      "file": "data/compatibility_rules_v2.json",
+      "sha256": "0c6cf08d59c2ae5d5d08cc5d625b059b495215a877d11718dc3aa027a1e26930"
+    },
+    "frozenMapsUnchanged": {
+      "草根老板": {
+        "file": "scripts/analysis/cognitive_map_caogen_min.json",
+        "sha256": "40d8de670d52d202a344232ddd33099f755f92c6479501d07fc988371ea26f3d"
+      },
+      "二代接班人": {
+        "file": "scripts/analysis/cognitive_map_erdai_min.json",
+        "sha256": "97fa4be7f5bdced117e53eae1646b5ed18286ffc0ee1535770574d3989265151"
+      }
+    }
+  },
+  "initialBatchAttempts": 3,
+  "successfulInitialBatchOutputs": 1,
+  "localPassedBeforeStop": 1,
+  "blockedMaps": 1,
+  "notEvaluated": 3,
+  "releasedMaps": 0,
+  "blindSpotEmbeddingReached": false,
+  "downstreamChainsRun": 0,
+  "retryCounts": {
+    "体制转型者": {
+      "local": 4,
+      "numeric": 0,
+      "blindSpot": 0
+    },
+    "职业经理人": {
+      "local": 5,
+      "numeric": 0,
+      "blindSpot": 0
+    },
+    "销售铁军": {
+      "local": 0,
+      "numeric": 0,
+      "blindSpot": 0
+    },
+    "技术创业者": {
+      "local": 0,
+      "numeric": 0,
+      "blindSpot": 0
+    },
+    "互联网PM转型": {
+      "local": 0,
+      "numeric": 0,
+      "blindSpot": 0
+    }
+  },
+  "personaStatus": {
+    "体制转型者": "PASSED_LOCAL_BEFORE_STOP",
+    "职业经理人": "BLOCKED",
+    "销售铁军": "NOT_EVALUATED",
+    "技术创业者": "NOT_EVALUATED",
+    "互联网PM转型": "NOT_EVALUATED"
+  },
+  "gameTermCatalogSha256": "1369ead49030097c86bd8b51c87ee7e559500a56c7e44936001c5d44aab777ba",
+  "domainRulesSha256": "e7ac9f36e01557107bcc11853894c2ee3ffa939f87e4bd271205607eafc6c2a1",
+  "error": "Error: 职业经理人: local validation failed after 5 regenerations: {\"valid\":false,\"numberFailures\":[],\"gameTermHits\":[{\"term\":\"成本\",\"source\":\"spec+docs\"}],\"domainAudit\":{\"counts\":{\"养老康养\":0,\"医疗医药\":0,\"教育培训\":1,\"金融保险\":0,\"零售快消\":11,\"汽车出行\":0,\"地产建筑\":0,\"能源环保\":0,\"农业食品\":3,\"物流贸易\":0,\"文旅酒店\":0,\"媒体文化\":0,\"专业服务\":0,\"通信电子\":2,\"制造工业\":0,\"科技软件\":0,\"政务公共\":0},\"itemMatches\":[{\"id\":\"map_jingli_01\",\"domains\":[\"零售快消\"]},{\"id\":\"map_jingli_02\",\"domains\":[\"零售快消\"]},{\"id\":\"map_jingli_03\",\"domains\":[\"零售快消\"]},{\"id\":\"map_jingli_04\",\"domains\":[\"农业食品\"]},{\"id\":\"map_jingli_05\",\"domains\":[\"通信电子\"]},{\"id\":\"map_jingli_06\",\"domains\":[\"零售快消\"]},{\"id\":\"map_jingli_07\",\"domains\":[\"零售快消\"]},{\"id\":\"map_jingli_08\",\"domains\":[\"零售快消\"]},{\"id\":\"map_jingli_09\",\"domains\":[\"零售快消\"]},{\"id\":\"map_jingli_10\",\"domains\":[\"零售快消\"]},{\"id\":\"map_jingli_11\",\"domains\":[\"通信电子\"]},{\"id\":\"map_jingli_12\",\"domains\":[\"农业食品\"]},{\"id\":\"map_jingli_13\",\"domains\":[\"农业食品\"]},{\"id\":\"map_jingli_14\",\"domains\":[]},{\"id\":\"map_jingli_15\",\"domains\":[\"零售快消\"]},{\"id\":\"map_jingli_16\",\"domains\":[\"零售快消\"]},{\"id\":\"map_jingli_17\",\"domains\":[\"教育培训\"]},{\"id\":\"map_jingli_18\",\"domains\":[]},{\"id\":\"map_jingli_19\",\"domains\":[\"零售快消\"]},{\"id\":\"map_jingli_20\",\"domains\":[]}],\"classifiedExperiences\":17,\"violations\":[{\"domain\":\"零售快消\",\"count\":11,\"limit\":4}],\"valid\":false}}"
+}
