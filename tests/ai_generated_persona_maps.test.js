@@ -31,8 +31,9 @@ function testSeedsAreMinimalProjection() {
   const seeds = Generated.loadSeeds();
   assert.equal(seeds.length, 5);
   assert.deepEqual(seeds.map((seed) => seed.label), ["体制转型者", "职业经理人", "销售铁军", "技术创业者", "互联网PM转型"]);
-  const prompt = Generated.buildBatchPrompt(seeds, []);
+  const prompt = Generated.buildBatchPrompt(seeds);
   assert.doesNotMatch(prompt, /decisionStyle|riskPreference|blindSpots|pricingBias|gridPreference/);
+  assert.doesNotMatch(prompt, /互斥|行业分散|不得出现|成本|差异化|ToC|ToB/);
   for (const seed of seeds) {
     assert.match(prompt, new RegExp(seed.label));
     assert.match(prompt, new RegExp(seed.desc.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
@@ -60,8 +61,9 @@ function testDomainConcentrationLimit() {
   const raw = fixtureCandidate(seed);
   for (let index = 0; index < 5; index += 1) raw.items[index].content = `202${index}年在养老院完成第${index + 1}次项目复盘`;
   const audit = Generated.auditDomains(Generated.normalizeCandidate(raw, seed));
-  assert.equal(audit.valid, false);
-  assert.deepEqual(audit.violations[0], { domain: "养老康养", count: 5, limit: 4 });
+  assert.equal(audit.valid, true);
+  assert.equal(audit.advisoryOnly, true);
+  assert.deepEqual(audit.concentrationsAbove4[0], { domain: "养老康养", count: 5, reference: 4 });
 }
 
 function testGameTermScanUsesRepositoryCatalog() {
@@ -72,6 +74,11 @@ function testGameTermScanUsesRepositoryCatalog() {
   const catalog = Generated.buildGameTermCatalog(Pilot.loadPilotMaterials());
   const hits = Generated.scanGameTerms(candidate, catalog);
   assert.equal(hits.some((row) => row.term === "LOVOT"), true);
+  assert.equal(catalog.some((row) => row.term === "成本"), false);
+  assert.equal(catalog.some((row) => row.term === "差异化"), false);
+  assert.equal(catalog.filter((row) => row.source.includes("cap_id")).length, 23);
+  assert.equal(catalog.filter((row) => row.source.includes("capability_name")).length, 23);
+  assert.equal(catalog.filter((row) => row.source.includes("group_name")).length, 6);
 }
 
 function testCompletedRunWhenPresent() {
@@ -81,28 +88,17 @@ function testCompletedRunWhenPresent() {
   const rows = fs.readFileSync(paths.jsonl, "utf8").trim().split(/\r?\n/).map((line) => JSON.parse(line));
   assert.equal(artifact.generation.candidates.length, 5);
   assert.equal(artifact.generation.candidates.every((candidate) => artifact.generation.audits[candidate.label].valid), true);
-  assert.equal(artifact.generation.blindSpotPairs.every((pair) => !pair.conflict), true);
+  assert.equal(artifact.generation.generatedBlindSpotSimilarity.advisoryOnly, true);
+  assert.equal(artifact.generation.oldHarnessBlindSpotSimilarity.advisoryOnly, true);
   assert.equal(rows.length, 5);
   assert.equal(rows.every((row) => row.status === "OK" && row.steps.length === 4), true);
   for (const row of rows) {
     const d4 = row.steps.find((step) => step.decision_point === "D4").parsed;
     assert.equal(d4.compatibility.valid, true);
     assert.equal(d4.compatibility.hardViolationCount, 0);
-    assert.equal(row.metrics.steps.find((step) => step.decision_point === "D4").card_dimension_count, 6);
+    assert.equal(row.effort.schema_version, "ai_persona_search_effort_v1_d1_d4");
+    assert.equal(row.effort.steps.find((step) => step.decision_point === "D4").card_dimension_count, 6);
   }
-}
-
-function testFailureReportWhenPresent() {
-  const paths = Generated.outputPaths(Generated.RUN_ID);
-  if (!fs.existsSync(paths.failure) || !fs.existsSync(paths.meta)) return;
-  const meta = JSON.parse(fs.readFileSync(paths.meta, "utf8"));
-  assert.equal(meta.status, "FAIL");
-  assert.equal(meta.blocker, "职业经理人");
-  assert.equal(meta.releasedMaps, 0);
-  assert.equal(meta.blindSpotEmbeddingReached, false);
-  assert.equal(meta.downstreamChainsRun, 0);
-  assert.equal(fs.existsSync(paths.maps), false);
-  assert.equal(fs.existsSync(paths.jsonl), false);
 }
 
 testSeedsAreMinimalProjection();
@@ -111,5 +107,4 @@ testCandidateShapeAndAudits();
 testDomainConcentrationLimit();
 testGameTermScanUsesRepositoryCatalog();
 testCompletedRunWhenPresent();
-testFailureReportWhenPresent();
 console.log("ai_generated_persona_maps tests passed");

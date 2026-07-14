@@ -30,6 +30,7 @@ const PERSONA_POOL_PATH = path.join(ROOT, "scripts", "sim", "persona_pool.js");
 const CAPABILITY_PATH = path.join(ROOT, "data", "capability_groups_v2.json");
 const COMPATIBILITY_PATH = path.join(ROOT, "data", "compatibility_rules_v2.json");
 const REPORTS_PATH = path.join(ROOT, "game_config_v0.1", "persona_reports_v1.1.json");
+const SPEC_PATH = path.join(ROOT, "docs", "CODEX_AI_GENERATED_PERSONA_MAPS.md");
 const V1_FAILURE_PATH = path.join(__dirname, "ai_generated_persona_maps_v1_2026-07-14_failure.json");
 const FROZEN_MAP_PATHS = {
   "草根老板": path.join(__dirname, "cognitive_map_caogen_min.json"),
@@ -558,31 +559,45 @@ async function runChainStep(chatCompletion, point, task, materials, stack) {
 }
 
 function extractChainMetrics(row, materials) {
+  const validMapIds = new Set(materials.maps[row.persona].map((item) => item.id));
   const cumulativeSources = new Set();
+  let activeConstraints = [];
   const steps = row.steps.map((step) => {
     const parsed = step.parsed;
-    const validMapIds = new Set(materials.maps[row.persona].map((item) => item.id));
-    Effort.collectMapSources(parsed, validMapIds).forEach((id) => cumulativeSources.add(id));
+    const stepMapIds = Effort.collectMapSources(parsed, validMapIds);
+    stepMapIds.forEach((id) => cumulativeSources.add(id));
     const constraints = Effort.constraintOutputForStep(step.decision_point, parsed);
+    if (constraints.length > 0) activeConstraints = constraints;
     const themes = Effort.themeNames(constraints);
     const cards = step.decision_point === "D4" ? parsed.cards : [];
-    const dimensions = new Set(cards.map((card) => materials.groupByCapability.get(card.id)?.group_id).filter(Boolean));
+    const dimensions = Array.from(new Set(cards.map((card) => materials.groupByCapability.get(card.id)?.group_id).filter(Boolean))).sort();
     const tiers = cards.reduce((out, card) => {
       out[card.tier] = (out[card.tier] || 0) + 1;
       return out;
     }, { low: 0, mid: 0, high: 0 });
+    const reasoningText = step.decision_point === "D3"
+      ? String(parsed?.market_judgment || "")
+      : (step.decision_point === "D4" ? String(parsed?.cost_stance?.text || "") : "");
     return {
       decision_point: step.decision_point,
       map_reference_breadth: cumulativeSources.size,
+      cumulative_map_reference_ids: Array.from(cumulativeSources).sort(),
+      step_map_reference_ids: stepMapIds,
+      constraint_stack_complexity: activeConstraints.length,
+      step_constraint_output_count: constraints.length,
       constraint_count: constraints.length,
       theme_names: themes,
       theme_breadth: themes.length,
       card_count: cards.length,
-      card_dimension_count: dimensions.size,
-      tier_counts: tiers
+      card_dimension_count: dimensions.length,
+      card_dimensions: dimensions,
+      tier_counts: tiers,
+      reasoning_text_field: step.decision_point === "D3" ? "market_judgment" : (step.decision_point === "D4" ? "cost_stance.text" : "none"),
+      reasoning_text_length: Array.from(reasoningText).length
     };
   });
   return {
+    schema_version: "ai_persona_search_effort_v1_d1_d4",
     steps,
     theme_trajectory_signature: JSON.stringify(steps.map((step) => step.theme_names))
   };
@@ -605,6 +620,7 @@ async function runValidationChain(chatCompletion, candidate, materials, runId) {
         status: "FAIL",
         steps,
         metrics: null,
+        effort: null,
         decision_calls: steps.reduce((sum, item) => sum + item.attempts, 0),
         error: `${point}: ${step.error}`
       };
@@ -621,10 +637,12 @@ async function runValidationChain(chatCompletion, candidate, materials, runId) {
     steps,
     final_stack: stack,
     metrics: null,
+    effort: null,
     decision_calls: steps.reduce((sum, item) => sum + item.attempts, 0),
     error: ""
   };
   row.metrics = extractChainMetrics(row, materials);
+  row.effort = row.metrics;
   return row;
 }
 
@@ -643,7 +661,7 @@ async function runPool(tasks, concurrency, worker) {
 
 function chainDifferentiation(rows) {
   const successful = rows.filter((row) => row.status === "OK");
-  const signatures = successful.map((row) => ({ persona: row.persona, signature: row.metrics.theme_trajectory_signature }));
+  const signatures = successful.map((row) => ({ persona: row.persona, signature: (row.effort || row.metrics).theme_trajectory_signature }));
   const duplicatePairs = [];
   for (let left = 0; left < signatures.length; left += 1) {
     for (let right = left + 1; right < signatures.length; right += 1) {
@@ -671,7 +689,7 @@ function writeJsonl(filePath, rows) {
 
 function writeRawSamples(filePath, generation, calls, rows) {
   const lines = [
-    "# AI Generated Persona Maps v1 Raw Samples",
+    "# AI Generated Persona Maps v2 Raw Samples",
     "",
     "## Map-generation calls",
     ""
@@ -698,8 +716,8 @@ function writeRawSamples(filePath, generation, calls, rows) {
   });
   lines.push("## Final map audits", "", "```json", JSON.stringify({
     audits: generation.audits,
-    blindSpotPairs: generation.blindSpotPairs,
-    conflictRetries: generation.conflictRetries,
+    generatedBlindSpotSimilarity: generation.generatedBlindSpotSimilarity,
+    oldHarnessBlindSpotSimilarity: generation.oldHarnessBlindSpotSimilarity,
     expectedDirection: generation.expectedDirection
   }, null, 2), "```", "");
   for (const row of rows) {
@@ -734,43 +752,73 @@ function writeRawSamples(filePath, generation, calls, rows) {
   fs.writeFileSync(filePath, lines.filter((line) => line !== undefined).join("\n") + "\n", "utf8");
 }
 
+function formatNumber(value) {
+  return Number(value || 0).toFixed(4);
+}
+
+function renderSimilarityMatrix(lines, title, report) {
+  lines.push("", title, "");
+  lines.push(`Threshold: minSim=${report.threshold}; advisory only, not a blocking rule.`, "");
+  lines.push(`| Persona | ${report.labels.join(" | ")} |`);
+  lines.push(`|---|${report.labels.map(() => "---:").join("|")}|`);
+  report.labels.forEach((label, index) => {
+    lines.push(`| ${label} | ${report.matrix[index].map((value) => formatNumber(value)).join(" | ")} |`);
+  });
+  lines.push("", "| Persona A | Persona B | Similarity | >=0.55 |", "|---|---|---:|---|");
+  for (const pair of report.pairs) {
+    lines.push(`| ${pair.left} | ${pair.right} | ${formatNumber(pair.similarity)} | ${pair.conflict ? "yes" : "no"} |`);
+  }
+}
+
+function renderDomainDistribution(lines, generation) {
+  lines.push(
+    "",
+    "### Domain Distribution (Advisory)",
+    "",
+    "| Persona | Classified | Unclassified | Max domain | Non-zero domain counts |",
+    "|---|---:|---:|---|---|"
+  );
+  for (const candidate of generation.candidates) {
+    const audit = generation.audits[candidate.label].domainAudit;
+    const counts = Object.entries(audit.counts)
+      .filter(([, count]) => count > 0)
+      .map(([domain, count]) => `${domain}=${count}`)
+      .join("；");
+    lines.push(`| ${candidate.label} | ${audit.classifiedExperiences}/20 | ${audit.unclassifiedExperiences} | ${audit.maxDomain.domain || "none"}=${audit.maxDomain.count} | ${counts || "none"} |`);
+  }
+}
+
 function writeSummary(filePath, generation, rows, meta) {
   const lines = [
-    "# AI Generated Persona Maps v1 Summary",
+    "# AI Generated Persona Maps v2 Summary",
     "",
     `- Run: \`${meta.runId}\``,
-    `- Maps passed all automatic checks: ${meta.mapsPassed}/5`,
+    `- Maps passed 4a hard checks: ${meta.mapsPassed}/5`,
     `- D1-D4 validation chains completed: ${meta.completedChains}/5`,
-    `- Initial generation was one five-persona batch call; later calls are recorded repairs/regenerations.`,
-    `- Claude draft files were not found in the workspace. Existing persona_pool.js blindSpots were used only after generation as a descriptive direction reference.`,
+    `- Initial five-persona batch restored from: ${meta.mapGeneration.restoredInitialBatch?.file || "not restored"}`,
+    `- No new initial batch generation call was made when the restored v1 batch was available.`,
+    `- 4b blind-spot similarity and domain concentration are advisory only; they do not trigger regeneration.`,
+    `- ${generation.comparisonNote}`,
     "",
-    "## 1. Automatic Map Validation",
+    "## 1. 4a Hard Validation",
     "",
-    "| Persona | Blind spot | Number failures | Game hits | Max sector count | Classified experiences | Local regen | Blind-spot regen |",
-    "|---|---|---:|---:|---:|---:|---:|---:|"
+    "| Persona | Blind spot | Number failures | Game hits | Numeric repairs | Leak regenerations | Hard pass |",
+    "|---|---|---:|---:|---:|---:|---|"
   ];
   for (const candidate of generation.candidates) {
     const audit = generation.audits[candidate.label];
-    const maxSector = Math.max(...Object.values(audit.domainAudit.counts));
-    const localCalls = meta.regenerationByPersona[candidate.label]?.local || 0;
-    const blindCalls = generation.conflictRetries[candidate.label] || 0;
-    lines.push(`| ${candidate.label} | ${candidate.core_blind_spot} | ${audit.numberFailures.length} | ${audit.gameTermHits.length} | ${maxSector} | ${audit.domainAudit.classifiedExperiences}/20 | ${localCalls} | ${blindCalls} |`);
+    const retries = meta.mapGeneration.regenerationByPersona[candidate.label] || {};
+    lines.push(`| ${candidate.label} | ${candidate.core_blind_spot} | ${audit.numberFailures.length} | ${audit.gameTermHits.length} | ${retries.numeric || 0} | ${retries.leak || 0} | ${audit.hardValid ? "yes" : "no"} |`);
   }
+  lines.push("", "## 2. 4b Advisory Reports", "");
+  renderSimilarityMatrix(lines, "### Generated 5 Blind-spot Similarity Matrix", generation.generatedBlindSpotSimilarity);
+  renderSimilarityMatrix(lines, "### Old Harness 5 Blind-spot Similarity Baseline", generation.oldHarnessBlindSpotSimilarity);
+  renderDomainDistribution(lines, generation);
   lines.push(
     "",
-    `Blind-spot pair rule: the existing scorer's cosine match qualifies at minSim=${BLIND_SPOT_MIN_SIM}.`,
+    "## 3. D1-D4 Effort and Selection Differentiation",
     "",
-    "| Persona A | Persona B | Similarity | Conflict |",
-    "|---|---|---:|---|"
-  );
-  for (const pair of generation.blindSpotPairs) {
-    lines.push(`| ${pair.left} | ${pair.right} | ${pair.similarity.toFixed(2)} | ${pair.conflict ? "YES" : "no"} |`);
-  }
-  lines.push(
-    "",
-    "## 2. D1-D4 Theme and Selection Differentiation",
-    "",
-    "| Persona | D1 themes | D2 themes | D3 themes | D4 themes | Cards | Tier low/mid/high | Dimensions |",
+    "| Persona | D1 themes | D2 themes | D3 themes | D4 themes | D4 cards | Tier low/mid/high | D4 dimensions |",
     "|---|---|---|---|---|---:|---:|---:|"
   );
   for (const row of rows) {
@@ -778,7 +826,8 @@ function writeSummary(filePath, generation, rows, meta) {
       lines.push(`| ${row.persona} | FAIL | FAIL | FAIL | FAIL | - | - | - |`);
       continue;
     }
-    const byPoint = Object.fromEntries(row.metrics.steps.map((step) => [step.decision_point, step]));
+    const effort = row.effort || row.metrics;
+    const byPoint = Object.fromEntries(effort.steps.map((step) => [step.decision_point, step]));
     const d4 = byPoint.D4;
     lines.push(`| ${row.persona} | ${byPoint.D1.theme_names.join("、") || "无"} | ${byPoint.D2.theme_names.join("、") || "无"} | ${byPoint.D3.theme_names.join("、") || "无"} | ${d4.theme_names.join("、") || "无"} | ${d4.card_count} | ${d4.tier_counts.low}/${d4.tier_counts.mid}/${d4.tier_counts.high} | ${d4.card_dimension_count} |`);
   }
@@ -787,9 +836,9 @@ function writeSummary(filePath, generation, rows, meta) {
     `- Exact theme-trajectory signatures: ${meta.differentiation.uniqueThemeTrajectories}/5 unique.`,
     `- Duplicate theme trajectories: ${meta.differentiation.duplicatePairs.length ? meta.differentiation.duplicatePairs.map((pair) => pair.join(" vs ")).join("；") : "none"}.`,
     "",
-    "## 3. Post-generation Direction Reference",
+    "## 4. Post-generation Direction Reference",
     "",
-    "This comparison did not enter generation or validation. It is descriptive only and uses the old harness because no Claude draft files were available.",
+    "This comparison did not enter generation or validation. It is descriptive only.",
     "",
     "| Persona | Generated blind spot | Existing harness direction | Similarity | >=0.55 |",
     "|---|---|---|---:|---|"
@@ -800,7 +849,7 @@ function writeSummary(filePath, generation, rows, meta) {
   const observation = meta.differentiation.allDistinct
     ? "最小种子生成的五张地图在本轮 D1-D4 中形成了五条不同的主题轨迹；这是 N=1 的描述性通过，不构成稳定性或统计结论。"
     : "至少两张地图在本轮形成了相同主题轨迹；本轮尚未通过“彼此可辨”的直接检验。";
-  lines.push("", "## 4. One-sentence Observation", "", `> ${observation}`, "");
+  lines.push("", "## 5. One-sentence Observation", "", `> ${observation}`, "");
   fs.writeFileSync(filePath, lines.join("\n") + "\n", "utf8");
 }
 
@@ -809,9 +858,12 @@ function buildMeta(args, paths, generation, rows, calls) {
   const gitCommit = gitText(["rev-parse", "HEAD"]).trim();
   const commitObject = gitText(["cat-file", "commit", "HEAD"]);
   const gitStatus = gitText(["status", "--porcelain"]);
+  const restoredInitialBatchCall = calls.find((call) => call.kind === "initial_batch" && call.restoredFrom);
+  const restoredInitialBatchFile = restoredInitialBatchCall
+    ? path.join(ROOT, restoredInitialBatchCall.restoredFrom)
+    : null;
   const regenerationByPersona = Object.fromEntries(generation.candidates.map((candidate) => [candidate.label, {
-    local: calls.filter((call) => call.kind === `local_regeneration:${candidate.label}` && call.status === "OK").length,
-    blindSpot: generation.conflictRetries[candidate.label] || 0,
+    leak: calls.filter((call) => call.kind === `leak_regeneration:${candidate.label}` && call.status === "OK").length,
     numeric: calls.filter((call) => call.kind === `numeric_repair:${candidate.label}` && call.status === "OK").length
   }]));
   const invalidReferenceDetails = Pilot.auditReferences(rows, {
@@ -838,6 +890,7 @@ function buildMeta(args, paths, generation, rows, calls) {
     gitStatusPorcelainSha256: sha256(gitStatus),
     script: { file: path.relative(ROOT, __filename), sha256: fileSha256(__filename) },
     inputs: {
+      v2Spec: { file: path.relative(ROOT, SPEC_PATH), sha256: fileSha256(SPEC_PATH) },
       personaPool: { file: path.relative(ROOT, PERSONA_POOL_PATH), sha256: fileSha256(PERSONA_POOL_PATH) },
       personaReports: { file: path.relative(ROOT, REPORTS_PATH), sha256: fileSha256(REPORTS_PATH) },
       capabilityGroups: { file: path.relative(ROOT, CAPABILITY_PATH), sha256: fileSha256(CAPABILITY_PATH) },
@@ -861,11 +914,25 @@ function buildMeta(args, paths, generation, rows, calls) {
       totalGenerationCalls: calls.length,
       counters: generation.counters,
       regenerationByPersona,
+      restoredInitialBatch: restoredInitialBatchFile ? {
+        file: path.relative(ROOT, restoredInitialBatchFile),
+        sha256: fileSha256(restoredInitialBatchFile),
+        sourceCallStatus: restoredInitialBatchCall.status,
+        sourceCallAttempt: restoredInitialBatchCall.attempt
+      } : null,
       blindSpotMinSim: BLIND_SPOT_MIN_SIM,
       gameTermCatalogSha256: sha256(JSON.stringify(generation.gameTerms)),
       gameTermCatalog: generation.gameTerms,
       domainRulesSha256: sha256(DOMAIN_RULES.map(([name, pattern]) => [name, pattern.source]).join("\n")),
       domainRules: DOMAIN_RULES.map(([name, pattern]) => ({ name, pattern: pattern.source }))
+    },
+    advisoryReports: {
+      generatedBlindSpotSimilarity: generation.generatedBlindSpotSimilarity,
+      oldHarnessBlindSpotSimilarity: generation.oldHarnessBlindSpotSimilarity,
+      domainDistribution: Object.fromEntries(generation.candidates.map((candidate) => [
+        candidate.label,
+        generation.audits[candidate.label].domainAudit
+      ]))
     },
     mapsPassed: generation.candidates.filter((candidate) => generation.audits[candidate.label]?.valid).length,
     requestedChains: 5,
