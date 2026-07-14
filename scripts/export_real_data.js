@@ -4,6 +4,11 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { Pool } = require("pg");
+const {
+  PRICE_SCALE,
+  MONEY_SCALE_CONTRACT,
+  scaleStoredMoney
+} = require("../server/multiplayer/moneyScale");
 
 const REQUIRED_ENV_KEYS = ["PGHOST", "PGPORT", "PGUSER", "PGPASSWORD", "PGDATABASE"];
 
@@ -51,9 +56,17 @@ const TEAM_SUMMARY_COLUMNS = [
   "r2_status",
   "final_grid_id",
   "final_architecture",
+  "money_scale",
+  "money_scale_contract",
   "final_sam",
+  "final_sam_raw",
+  "final_sam_scaled",
   "final_wtp_ref",
+  "final_wtp_ref_raw",
+  "final_wtp_ref_scaled",
   "final_wtp_adj",
+  "final_wtp_adj_raw",
+  "final_wtp_adj_scaled",
   "members_forced_absent",
   "members_interview_completed",
   "members_cards_submitted",
@@ -405,9 +418,17 @@ function buildTeamsSummaryRows(data, maps) {
       r2_status: team.r2_status || "",
       final_grid_id: team.final_grid_id || "",
       final_architecture: team.final_architecture || "",
+      money_scale: PRICE_SCALE,
+      money_scale_contract: MONEY_SCALE_CONTRACT,
       final_sam: toNumber(team.final_sam, ""),
+      final_sam_raw: toNumber(team.final_sam, ""),
+      final_sam_scaled: scaleStoredMoney(team.final_sam) ?? "",
       final_wtp_ref: toNumber(team.final_wtp_ref, ""),
+      final_wtp_ref_raw: toNumber(team.final_wtp_ref, ""),
+      final_wtp_ref_scaled: scaleStoredMoney(team.final_wtp_ref) ?? "",
       final_wtp_adj: toNumber(team.final_wtp_adj, ""),
+      final_wtp_adj_raw: toNumber(team.final_wtp_adj, ""),
+      final_wtp_adj_scaled: scaleStoredMoney(team.final_wtp_adj) ?? "",
       members_forced_absent: members.filter((member) => toBool(member.forced_by_teacher)).length,
       members_interview_completed: members.filter((member) => String(member.interview_status || "") === "completed").length,
       members_cards_submitted: members.filter((member) => String(member.card_status || "") === "submitted").length,

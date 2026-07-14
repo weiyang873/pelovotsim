@@ -458,8 +458,10 @@ test("hideDeferredRound1Fields strips WTPmedian before reveal while preserving s
       G: 4.2,
       E: 4.3,
       VPscore: 4.2,
+      SAM_billion_scaled: 101.7,
       WTPmedian: 15500,
-      WTPref: 16000
+      WTPref: 16000,
+      WTPref_scaled: 4800
     },
     vp_score: 4.2,
     coverage: 4.1,
@@ -472,6 +474,7 @@ test("hideDeferredRound1Fields strips WTPmedian before reveal while preserving s
   const serialized = JSON.stringify(hidden);
   assert.equal(serialized.includes("WTPmedian"), false);
   assert.equal(serialized.includes("WTPref"), false);
+  assert.equal(serialized.includes("SAM_billion_scaled"), false);
   assert.equal(serialized.includes("VPscore"), false);
   assert.equal(serialized.includes("\"vp_score\""), false);
   assert.equal(serialized.includes("\"coverage\""), false);

@@ -26,6 +26,11 @@ import {
   writeStudentSession
 } from "../utils/studentSession";
 import { downloadTxtFile, formatExportTime } from "../utils/txtExport";
+import {
+  gateRequestedRound1Step,
+  hasCompleteRound1Results,
+  isRound1FinalizedStatus
+} from "../utils/round1ResultGate";
 
 // ── Data: 20 锦囊 Cards ──────────────────────────────────────────
 const MARKET_CARDS = [
@@ -1075,6 +1080,8 @@ export default function App() {
   const [submissions, setSubmissions] = useState([]);
   const [coachReply, setCoachReply] = useState("");
   const [results, setResults] = useState(null);
+  const [resultLoadError, setResultLoadError] = useState("");
+  const [isLoadingResults, setIsLoadingResults] = useState(false);
   const [statusLine, setStatusLine] = useState("");
   const [teamStatus, setTeamStatus] = useState("forming");
   const [teamMembers, setTeamMembers] = useState([]);
@@ -1119,6 +1126,8 @@ export default function App() {
   const coachInputDraftHydratedRef = useRef(false);
   const coachScrollRef = useRef(null);
   const allowRound1ReviewRef = useRef(false);
+  const requestedStepRef = useRef(0);
+  const teamStatusLoadedRef = useRef(false);
   const round1StrategyDraftTouchedRef = useRef(false);
   const round1VpDraftTouchedRef = useRef(false);
   const userCoachTurns = coachHistory.filter((m) => m.role === "user").length;
@@ -1387,7 +1396,9 @@ export default function App() {
     setTeamId(ctxTeamId);
     setMemberId(ctxMemberId);
     setEntryMode(ctxEntryMode || "classroom");
-    setStep(normalizeStepValue(stepParam, 0));
+    const requestedStep = normalizeStepValue(stepParam, 0);
+    requestedStepRef.current = requestedStep;
+    setStep(requestedStep === 5 ? 0 : requestedStep);
     if (ctxTeamId && ctxMemberId) {
       writeStudentSession({
         ...(stored || {}),
@@ -1400,12 +1411,26 @@ export default function App() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (!teamStatusLoadedRef.current && requestedStepRef.current === 5) return;
     const url = new URL(window.location.href);
     url.searchParams.delete("teamId");
     url.searchParams.delete("memberId");
-    url.searchParams.set("step", String(normalizeStepValue(step, 0)));
+    const normalizedStep = normalizeStepValue(step, 0);
+    requestedStepRef.current = normalizedStep;
+    url.searchParams.set("step", String(normalizedStep));
     window.history.replaceState({}, "", url.toString());
   }, [step]);
+
+  useEffect(() => {
+    setResults(null);
+    setResultLoadError("");
+    setIsLoadingResults(false);
+    teamStatusLoadedRef.current = false;
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      requestedStepRef.current = normalizeStepValue(url.searchParams.get("step"), 0);
+    }
+  }, [teamId]);
 
   useEffect(() => {
     if (!teamId || !memberId) return;
@@ -1480,12 +1505,20 @@ export default function App() {
           }
         }
         allowRound1ReviewRef.current = false;
-        const url = new URL(window.location.href);
-        const requestedStep = normalizeStepValue(url.searchParams.get("step"), 0);
+        const requestedStep = normalizeStepValue(requestedStepRef.current, 0);
         const statusStep = stepFromTeamStatus(status.status, 0);
+        const gatedRequestedStep = gateRequestedRound1Step(requestedStep, statusStep, status.status);
         const nextStep = step === 4 && statusStep === 5
-          ? Math.max(requestedStep, 4)
-          : Math.max(requestedStep, statusStep);
+          ? Math.max(gatedRequestedStep, 4)
+          : Math.max(gatedRequestedStep, statusStep);
+        teamStatusLoadedRef.current = true;
+        if (requestedStep === 5 && statusStep < 5) {
+          requestedStepRef.current = gatedRequestedStep;
+          const url = new URL(window.location.href);
+          url.searchParams.set("step", String(gatedRequestedStep));
+          window.history.replaceState({}, "", url.toString());
+          setResultLoadError("第一轮尚未生成最终结果，已返回当前有效步骤。");
+        }
         if (nextStep !== step && nextStep > 0) setStep(nextStep);
       } catch (error) {
         if (error?.name === "AbortError") return;
@@ -1598,17 +1631,28 @@ export default function App() {
   }, [vpPanelState]);
 
   useEffect(() => {
-    if (step !== 5 || !teamId) return;
+    if (step !== 5 || !teamId || hasCompleteRound1Results(results)) return;
     const controller = new AbortController();
+    setIsLoadingResults(true);
+    setResultLoadError("");
     getResults(teamId, { signal: controller.signal })
-      .then((data) => setResults(data))
+      .then((data) => {
+        if (!hasCompleteRound1Results(data)) {
+          throw new Error("第一轮最终结果不完整，请返回价值主张步骤重新提交。");
+        }
+        setResults(data);
+      })
       .catch((error) => {
         if (error?.name === "AbortError") return;
+        setResultLoadError(error?.message || "第一轮结果加载失败，请重试。");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsLoadingResults(false);
       });
     return () => {
       controller.abort();
     };
-  }, [step, teamId]);
+  }, [results, step, teamId]);
 
   useEffect(() => {
     if (step !== 4) return;
@@ -2072,6 +2116,7 @@ export default function App() {
       return;
     }
     const grid = toGridId(finalCell);
+    let serverFinalized = false;
     try {
       setIsConfirmingVp(true);
       setVpPanelError("");
@@ -2083,6 +2128,10 @@ export default function App() {
         accepted_feedback: Boolean(vpFeedbackRequest),
         ...vpFieldsToApi(confirmedFields)
       });
+      if (out?.finalized !== true || out?.result_ready !== true || out?.team_status !== "phase4") {
+        throw new Error("价值主张已评分，但第一轮最终结果尚未生成，请重试提交。");
+      }
+      serverFinalized = true;
       const nextFields = normalizeEditableVpFields(out?.fields || confirmedFields);
       setVpConfirmedFields(nextFields);
       setVpConfirmedScores(null);
@@ -2090,32 +2139,53 @@ export default function App() {
       setVpFeedbackText(String(out?.feedback_text || out?.feedback || "").trim());
       setVpFeedbackError("");
       setVpPanelState("scored");
-
-      await finalizeDecision(teamId, {
-        grid_id: grid,
-        architecture: finalArch,
-        memberId,
-        conversation_history: [],
-        vp_result: buildVpResultFromConfirmedFields(nextFields)
-      });
-      const latestResults = await getResults(teamId).catch(() => null);
-      if (latestResults) setResults(latestResults);
       setTeamStatus("phase4");
-      setStatusLine("价值主张已提交并锁定。评分结果将在最终复盘时揭示。");
+      setResultLoadError("");
+      const latestResults = await getResults(teamId);
+      if (!hasCompleteRound1Results(latestResults)) {
+        throw new Error("第一轮结果数据不完整，请重试加载。");
+      }
+      setResults(latestResults);
+      setStatusLine("价值主张与第一轮结果已提交并锁定。评分结果将在最终复盘时揭示。");
       setStep(5);
     } catch (e) {
-      setVpPanelError(`提交失败：${formatVpRequestFailure(e)}`);
+      setVpPanelError(serverFinalized
+        ? `第一轮结果已生成，但页面加载失败，请点击继续重试：${e?.message || e}`
+        : `提交失败：${formatVpRequestFailure(e)}`);
     } finally {
       setIsConfirmingVp(false);
     }
   };
 
-  const handleSimplifiedVpContinue = () => {
-    setStep(5);
+  const handleSimplifiedVpContinue = async () => {
+    if (!teamId || isLoadingResults) return;
+    if (!isRound1FinalizedStatus(teamStatus)) {
+      setVpPanelError("第一轮最终结果尚未生成，请重新提交价值主张。");
+      return;
+    }
+    try {
+      setIsLoadingResults(true);
+      setVpPanelError("");
+      setResultLoadError("");
+      const latestResults = await getResults(teamId);
+      if (!hasCompleteRound1Results(latestResults)) {
+        throw new Error("第一轮最终结果不完整，请重新提交价值主张。");
+      }
+      setResults(latestResults);
+      setStep(5);
+    } catch (e) {
+      setVpPanelError(`结果加载失败：${e?.message || e}`);
+    } finally {
+      setIsLoadingResults(false);
+    }
   };
 
   const handleFreeze = async () => {
     if (!teamId || isFreezing) return;
+    if (!hasCompleteRound1Results(results)) {
+      setResultLoadError("第一轮最终结果不完整，当前不能冻结。");
+      return;
+    }
     try {
       setIsFreezing(true);
       await freezeTeam(teamId, memberId);
@@ -2191,7 +2261,8 @@ export default function App() {
   const canStep2 = canStep1 && step1Done;
   const canStep3 = ["phase2", "phase3", "phase4", "frozen"].includes(teamStatus);
   const canStep4 = canStep3 && Boolean(teamCell && teamArch);
-  const canStep5 = ["phase4", "frozen"].includes(teamStatus) || Boolean(results);
+  const round1ResultReady = isRound1FinalizedStatus(teamStatus) && hasCompleteRound1Results(results);
+  const canStep5 = round1ResultReady;
   const maxUnlockedStep = canStep5 ? 5 : canStep4 ? 4 : canStep3 ? 3 : canStep2 ? 2 : canStep1 ? 1 : 0;
   const isReadOnlyReview = step < 5 && canStep5;
   const hasLeaderLock = Boolean(leaderMemberId);
@@ -3184,9 +3255,10 @@ export default function App() {
                   data-testid="vp-continue-btn"
                   type="button"
                   onClick={handleSimplifiedVpContinue}
-                  style={{ width: "100%", padding: "14px 0", fontSize: 15, fontWeight: 700, background: VP_FLOW_COLORS.green, color: VP_FLOW_COLORS.white, border: "none", borderRadius: 8, cursor: "pointer" }}
+                  disabled={isLoadingResults}
+                  style={{ width: "100%", padding: "14px 0", fontSize: 15, fontWeight: 700, background: isLoadingResults ? "#a3b89c" : VP_FLOW_COLORS.green, color: VP_FLOW_COLORS.white, border: "none", borderRadius: 8, cursor: isLoadingResults ? "wait" : "pointer" }}
                 >
-                  继续 →
+                  {isLoadingResults ? "正在加载结果..." : "继续 →"}
                 </button>
               </>
             )}
@@ -3618,7 +3690,50 @@ export default function App() {
         )}
 
         {/* ── Step 5: 结果展示 ── */}
-        {step === 5 && (
+        {step === 5 && !round1ResultReady && (
+          <div style={{
+            background: "#fff",
+            borderRadius: 16,
+            padding: "32px 28px",
+            border: "1px solid #e5e7eb"
+          }}>
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: "#111827", marginTop: 0 }}>
+              📈 第一轮结果
+            </h2>
+            <div style={{
+              padding: "16px 18px",
+              borderRadius: 10,
+              background: resultLoadError ? "#fef2f2" : "#f9fafb",
+              border: resultLoadError ? "1px solid #fecaca" : "1px solid #e5e7eb",
+              color: resultLoadError ? "#b91c1c" : "#4b5563",
+              lineHeight: 1.7
+            }}>
+              {resultLoadError || (isLoadingResults ? "正在加载并校验第一轮最终结果…" : "第一轮最终结果尚未生成。")}
+            </div>
+            {resultLoadError && isRound1FinalizedStatus(teamStatus) && (
+              <button
+                type="button"
+                onClick={handleSimplifiedVpContinue}
+                disabled={isLoadingResults}
+                style={{
+                  marginTop: 16,
+                  width: "100%",
+                  padding: "12px 18px",
+                  borderRadius: 10,
+                  border: "none",
+                  background: isLoadingResults ? "#a3b89c" : "#1a5c3a",
+                  color: "#fff",
+                  fontWeight: 800,
+                  cursor: isLoadingResults ? "wait" : "pointer"
+                }}
+              >
+                {isLoadingResults ? "正在重试..." : "重新加载结果"}
+              </button>
+            )}
+          </div>
+        )}
+
+        {step === 5 && round1ResultReady && (
           <div data-testid="r1-results-container" style={{
             background: "#fff", borderRadius: 16, padding: "32px 28px",
             border: "1px solid #e5e7eb",

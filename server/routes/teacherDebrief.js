@@ -7,8 +7,13 @@ const { buildDataUrl, generateLovotImage } = require("../llm/lovotImageGen");
 const { loadJinangConfig } = require("../multiplayer/jinangDealer");
 const { listTeamIterations } = require("../multiplayer/vpIterationStore");
 const { ensureSessionConfigSchema } = require("../multiplayer/sessionConfig");
+const {
+  PRICE_SCALE,
+  MONEY_SCALE_CONTRACT,
+  scaleStoredMoney
+} = require("../multiplayer/moneyScale");
 const Round2 = require("./round2Routes");
-const PROMPT_CACHE_VERSION = "teacher_debrief_v2";
+const PROMPT_CACHE_VERSION = `teacher_debrief_v3_money_scale_${String(PRICE_SCALE).replace(".", "_")}`;
 const ROUND2_BASE_VARIABLE_COST = 600;
 const TEAM_COLORS = [
   "#E8634A", "#3B82C4", "#2FAB6E", "#D4A03C", "#8B5CF6",
@@ -43,6 +48,32 @@ function safeJsonParse(text, fallback) {
 function toFiniteNumber(value, fallback = null) {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
+}
+
+function firstFiniteNumber(...values) {
+  for (const value of values) {
+    if (value == null || value === "") continue;
+    const num = Number(value);
+    if (Number.isFinite(num)) return num;
+  }
+  return null;
+}
+
+function buildTeacherR1MoneyFields(teamRow) {
+  const samRaw = firstFiniteNumber(teamRow?.final_sam);
+  const wtpAdjRaw = firstFiniteNumber(teamRow?.final_wtp_adj);
+  const sam = scaleStoredMoney(samRaw);
+  const wtpAdj = scaleStoredMoney(wtpAdjRaw);
+  return {
+    sam,
+    samScaled: sam,
+    samRaw,
+    wtpAdj,
+    wtpAdjScaled: wtpAdj,
+    wtpAdjRaw,
+    moneyScale: PRICE_SCALE,
+    moneyScaleContract: MONEY_SCALE_CONTRACT
+  };
 }
 
 function normalizeTeacherCode(value) {
@@ -242,7 +273,7 @@ function csvEscape(value) {
 
 function generateCsv(teams) {
   const headers = [
-    "组名", "格子", "架构", "VP", "C", "G", "E", "Eadj", "SAM", "WTPadj",
+    "组名", "格子", "架构", "VP", "C", "G", "E", "Eadj", "SAM(课堂尺度)", "WTPadj(课堂尺度)",
     "定价", "dCOGS", "卡数", "风险", "产品力", "销量", "利润", "单台利润",
     "毛利率", "研发ROI", "R2最匹配格子", "战略一致"
   ];
@@ -762,6 +793,7 @@ async function buildTeamRecord(teamRow, sessionId, teamIndex) {
   const vpSummary = safeJsonParse(teamRow.final_vp_summary, {}) || {};
   const members = await buildTeamMembers(teamRow.id);
   const vpJourney = await buildVpIterationData(teamRow.id, sessionId, teamRow.final_vp_text);
+  const r1Money = buildTeacherR1MoneyFields(teamRow);
   const r1 = {
     grid: teamRow.final_grid_id || "",
     gridLabel: formatGridLabel(teamRow.final_grid_id),
@@ -777,8 +809,7 @@ async function buildTeamRecord(teamRow, sessionId, teamIndex) {
     E: teamRow.final_vp_e_raw != null ? Number(teamRow.final_vp_e_raw) : Number(rawScores.E || 0),
     Eadj: teamRow.final_vp_e_adj != null ? Number(teamRow.final_vp_e_adj) : Number(rawScores.E || 0),
     VPscore: rawScores.VPscore != null ? Number(rawScores.VPscore) : null,
-    sam: teamRow.final_sam != null ? Number(teamRow.final_sam) : null,
-    wtpAdj: teamRow.final_wtp_adj != null ? Number(teamRow.final_wtp_adj) : null,
+    ...r1Money,
     jinangMatch: await getMarketMatchStrength(teamRow.id),
     vpInitialScore: vpJourney.initialScore,
     vpFinalScore: vpJourney.finalScore,
@@ -807,7 +838,7 @@ async function buildTeamRecord(teamRow, sessionId, teamIndex) {
     : (snapshot?.result?.profit_per_unit ?? null);
   const vscore = toFiniteNumber(volumeLog.Vscore, snapshot?.result?.vscore);
   const evi = toFiniteNumber(snapshot?.radar?.evi, result.evi);
-  const effectiveWtpAdj = toFiniteNumber(result.wtpPrime, result.WTP, r1.wtpAdj);
+  const effectiveWtpAdj = firstFiniteNumber(result.wtpPrime, result.WTP, r1.wtpAdj);
 
   const r2 = {
     // 优先读 submission / result 快照（学生提交时的固化值），log 仅作 fallback。
@@ -972,7 +1003,9 @@ async function buildDebriefData(sessionId) {
     totalStudents: teams.reduce((sum, team) => sum + Number(team.memberCount || 0), 0),
     totalTeams: teams.length,
     teamsSubmittedR1: teams.filter((team) => team.r1?.grid).length,
-    teamsSubmittedR2: teams.filter((team) => team.r2?.price != null && team.r2?.profit != null).length
+    teamsSubmittedR2: teams.filter((team) => team.r2?.price != null && team.r2?.profit != null).length,
+    moneyScale: PRICE_SCALE,
+    moneyScaleContract: MONEY_SCALE_CONTRACT
   };
 
   return { teams, meta };
@@ -988,10 +1021,22 @@ function compactRound1PromptData(data) {
     G: team.r1.G,
     E: team.r1.E,
     Eadj: team.r1.Eadj,
-    SAM: team.r1.sam,
-    WTPadj: team.r1.wtpAdj,
+    SAM_亿元_课堂尺度: team.r1.sam,
+    WTPadj_元_课堂尺度: team.r1.wtpAdj,
     锦囊匹配: team.r1.jinangMatch
   }));
+}
+
+function compactTeamReviewPromptData(team) {
+  const r1 = { ...(team?.r1 || {}) };
+  delete r1.samRaw;
+  delete r1.samScaled;
+  delete r1.wtpAdjRaw;
+  delete r1.wtpAdjScaled;
+  return {
+    ...team,
+    r1
+  };
 }
 
 function compactRound2PromptData(data) {
@@ -1064,6 +1109,7 @@ function buildGlobalPrompt(round, data) {
       "",
       "## 数据",
       JSON.stringify(compactRound1PromptData(data), null, 2),
+      `以上 SAM 与 WTP 均为课堂尺度，money_scale=${PRICE_SCALE}。`,
       "",
       "## 输出格式",
       "",
@@ -1200,7 +1246,7 @@ async function generateTeamReview(teamId, sessionId) {
     "请生成两段文字。",
     "",
     "## 数据",
-    JSON.stringify(team, null, 2),
+    JSON.stringify(compactTeamReviewPromptData(team), null, 2),
     `全班利润范围：${Math.min(...profits, 0)} - ${Math.max(...profits, 0)}`,
     `全班dCOGS范围：${Math.min(...dcogs, 0)} - ${Math.max(...dcogs, 0)}`,
     "",
@@ -1374,6 +1420,10 @@ module.exports = {
     formatGridLabel,
     formatArchitectureLabel,
     generateCsv,
-    computeCsvMetrics
+    computeCsvMetrics,
+    buildTeacherR1MoneyFields,
+    compactRound1PromptData,
+    compactTeamReviewPromptData,
+    PROMPT_CACHE_VERSION
   }
 };

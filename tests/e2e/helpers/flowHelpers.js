@@ -570,6 +570,10 @@ async function runRound1Flow({
     const submitResponse = await submitResponsePromise;
     expect(submitResponse.status()).toBe(200);
     context.round1ScoreResponse = await submitResponse.json();
+    expect(context.round1ScoreResponse?.ok).toBe(true);
+    expect(context.round1ScoreResponse?.finalized).toBe(true);
+    expect(context.round1ScoreResponse?.result_ready).toBe(true);
+    expect(context.round1ScoreResponse?.team_status).toBe("phase4");
     expect(String(context.round1ScoreResponse?.feedback_text || "").trim()).not.toBe("");
     expect("scores" in (context.round1ScoreResponse || {})).toBe(false);
     expect("vp_score" in (context.round1ScoreResponse || {})).toBe(false);

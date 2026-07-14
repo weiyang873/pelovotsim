@@ -2352,7 +2352,7 @@ function handleApi(req, res) {
 
   if (req.method === "POST" && req.url === "/api/round1/vp-submit") {
     return readBody(req)
-      .then((p) => TeamRoutes.confirmAndScoreVp(p))
+      .then((p) => TeamRoutes.submitAndFinalizeRound1Vp(p))
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "round1 vp submit failed" }));
   }

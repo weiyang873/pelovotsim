@@ -15,6 +15,7 @@ const checks = [
   ["node", ["--check", "server/routes/teacherConsole.js"]],
   ["node", ["--check", "server/routes/teacherDebrief.js"]],
   ["node", ["--check", "server/routes/teamRoutes.js"]],
+  ["node", ["--check", "server/multiplayer/moneyScale.js"]],
   ["node", ["--check", "server/multiplayer/round2State.js"]],
   ["node", ["--check", "scripts/ai_simulation_test.js"]],
   ["node", ["--check", "scripts/sim/api_client.js"]],
@@ -26,6 +27,8 @@ const checks = [
   ["node", ["--check", "scripts/test_full_12grid_sim.js"]],
   ["node", ["--check", "scripts/test_full_12grid_ui_sim.js"]],
   ["node", ["tests/round2_extract_interview_result.test.js"]],
+  ["node", ["--test", "tests/round1_result_gate.test.mjs"]],
+  ["node", ["--test", "tests/money_scale_contract.test.js"]],
   ["node", ["tests/teacher_debrief_csv.test.js"]]
 ];
 

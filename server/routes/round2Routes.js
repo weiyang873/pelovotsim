@@ -18,7 +18,6 @@ const {
   computeSoftPenalties,
   getCapabilityParams,
   CAP_GROUPS,
-  PRICE_SCALE,
   GLOBAL_PARAMS,
   computeWTPParams
 } = require("../llm/rdCalculator");
@@ -37,6 +36,11 @@ const {
   buildSummaryModeRadarResult
 } = require("../multiplayer/round2SummaryMode");
 const { getSessionConfig } = require("../multiplayer/sessionConfig");
+const {
+  PRICE_SCALE,
+  MONEY_SCALE_CONTRACT,
+  scaleStoredMoney
+} = require("../multiplayer/moneyScale");
 const TAG_MAP = require("../../data/tag_map_v2_1.json");
 
 const ROOT = path.join(__dirname, "..", "..");
@@ -215,9 +219,36 @@ function matchStrengthToTier(value) {
 }
 
 function scaleRound1MoneyValue(value) {
-  const num = Number(value);
-  if (!Number.isFinite(num) || num <= 0) return null;
-  return Number((num * PRICE_SCALE).toFixed(6));
+  return scaleStoredMoney(value, { positiveOnly: true });
+}
+
+function scaleStudentFacingMoneyValue(value) {
+  return scaleRound1MoneyValue(value);
+}
+
+function buildStudentRound1MoneyView(raw = {}) {
+  const round1Sam = scaleStudentFacingMoneyValue(raw.round1Sam);
+  const round1WtpAdj = scaleStudentFacingMoneyValue(raw.round1WtpAdj);
+  const matchedGridSam = scaleStudentFacingMoneyValue(raw.matchedGridSam);
+  const matchedGridWtpRef = scaleStudentFacingMoneyValue(raw.matchedGridWtpRef);
+  const matchedGridWtpMean = scaleStudentFacingMoneyValue(raw.matchedGridWtpMean);
+  return {
+    round1_sam: round1Sam,
+    round1_sam_scaled: round1Sam,
+    round1_sam_raw: raw.round1Sam ?? null,
+    round1_wtp_adj: round1WtpAdj,
+    round1_wtp_adj_scaled: round1WtpAdj,
+    round1_wtp_adj_raw: raw.round1WtpAdj ?? null,
+    matched_grid_sam: matchedGridSam,
+    matched_grid_sam_scaled: matchedGridSam,
+    matched_grid_sam_raw: raw.matchedGridSam ?? null,
+    matched_grid_wtp_ref: matchedGridWtpRef,
+    matched_grid_wtp_ref_scaled: matchedGridWtpRef,
+    matched_grid_wtp_ref_raw: raw.matchedGridWtpRef ?? null,
+    matched_grid_wtp_mean: matchedGridWtpMean,
+    matched_grid_wtp_mean_scaled: matchedGridWtpMean,
+    matched_grid_wtp_mean_raw: raw.matchedGridWtpMean ?? null
+  };
 }
 
 function clampNumber(value, min, max) {
@@ -2178,7 +2209,7 @@ async function buildRound2Recap(teamId, phase4Body) {
   const sessionConfig = await getSessionConfig(team.session_id || "default");
   const effectiveRound2Status = String(round2State?.r2?.status || team.r2_status || "").trim();
   const revealR1Results = sessionConfig.reveal_r1_results === true || effectiveRound2Status === "R2_SUBMITTED";
-  console.log("[R2] 读取 WTPadj:", Number(team.final_wtp_adj || 0), "来源表:", "teams", "字段:", "final_wtp_adj");
+  console.log("[R2] 读取 WTPadj(raw storage):", Number(team.final_wtp_adj || 0), "来源表:", "teams", "字段:", "final_wtp_adj");
 
   const parsed = parseGridId(team.final_grid_id);
   const ch = normalizeChannels(team.final_channel1, team.final_channel2, team.final_channel1_share);
@@ -2227,18 +2258,25 @@ async function buildRound2Recap(teamId, phase4Body) {
   const marketInfo = getRound2MarketInfo(team.final_grid_id);
   const matchedMarketCount = settleItems.filter((x) => x?.matched && x?.jinang_type === "market").length;
   const matchedTechCount = settleItems.filter((x) => x?.matched && x?.jinang_type === "tech").length;
-  const displayedWtpAdj = Number(phase4Body?.wtp_breakdown?.final_result?.WTPadj || team.final_wtp_adj || 0);
+  const displayedWtpAdjRaw = Number(phase4Body?.wtp_breakdown?.final_result?.WTPadj || team.final_wtp_adj || 0);
   const round1Baseline = buildGridBaselineMetrics(team.final_grid_id, team.final_architecture);
   const storedResult = revealR1Results ? await getStoredResult(teamId, team.session_id || "default") : null;
   const matchedGrid = String(storedResult?.matched_grid || storedResult?.best_grid || "").trim();
   const matchedBaseline = matchedGrid ? buildGridBaselineMetrics(matchedGrid, team.final_architecture) : null;
   const round1MarketLabel = inferBestGridLabel(team.final_grid_id);
-  const round1Sam = team.final_sam != null && team.final_sam !== ""
+  const round1SamRaw = team.final_sam != null && team.final_sam !== ""
     ? Number(team.final_sam)
     : (round1Baseline ? Number(round1Baseline.sam || 0) : null);
-  const round1WtpAdj = displayedWtpAdj > 0
-    ? displayedWtpAdj
+  const round1WtpAdjRaw = displayedWtpAdjRaw > 0
+    ? displayedWtpAdjRaw
     : (team.final_wtp_adj != null && team.final_wtp_adj !== "" ? Number(team.final_wtp_adj) : null);
+  const comparisonMoney = buildStudentRound1MoneyView({
+    round1Sam: round1SamRaw,
+    round1WtpAdj: round1WtpAdjRaw,
+    matchedGridSam: matchedBaseline?.sam,
+    matchedGridWtpRef: matchedBaseline?.wtp_ref,
+    matchedGridWtpMean: matchedBaseline?.wtp_mean
+  });
   const executionAlignment = matchedGrid && team.final_grid_id
     ? (toCalcGridId(team.final_grid_id, team.final_architecture) === matchedGrid ? "aligned" : "shifted")
     : "";
@@ -2263,22 +2301,20 @@ async function buildRound2Recap(teamId, phase4Body) {
         return nextBreakdown;
       })()
     : (phase4Body?.wtp_breakdown || null);
-  console.log("[R2 pricing] 显示给学生的 WTPadj:", displayedWtpAdj);
+  console.log("[R2 pricing] 显示给学生的 WTPadj:", comparisonMoney.round1_wtp_adj, "raw:", displayedWtpAdjRaw);
 
   return {
     r1_results_revealed: revealR1Results,
+    money_scale: PRICE_SCALE,
+    money_scale_contract: MONEY_SCALE_CONTRACT,
     final_grid_id: team.final_grid_id,
     architecture: team.final_architecture || "",
     ...(revealR1Results
       ? {
           round1_grid_label: round1MarketLabel,
-          round1_sam: round1Sam,
-          round1_wtp_adj: round1WtpAdj,
+          ...comparisonMoney,
           matched_grid: matchedGrid || null,
           matched_grid_label: matchedBaseline?.grid_label || "",
-          matched_grid_sam: matchedBaseline?.sam ?? null,
-          matched_grid_wtp_ref: matchedBaseline?.wtp_ref ?? null,
-          matched_grid_wtp_mean: matchedBaseline?.wtp_mean ?? null,
           execution_alignment: executionAlignment,
           execution_alignment_label: executionAlignment === "aligned"
             ? "战略执行一致"
@@ -2318,7 +2354,11 @@ async function buildRound2Recap(teamId, phase4Body) {
     },
     P: pricingContext.default_price,
     Pmax,
-    pricing_context: pricingContext,
+    pricing_context: {
+      ...pricingContext,
+      money_scale: PRICE_SCALE,
+      money_scale_contract: MONEY_SCALE_CONTRACT
+    },
     price_min: pricingContext.price_min,
     price_max: pricingContext.price_max,
     price_step: pricingContext.price_step,
@@ -3563,8 +3603,10 @@ async function buildComputedTeamSnapshot(teamId, sessionId, submissionInput, rad
   const calcGridId = toCalcGridId(recapData.final_grid_id, team?.final_architecture || "");
   console.log("[R2 calc] 传给利润计算的 WTP 相关参数:", {
     recap_WTP: Number(recapData.WTP || 0),
-    team_final_wtp_adj: Number(team?.final_wtp_adj || 0),
-    team_final_wtp_ref: Number(team?.final_wtp_ref || 0),
+    team_final_wtp_adj_raw: Number(team?.final_wtp_adj || 0),
+    team_final_wtp_adj_scaled: scaleRound1MoneyValue(team?.final_wtp_adj),
+    team_final_wtp_ref_raw: Number(team?.final_wtp_ref || 0),
+    team_final_wtp_ref_scaled: scaleRound1MoneyValue(team?.final_wtp_ref),
     team_final_wtp_multiplier: Number(team?.final_wtp_multiplier || 1)
   });
   const calcResult = await calculate({
@@ -5160,6 +5202,8 @@ module.exports = {
     getGridDimensionEvidenceRow,
     requireGridDimensionEvidenceRow,
     buildRound2PricingContextForTeam,
-    validateRound2PriceForTeam
+    validateRound2PriceForTeam,
+    scaleStudentFacingMoneyValue,
+    buildStudentRound1MoneyView
   }
 };

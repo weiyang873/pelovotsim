@@ -1,5 +1,10 @@
 const { runSql, sqlQuote } = require("../db/pgSql");
 const { createTeam, getTeam, setTeamLeader } = require("../multiplayer/teamManager");
+const {
+  PRICE_SCALE,
+  MONEY_SCALE_CONTRACT,
+  addStoredRound1MoneyViews
+} = require("../multiplayer/moneyScale");
 const { flushAll, readLogEntries } = require("../llm/llm_logger");
 const TeacherDebrief = require("./teacherDebrief");
 
@@ -119,7 +124,7 @@ async function listTeams() {
   try {
     const teams = await runSql(`
       SELECT t.id, t.team_name, t.team_size, t.status, t.created_at,
-        t.final_grid_id, t.final_architecture, t.final_sam, t.final_wtp_adj,
+        t.final_grid_id, t.final_architecture, t.final_sam, t.final_wtp_adj, t.final_wtp_ref,
         (COALESCE(t.lovot_image, '') <> '') AS has_lovot_image
       FROM teams t
       ORDER BY t.created_at ASC;
@@ -142,7 +147,7 @@ async function listTeams() {
       `);
 
       result.push({
-        ...team,
+        ...addStoredRound1MoneyViews(team),
         hasLovotImage: Boolean(team.has_lovot_image),
         members,
         submitted_count: Number(submittedCount[0]?.c || 0)
@@ -157,7 +162,8 @@ async function listTeams() {
 
 async function exportResults() {
   try {
-    const teams = await runSql("SELECT * FROM teams ORDER BY created_at ASC;");
+    const teamRows = await runSql("SELECT * FROM teams ORDER BY created_at ASC;");
+    const teams = teamRows.map((team) => addStoredRound1MoneyViews(team));
     const students = await runSql("SELECT * FROM students ORDER BY group_label, student_id;");
     const submissions = await runSql("SELECT * FROM member_submissions ORDER BY team_id, submitted_at;");
     const settlements = await runSql("SELECT * FROM jinang_settlements ORDER BY team_id;");
@@ -167,6 +173,8 @@ async function exportResults() {
     return makeResponse(200, {
       ok: true,
       exported_at: new Date().toISOString(),
+      money_scale: PRICE_SCALE,
+      money_scale_contract: MONEY_SCALE_CONTRACT,
       teams,
       students,
       submissions,

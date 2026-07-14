@@ -164,7 +164,7 @@ interaction: [
     riskNote:"显示模组和动画体验会明显拉高开发复杂度",
     tiers:{ low:{l:"基础",d:"灯效表达",cost:300,nre:115}, mid:{l:"标准",d:"OLED 丰富表情动画",cost:600,nre:191}, high:{l:"旗舰",d:"全彩表情+氛围灯联动",cost:850,nre:306} },
     conflicts:["no_screen"] },
-  { id:"style_pack", n:"表达风格包", what:"让机器人在语气、角色和动作上更有个性", nreDesc:"工业设计师8月+结构6月+动作设计6月+QA3月+外壳开模30万+3D打样+样机",
+  { id:"style_pack", n:"表达风格包", what:"让机器人在语气、角色和动作上更有个性", nreDesc:"工业设计师8月+结构6月+动作设计6月+QA3月+外壳开模9万+3D打样+样机",
     riskNote:"风格做得好很加分，但打磨周期长",
     tiers:{ low:{l:"基础",d:"少量角色与固定语气",cost:120,nre:91}, mid:{l:"标准",d:"多风格切换+动作脚本",cost:250,nre:151}, high:{l:"旗舰",d:"完整角色包+更强表现力",cost:400,nre:242} } },
   { id:"no_screen", n:"无屏降本（删OLED）", what:"去掉屏幕降成本，改用纯语音+灯光", nreDesc:"结构4月+嵌入式3月+QA回归4月+认证2月+结构件打样+重新认证费+回归测试",
@@ -205,7 +205,7 @@ safety: [
   { id:"privacy_trust", n:"隐私与信任保障", what:"数据加密，用户可控制自己的数据", nreDesc:"安全高级8月+嵌入式4月+认证4月+渗透测试+安全认证+SE芯片+样机",
     riskNote:"合规要求明确，但不能只做表面开关",
     tiers:{ low:{l:"基础",d:"本地加密存储",cost:180,nre:64}, mid:{l:"标准",d:"端到端加密+权限面板",cost:350,nre:107}, high:{l:"旗舰",d:"更严格可信架构",cost:520,nre:171} } },
-  { id:"child_safety", n:"儿童安全", what:"更关注碰撞、防夹、材料与儿童使用风险", nreDesc:"硬件6月+结构4月+QA专项6月+认证6月+GB认证15万+跌落测试+材料检测+样机",
+  { id:"child_safety", n:"儿童安全", what:"更关注碰撞、防夹、材料与儿童使用风险", nreDesc:"硬件6月+结构4月+QA专项6月+认证6月+GB认证4.5万+跌落测试+材料检测+样机",
     riskNote:"认证和可靠性测试周期长",
     tiers:{ low:{l:"基础",d:"基础儿童防护",cost:250,nre:68}, mid:{l:"标准",d:"更完整的儿童安全设计",cost:450,nre:113}, high:{l:"旗舰",d:"强化防护与更高认证标准",cost:650,nre:181} } },
   { id:"family_guardian", n:"家庭监护", what:"家长远程查看孩子/老人状态，设置使用边界", nreDesc:"架构师8月+硬件8月+嵌入式6月+后端4月+QA8月+紧急通信认证+可靠性测试+融合套件+样机",
@@ -217,11 +217,11 @@ extend: [
   { id:"cloud_update", n:"云端智能更新（OTA）", what:"自动接收新功能和修复", nreDesc:"后端6月+嵌入式6月+安全3月+QA4月+云服务器+灰度平台+安全芯片+样机",
     riskNote:"灰度和回滚机制能明显降低线上事故",
     tiers:{ low:{l:"基础",d:"手动更新",cost:150,nre:56}, mid:{l:"标准",d:"自动静默+回滚",cost:300,nre:94}, high:{l:"旗舰",d:"灰度发布+更强遥测",cost:480,nre:150} } },
-  { id:"api_iot", n:"API / IoT 联动", what:"连接手机和家里其他设备，做更多场景联动", nreDesc:"IoT8月+后端6月+硬件RF4月+认证4月+协议认证18万+天线外包+网关开发板+样机",
+  { id:"api_iot", n:"API / IoT 联动", what:"连接手机和家里其他设备，做更多场景联动", nreDesc:"IoT8月+后端6月+硬件RF4月+认证4月+协议认证5.4万+天线外包+网关开发板+样机",
     riskNote:"协议兼容和认证测试工作量大",
     tiers:{ low:{l:"基础",d:"少量设备接入",cost:250,nre:68}, mid:{l:"标准",d:"主流平台兼容",cost:450,nre:114}, high:{l:"旗舰",d:"开放 API + 深度联动",cost:680,nre:182} },
     deps:[{tier:"high",type:"需要",target:"privacy_trust",tl:"标准",cross:true}] },
-  { id:"edu_content", n:"教育内容", what:"提供更丰富的学习内容、课程和陪练素材", nreDesc:"前端6月+后端6月+内容运营8月+QA3月+内容授权12万+CMS平台+合规审查+用户测试",
+  { id:"edu_content", n:"教育内容", what:"提供更丰富的学习内容、课程和陪练素材", nreDesc:"前端6月+后端6月+内容运营8月+QA3月+内容授权3.6万+CMS平台+合规审查+用户测试",
     riskNote:"内容持续供给和版权都需要长期投入",
     tiers:{ low:{l:"基础",d:"少量固定内容",cost:200,nre:61}, mid:{l:"标准",d:"更系统的内容库",cost:380,nre:102}, high:{l:"旗舰",d:"可持续运营的内容平台",cost:580,nre:163} } }
 ],
@@ -232,7 +232,7 @@ ops: [
   { id:"remote_monitor", n:"远程监控", what:"远程查看设备状态、异常和运行日志", nreDesc:"后端8月+嵌入式4月+QA3月+认证2月+云平台+通信认证+样机",
     riskNote:"云端监控能省售后，但也要做好权限边界",
     tiers:{ low:{l:"基础",d:"基础状态上报",cost:200,nre:47}, mid:{l:"标准",d:"实时监控+日志分析",cost:380,nre:78}, high:{l:"旗舰",d:"更强告警与远程处置",cost:580,nre:125} } },
-  { id:"predictive_maint", n:"预测性维护", what:"在坏掉前就预警，减少突然故障", nreDesc:"ML高级10月+嵌入式6月+数据工程6月+QA6月+GPU算力+长期测试15万+传感器+样机",
+  { id:"predictive_maint", n:"预测性维护", what:"在坏掉前就预警，减少突然故障", nreDesc:"ML高级10月+嵌入式6月+数据工程6月+QA6月+GPU算力+长期测试4.5万+传感器+样机",
     riskNote:"需要长期数据和更多传感器支持，开发周期长",
     tiers:{ low:{l:"基础",d:"简单预警规则",cost:350,nre:103}, mid:{l:"标准",d:"基于数据的预警模型",cost:650,nre:172}, high:{l:"旗舰",d:"更完整的预测维护体系",cost:950,nre:275} } }
 ]
@@ -671,20 +671,34 @@ function normalizeScoreValue(value) {
   return Math.max(0, Math.min(5, Math.round(n * 10) / 10));
 }
 
+function firstFiniteNumber(...values) {
+  for (const value of values) {
+    if (value == null || value === "") continue;
+    const num = Number(value);
+    if (Number.isFinite(num)) return num;
+  }
+  return null;
+}
+
 function formatRecapComparison(recap) {
   const src = recap && typeof recap === "object" ? recap : {};
+  const round1Sam = firstFiniteNumber(src.round1_sam_scaled, src.round1_sam);
+  const round1WtpAdj = firstFiniteNumber(src.round1_wtp_adj_scaled, src.round1_wtp_adj);
+  const matchedSam = firstFiniteNumber(src.matched_grid_sam_scaled, src.matched_grid_sam);
+  const matchedWtpRef = firstFiniteNumber(src.matched_grid_wtp_ref_scaled, src.matched_grid_wtp_ref);
+  const matchedWtpMean = firstFiniteNumber(src.matched_grid_wtp_mean_scaled, src.matched_grid_wtp_mean);
   return {
     round1: {
       gridLabel: String(src.round1_grid_label || formatGridLabel(src.final_grid_id) || "待揭示").trim() || "待揭示",
-      sam: Number.isFinite(Number(src.round1_sam)) ? `${Math.round(Number(src.round1_sam)).toLocaleString()} 亿` : "待揭示",
-      wtp: Number.isFinite(Number(src.round1_wtp_adj)) ? `¥${Math.round(Number(src.round1_wtp_adj)).toLocaleString()}` : "待揭示"
+      sam: round1Sam != null ? `${Math.round(round1Sam).toLocaleString()} 亿` : "待揭示",
+      wtp: round1WtpAdj != null ? `¥${Math.round(round1WtpAdj).toLocaleString()}` : "待揭示"
     },
     round2: {
       gridLabel: String(src.matched_grid_label || "待揭示").trim() || "待揭示",
-      sam: Number.isFinite(Number(src.matched_grid_sam)) ? `${Math.round(Number(src.matched_grid_sam)).toLocaleString()} 亿` : "待揭示",
-      wtp: Number.isFinite(Number(src.matched_grid_wtp_ref)) ? `¥${Math.round(Number(src.matched_grid_wtp_ref)).toLocaleString()}` : "待揭示",
-      detail: Number.isFinite(Number(src.matched_grid_wtp_mean))
-        ? `WTPmean ¥${Math.round(Number(src.matched_grid_wtp_mean)).toLocaleString()}`
+      sam: matchedSam != null ? `${Math.round(matchedSam).toLocaleString()} 亿` : "待揭示",
+      wtp: matchedWtpRef != null ? `¥${Math.round(matchedWtpRef).toLocaleString()}` : "待揭示",
+      detail: matchedWtpMean != null
+        ? `WTPmean ¥${Math.round(matchedWtpMean).toLocaleString()}`
         : ""
     },
     alignmentLabel: String(src.execution_alignment_label || "").trim(),

@@ -1454,11 +1454,11 @@ function PricingQualityCard({ teams }) {
   const rows = teams
     .map((team) => {
       const price = Number(team?.r2?.price);
-      const wtp = Number(team?.r1?.wtpAdj);
+      const wtp = Number(team?.r2?.wtpAdj ?? team?.r1?.wtpAdj);
       const ratio = price > 0 && wtp > 0 ? price / wtp : null;
       return { team, price, wtp, ratio };
     })
-    .filter((item) => Number.isFinite(Number(item.ratio)))
+    .filter((item) => item.ratio != null && Number.isFinite(Number(item.ratio)))
     .sort((a, b) => a.ratio - b.ratio);
 
   const scaleMax = Math.max(1.2, ...rows.map((row) => Number(row.ratio || 0)));

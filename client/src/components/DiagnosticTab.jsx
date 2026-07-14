@@ -95,18 +95,21 @@ export function diagnoseTeam(team) {
   );
 
   const actualGm = Number(r2.actualGm);
-  const wtpAdj = Number(r1.wtpAdj ?? r2.wtpAdj);
+  const marketWtpAdj = Number(r1.wtpAdj ?? r2.wtpAdj);
+  const pricingWtpAdj = Number(r2.wtpAdj ?? r1.wtpAdj);
   const evi = Number(r2.evi);
   const coverCore = Number(r2.coverCore);
   const price = Number(r2.price);
   const dCOGS = Number(r2.dCOGS);
   const cardCount = Number(r2.cardCount);
-  const priceRatio = Number.isFinite(price) && Number.isFinite(wtpAdj) && wtpAdj > 0 ? price / wtpAdj : null;
+  const priceRatio = Number.isFinite(price) && Number.isFinite(pricingWtpAdj) && pricingWtpAdj > 0
+    ? price / pricingWtpAdj
+    : null;
   const uncoveredCoreTags = Array.isArray(causalDetail.uncoveredCoreTags) ? causalDetail.uncoveredCoreTags : [];
 
   const ceilingBroken =
     (Number.isFinite(actualGm) && actualGm < 0.20) ||
-    (Number.isFinite(wtpAdj) && wtpAdj < 4000);
+    (Number.isFinite(marketWtpAdj) && marketWtpAdj < 4000);
 
   const driftBroken = Boolean(r1.grid && r2.bestGrid && r1.grid !== r2.bestGrid);
   const interviewBroken = Number.isFinite(evi) && evi < 0.70;
@@ -123,7 +126,7 @@ export function diagnoseTeam(team) {
       ok: !ceilingBroken,
       value: formatPercent(actualGm, 0),
       note: ceilingBroken
-        ? `GM${formatPercent(actualGm, 0)} / WTP${formatMoney(wtpAdj)}`
+        ? `GM${formatPercent(actualGm, 0)} / WTP${formatMoney(marketWtpAdj)}`
         : null
     },
     {

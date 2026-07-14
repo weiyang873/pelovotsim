@@ -38,6 +38,10 @@ const {
 } = require("../multiplayer/round2State");
 const { computeJinangWtpBonus } = require("../multiplayer/jinangCoeff");
 const { getSessionConfig } = require("../multiplayer/sessionConfig");
+const {
+  addScaledMoneyFields,
+  scaleStoredMoney
+} = require("../multiplayer/moneyScale");
 
 const ROOT = path.join(__dirname, "..", "..");
 const CONFIG_DIR = path.join(ROOT, "game_config_v0.1");
@@ -140,7 +144,15 @@ function toStudentFacingMatch(item) {
 function sanitizeStudentR1Result(result) {
   if (!result || typeof result !== "object") return result;
   const { jinang_match_strength, ...rest } = result;
-  return rest;
+  return addScaledMoneyFields(rest, [
+    "SAM_billion",
+    "WTPmean",
+    "WTPmedian",
+    "WTPref",
+    "WTPadj",
+    "WTPadj_raw",
+    "WTPref_adjusted"
+  ]);
 }
 
 function sanitizeStudentSettle(settle) {
@@ -168,6 +180,7 @@ function sanitizeStudentSettle(settle) {
 
 const DEFERRED_SENSITIVE_KEY_SET = new Set([
   "SAM_billion",
+  "SAM_billion_scaled",
   "WTPmedian",
   "WTPmean",
   "WTPref",
@@ -591,7 +604,8 @@ function buildRound1Outcome(gridId, architecture, rawScores, marketMatchStrength
           N: marketSize,
           Aw: roundForLog(gridCfg.Aw || 0),
           WTPmean: roundForLog(wtpParams.WTPmean),
-          SAM_billion: Number(base?.SAM_billion || 0)
+          SAM_billion: scaleStoredMoney(base?.SAM_billion) || 0,
+          SAM_billion_raw: Number(base?.SAM_billion || 0)
         }
       },
       {
@@ -613,12 +627,14 @@ function buildRound1Outcome(gridId, architecture, rawScores, marketMatchStrength
       {
         stage: "r1_wtp_adj",
         params: {
-          WTPref: Number(WTPref || 0),
+          WTPref: scaleStoredMoney(WTPref) || 0,
+          WTPref_raw: Number(WTPref || 0),
           lambda_G: roundForLog(lambdaG),
           lambda_Eadj: roundForLog(lambdaE),
           wtp_mult_raw: roundForLog(wtpMultiplier),
           wtp_mult_compressed: roundForLog(compressedMult),
-          WTPref_adjusted: Number(WTPadj || 0)
+          WTPref_adjusted: scaleStoredMoney(WTPadj) || 0,
+          WTPref_adjusted_raw: Number(WTPadj || 0)
         }
       }
     ]);
@@ -676,8 +692,10 @@ function scheduleFinalRound1Stages(context, outcome, options = {}) {
         lambda_Eadj: roundForLog(outcome.lambda_E),
         wtp_mult_raw: roundForLog(outcome.wtp_multiplier),
         wtp_mult_compressed: roundForLog(outcome.wtp_mult_compressed),
-        WTPref: Number(outcome.WTPref || 0),
-        WTPref_adjusted: Number(outcome.WTPadj || 0),
+        WTPref: scaleStoredMoney(outcome.WTPref) || 0,
+        WTPref_raw: Number(outcome.WTPref || 0),
+        WTPref_adjusted: scaleStoredMoney(outcome.WTPadj) || 0,
+        WTPref_adjusted_raw: Number(outcome.WTPadj || 0),
         vp_text: vpText
       }
     },
@@ -685,10 +703,12 @@ function scheduleFinalRound1Stages(context, outcome, options = {}) {
       stage: "r1_wtp_adj_final",
       params: {
         is_final: true,
-        WTPref: Number(outcome.WTPref || 0),
+        WTPref: scaleStoredMoney(outcome.WTPref) || 0,
+        WTPref_raw: Number(outcome.WTPref || 0),
         wtp_mult_raw: roundForLog(outcome.wtp_multiplier),
         wtp_mult_compressed: roundForLog(outcome.wtp_mult_compressed),
-        WTPref_adjusted: Number(outcome.WTPadj || 0)
+        WTPref_adjusted: scaleStoredMoney(outcome.WTPadj) || 0,
+        WTPref_adjusted_raw: Number(outcome.WTPadj || 0)
       }
     }
   ]);
@@ -2601,6 +2621,11 @@ async function finalizePhase3(teamId, body) {
     const sessionId = latestSession?.sessionId || await getOrCreatePhase3Session(teamId);
     const session = latestSession || await getSession(sessionId);
     const draft = await readRound1TeamDraft(teamId).catch(() => null);
+    const persistedConfirmation = await readPersistedPhase3Confirmation(
+      teamId,
+      memberId,
+      String(team?.leader_member_id || "").trim()
+    ).catch(() => null);
     const vpSummary = await summarizeVpFromConversation({
       gridId,
       architecture: arch,
@@ -2621,15 +2646,22 @@ async function finalizePhase3(teamId, body) {
     const finalArch = confirmedArch && confirmedArch !== arch ? confirmedArch : arch;
     const archSource = confirmedArch && confirmedArch !== arch ? "coach_confirmed" : "player_selected";
 
+    const persistedScores = scorerScoresToApi(persistedConfirmation?.scores || null);
     const payloadScores = normalizeVpScoresInput(payload.scores);
     const sessionScores = vpResultToApiScores(session?.pmfScore || null);
-    const finalScores = payloadScores || sessionScores || emptyApiScores();
+    const finalScores = persistedScores || payloadScores || sessionScores;
+    if (!finalScores) {
+      return makeResponse(409, {
+        ok: false,
+        error: "vp scores missing; submit and score the value proposition before finalizing"
+      });
+    }
     const confirmedFields = payload.confirmed_fields && typeof payload.confirmed_fields === "object"
       ? (() => {
           const normalized = normalizeConfirmedFieldsPayload(payload.confirmed_fields);
           return Object.values(normalized).some((value) => String(value || "").trim()) ? normalized : null;
         })()
-      : vpResultToConfirmedFields(payload.vp_result || null, finalVpText);
+      : (persistedConfirmation?.fields || vpResultToConfirmedFields(payload.vp_result || null, finalVpText));
     const confirmedAt = confirmedFields ? new Date().toISOString() : null;
     const finalVpSummary = normalizeVpSummaryPayload(vpSummary, {
       fallbackText: finalVpText,
@@ -2742,6 +2774,72 @@ async function finalizePhase3(teamId, body) {
     });
   } catch (e) {
     return makeResponse(400, { ok: false, error: e.message });
+  }
+}
+
+async function submitAndFinalizeRound1Vp(body) {
+  const payload = body || {};
+  const teamId = String(payload.team_id || payload.teamId || "").trim();
+  const memberId = String(payload.member_id || payload.memberId || "").trim();
+  if (!teamId || !memberId) {
+    return makeResponse(400, { ok: false, error: "team_id/member_id required" });
+  }
+
+  const confirmation = await confirmAndScoreVp(payload);
+  if (confirmation.status !== 200) return confirmation;
+
+  try {
+    const team = await getTeam(teamId);
+    if (!team) return makeResponse(404, { ok: false, error: "team not found" });
+    const draft = await readRound1TeamDraft(teamId).catch(() => null);
+    const persisted = await readPersistedPhase3Confirmation(
+      teamId,
+      memberId,
+      String(team.leader_member_id || "").trim()
+    );
+    const gridId = String(
+      payload.grid_id || payload.gridId || draft?.grid_id || team.final_grid_id || ""
+    ).trim();
+    const architecture = normalizeArchitecture(
+      payload.architecture || draft?.architecture || team.final_architecture || ""
+    );
+    if (!gridId || !architecture || !persisted?.fields || !persisted?.scores) {
+      return makeResponse(409, {
+        ok: false,
+        error: "value proposition confirmation is incomplete; retry the final submission"
+      });
+    }
+
+    const finalized = await finalizePhase3(teamId, {
+      grid_id: gridId,
+      architecture,
+      memberId,
+      conversation_history: [],
+      vp_text: persisted.vp_text,
+      confirmed_fields: persisted.fields,
+      scores: persisted.scores,
+      vp_result: buildConfirmedVpResult(persisted.fields, persisted.scores),
+      source_iteration: "simplified_vp_submit"
+    });
+    if (finalized.status !== 200) {
+      return makeResponse(finalized.status || 409, {
+        ok: false,
+        error: finalized.body?.error || "final round1 result generation failed"
+      });
+    }
+
+    return makeResponse(200, {
+      ...confirmation.body,
+      ok: true,
+      finalized: true,
+      result_ready: true,
+      team_status: "phase4"
+    });
+  } catch (e) {
+    return makeResponse(409, {
+      ok: false,
+      error: e.message || "final round1 result generation failed"
+    });
   }
 }
 
@@ -2992,6 +3090,7 @@ async function phase4Data(teamId, options = {}) {
       wtp_breakdown: studentData?.wtp_breakdown
         ? {
             ...studentData.wtp_breakdown,
+            base_result: sanitizeStudentR1Result(studentData.wtp_breakdown.base_result),
             final_result: sanitizeStudentR1Result(studentData.wtp_breakdown.final_result)
           }
         : studentData?.wtp_breakdown,
@@ -3277,6 +3376,7 @@ module.exports = {
   extractVpFieldsApi,
   round1VpFeedbackApi,
   confirmAndScoreVp,
+  submitAndFinalizeRound1Vp,
   generateVpFeedbackApi,
   finalizePhase3,
   phase3State,
@@ -3294,5 +3394,6 @@ module.exports = {
   buildRound1Outcome,
   vpResultToApiScores,
   buildVpResultScoringText,
-  vpResultToConfirmedFields
+  vpResultToConfirmedFields,
+  sanitizeStudentR1Result
 };

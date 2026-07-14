@@ -10,6 +10,7 @@ const {
   getCapabilityParams,
   resolveTierNreWan
 } = require("../server/llm/rdCalculator");
+const Round2Routes = require("../server/routes/round2Routes");
 
 function approx(actual, expected, tolerance = 1e-9) {
   return Math.abs(Number(actual) - Number(expected)) <= tolerance;
@@ -41,6 +42,10 @@ test("round2 PRICE_SCALE is loaded and applied to WTP anchor", () => {
 
   const wtp = computeWTPParams("ToC_DIFF_ELDER");
   assert.equal(wtp.WTPref >= 3600 && wtp.WTPref <= 5700, true, `WTPref=${wtp.WTPref}`);
+});
+
+test("student-facing R1 money display uses round2 PRICE_SCALE", () => {
+  assert.equal(Round2Routes.__test.scaleStudentFacingMoneyValue(19990), 5997);
 });
 
 test("round2 PRICE_SCALE preserves gross margin and BEQ ratios", () => {
