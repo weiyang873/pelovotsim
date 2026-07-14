@@ -1,0 +1,50 @@
+{
+  "run_id": "bandwidth_layer_pilot_v1_2026-07-14",
+  "generated_at": "2026-07-14T15:33:46.248Z",
+  "git_head": "f339d780dd6631e2cea2213faac1eb957965afe4",
+  "rows_total": 4,
+  "latest_rows": 4,
+  "ok_rows": 4,
+  "matrix": "2 persona × {B bandwidth, F full_game_v2_reused} × 1",
+  "bandwidth_params": {
+    "B0": 20,
+    "lambda": 3,
+    "B_min": 8,
+    "recency_weight": 1.2,
+    "stack_summary_stages": [
+      "D4",
+      "D5"
+    ],
+    "stack_summary_max_chars": 50
+  },
+  "f_condition_reuse": {
+    "source_run_id": "full_game_all_personas_v2_2026-07-14",
+    "source_jsonl": "scripts/analysis/full_game_all_personas_v2_2026-07-14.jsonl",
+    "apparatus_consistency": "F reuses full_game v2 latest OK rows: same info-set aligned prompts, same run device, same jinang draw; bandwidth hook is absent in F."
+  },
+  "b_condition": {
+    "prompt_info_set_assertion": "R1/D3/D4/D5 prompts are asserted by full_game_all_personas.js assertInfoSet before LLM calls.",
+    "bandwidth_only_subtracts": true,
+    "audit_path": "scripts/analysis/bandwidth_layer_pilot_v1_2026-07-14_audit.json"
+  },
+  "persona_map_sha256": {
+    "草根老板": "956b0ff7c29a40924bfec8a9d10679ca75645cfee82ad2a5eae72694a36ef941",
+    "二代接班人": "faf422d5a87097922ff6a00cc5a9bb3016dd4cf935fa37e077b642074682ebcc"
+  },
+  "config_sha256": {
+    "docs/CODEX_BANDWIDTH_LAYER_PILOT.md": "6452d00b56c6e07171ed56185fd6659557bbb376654dcaf0c6d87675f09ca513",
+    "docs/CODEX_INFO_SET_ALIGNMENT.md": "1dc28cde899df68ab00d1ae93861af1e6bc0685533a16aaf73418f776c0c1a0a",
+    "scripts/analysis/bandwidth_layer_pilot.js": "12c15bf978c8afbf88a43b2e815637b5f400ac04a199365716c1fda90cd420c4",
+    "scripts/analysis/bandwidth_layer.js": "cc6b533334e980059202934652fd73c6f1d3f06e28faf35aa1a211f27bf9cba2",
+    "scripts/analysis/full_game_all_personas.js": "2a75e8c89706c1fb29b301e27044e669ea1a42d486d72f2a501a6d1c73bf1de1",
+    "scripts/analysis/info_set_assert.js": "ca50c4a5a6455c52e5f4e15aa2184e3afb111cd179163f079d38e3b27de32194",
+    "scripts/analysis/full_game_all_personas_v2_2026-07-14.jsonl": "bbcdacc8907169a56e93cedb8b1f7bf493e8d7ad58d939db5fddf8720c605d02",
+    "scripts/analysis/full_game_all_personas_v2_2026-07-14_meta.json": "7e29add1118e15758c3553409a182c3335ebd8cb258749f40052226f9bc31098"
+  },
+  "output_sha256": {
+    "jsonl": "4c0896e247adfe6391ec936a79bf03f521bb6c7ec96f3f8909edbb286eda2977",
+    "summary": "9e1f3e2a61ea367fd55ca4a3fa765ad16f25c83f1d8b4e9bc72f3c34fdf38aa1",
+    "raw_samples": "9dd2a70d3f9f498a824d573bb415a2dc8a0dad407455e551d5979b601a1a3cc6",
+    "audit": "35306c0d4a748208225129930306a348abfc8b2bf16088f29ff6394ec09a6655"
+  }
+}
