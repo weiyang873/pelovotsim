@@ -1,0 +1,91 @@
+{
+  "runId": "chain_map_search_effort_v1_2026-07-14",
+  "createdAt": "2026-07-14T02:38:07.558Z",
+  "paths": {
+    "jsonl": "/Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/scripts/analysis/chain_map_search_effort_v1_2026-07-14.jsonl",
+    "summary": "/Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/scripts/analysis/chain_map_search_effort_v1_2026-07-14_summary.md",
+    "samples": "/Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/scripts/analysis/chain_map_search_effort_v1_2026-07-14_raw_samples.md",
+    "meta": "/Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/scripts/analysis/chain_map_search_effort_v1_2026-07-14_meta.json"
+  },
+  "gitCommit": "6f7317202b7c359e12bac52c3c4f62479cb796c0",
+  "gitCommitObjectSha256": "63580166e39b90f4f30cb06b6999497b1f343d1e91cfd363206cd73c5e55842a",
+  "gitStatusPorcelainSha256": "e28267cc949bf98d7b092150142031eae297dcdaa8289fdc13d95002570cdebb",
+  "script": {
+    "file": "scripts/analysis/chain_map_search_effort.js",
+    "sha256": "e7199be61c5ecba152db37d0c61908e70e76ee88dae7920e261ee697f27b48ab",
+    "executionSha256": "57478d7f4ea0bce40cafdc2894cb3c79959733fb09a9d115bf2bd929c2018655"
+  },
+  "reference": {
+    "runId": "chain_map_engine_pilot_v5_2026-07-14",
+    "file": "scripts/analysis/chain_map_engine_pilot_v5_2026-07-14.jsonl",
+    "sha256": "5c4f9f4f08c27f090bd8088af524abb98374650ca79e35de79ec2c6d87c6e013",
+    "chains": 2
+  },
+  "inputs": {
+    "personaReports": {
+      "file": "game_config_v0.1/persona_reports_v1.1.json",
+      "sha256": "900da996382e5eb5e2104e4da6871ceab861418ba1f3258931fa4691de431623"
+    },
+    "capabilityGroups": {
+      "file": "data/capability_groups_v2.json",
+      "sha256": "89d38b8f4fba9d2ee5cd2ba398b4f4e449a27a6aedc70224375590db02fd28a3"
+    },
+    "compatibilityRules": {
+      "file": "data/compatibility_rules_v2.json",
+      "sha256": "0c6cf08d59c2ae5d5d08cc5d625b059b495215a877d11718dc3aa027a1e26930"
+    },
+    "maps": {
+      "草根老板": {
+        "file": "scripts/analysis/cognitive_map_caogen_min.json",
+        "sha256": "40d8de670d52d202a344232ddd33099f755f92c6479501d07fc988371ea26f3d"
+      },
+      "二代接班人": {
+        "file": "scripts/analysis/cognitive_map_erdai_min.json",
+        "sha256": "97fa4be7f5bdced117e53eae1646b5ed18286ffc0ee1535770574d3989265151"
+      }
+    }
+  },
+  "condition": "M",
+  "reps": 3,
+  "temperature": 0.45,
+  "requestedChains": 6,
+  "completedChains": 6,
+  "failedChains": 0,
+  "decisionCalls": 39,
+  "invalidReferences": 0,
+  "invalidReferenceDetails": [],
+  "effortRules": {
+    "map_reference_breadth": "unique valid map source ids, cumulative through the current step",
+    "constraint_stack_complexity": "current constraint output count; D5 carries D4 because D5 has no constraint field",
+    "theme_breadth": "distinct THEME_RULES hit by this step's constraint output; D5 is zero because it emits no new constraints",
+    "card_breadth": "D4 card count and distinct real capability groups; zero outside D4",
+    "reasoning_text_length": "Unicode code-point length for D3 market_judgment, D4 cost_stance.text, D5 reasoning; zero elsewhere"
+  },
+  "decision": {
+    "cardComparison": {
+      "heirHigher": 3,
+      "grassHigher": 0,
+      "equal": 0,
+      "pairs": 3
+    },
+    "nonD4Comparison": {
+      "heirHigher": 11,
+      "grassHigher": 5,
+      "equal": 20,
+      "pairs": 36
+    },
+    "themeComparison": {
+      "heirHigher": 11,
+      "grassHigher": 0,
+      "equal": 1,
+      "pairs": 12
+    },
+    "constraintComparison": {
+      "heirHigher": 0,
+      "grassHigher": 5,
+      "equal": 7,
+      "pairs": 12
+    },
+    "observation": "effort 分化不只集中在 D4：二代在 D1-D4 的语义主题广度和 D4 选卡广度上呈稳定更广方向；但约束条数没有同步增加，因此支持的是“语义/选择广度”这条全链倾向，不支持“所有 effort 代理都更高”。"
+  }
+}
