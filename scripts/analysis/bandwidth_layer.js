@@ -175,6 +175,7 @@ class BandwidthLayer {
       audit: {
         call_id: callId,
         stage,
+        audit_created_at: new Date().toISOString(),
         task_description: taskDescription,
         focus_text: focusText,
         stack_len: stack.length,
