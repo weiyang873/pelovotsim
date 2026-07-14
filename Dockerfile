@@ -1,4 +1,4 @@
-FROM node:20-bookworm-slim AS frontend-build
+FROM node:20.20.2-bookworm-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0 AS frontend-build
 WORKDIR /app/client
 
 COPY client/package*.json ./
@@ -7,7 +7,7 @@ RUN npm ci
 COPY client/ ./
 RUN npm run build
 
-FROM node:20-bookworm-slim AS backend-deps
+FROM node:20.20.2-bookworm-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0 AS backend-deps
 WORKDIR /app
 
 RUN apt-get update \
@@ -16,9 +16,10 @@ RUN apt-get update \
 
 COPY package*.json ./
 RUN npm ci --omit=dev \
+  && npm rebuild nodejieba --build-from-source \
   && npm cache clean --force
 
-FROM node:20-bookworm-slim
+FROM node:20.20.2-bookworm-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0
 WORKDIR /app
 
 ARG GIT_COMMIT=unknown
