@@ -1,0 +1,44 @@
+{
+  "run_id": "full_game_all_personas_v1_2026-07-14",
+  "generated_at": "2026-07-14T07:21:35.900Z",
+  "git_head": "f339d780dd6631e2cea2213faac1eb957965afe4",
+  "script_sha256": "fa3447b5c2cda13a79cf66ccf3a836d5fe3ef22fa42c4bc11a0e4859b724c25c",
+  "rows_total": 21,
+  "latest_rows": 7,
+  "ok_rows": 7,
+  "money_scale": {
+    "PRICE_SCALE": 0.3,
+    "MONEY_SCALE_CONTRACT": "raw-db-scaled-api-v1@0.3"
+  },
+  "d3_device_note": "Dynamic persona summary generated from the actual selected grid via server/llm/personaGenerator.js; not directly comparable to fixed-report bench D3.",
+  "map_sha256": {
+    "草根老板": "956b0ff7c29a40924bfec8a9d10679ca75645cfee82ad2a5eae72694a36ef941",
+    "二代接班人": "faf422d5a87097922ff6a00cc5a9bb3016dd4cf935fa37e077b642074682ebcc",
+    "体制转型者": "322408d954f20a4bc7f4d9680777e5cfc9d21247fe223a6c20fff6406efb78dd",
+    "职业经理人": "eff9c147034ba2b49d7e283f0274aff7e0d855ddd8a91e85079016cd8e5131e8",
+    "销售铁军": "71d37121a47415aa86ad3ea31a9e165ab60eb9a3b43a10ee08d94944b4d3a1cb",
+    "技术创业者": "c392c42d255e29f1982874baa20711163dc225807a51c514ac45414ec1eb6a7f",
+    "互联网PM转型": "03ed4036c3389750193d475fa84e789a59d45a5b8ccad6fa6b7750590568d9d3"
+  },
+  "config_sha256": {
+    "docs/CODEX_FULL_GAME_ALL_PERSONAS.md": "903da415ce11b1a48ef331d1e7f64227a4bf5e7b0610c46575f85bd5ea912d6d",
+    "docs/CODEX_AI_GENERATED_PERSONA_MAPS.md": "e8122ddb96122853feb35759bd713ee105babaeda64e5d8959d706982bfbea94",
+    "scripts/analysis/ai_generated_persona_maps_v2_2026-07-14_maps.json": "65cb2bde354abe0cf12685debe5ae025b79471dbb1965507e4e8d2cbf16cfeeb",
+    "data/capability_groups_v2.json": "89d38b8f4fba9d2ee5cd2ba398b4f4e449a27a6aedc70224375590db02fd28a3",
+    "data/compatibility_rules_v2.json": "0c6cf08d59c2ae5d5d08cc5d625b059b495215a877d11718dc3aa027a1e26930",
+    "data/tag_map_v2_1.json": "bfc9e1790c719946c31f302121f18066dd0e8d58e63e8b83b96dbd1cf0747dd7",
+    "data/round2_dim_anchors_v1.json": "416fad4b35daee92a97bd5206762e9db919f29d7700a9c9b956d55eb464aa2e9",
+    "data/grid_priors_v4_cap_weights.json": "e6083550fbd1e65bb8c516374d6ef04aee11fc8677655bc29c32d2644f57c784",
+    "game_config_v0.1/round1_gm_model.json": "7bf19b3a4a0128de56574e74b15dcc0d5cb38f5c17921c71042b7779fdfa42e4",
+    "game_config_v0.1/round2_engine_params.json": "300269eba0ee1c43b9a1de560472ffe17f8d54deea4bef19b4fbd421f9284538",
+    "game_config_v0.1/jinang_cards_v2.json": "087060d0a3543fb013056d0456a375b802e1ea68a034fe675a7294ce8ffd89ef"
+  },
+  "assumptions": {
+    "single_member_team": true,
+    "condition": "M",
+    "n_per_persona": 1,
+    "no_server_or_ui": true,
+    "target_gm_propagation": "target_gm is carried into D5 prompt and calculate metadata; current rdCalculator.calculate uses P/Pmax/WTPref_override/wtp_multiplier, not target_gm directly.",
+    "jinang_random_draw": "market+tech drawn from production jinang_cards_v2 config in an independent DB-free script."
+  }
+}
