@@ -1,0 +1,74 @@
+{
+  "runId": "chain_map_engine_pilot_v5_2026-07-14",
+  "createdAt": "2026-07-13T18:48:42.173Z",
+  "paths": {
+    "jsonl": "/Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/scripts/analysis/chain_map_engine_pilot_v5_2026-07-14.jsonl",
+    "summary": "/Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/scripts/analysis/chain_map_engine_pilot_v5_2026-07-14_summary.md",
+    "samples": "/Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/scripts/analysis/chain_map_engine_pilot_v5_2026-07-14_raw_samples.md",
+    "meta": "/Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/scripts/analysis/chain_map_engine_pilot_v5_2026-07-14_meta.json"
+  },
+  "gitCommit": "6f7317202b7c359e12bac52c3c4f62479cb796c0",
+  "gitCommitObjectSha256": "63580166e39b90f4f30cb06b6999497b1f343d1e91cfd363206cd73c5e55842a",
+  "gitStatusPorcelainSha256": "e54eb44185f68158dfda02de6e7ed841578011d34493cfc556e2419f995aed45",
+  "script": {
+    "file": "scripts/analysis/chain_map_engine_pilot.js",
+    "sha256": "0ad13ed6bcb37ff3c3fce4be48717390bdfa36c708b6350af46f6b030ad4a84a"
+  },
+  "executionScriptSha256": "d166dd66c9284816ab54a81d1cb55dee2408e6bbc859097ebae2136714b73006",
+  "executionGitCommit": "6f7317202b7c359e12bac52c3c4f62479cb796c0",
+  "inputs": {
+    "personaReports": {
+      "file": "game_config_v0.1/persona_reports_v1.1.json",
+      "sha256": "900da996382e5eb5e2104e4da6871ceab861418ba1f3258931fa4691de431623"
+    },
+    "capabilityGroups": {
+      "file": "data/capability_groups_v2.json",
+      "sha256": "89d38b8f4fba9d2ee5cd2ba398b4f4e449a27a6aedc70224375590db02fd28a3"
+    },
+    "compatibilityRules": {
+      "file": "data/compatibility_rules_v2.json",
+      "sha256": "0c6cf08d59c2ae5d5d08cc5d625b059b495215a877d11718dc3aa027a1e26930"
+    },
+    "tagMap": {
+      "file": "data/tag_map_v2_1.json",
+      "sha256": "bfc9e1790c719946c31f302121f18066dd0e8d58e63e8b83b96dbd1cf0747dd7"
+    },
+    "dimensionAnchors": {
+      "file": "data/round2_dim_anchors_v1.json",
+      "sha256": "416fad4b35daee92a97bd5206762e9db919f29d7700a9c9b956d55eb464aa2e9"
+    },
+    "maps": {
+      "草根老板": {
+        "file": "scripts/analysis/cognitive_map_caogen_min.json",
+        "sha256": "40d8de670d52d202a344232ddd33099f755f92c6479501d07fc988371ea26f3d"
+      },
+      "二代接班人": {
+        "file": "scripts/analysis/cognitive_map_erdai_min.json",
+        "sha256": "97fa4be7f5bdced117e53eae1646b5ed18286ffc0ee1535770574d3989265151"
+      }
+    }
+  },
+  "reportGrid": "B2B_Differentiation_Elder",
+  "vpGrid": "ToB_Differentiation_Elder",
+  "condition": "M",
+  "reps": 1,
+  "temperature": 0.45,
+  "dimensionAggregation": {
+    "method": "dimensionScorer.scoreTagsToDimensions -> embeddingService.scoreTagsWithPolarity",
+    "formulaSource": "server/llm/embeddingService.js:165-215",
+    "note": "Repository reality differs from the proposed direct tag-count aggregation: the existing tagExtractor pipeline uses deterministic polarity-weighted anchor similarity and 1-10 linear normalization. These scores are the radar input and computeEvi scores.",
+    "anchorVersion": "anchors_v1_calibrated_1772020968532"
+  },
+  "engineTagFlow": {
+    "normalizeSource": "server/llm/rdCalculator.js:743-803",
+    "note": "calculate keeps exact tag_map_v2_1 matches and fills fewer than six effective tags from the grid prior/radar fallback. Per-chain exact coverage and effective tags are recorded in JSONL/raw samples/summary."
+  },
+  "vpScoreEntersCalculate": false,
+  "requestedChains": 2,
+  "completedChains": 2,
+  "failedChains": 0,
+  "decisionCalls": 10,
+  "tagExtractorInvocations": 2,
+  "invalidReferences": 0,
+  "invalidReferenceDetails": []
+}
