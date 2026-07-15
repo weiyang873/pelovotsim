@@ -3,9 +3,10 @@
 const { THEME_RULES } = require("./chain_map_search_effort");
 
 const DEFAULT_PARAMS = {
-  B0: 20,
-  lambda: 3,
-  B_min: 8,
+  budget_mode: "proportional",
+  R0: 0.4,
+  r: 0.06,
+  R_min: 0.16,
   recency_weight: 1.2,
   stack_summary_stages: ["D4", "D5"],
   stack_summary_max_chars: 50
@@ -59,11 +60,28 @@ class BandwidthLayer {
     this.vectorCache = new Map();
   }
 
-  budgetFor(stackLen) {
-    return Math.max(
-      Number(this.params.B_min),
-      Number(this.params.B0) - Number(this.params.lambda) * Number(stackLen || 0)
-    );
+  budgetFor(stackLen, mapTotal) {
+    const total = Math.max(0, Number(mapTotal || 0));
+    if (!total) {
+      return {
+        B: 0,
+        B_raw: 0,
+        min_B: 0,
+        ratio_raw: 0,
+        ratio_visible: 0
+      };
+    }
+    const ratioRaw = Number(this.params.R0) - Number(this.params.r) * Number(stackLen || 0);
+    const ratioBudget = Math.floor(ratioRaw * total);
+    const minBudget = Math.floor(Number(this.params.R_min) * total);
+    const budget = Math.min(total, Math.max(1, minBudget, ratioBudget));
+    return {
+      B: budget,
+      B_raw: ratioBudget,
+      min_B: Math.max(1, minBudget),
+      ratio_raw: Number(ratioRaw.toFixed(6)),
+      ratio_visible: Number((budget / total).toFixed(6))
+    };
   }
 
   async embedCached(key, text) {
@@ -139,8 +157,9 @@ class BandwidthLayer {
   }
 
   async prepare({ persona, stage, stack = [], taskDescription = "", callId = stage }) {
-    const budgetRaw = this.budgetFor(stack.length);
-    const budget = Math.min((persona.map_items || []).length, budgetRaw);
+    const mapTotal = (persona.map_items || []).length;
+    const budgetInfo = this.budgetFor(stack.length, mapTotal);
+    const budget = budgetInfo.B;
     const focusText = this.buildFocusText(stage, taskDescription, stack);
     const { rows, recentThemes } = await this.scoreMapItems(persona, focusText, stack);
     const selectedIds = new Set(rows.slice(0, budget).map((row) => row.id));
@@ -179,12 +198,15 @@ class BandwidthLayer {
         task_description: taskDescription,
         focus_text: focusText,
         stack_len: stack.length,
-        budget_formula: "B=max(B_min,B0-lambda*stack_len)",
+        budget_formula: "B=max(1,floor(R_min*map_total),floor((R0-r*stack_len)*map_total))",
         B: budget,
-        B_raw: budgetRaw,
-        map_total: (persona.map_items || []).length,
+        B_raw: budgetInfo.B_raw,
+        min_B: budgetInfo.min_B,
+        map_total: mapTotal,
+        ratio_raw: budgetInfo.ratio_raw,
+        ratio_visible: budgetInfo.ratio_visible,
         selected_ids: Array.from(selectedIds),
-        omitted_count: Math.max(0, (persona.map_items || []).length - selectedIds.size),
+        omitted_count: Math.max(0, mapTotal - selectedIds.size),
         recent_themes: recentThemes,
         map_items: mapAuditRows,
         stack_summary: stackAudit
