@@ -32,7 +32,6 @@ const DIMS = [
 const DEFAULT_MEMBER_DIMS = ["interaction", "safety"];
 const SUMMARY_READING_INDIVIDUAL = "READING_INDIVIDUAL";
 const SUMMARY_READING_TEAM_SUMMARY = "READING_TEAM_SUMMARY";
-const IMP_C = { "高":"#DC2626", "中":"#D4A03C", "低":"#9CA3AF" };
 const STARTER_QUESTIONS = {
   ELDER: [
     "{name}您好！能聊聊您平时一个人在家的时候，一般怎么度过一天吗？",
@@ -485,25 +484,6 @@ function buildRadarFromSelections(sels) {
   }, {});
 }
 
-function radarToInterviewScores(radar) {
-  const src = radar && typeof radar === "object" ? radar : {};
-  return {
-    interaction: Number(src.interaction || 0),
-    perception: Number(src.perception || 0),
-    motion: Number(src.motion != null ? src.motion : src.mobility || 0),
-    safety: Number(src.safety != null ? src.safety : src.safety_privacy || 0),
-    extend: Number(src.extend != null ? src.extend : src.integration || 0),
-    ops: Number(src.ops != null ? src.ops : src.operations || 0)
-  };
-}
-
-function scoreToImportance(score) {
-  const n = Number(score || 0);
-  if (n >= 7) return "高";
-  if (n >= 5) return "中";
-  return "低";
-}
-
 function selectionsMapToArray(sels) {
   return Object.entries(sels || {}).map(([frontId, tier]) => ({
     cap_id: FRONT_TO_BACK_ID[frontId] || frontId,
@@ -515,27 +495,12 @@ function buildInterviewSummary(result, memberDims) {
   if (!result) return "";
   const explicitSummary = String(result.summary || "").trim();
   if (explicitSummary) return explicitSummary;
-  const scores = radarToInterviewScores(result.radar);
-  const topDims = (Array.isArray(memberDims) ? memberDims : [])
-    .map((dimId) => ({
-      dimId,
-      dim: DIMS.find((item) => item.id === dimId),
-      score: Number(scores[dimId] || 0)
-    }))
-    .filter((item) => item.dim)
-    .sort((a, b) => b.score - a.score);
   const tagText = (Array.isArray(result.tags) ? result.tags : [])
     .map((item) => String(item?.tag || "").trim())
     .filter(Boolean)
     .slice(0, 4)
     .join("、");
-  if (!topDims.length && !tagText) return "";
-  const dimText = topDims
-    .slice(0, 2)
-    .map((item) => `${item.dim.l}（${scoreToImportance(item.score)}）`)
-    .join("、");
-  if (dimText && tagText) return `访谈显示用户最关注 ${dimText}，关键词包括 ${tagText}。`;
-  return dimText || tagText;
+  return tagText ? `访谈关键词包括 ${tagText}。` : "";
 }
 
 function renderInlineBold(text) {
@@ -1427,10 +1392,6 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     () => buildDimensionGuideItems(memberDims),
     [memberDims]
   );
-  const mergedInterviewScores = useMemo(
-    () => radarToInterviewScores(mergeData?.mergedInterview?.radar),
-    [mergeData]
-  );
   const activeInterviewPersona = interviewPersonas[0] || null;
   const activeSummaryReport = useMemo(() => {
     const source = Array.isArray(personaReports) ? personaReports : [];
@@ -1905,13 +1866,8 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
       setInterviewRetryAction(null);
       const out = await endRound2Interview({ sessionId: interviewSessionId });
       setInterviewResult({
-        radar: out.radar || null,
         tags: out.tags || [],
         evi: out.evi,
-        confidence: out.confidence || {},
-        lowConfidenceDims: out.lowConfidenceDims || [],
-        insightsByDim: out.insightsByDim || {},
-        scoreSource: out.scoreSource || {},
         summary: out.summary || ""
       });
       setInterviewSessionId("");
@@ -2117,13 +2073,8 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
       setInterviewCanEnd(Boolean(out.canEnd));
       if (out.isComplete) {
         const nextResult = {
-          radar: out.radar || null,
           tags: out.tags || [],
           evi: out.evi,
-          confidence: out.confidence || {},
-          lowConfidenceDims: out.lowConfidenceDims || [],
-          insightsByDim: out.insightsByDim || {},
-          scoreSource: out.scoreSource || {},
           summary: out.summary || ""
         };
         setInterviewResult(nextResult);
@@ -2215,13 +2166,8 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
         setInterviewCanEnd(Boolean(out.canEnd));
         if (out.isComplete) {
           const nextResult = {
-            radar: out.radar || null,
             tags: out.tags || [],
             evi: out.evi,
-            confidence: out.confidence || {},
-            lowConfidenceDims: out.lowConfidenceDims || [],
-            insightsByDim: out.insightsByDim || {},
-            scoreSource: out.scoreSource || {},
             summary: out.summary || ""
           };
           setInterviewResult(nextResult);
@@ -2242,13 +2188,8 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
       const out = await rescoreRound2Interview(interviewRetryAction.sessionId);
       setInterviewRetryAction(null);
       setInterviewResult({
-        radar: out.radar || null,
         tags: out.tags || [],
         evi: out.evi,
-        confidence: out.confidence || {},
-        lowConfidenceDims: out.lowConfidenceDims || [],
-        insightsByDim: out.insightsByDim || {},
-        scoreSource: out.scoreSource || {},
         summary: out.summary || ""
       });
       const refreshed = await getRound2InterviewSession(teamId, memberId, "", {});
@@ -2341,7 +2282,6 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     try {
       setIsSubmittingFinal(true);
       setSubmitError("");
-      const radar = mergeData?.mergedInterview?.radar || buildRadarFromSelections(teamSel);
       const submitSelections = toSubmitSelectionsMap(teamSel);
       const finalPrice = parsePositiveNumberOrNull(teamPrice)
         || parsePositiveNumberOrNull(teamRecap?.P)
@@ -2352,7 +2292,6 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
         session_id: sessionId,
         price: finalPrice,
         selections: submitSelections,
-        radar,
         mergedInterview: mergeData?.mergedInterview || null
       });
       setTeamPrice(finalPrice);
@@ -3361,21 +3300,6 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                 <p style={{fontSize:12,color:"#888",margin:"0 0 8px"}}>
                   {showInterviewSummary ? buildInterviewSummary(interviewResult, memberDims) : "当前完成一场访谈后，这里会展示对应的真实提炼结果。"}
                 </p>
-                {showInterviewSummary && (
-                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                    {memberDims.map((dimId) => {
-                      const dim = DIMS.find((item) => item.id === dimId);
-                      if (!dim) return null;
-                      const interviewScores = radarToInterviewScores(interviewResult?.radar);
-                      const importance = scoreToImportance(interviewScores[dim.id]);
-                      return (
-                        <span key={dim.id} style={{fontSize:11,padding:"4px 10px",borderRadius:6,background:IMP_C[importance]+"12",color:IMP_C[importance],fontWeight:600,border:`1px solid ${IMP_C[importance]}30`}}>
-                          {dim.icon} {dim.l}：{importance}
-                        </span>
-                      );
-                    })}
-                  </div>
-                )}
                 {showInterviewSummary && interviewResult?.tags?.length > 0 && (
                   <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:10}}>
                     {interviewResult.tags.slice(0, 6).map((item, index) => (
@@ -3468,21 +3392,6 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                 ? (selectedPersonaSummaryText || "请先在上一步阅读调研报告，再根据这份报告选卡。")
                 : (buildInterviewSummary(interviewResult, memberDims) || "请先完成真实访谈，再根据提炼结果选卡。")}
             </div>
-            {!isSummaryMode && Boolean(interviewResult) && (
-              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                {memberDims.map(d => {
-                  const dm = DIMS.find(x=>x.id===d);
-                  if (!dm) return null;
-                  const interviewScores = radarToInterviewScores(interviewResult?.radar);
-                  const importance = scoreToImportance(interviewScores[d]);
-                  return (
-                    <span key={d} style={{fontSize:11,padding:"3px 8px",borderRadius:4,background:IMP_C[importance]+"12",color:IMP_C[importance],fontWeight:600,border:`1px solid ${IMP_C[importance]}30`}}>
-                      {dm.icon} {dm.l}：{importance}
-                    </span>
-                  );
-                })}
-              </div>
-            )}
             {individualSubmitError && (
               <div style={{fontSize:12,color:"#b91c1c",marginTop:10}}>
                 {individualSubmitError}
@@ -3532,9 +3441,9 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
             </div>
           </div>
 
-          {/* Interview insights organized BY DIMENSION */}
+          {/* Shared interview narrative */}
           <div style={{marginBottom:20}}>
-            <div style={{fontSize:14,fontWeight:700,color:"#374151",marginBottom:10}}>🎙️ 访谈洞察（按维度）</div>
+            <div style={{fontSize:14,fontWeight:700,color:"#374151",marginBottom:10}}>🎙️ 访谈洞察</div>
             {mergeError && (
               <div style={{padding:"10px 14px",borderRadius:8,background:"#FEF2F2",border:"1px solid #FECACA",fontSize:12,color:"#991B1B",marginBottom:10}}>
                 {mergeError}
@@ -3546,44 +3455,6 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                 {mergeData.mergedInterview.summaryText}
               </div>
             )}
-            {DIMS.map((dim) => {
-              const score = Number(mergedInterviewScores?.[dim.id] || 0);
-              const owners = Array.isArray(mergeData?.mergedInterview?.sourceByDim?.[dim.id])
-                ? mergeData.mergedInterview.sourceByDim[dim.id]
-                : [];
-              return (
-                <div key={dim.id} style={{padding:"10px 14px",borderRadius:8,marginBottom:6,background:dim.c+"06",borderLeft:`4px solid ${dim.c}`}}>
-                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
-                    <span style={{fontSize:13,fontWeight:700,color:dim.c}}>{dim.icon} {dim.l}</span>
-                    <span style={{fontSize:11,padding:"2px 6px",borderRadius:3,background:IMP_C[scoreToImportance(score)]+"12",color:IMP_C[scoreToImportance(score)],fontWeight:600}}>
-                      用户需求：{scoreToImportance(score)}
-                    </span>
-                  </div>
-                  <div style={{fontSize:11,color:"#6b7280",marginBottom:4}}>
-                    {dim.desc}
-                  </div>
-                  <div style={{fontSize:12,color:"#555",lineHeight:1.7}}>
-                    {owners.length
-                      ? owners
-                        .map((item) => {
-                          const sourceName = item.scoreSource === "interview_evidence"
-                            ? "真实访谈"
-                            : item.scoreSource === "grid_prior"
-                              ? "战略先验"
-                              : "当前输入";
-                          const insight = String(item.insight || "").trim();
-                          return insight
-                            ? `${item.memberName}（${sourceName}）：${insight}`
-                            : `${item.memberName}（${sourceName}）：当前合并评分 ${score.toFixed(1)} / 9。`;
-                        })
-                        .join("；")
-                      : (isSummaryMode
-                        ? "该维度来自团队已冻结的调研报告，请结合上方共享叙事和维度强弱做取舍。"
-                        : "当前还没有足够的真实访谈结果支撑该维度。")}
-                  </div>
-                </div>
-              );
-            })}
             {!isSummaryMode && mergeData?.mergedInterview?.tags?.length > 0 && (
               <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:8}}>
                 {mergeData.mergedInterview.tags.slice(0, 8).map((item, index) => (
@@ -3695,22 +3566,24 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                 <div style={{padding:"10px 14px",borderRadius:8,border:"1px solid #e5e7eb",marginBottom:10,fontSize:13,lineHeight:1.7}}>
                   <strong>价值主张复盘：</strong>{vpRecapText || "暂无 VP 摘要"}
                 </div>
-                {/* Interview insights by dimension (condensed) */}
+                {/* Interview insights */}
                 <div style={{marginBottom:10}}>
                   <div style={{fontSize:12,fontWeight:700,color:"#374151",marginBottom:6}}>访谈洞察</div>
-                  {DIMS.map((item) => {
-                    const owners = Array.isArray(mergeData?.mergedInterview?.sourceByDim?.[item.id])
-                      ? mergeData.mergedInterview.sourceByDim[item.id]
-                      : [];
-                    const score = Number(mergedInterviewScores?.[item.id] || 0);
-                    if (!owners.length && score <= 0) return null;
-                    return (
-                      <div key={item.id} style={{fontSize:11,color:"#555",padding:"3px 0",display:"flex",gap:6}}>
-                        <span style={{color:item.c,fontWeight:600,flexShrink:0}}>{item.icon}</span>
-                        <span>{item.l}：{owners.length ? `${owners.map((row) => row.memberName).join("、")} 提供输入，评分 ${score.toFixed(1)}/9` : `评分 ${score.toFixed(1)}/9`}</span>
-                      </div>
-                    );
-                  })}
+                  {mergeData?.mergedInterview?.summaryText ? (
+                    <div style={{fontSize:12,color:"#555",lineHeight:1.7}}>
+                      {mergeData.mergedInterview.summaryText}
+                    </div>
+                  ) : mergeData?.mergedInterview?.tags?.length > 0 ? (
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                      {mergeData.mergedInterview.tags.slice(0, 8).map((item, index) => (
+                        <span key={`${item.tag || item}-${index}`} style={{fontSize:11,padding:"3px 8px",borderRadius:999,background:"#EFF6FF",color:"#1E40AF",fontWeight:600}}>
+                          #{String(item.tag || item)}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{fontSize:12,color:"#6b7280",lineHeight:1.7}}>请结合已经完成的访谈记录与团队讨论做取舍。</div>
+                  )}
                 </div>
                 {/* Mini radar */}
                 <RadarChart sels={teamSel}/>
@@ -3812,7 +3685,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                   <strong>量价权衡：</strong>价格越高，每台赚得越多，但愿意买的用户越少。价格越低，用户越多，但可能卖一台亏一台。
                 </div>
                 <div>
-                  <strong>产品力影响：</strong>产品能力组合越精准匹配用户需求，用户对价格的敏感度越低——好产品可以卖更贵。
+                  <strong>产品力影响：</strong>产品能力组合越精准匹配目标场景，用户对价格的敏感度越低——好产品可以卖更贵。
                 </div>
               </div>
             </div>

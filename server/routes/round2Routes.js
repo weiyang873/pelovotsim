@@ -1405,13 +1405,22 @@ function sanitizeStudentTeamResult(result) {
   ]);
 }
 
+function sanitizeStudentInterviewResult(result) {
+  if (!result || typeof result !== "object") return result || null;
+  return withDefinedEntries([
+    ["summary", String(result.summary || "").trim()],
+    ["tags", Array.isArray(result.tags) ? result.tags : undefined],
+    ["evi", Number.isFinite(Number(result.evi)) ? Number(result.evi) : undefined],
+    ["interviewQuality", result.interviewQuality && typeof result.interviewQuality === "object" ? result.interviewQuality : undefined]
+  ]);
+}
+
 function sanitizeStudentStoredRadar(radar) {
   if (!radar || typeof radar !== "object") return radar;
-  return {
-    radar: normalizeRadarPayload(radar.radar),
-    tags: Array.isArray(radar.tags) ? radar.tags : [],
-    updated_at: radar.updated_at || null
-  };
+  return withDefinedEntries([
+    ["tags", Array.isArray(radar.tags) ? radar.tags : undefined],
+    ["updated_at", radar.updated_at || null]
+  ]);
 }
 
 function buildComputationContext({ teamId, sessionId, memberId, source = "web" }) {
@@ -2990,6 +2999,16 @@ function resolveAuthoritativeSubmitEvi({ body, personaChoice, sessionConfig, tea
 function sanitizeStudentMergedInterview(mergedInterview, options = {}) {
   if (!mergedInterview || typeof mergedInterview !== "object") return mergedInterview;
   const next = { ...mergedInterview };
+  delete next.radar;
+  delete next.sourceByDim;
+  delete next.scoreSource;
+  delete next.insightsByDim;
+  delete next.lowConfidenceDims;
+  delete next.confidence;
+  delete next.dimensionEvidence;
+  delete next.dimension_evidence;
+  delete next.other_dimensions;
+  delete next.missing_dimensions;
   if (options?.stripEvi) {
     delete next.evi;
   }
@@ -3111,6 +3130,7 @@ function serializeSession(session) {
   const personas = enrichPersonas(session.personas);
   const persona = personas[0] || null;
   const history = sanitizeInterviewHistory(session.history, persona);
+  const result = sanitizeStudentInterviewResult(session.result);
   return {
     sessionId: session.session_id,
     teamId: session.team_id,
@@ -3120,7 +3140,7 @@ function serializeSession(session) {
     persona,
     personas,
     history,
-    result: session.result || null,
+    result,
     round: history.filter((item) => item.role === "user").length,
     isComplete: Boolean(session.is_complete),
     createdAt: session.created_at,
@@ -4052,6 +4072,7 @@ async function interviewAuto(body) {
     });
 
     const syncResult = await syncMemberInterviewState(teamId, memberId);
+    const studentResult = sanitizeStudentInterviewResult(result);
 
     return makeResponse(200, {
       ok: true,
@@ -4062,11 +4083,9 @@ async function interviewAuto(body) {
       isComplete: true,
       canEnd: true,
       reachedLimit: false,
-      radar: result.radar,
-      tags: result.tags,
-      evi: result.evi,
-      confidence: result.confidence,
-      lowConfidenceDims: result.lowConfidenceDims,
+      tags: studentResult?.tags,
+      evi: studentResult?.evi,
+      summary: studentResult?.summary,
       progress: syncResult.progress
     });
   } catch (e) {
@@ -4205,14 +4224,15 @@ async function interviewReply(body) {
     if (!session) return makeResponse(404, { ok: false, error: "session not found" });
 
     if (session.is_complete) {
+      const studentResult = sanitizeStudentInterviewResult(session.result);
       return makeResponse(200, {
         ok: true,
         reply: "访谈已完成，可以进入选卡。",
         round: session.round_no,
         isComplete: true,
-        radar: session.result?.radar,
-        tags: session.result?.tags,
-        evi: session.result?.evi
+        tags: studentResult?.tags,
+        evi: studentResult?.evi,
+        summary: studentResult?.summary
       });
     }
 
@@ -4338,6 +4358,7 @@ async function interviewReply(body) {
 
     const syncResult = await syncMemberInterviewState(session.team_id, session.member_id);
 
+    const studentResult = sanitizeStudentInterviewResult(result);
     return makeResponse(scoringError ? 503 : 200, {
       ok: !scoringError,
       reply,
@@ -4348,14 +4369,9 @@ async function interviewReply(body) {
       reachedLimit,
       needsRescore: reachedLimit && !isComplete,
       scoringError: scoringError || undefined,
-      radar: result?.radar,
-      tags: result?.tags,
-      evi: result?.evi,
-      confidence: result?.confidence,
-      lowConfidenceDims: result?.lowConfidenceDims,
-      insightsByDim: result?.insightsByDim,
-      scoreSource: result?.scoreSource,
-      summary: result?.summary,
+      tags: studentResult?.tags,
+      evi: studentResult?.evi,
+      summary: studentResult?.summary,
       progress: syncResult.progress,
       completedInterview: isComplete ? syncResult.progress.latestCompletedInterview : null
     });
@@ -4373,13 +4389,14 @@ async function rescoreInterview(body) {
     if (!session) return makeResponse(404, { ok: false, error: "session not found" });
 
     if (session.is_complete) {
+      const studentResult = sanitizeStudentInterviewResult(session.result);
       return makeResponse(200, {
         ok: true,
         idempotent: true,
         isComplete: true,
-        radar: session.result?.radar,
-        tags: session.result?.tags,
-        evi: session.result?.evi
+        tags: studentResult?.tags,
+        evi: studentResult?.evi,
+        summary: studentResult?.summary
       });
     }
 
@@ -4423,12 +4440,13 @@ async function rescoreInterview(body) {
 
     await syncMemberInterviewState(session.team_id, session.member_id);
 
+    const studentResult = sanitizeStudentInterviewResult(result);
     return makeResponse(200, {
       ok: true,
       isComplete: true,
-      radar: result?.radar,
-      tags: result?.tags,
-      evi: result?.evi
+      tags: studentResult?.tags,
+      evi: studentResult?.evi,
+      summary: studentResult?.summary
     });
   } catch (e) {
     return makeResponse(400, { ok: false, error: e.message });
@@ -4443,6 +4461,7 @@ async function interviewEnd(body) {
     const session = await getInterviewSession(sessionId);
     if (!session) return makeResponse(404, { ok: false, error: "session not found" });
     if (session.is_complete) {
+      const studentResult = sanitizeStudentInterviewResult(session.result);
       const sessions = await listInterviewSessionsForMember(session.team_id, session.member_id);
       const team = await getTeam(session.team_id);
       const member = listTeamMembers(team).find((item) => item.id === session.member_id);
@@ -4454,9 +4473,9 @@ async function interviewEnd(body) {
         alreadyComplete: true,
         round: Number(session.round_no || 0),
         isComplete: true,
-        radar: session.result?.radar,
-        tags: session.result?.tags,
-        evi: session.result?.evi,
+        tags: studentResult?.tags,
+        evi: studentResult?.evi,
+        summary: studentResult?.summary,
         progress
       });
     }
@@ -4519,19 +4538,15 @@ async function interviewEnd(body) {
     });
 
     const syncResult = await syncMemberInterviewState(session.team_id, session.member_id);
+    const studentResult = sanitizeStudentInterviewResult(result);
     const responseBody = {
       ok: true,
       round,
       isComplete: true,
       endedBy: "manual",
-      radar: result?.radar,
-      tags: result?.tags,
-      evi: result?.evi,
-      confidence: result?.confidence,
-      lowConfidenceDims: result?.lowConfidenceDims,
-      insightsByDim: result?.insightsByDim,
-      scoreSource: result?.scoreSource,
-      summary: result?.summary,
+      tags: studentResult?.tags,
+      evi: studentResult?.evi,
+      summary: studentResult?.summary,
       progress: syncResult.progress,
       completedInterview: syncResult.progress.latestCompletedInterview
     };
@@ -4671,7 +4686,7 @@ async function mergeApi(body) {
           stripEvi: isSummaryModeSession(sessionConfig),
           stripTags: isSummaryModeSession(sessionConfig)
         })
-      : aggregateInterviewByOwner({ assignments, memberMap, interviewByMember });
+      : sanitizeStudentMergedInterview(aggregateInterviewByOwner({ assignments, memberMap, interviewByMember }));
     const totalCost = teamSelections.reduce((sum, sel) => {
       try {
         return sum + Number(getCapabilityParams(sel.cap_id, sel.tier)?.dCOGS || 0);
@@ -4818,22 +4833,33 @@ async function teamSubmitApi(body) {
     const personaChoice = isSummaryMode
       ? await freezeStaticSummaryChoiceForTeam(team, sessionId, memberId || "system_submit")
       : await readPersonaChoice(teamId, sessionId);
+    const liveMergedInterview = !isSummaryMode && !personaChoice
+      ? aggregateInterviewByOwner({
+          assignments: await ensureAssignments(team),
+          memberMap: Object.fromEntries(listTeamMembers(team).map((m) => [m.id, m.member_name])),
+          interviewByMember: await getLatestInterviewByMember(teamId)
+        })
+      : null;
     const flowVersion = personaChoice?.flow_version
       || (sessionConfig.interview_mode === "live" ? "twophase_v1" : SUMMARY_FLOW_VERSION);
     const fallbackRadar = personaChoice?.radar || {};
     const fallbackTags = Array.isArray(personaChoice?.tags) ? personaChoice.tags : [];
     const radar = isSummaryMode
       ? normalizeRadarPayload(fallbackRadar)
-      : normalizeRadarPayload(body?.mergedInterview?.radar || body?.radar || fallbackRadar);
+      : normalizeRadarPayload(liveMergedInterview?.radar || fallbackRadar);
     const tags = isSummaryMode
       ? fallbackTags
-      : Array.isArray(body?.tags)
-        ? body.tags
-        : Array.isArray(body?.mergedInterview?.tags)
-          ? body.mergedInterview.tags
-          : fallbackTags;
+      : (Array.isArray(liveMergedInterview?.tags) ? liveMergedInterview.tags : fallbackTags);
     const evi = resolveAuthoritativeSubmitEvi({
-      body,
+      body: !isSummaryMode && liveMergedInterview
+        ? {
+            ...body,
+            mergedInterview: {
+              ...(body?.mergedInterview || {}),
+              evi: liveMergedInterview.evi
+            }
+          }
+        : body,
       personaChoice,
       sessionConfig,
       teamId,
@@ -5196,6 +5222,7 @@ module.exports = {
     getMemberViewedPersonas,
     sanitizeStudentPersonaChoice,
     sanitizeStudentPersonaReport,
+    sanitizeStudentInterviewResult,
     sanitizeStudentMergedInterview,
     sanitizeStudentTeamResult,
     sanitizeStudentStoredRadar,

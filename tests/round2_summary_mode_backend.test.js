@@ -366,6 +366,11 @@ test("summary-mode dynamic coverage ratio uses viewed report union and student m
   const studentMerged = Round2.__test.sanitizeStudentMergedInterview(mergedInterview, { stripEvi: true, stripTags: true });
   assert.equal("evi" in studentMerged, false);
   assert.equal("tags" in studentMerged, false);
+  assert.equal("radar" in studentMerged, false);
+  assert.equal("sourceByDim" in studentMerged, false);
+  assert.equal("scoreSource" in studentMerged, false);
+  assert.equal("insightsByDim" in studentMerged, false);
+  assert.equal("lowConfidenceDims" in studentMerged, false);
 });
 
 test("team reading status payload includes per-member reading details without exposing coverage ratio", () => {
@@ -446,7 +451,30 @@ test("sanitizeStudentTeamResult strips evi and WTP-family internals from result 
     updated_at: "2026-07-09T00:00:00.000Z"
   });
   assert.equal("evi" in sanitizedRadar, false);
-  assert.deepEqual(sanitizedRadar.radar, { interaction: 7, perception: 6, motion: 5, safety: 4, extend: 3, ops: 2 });
+  assert.equal("radar" in sanitizedRadar, false);
+  assert.deepEqual(sanitizedRadar.tags, [{ tag: "情感陪伴", polarity: 1 }]);
+});
+
+test("student interview result sanitizer strips dimension grading internals", () => {
+  const sanitized = Round2.__test.sanitizeStudentInterviewResult({
+    radar: { interaction: 7, perception: 5 },
+    tags: [{ tag: "情感陪伴", polarity: 1 }],
+    evi: 0.7,
+    confidence: { interaction: "high" },
+    lowConfidenceDims: ["perception"],
+    insightsByDim: { interaction: "明确提到陪伴" },
+    scoreSource: { interaction: "interview_evidence" },
+    dimensionEvidence: { interaction: { mentioned: true } },
+    summary: "访谈摘要"
+  });
+  assert.equal("radar" in sanitized, false);
+  assert.equal("confidence" in sanitized, false);
+  assert.equal("lowConfidenceDims" in sanitized, false);
+  assert.equal("insightsByDim" in sanitized, false);
+  assert.equal("scoreSource" in sanitized, false);
+  assert.equal("dimensionEvidence" in sanitized, false);
+  assert.equal(sanitized.summary, "访谈摘要");
+  assert.deepEqual(sanitized.tags, [{ tag: "情感陪伴", polarity: 1 }]);
 });
 
 test("hideDeferredRound1Fields strips WTPmedian before reveal while preserving safe summaries", () => {

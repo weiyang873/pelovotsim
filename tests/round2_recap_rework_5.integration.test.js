@@ -268,6 +268,12 @@ async function main() {
     assert.equal(mergeRes.status, 200);
     assert.equal("evi" in mergeRes.body.mergedInterview, false);
     assert.equal("tags" in mergeRes.body.mergedInterview, false);
+    assert.equal("radar" in mergeRes.body.mergedInterview, false);
+    assert.equal("sourceByDim" in mergeRes.body.mergedInterview, false);
+    assert.equal("scoreSource" in mergeRes.body.mergedInterview, false);
+    assert.equal("insightsByDim" in mergeRes.body.mergedInterview, false);
+    assert.equal("lowConfidenceDims" in mergeRes.body.mergedInterview, false);
+    assert.equal("dimensionEvidence" in mergeRes.body.mergedInterview, false);
 
     const draftRes = await Round2.saveTeamDraftApi({
       teamId,
@@ -293,6 +299,7 @@ async function main() {
     assert.equal(submitRes.status, 200);
     assert.equal(submitRes.body.result.best_grid, expectedMatch.bestGrid);
     assert.deepEqual(submitRes.body.result.result.card_scores, expectedCardScores);
+    assert.equal(Boolean(submitRes.body.radar?.radar), false);
     assert(warnLines.some((line) => line.includes("client best_grid ignored")), "spoofed best_grid should be logged and ignored");
     assert(warnLines.some((line) => line.includes("EVIOverrideIgnored")), "spoofed summary evi should be logged and ignored");
 
