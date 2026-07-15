@@ -32,7 +32,6 @@ const DIMS = [
 const DEFAULT_MEMBER_DIMS = ["interaction", "safety"];
 const SUMMARY_READING_INDIVIDUAL = "READING_INDIVIDUAL";
 const SUMMARY_READING_TEAM_SUMMARY = "READING_TEAM_SUMMARY";
-const IMP = { interaction:"高", perception:"高", motion:"中", safety:"中", extend:"低", ops:"中" };
 const IMP_C = { "高":"#DC2626", "中":"#D4A03C", "低":"#9CA3AF" };
 const STARTER_QUESTIONS = {
   ELDER: [
@@ -916,6 +915,7 @@ export default function App() {
   const [isSendingInterview, setIsSendingInterview] = useState(false);
   const [isSubmittingIndividual, setIsSubmittingIndividual] = useState(false);
   const [individualSubmitError, setIndividualSubmitError] = useState("");
+  const [isResearchDrawerOpen, setIsResearchDrawerOpen] = useState(false);
   const [mergeData, setMergeData] = useState(null);
   const [mergeError, setMergeError] = useState("");
   const [teamDraftSelections, setTeamDraftSelections] = useState({});
@@ -1525,6 +1525,34 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     mergeData?.mergedInterview?.radar
     && Object.keys(mergeData.mergedInterview.radar || {}).length > 0
   );
+  const completedInterviewMaterials = useMemo(() => {
+    if (isSummaryMode) return [];
+    const completed = Array.isArray(interviewProgress?.completedInterviews)
+      ? interviewProgress.completedInterviews
+      : [];
+    if (completed.length) {
+      return completed.map((session, sessionIndex) => ({
+        id: session.session_id || `completed-${sessionIndex}`,
+        personaName: session.persona_name || session.persona?.name || `访谈对象 ${sessionIndex + 1}`,
+        summary: String(session.result?.summary || session.summary || "").trim(),
+        messages: (Array.isArray(session.messages) ? session.messages : [])
+          .map((message, index) => toInterviewMessage(message, index))
+          .filter((message) => message.text)
+      }));
+    }
+    const messages = (Array.isArray(interviewMessages) ? interviewMessages : [])
+      .filter((message) => message?.text);
+    if (!messages.length && !interviewResult) return [];
+    return [{
+      id: "current-interview",
+      personaName: activeInterviewPersona?.name || "访谈对象",
+      summary: String(interviewResult?.summary || buildInterviewSummary(interviewResult, memberDims) || "").trim(),
+      messages
+    }];
+  }, [activeInterviewPersona, interviewMessages, interviewProgress, interviewResult, isSummaryMode, memberDims]);
+  const hasResearchMaterials = isSummaryMode
+    ? Boolean(selectedPersonaSummaryText)
+    : completedInterviewMaterials.some((item) => item.summary || item.messages.length);
   const canEnterCards = isSummaryMode
     ? Boolean(selectedPersonaChoice?.summary_text)
     : Boolean(interviewProgress.canProceed || memberState?.interview_status === "completed");
@@ -2348,6 +2376,118 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     }
   }, [fallbackPrice, hasMergedInterviewReady, isTeamMode, isSubmittingFinal, memberId, mergeData, round2TeamControlsLocked, sessionId, teamId, teamPrice, teamRecap, teamSel]);
 
+  const renderResearchDrawer = () => (
+    <>
+      <button
+        type="button"
+        onClick={() => setIsResearchDrawerOpen((open) => !open)}
+        aria-expanded={isResearchDrawerOpen}
+        aria-label={isResearchDrawerOpen ? "收起调研资料" : "展开调研资料"}
+        style={{
+          position: "fixed",
+          right: isResearchDrawerOpen ? "min(420px, 86vw)" : 0,
+          top: "calc(50% + 132px)",
+          transform: "translateY(-50%)",
+          zIndex: 1000,
+          width: 30,
+          minHeight: 110,
+          border: "none",
+          borderRadius: "6px 0 0 6px",
+          background: "rgba(26, 92, 58, 0.9)",
+          color: "#fff",
+          font: "inherit",
+          fontSize: 13,
+          fontWeight: 800,
+          letterSpacing: "0.08em",
+          boxShadow: "0 10px 24px rgba(15, 23, 42, 0.16)",
+          cursor: "pointer",
+          transition: "right 220ms ease, background 180ms ease"
+        }}
+      >
+        <span style={{writingMode:"vertical-rl",textOrientation:"mixed",display:"inline-block",padding:"14px 6px"}}>
+          调研资料
+        </span>
+      </button>
+      <aside
+        aria-label="调研资料"
+        style={{
+          position: "fixed",
+          top: 0,
+          right: 0,
+          width: "min(420px, 86vw)",
+          height: "100vh",
+          zIndex: 999,
+          background: "#fafaf8",
+          borderLeft: "1px solid #dbe5dd",
+          boxShadow: isResearchDrawerOpen ? "-16px 0 36px rgba(15, 23, 42, 0.16)" : "none",
+          transform: isResearchDrawerOpen ? "translateX(0)" : "translateX(100%)",
+          transition: "transform 220ms ease",
+          display: "flex",
+          flexDirection: "column",
+          pointerEvents: isResearchDrawerOpen ? "auto" : "none"
+        }}
+      >
+        <div style={{padding:"16px 18px",background:"#fff",borderBottom:"1px solid #e5e7eb",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
+          <div>
+            <div style={{fontSize:15,fontWeight:900,color:"#111827"}}>调研资料</div>
+            <div style={{fontSize:12,color:"#6b7280",marginTop:3}}>
+              仅回看本局已获得材料
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsResearchDrawerOpen(false)}
+            aria-label="关闭调研资料"
+            style={{width:34,height:34,borderRadius:8,border:"1px solid #d1d5db",background:"#fff",fontSize:20,lineHeight:1,cursor:"pointer"}}
+          >
+            ×
+          </button>
+        </div>
+        <div style={{flex:1,minHeight:0,overflowY:"auto",padding:16}}>
+          {!hasResearchMaterials ? (
+            <div style={{padding:"24px 18px",borderRadius:12,background:"#fff",border:"1px solid #e5e7eb",fontSize:13,color:"#6b7280",lineHeight:1.8,textAlign:"center"}}>
+              本局暂无调研资料
+            </div>
+          ) : isSummaryMode ? (
+            <div style={{padding:"16px 18px",borderRadius:12,background:"#fff",border:"1px solid #dbe5dd",fontSize:13,color:"#374151",lineHeight:1.85}}>
+              <div style={{fontSize:14,fontWeight:800,color:"#166534",marginBottom:10}}>{summaryReportTitle}</div>
+              {renderReportText(selectedPersonaSummaryText)}
+            </div>
+          ) : (
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              {completedInterviewMaterials.map((item, index) => (
+                <div key={item.id || index} style={{padding:"14px 16px",borderRadius:12,background:"#fff",border:"1px solid #e5e7eb"}}>
+                  <div style={{fontSize:14,fontWeight:800,color:"#111827",marginBottom:8}}>
+                    {item.personaName || `访谈对象 ${index + 1}`}
+                  </div>
+                  {item.summary && (
+                    <div style={{fontSize:13,color:"#374151",lineHeight:1.8,marginBottom:10}}>
+                      {item.summary}
+                    </div>
+                  )}
+                  {item.messages.length > 0 && (
+                    <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                      {item.messages.map((message, messageIndex) => (
+                        <div key={`${item.id || index}-${message.id || messageIndex}`} style={{padding:"8px 10px",borderRadius:8,background:message.role === "user" ? "#f0fdf4" : "#f9fafb",border:"1px solid #e5e7eb"}}>
+                          <div style={{fontSize:11,fontWeight:800,color:message.role === "user" ? "#166534" : "#6b7280",marginBottom:4}}>
+                            {message.speaker || (message.role === "user" ? "你" : "访谈对象")}
+                          </div>
+                          <div style={{fontSize:12,color:"#374151",lineHeight:1.7,whiteSpace:"pre-wrap"}}>
+                            {message.text}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </aside>
+    </>
+  );
+
   // ── Render card (individual mode: no cost numbers) ──
   const renderCard = (card, dim, sels, showCost, mode) => {
     const isOn = !!sels[card.id];
@@ -2458,7 +2598,6 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     const dim = DIMS.find(d=>d.id===dimId);
     const cards = CC[dimId]||[];
     const cnt = cards.filter(c=>!!sels[c.id]).length;
-    const imp = IMP[dimId];
     return (
       <div key={dimId} data-testid={`r2-dim-${dimId}`} style={{marginBottom:8}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",background:dim.c+"10",borderBottom:`3px solid ${dim.c}`,borderRadius:"10px 10px 0 0"}}>
@@ -2467,7 +2606,6 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
             <span style={{fontSize:12,color:"#666",marginLeft:8}}>{dim.desc}</span>
           </div>
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
-            <span style={{fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:4,background:IMP_C[imp]+"15",color:IMP_C[imp]}}>用户需求：{imp}</span>
             <span style={{fontSize:12,fontWeight:600,color:dim.c}}>{cnt > 0 ? `已选 ${cnt} 张` : ""}</span>
           </div>
         </div>
@@ -3298,6 +3436,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
       {/* ═══ Step 2: 个人选卡 (NO cost numbers) ═══ */}
       {step===2 && (
         <div data-testid="r2-card-selection-container">
+          {renderResearchDrawer()}
           <div style={{background:"#fff",padding:"14px 18px",borderRadius:"14px 14px 0 0",border:"1px solid #e5e7eb",borderBottom:"none"}}>
             <h2 style={{fontSize:18,fontWeight:800,margin:"0 0 4px"}}>个人选卡（{memberName}）</h2>
             <p style={{fontSize:13,color:"#666",margin:0,lineHeight:1.6}}>
@@ -3329,14 +3468,13 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                 ? (selectedPersonaSummaryText || "请先在上一步阅读调研报告，再根据这份报告选卡。")
                 : (buildInterviewSummary(interviewResult, memberDims) || "请先完成真实访谈，再根据提炼结果选卡。")}
             </div>
-            {!isSummaryMode && (
+            {!isSummaryMode && Boolean(interviewResult) && (
               <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                 {memberDims.map(d => {
                   const dm = DIMS.find(x=>x.id===d);
+                  if (!dm) return null;
                   const interviewScores = radarToInterviewScores(interviewResult?.radar);
-                  const importance = Boolean(interviewResult)
-                    ? scoreToImportance(interviewScores[d])
-                    : IMP[d];
+                  const importance = scoreToImportance(interviewScores[d]);
                   return (
                     <span key={d} style={{fontSize:11,padding:"3px 8px",borderRadius:4,background:IMP_C[importance]+"12",color:IMP_C[importance],fontWeight:600,border:`1px solid ${IMP_C[importance]}30`}}>
                       {dm.icon} {dm.l}：{importance}
