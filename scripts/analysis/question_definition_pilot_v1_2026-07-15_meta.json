@@ -1,0 +1,1122 @@
+{
+  "run_id": "question_definition_pilot_v1_2026-07-15",
+  "generated_at": "2026-07-15T08:44:05.466Z",
+  "git_head": "0aadc07559f1c116087fe22fa29e9eed4d20f6f5",
+  "rows_total": 17,
+  "latest_rows": 14,
+  "ok_rows": 14,
+  "matrix": "7 persona × {S standard, Q question-definition} × 1",
+  "question_definition": {
+    "enabled_condition": "Q",
+    "stages": [
+      "R1",
+      "D4",
+      "D5"
+    ],
+    "prompt_template_sha256": "cd8479b9bb051c8e07c3bb6c72e2dba060ee21d9e05bd7900b53e8a36edc4a8a"
+  },
+  "llm_config": {
+    "env_path_loaded": "../../../Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/.env",
+    "provider": "deepseek",
+    "model": "deepseek-chat",
+    "base_url": "https://api.deepseek.com",
+    "key_count": 6,
+    "llm_concurrency": 10,
+    "deepseek_timeout_ms": 60000,
+    "llm_max_retries_env": 1,
+    "decision_json": {
+      "temperature": 0.55,
+      "max_tokens": 1600,
+      "max_repairs": 2,
+      "max_retries_per_attempt": 1
+    },
+    "question_definition": {
+      "temperature": 0.55,
+      "max_tokens": 500,
+      "max_repairs": 2,
+      "max_retries_per_attempt": 1
+    },
+    "coach": {
+      "vpCoach_temperature": 0.55,
+      "persona_reply_temperature": 0.75,
+      "persona_reply_max_tokens": 500
+    },
+    "run_concurrency": 2,
+    "max_chain_attempts": 3
+  },
+  "rep_records": [
+    {
+      "persona_id": "A",
+      "persona_label": "草根老板",
+      "condition": "S",
+      "status": "OK",
+      "r0_jinang_market": "M-03",
+      "r0_jinang_tech": "T-09"
+    },
+    {
+      "persona_id": "A",
+      "persona_label": "草根老板",
+      "condition": "Q",
+      "status": "OK",
+      "r0_jinang_market": "M-03",
+      "r0_jinang_tech": "T-09"
+    },
+    {
+      "persona_id": "D",
+      "persona_label": "二代接班人",
+      "condition": "S",
+      "status": "OK",
+      "r0_jinang_market": "M-01",
+      "r0_jinang_tech": "T-04"
+    },
+    {
+      "persona_id": "D",
+      "persona_label": "二代接班人",
+      "condition": "Q",
+      "status": "OK",
+      "r0_jinang_market": "M-01",
+      "r0_jinang_tech": "T-04"
+    },
+    {
+      "persona_id": "E",
+      "persona_label": "体制转型者",
+      "condition": "S",
+      "status": "OK",
+      "r0_jinang_market": "M-05",
+      "r0_jinang_tech": "T-09"
+    },
+    {
+      "persona_id": "E",
+      "persona_label": "体制转型者",
+      "condition": "Q",
+      "status": "OK",
+      "r0_jinang_market": "M-05",
+      "r0_jinang_tech": "T-09"
+    },
+    {
+      "persona_id": "B",
+      "persona_label": "职业经理人",
+      "condition": "S",
+      "status": "OK",
+      "r0_jinang_market": "M-03",
+      "r0_jinang_tech": "T-05"
+    },
+    {
+      "persona_id": "B",
+      "persona_label": "职业经理人",
+      "condition": "Q",
+      "status": "OK",
+      "r0_jinang_market": "M-03",
+      "r0_jinang_tech": "T-05"
+    },
+    {
+      "persona_id": "F",
+      "persona_label": "销售铁军",
+      "condition": "S",
+      "status": "OK",
+      "r0_jinang_market": "M-03",
+      "r0_jinang_tech": "T-08"
+    },
+    {
+      "persona_id": "F",
+      "persona_label": "销售铁军",
+      "condition": "Q",
+      "status": "OK",
+      "r0_jinang_market": "M-03",
+      "r0_jinang_tech": "T-08"
+    },
+    {
+      "persona_id": "C",
+      "persona_label": "技术创业者",
+      "condition": "S",
+      "status": "OK",
+      "r0_jinang_market": "M-08",
+      "r0_jinang_tech": "T-08"
+    },
+    {
+      "persona_id": "C",
+      "persona_label": "技术创业者",
+      "condition": "Q",
+      "status": "OK",
+      "r0_jinang_market": "M-08",
+      "r0_jinang_tech": "T-08"
+    },
+    {
+      "persona_id": "G",
+      "persona_label": "互联网PM转型",
+      "condition": "S",
+      "status": "OK",
+      "r0_jinang_market": "M-09",
+      "r0_jinang_tech": "T-05"
+    },
+    {
+      "persona_id": "G",
+      "persona_label": "互联网PM转型",
+      "condition": "Q",
+      "status": "OK",
+      "r0_jinang_market": "M-09",
+      "r0_jinang_tech": "T-05"
+    }
+  ],
+  "retry_records": [
+    {
+      "type": "chain_retry",
+      "key": "A|S|1",
+      "attempts": 2,
+      "input_hashes": [
+        "54006b957a606a0295879ae9ba094cc2e3870701ad34f65f2dd3e64aaf5de258",
+        "54006b957a606a0295879ae9ba094cc2e3870701ad34f65f2dd3e64aaf5de258"
+      ],
+      "row_sha256": [
+        "3f103ff97e1ee8bdeacbd28e94308558277344cfb50ee00c5b4c11cf822959fb",
+        "5737e2c07d6fd16de146b8b68b9526113fb03214440f1a89890c458c49fcc23f"
+      ],
+      "statuses": [
+        "FAIL",
+        "OK"
+      ]
+    },
+    {
+      "type": "chain_retry",
+      "key": "A|Q|1",
+      "attempts": 2,
+      "input_hashes": [
+        "636a52caeaf1a7562fc07ad3bcd671f48d6da1666b5ee25e9311c6e110c449d3",
+        "636a52caeaf1a7562fc07ad3bcd671f48d6da1666b5ee25e9311c6e110c449d3"
+      ],
+      "row_sha256": [
+        "327d6fbaefacb16c7c1a08592018b2050d5f55fa336facff5bacb767dc06be55",
+        "e641e00ea3253e2bf5e0b6615d3a347eec79f21d1e1e99519ebeb69d0adf4ccf"
+      ],
+      "statuses": [
+        "FAIL",
+        "OK"
+      ]
+    },
+    {
+      "type": "chain_retry",
+      "key": "G|S|1",
+      "attempts": 2,
+      "input_hashes": [
+        "bdc144b3c28a27cabc64fa115841cbd90a08c6a82c1a44bba4ff32ccd302e3b1",
+        "bdc144b3c28a27cabc64fa115841cbd90a08c6a82c1a44bba4ff32ccd302e3b1"
+      ],
+      "row_sha256": [
+        "61ba87c62dffe9a2614ff88472e1789d8df2bf9b583c5ac2f85a7bb6823e2575",
+        "af4b08763af2f4d896bc602a8d439b29b8801e68b8df87059da39f40a7287c89"
+      ],
+      "statuses": [
+        "FAIL",
+        "OK"
+      ]
+    },
+    {
+      "type": "json_repair",
+      "key": "A|S|1",
+      "stage": "D3",
+      "attempts": 2,
+      "prompt_sha256": "b98d04984e26e33d2edfb54faf84637bea38403538cb2b9e52bbf83de5754a6b"
+    },
+    {
+      "type": "json_repair",
+      "key": "A|S|1",
+      "stage": "D4",
+      "attempts": 2,
+      "prompt_sha256": "937f7f449cd98dc5b42ac8b7ef12daf0eb6385ed8de26830e0cb2020592d5284"
+    },
+    {
+      "type": "json_repair",
+      "key": "A|S|1",
+      "stage": "D5",
+      "attempts": 2,
+      "prompt_sha256": "454d7d30cae7efbd4d4e29d42c23356ebca4e2ba0d8ffdbf5ad57622954d311d"
+    },
+    {
+      "type": "json_repair",
+      "key": "A|Q|1",
+      "stage": "D4",
+      "attempts": 2,
+      "prompt_sha256": "266dec6733de6625b398196185784e84ed046a3f38d477d0ac4e55d50aa6cd03"
+    },
+    {
+      "type": "json_repair",
+      "key": "A|Q|1",
+      "stage": "D5",
+      "attempts": 2,
+      "prompt_sha256": "be869cc3803fc914a9e03438d8a96fa796e0790d6ad2de62cd79ba7703ff1e22"
+    },
+    {
+      "type": "json_repair",
+      "key": "D|S|1",
+      "stage": "D4",
+      "attempts": 2,
+      "prompt_sha256": "d0588701051805d2f7313448f967c80fcf1de4e4d4e85a96d29f0e9f76017ea7"
+    },
+    {
+      "type": "json_repair",
+      "key": "D|S|1",
+      "stage": "D5",
+      "attempts": 2,
+      "prompt_sha256": "a19e8d69977187f9b8c16ae69399e28caea744fbf043e3ed6f076251812a6df8"
+    },
+    {
+      "type": "json_repair",
+      "key": "D|Q|1",
+      "stage": "D5",
+      "attempts": 3,
+      "prompt_sha256": "d24df77f579c4cce52f4cefe9169f204121e38b36c48ebf07a53539b5f7da387"
+    },
+    {
+      "type": "json_repair",
+      "key": "E|S|1",
+      "stage": "D4",
+      "attempts": 2,
+      "prompt_sha256": "88380a50bd18da3b9ba4bfc3191c9e321ecc6beb349c78ea89ac22e910786780"
+    },
+    {
+      "type": "json_repair",
+      "key": "E|S|1",
+      "stage": "D5",
+      "attempts": 2,
+      "prompt_sha256": "20f909eea4bab5448562a2b71776c62c48adbfea32afddf2d94b914030ecee53"
+    },
+    {
+      "type": "json_repair",
+      "key": "E|Q|1",
+      "stage": "D4",
+      "attempts": 2,
+      "prompt_sha256": "34e4c51faf2af3ab318bf42e467b553c4cb23aa181d35e1d21af288e891b3fd5"
+    },
+    {
+      "type": "json_repair",
+      "key": "E|Q|1",
+      "stage": "D5",
+      "attempts": 2,
+      "prompt_sha256": "a2141c8f4656c3d092010a977654ed0e106e745452c6daf43412774011a228e8"
+    },
+    {
+      "type": "json_repair",
+      "key": "B|S|1",
+      "stage": "D4",
+      "attempts": 2,
+      "prompt_sha256": "7873e40d087a3a7d658f927e784d9a1350e2599134b61452c1cecd7f33e560ed"
+    },
+    {
+      "type": "json_repair",
+      "key": "B|S|1",
+      "stage": "D5",
+      "attempts": 3,
+      "prompt_sha256": "a8eeff2acb13128542d6097d524200905a7bddc5bbeb1e2bd6113c214cfe9db0"
+    },
+    {
+      "type": "json_repair",
+      "key": "B|Q|1",
+      "stage": "D4",
+      "attempts": 2,
+      "prompt_sha256": "9b5a1b83b47d1007efe5ed2fc474f200897eacc2c5ce5853061b978c83bfa192"
+    },
+    {
+      "type": "json_repair",
+      "key": "B|Q|1",
+      "stage": "D5",
+      "attempts": 2,
+      "prompt_sha256": "c1ebf3d10c8e8693f389ebab0427741acc6636fc4caf315c51c72f60a651f2c5"
+    },
+    {
+      "type": "json_repair",
+      "key": "F|S|1",
+      "stage": "D4",
+      "attempts": 2,
+      "prompt_sha256": "6fdd439d3cab58ecdbfc25ff9c7fd74d9046a6b11b41cb5683c2821f20a057cb"
+    },
+    {
+      "type": "json_repair",
+      "key": "F|S|1",
+      "stage": "D5",
+      "attempts": 2,
+      "prompt_sha256": "cfc91b66a0b21ac8b503b3fd7f22c21b2c01825ac4901aa46a738c88233e660d"
+    },
+    {
+      "type": "json_repair",
+      "key": "F|Q|1",
+      "stage": "D4",
+      "attempts": 2,
+      "prompt_sha256": "61247972e7310c4380877ca585f9bb99c495fb6b35671a2e48f35edcd4ec88d2"
+    },
+    {
+      "type": "json_repair",
+      "key": "F|Q|1",
+      "stage": "D5",
+      "attempts": 2,
+      "prompt_sha256": "838829e98ae6774eeb3633f4bfc882bfdb3fbfb58bfe323c594069234ce79fc7"
+    },
+    {
+      "type": "json_repair",
+      "key": "C|S|1",
+      "stage": "D4",
+      "attempts": 2,
+      "prompt_sha256": "1177e8f9de1d3de58b19a5a21a51e6dff9841c476ff1e5606f3c10107f377bd6"
+    },
+    {
+      "type": "json_repair",
+      "key": "C|S|1",
+      "stage": "D5",
+      "attempts": 2,
+      "prompt_sha256": "d154d36694f962684c8cea4dc00c61bc7c2288f9387cc65c61d7b9bb2c1b7fb3"
+    },
+    {
+      "type": "json_repair",
+      "key": "C|Q|1",
+      "stage": "D4",
+      "attempts": 2,
+      "prompt_sha256": "25ae5dbb3c7035c52f07586d13b2b9eb2fe9d99acbdef5016d3a56d0e2a4ea3c"
+    },
+    {
+      "type": "json_repair",
+      "key": "C|Q|1",
+      "stage": "D5",
+      "attempts": 2,
+      "prompt_sha256": "25c12187bb2aa4666979fda9c578400df1058c4d2ca6b1a217b859cdc48712cc"
+    },
+    {
+      "type": "json_repair",
+      "key": "G|S|1",
+      "stage": "D5",
+      "attempts": 3,
+      "prompt_sha256": "cf6efab0cb57b8ac2a40c9cba2b7828a37eee2f6cf1fac65fbb561e950659578"
+    },
+    {
+      "type": "json_repair",
+      "key": "G|Q|1",
+      "stage": "D4",
+      "attempts": 2,
+      "prompt_sha256": "9e89a763a48b678c0b8f0129285499ef8fa98606570f117105fe6519c9bd9d70"
+    },
+    {
+      "type": "json_repair",
+      "key": "G|Q|1",
+      "stage": "D5",
+      "attempts": 2,
+      "prompt_sha256": "a3e04f3dd09a3a916f3923adba8948b8cd3363c0bebdd2efa04d98522b804658"
+    }
+  ],
+  "assert_info_set_records": [
+    {
+      "persona_id": "A",
+      "persona_label": "草根老板",
+      "condition": "S",
+      "stage": "R1",
+      "prompt_sha256": "e1a8b7c46e55c7ffb2810c2849c343ee83e58008a462be9cc930f90d1af3105a",
+      "checked_at": "2026-07-15T08:44:05.445Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "A",
+      "persona_label": "草根老板",
+      "condition": "S",
+      "stage": "D3",
+      "prompt_sha256": "b98d04984e26e33d2edfb54faf84637bea38403538cb2b9e52bbf83de5754a6b",
+      "checked_at": "2026-07-15T08:44:05.446Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "A",
+      "persona_label": "草根老板",
+      "condition": "S",
+      "stage": "D4",
+      "prompt_sha256": "937f7f449cd98dc5b42ac8b7ef12daf0eb6385ed8de26830e0cb2020592d5284",
+      "checked_at": "2026-07-15T08:44:05.446Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "A",
+      "persona_label": "草根老板",
+      "condition": "S",
+      "stage": "D5",
+      "prompt_sha256": "454d7d30cae7efbd4d4e29d42c23356ebca4e2ba0d8ffdbf5ad57622954d311d",
+      "checked_at": "2026-07-15T08:44:05.447Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "A",
+      "persona_label": "草根老板",
+      "condition": "Q",
+      "stage": "Dq_R1",
+      "prompt_sha256": "9ffb1a176a19caf6159e78702566e01f6dd879856c36bfb857254574c4833a97",
+      "checked_at": "2026-07-15T08:44:05.447Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "A",
+      "persona_label": "草根老板",
+      "condition": "Q",
+      "stage": "Dq_D4",
+      "prompt_sha256": "c5b5a210019353304859a2515dfd5899852f5d0babd5e918cfaab404a4a1c4d8",
+      "checked_at": "2026-07-15T08:44:05.447Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "A",
+      "persona_label": "草根老板",
+      "condition": "Q",
+      "stage": "Dq_D5",
+      "prompt_sha256": "cf638228fcb6cf1dab578f19adfb36efd99cfcfba3037c46079ad76aa17e80b3",
+      "checked_at": "2026-07-15T08:44:05.447Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "A",
+      "persona_label": "草根老板",
+      "condition": "Q",
+      "stage": "R1",
+      "prompt_sha256": "e7c30afb03305acaaf67bdf5b86c7a0d7eb4f6e1dd11647f4968dba201b6e99b",
+      "checked_at": "2026-07-15T08:44:05.447Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "A",
+      "persona_label": "草根老板",
+      "condition": "Q",
+      "stage": "D3",
+      "prompt_sha256": "d7150d0b325c03b5e1b8830dfe5a84fd651c0712bf13805dbd477ac8c4df625c",
+      "checked_at": "2026-07-15T08:44:05.447Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "A",
+      "persona_label": "草根老板",
+      "condition": "Q",
+      "stage": "D4",
+      "prompt_sha256": "266dec6733de6625b398196185784e84ed046a3f38d477d0ac4e55d50aa6cd03",
+      "checked_at": "2026-07-15T08:44:05.447Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "A",
+      "persona_label": "草根老板",
+      "condition": "Q",
+      "stage": "D5",
+      "prompt_sha256": "be869cc3803fc914a9e03438d8a96fa796e0790d6ad2de62cd79ba7703ff1e22",
+      "checked_at": "2026-07-15T08:44:05.449Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "D",
+      "persona_label": "二代接班人",
+      "condition": "S",
+      "stage": "R1",
+      "prompt_sha256": "7e129c605ef138e73d897a1d124e9d9d9273764e295d5d4ceeb9795454e091fa",
+      "checked_at": "2026-07-15T08:44:05.449Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "D",
+      "persona_label": "二代接班人",
+      "condition": "S",
+      "stage": "D3",
+      "prompt_sha256": "baf9770cf3eec2ff212338f6b3edd92367ee01a22d3e09343c944b6b5da59679",
+      "checked_at": "2026-07-15T08:44:05.449Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "D",
+      "persona_label": "二代接班人",
+      "condition": "S",
+      "stage": "D4",
+      "prompt_sha256": "d0588701051805d2f7313448f967c80fcf1de4e4d4e85a96d29f0e9f76017ea7",
+      "checked_at": "2026-07-15T08:44:05.449Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "D",
+      "persona_label": "二代接班人",
+      "condition": "S",
+      "stage": "D5",
+      "prompt_sha256": "a19e8d69977187f9b8c16ae69399e28caea744fbf043e3ed6f076251812a6df8",
+      "checked_at": "2026-07-15T08:44:05.449Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "D",
+      "persona_label": "二代接班人",
+      "condition": "Q",
+      "stage": "Dq_R1",
+      "prompt_sha256": "9e12cdb2671bef5d4b0cd60c18137064a636cf27a1c471107d107648c0e1fee1",
+      "checked_at": "2026-07-15T08:44:05.449Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "D",
+      "persona_label": "二代接班人",
+      "condition": "Q",
+      "stage": "Dq_D4",
+      "prompt_sha256": "e973ed8367fc96f7f1581b030359b54e23e866c22ecce229ff519e3df754ae0e",
+      "checked_at": "2026-07-15T08:44:05.450Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "D",
+      "persona_label": "二代接班人",
+      "condition": "Q",
+      "stage": "Dq_D5",
+      "prompt_sha256": "a34927e0a42b96c771d96402a8aaf637155b1a85941d1cee9b22f52bbc3ec6e2",
+      "checked_at": "2026-07-15T08:44:05.450Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "D",
+      "persona_label": "二代接班人",
+      "condition": "Q",
+      "stage": "R1",
+      "prompt_sha256": "e7416765277942f06880b5b69adb4f8030cf2984790903bccc794b5cc86a6bc5",
+      "checked_at": "2026-07-15T08:44:05.450Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "D",
+      "persona_label": "二代接班人",
+      "condition": "Q",
+      "stage": "D3",
+      "prompt_sha256": "b2a454ddf54699b81dbdcce15cd4f15abc157636e5c5224c755e7bcdeaef350c",
+      "checked_at": "2026-07-15T08:44:05.450Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "D",
+      "persona_label": "二代接班人",
+      "condition": "Q",
+      "stage": "D4",
+      "prompt_sha256": "63c7d2fae7a51020244670e297e3d3710569c1b862b310fad2370ce0387e6458",
+      "checked_at": "2026-07-15T08:44:05.450Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "D",
+      "persona_label": "二代接班人",
+      "condition": "Q",
+      "stage": "D5",
+      "prompt_sha256": "d24df77f579c4cce52f4cefe9169f204121e38b36c48ebf07a53539b5f7da387",
+      "checked_at": "2026-07-15T08:44:05.450Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "E",
+      "persona_label": "体制转型者",
+      "condition": "S",
+      "stage": "R1",
+      "prompt_sha256": "0dc88dfa0cd042174482f89df21abe2278f9016675bd080bc2f1dcb7267a327c",
+      "checked_at": "2026-07-15T08:44:05.450Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "E",
+      "persona_label": "体制转型者",
+      "condition": "S",
+      "stage": "D3",
+      "prompt_sha256": "8af33b6017baf9d7c42c7ce6fd4cc379a5dbcf414d2e0d6cea5e94c3235a45ba",
+      "checked_at": "2026-07-15T08:44:05.450Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "E",
+      "persona_label": "体制转型者",
+      "condition": "S",
+      "stage": "D4",
+      "prompt_sha256": "88380a50bd18da3b9ba4bfc3191c9e321ecc6beb349c78ea89ac22e910786780",
+      "checked_at": "2026-07-15T08:44:05.451Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "E",
+      "persona_label": "体制转型者",
+      "condition": "S",
+      "stage": "D5",
+      "prompt_sha256": "20f909eea4bab5448562a2b71776c62c48adbfea32afddf2d94b914030ecee53",
+      "checked_at": "2026-07-15T08:44:05.451Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "E",
+      "persona_label": "体制转型者",
+      "condition": "Q",
+      "stage": "Dq_R1",
+      "prompt_sha256": "4c7c60e6e93102a716bf4962c72a912f1a9854ef1f68658b280ac13788fdac21",
+      "checked_at": "2026-07-15T08:44:05.451Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "E",
+      "persona_label": "体制转型者",
+      "condition": "Q",
+      "stage": "Dq_D4",
+      "prompt_sha256": "4c8488f5bc21ca1d9b74d125f117a8fc163155bfde17431618d9d88f39393956",
+      "checked_at": "2026-07-15T08:44:05.451Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "E",
+      "persona_label": "体制转型者",
+      "condition": "Q",
+      "stage": "Dq_D5",
+      "prompt_sha256": "c1700d3795560f174500cccca3f47602a6ec3126ba07311e5e62b4ac22b56cf3",
+      "checked_at": "2026-07-15T08:44:05.451Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "E",
+      "persona_label": "体制转型者",
+      "condition": "Q",
+      "stage": "R1",
+      "prompt_sha256": "09fb1c502b9943a4d1a8d426befbb35b7dff39b1153cd4eda4daafaad8a08b6f",
+      "checked_at": "2026-07-15T08:44:05.451Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "E",
+      "persona_label": "体制转型者",
+      "condition": "Q",
+      "stage": "D3",
+      "prompt_sha256": "1a27dc1fba23f881021e90201e0b7f291b18c80702c286b8a6c1fd47619fbed6",
+      "checked_at": "2026-07-15T08:44:05.451Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "E",
+      "persona_label": "体制转型者",
+      "condition": "Q",
+      "stage": "D4",
+      "prompt_sha256": "34e4c51faf2af3ab318bf42e467b553c4cb23aa181d35e1d21af288e891b3fd5",
+      "checked_at": "2026-07-15T08:44:05.451Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "E",
+      "persona_label": "体制转型者",
+      "condition": "Q",
+      "stage": "D5",
+      "prompt_sha256": "a2141c8f4656c3d092010a977654ed0e106e745452c6daf43412774011a228e8",
+      "checked_at": "2026-07-15T08:44:05.452Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "B",
+      "persona_label": "职业经理人",
+      "condition": "S",
+      "stage": "R1",
+      "prompt_sha256": "c126fb70b492923f000217eebfdedba74a5ab0cf8abc26477ebe42dd840767ff",
+      "checked_at": "2026-07-15T08:44:05.452Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "B",
+      "persona_label": "职业经理人",
+      "condition": "S",
+      "stage": "D3",
+      "prompt_sha256": "272500a636e2d4c8e5f1a3695fc7341b5cfcbe6a8f718f1864b78ff6c343932e",
+      "checked_at": "2026-07-15T08:44:05.452Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "B",
+      "persona_label": "职业经理人",
+      "condition": "S",
+      "stage": "D4",
+      "prompt_sha256": "7873e40d087a3a7d658f927e784d9a1350e2599134b61452c1cecd7f33e560ed",
+      "checked_at": "2026-07-15T08:44:05.452Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "B",
+      "persona_label": "职业经理人",
+      "condition": "S",
+      "stage": "D5",
+      "prompt_sha256": "a8eeff2acb13128542d6097d524200905a7bddc5bbeb1e2bd6113c214cfe9db0",
+      "checked_at": "2026-07-15T08:44:05.453Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "B",
+      "persona_label": "职业经理人",
+      "condition": "Q",
+      "stage": "Dq_R1",
+      "prompt_sha256": "124e6eadd6754a3806aa091e99af218e7afc5f5ccf7e6a0f9c73365e47a316ce",
+      "checked_at": "2026-07-15T08:44:05.453Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "B",
+      "persona_label": "职业经理人",
+      "condition": "Q",
+      "stage": "Dq_D4",
+      "prompt_sha256": "b93bba10752d833ea77b1f68bd683afe47ea80a2d71b350fd99bb39ba6f21400",
+      "checked_at": "2026-07-15T08:44:05.453Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "B",
+      "persona_label": "职业经理人",
+      "condition": "Q",
+      "stage": "Dq_D5",
+      "prompt_sha256": "b9333b78c0d1fa2b781880e408460eca1ef457d9bb51ebead569f39fb384d00a",
+      "checked_at": "2026-07-15T08:44:05.453Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "B",
+      "persona_label": "职业经理人",
+      "condition": "Q",
+      "stage": "R1",
+      "prompt_sha256": "5a4150e79d6039186bd38e2746a5bd34d65e9ed0f861cae421b7c35e36d4fbb5",
+      "checked_at": "2026-07-15T08:44:05.453Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "B",
+      "persona_label": "职业经理人",
+      "condition": "Q",
+      "stage": "D3",
+      "prompt_sha256": "8379964823ec9503ffeda60ff68f9a2f8469f77ae39a24157bcc32996e23be67",
+      "checked_at": "2026-07-15T08:44:05.453Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "B",
+      "persona_label": "职业经理人",
+      "condition": "Q",
+      "stage": "D4",
+      "prompt_sha256": "9b5a1b83b47d1007efe5ed2fc474f200897eacc2c5ce5853061b978c83bfa192",
+      "checked_at": "2026-07-15T08:44:05.453Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "B",
+      "persona_label": "职业经理人",
+      "condition": "Q",
+      "stage": "D5",
+      "prompt_sha256": "c1ebf3d10c8e8693f389ebab0427741acc6636fc4caf315c51c72f60a651f2c5",
+      "checked_at": "2026-07-15T08:44:05.453Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "F",
+      "persona_label": "销售铁军",
+      "condition": "S",
+      "stage": "R1",
+      "prompt_sha256": "9f6d05c0b3173aac23ece1ce95ebb84e4937e702f90a25e9a8e6969f9df30360",
+      "checked_at": "2026-07-15T08:44:05.454Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "F",
+      "persona_label": "销售铁军",
+      "condition": "S",
+      "stage": "D3",
+      "prompt_sha256": "4ad8453e370699e75b8bb1f358841bec52d6a9855c5f40952199c06965daca40",
+      "checked_at": "2026-07-15T08:44:05.454Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "F",
+      "persona_label": "销售铁军",
+      "condition": "S",
+      "stage": "D4",
+      "prompt_sha256": "6fdd439d3cab58ecdbfc25ff9c7fd74d9046a6b11b41cb5683c2821f20a057cb",
+      "checked_at": "2026-07-15T08:44:05.454Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "F",
+      "persona_label": "销售铁军",
+      "condition": "S",
+      "stage": "D5",
+      "prompt_sha256": "cfc91b66a0b21ac8b503b3fd7f22c21b2c01825ac4901aa46a738c88233e660d",
+      "checked_at": "2026-07-15T08:44:05.454Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "F",
+      "persona_label": "销售铁军",
+      "condition": "Q",
+      "stage": "Dq_R1",
+      "prompt_sha256": "1279b24178d323c1939c7022fac060d7708a733dcdec7bf25fd0dcfc7988bfa7",
+      "checked_at": "2026-07-15T08:44:05.454Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "F",
+      "persona_label": "销售铁军",
+      "condition": "Q",
+      "stage": "Dq_D4",
+      "prompt_sha256": "6884f55de1c70fd8f955521bc4ad4f81da08dad94788234299936dfe3350d825",
+      "checked_at": "2026-07-15T08:44:05.454Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "F",
+      "persona_label": "销售铁军",
+      "condition": "Q",
+      "stage": "Dq_D5",
+      "prompt_sha256": "bc943009b0059530a9d582c942b3786472489de03b7b3ec7639c5a3efb447cb7",
+      "checked_at": "2026-07-15T08:44:05.454Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "F",
+      "persona_label": "销售铁军",
+      "condition": "Q",
+      "stage": "R1",
+      "prompt_sha256": "aff35344aefcd77cfe5c484397a4048cf57cc93a1053d68c72f0c545dfde1ce9",
+      "checked_at": "2026-07-15T08:44:05.454Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "F",
+      "persona_label": "销售铁军",
+      "condition": "Q",
+      "stage": "D3",
+      "prompt_sha256": "646f37f458cc4fb9b5374ee46164cabafc2493c4e45b366642d93bc0a3a33346",
+      "checked_at": "2026-07-15T08:44:05.454Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "F",
+      "persona_label": "销售铁军",
+      "condition": "Q",
+      "stage": "D4",
+      "prompt_sha256": "61247972e7310c4380877ca585f9bb99c495fb6b35671a2e48f35edcd4ec88d2",
+      "checked_at": "2026-07-15T08:44:05.454Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "F",
+      "persona_label": "销售铁军",
+      "condition": "Q",
+      "stage": "D5",
+      "prompt_sha256": "838829e98ae6774eeb3633f4bfc882bfdb3fbfb58bfe323c594069234ce79fc7",
+      "checked_at": "2026-07-15T08:44:05.455Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "C",
+      "persona_label": "技术创业者",
+      "condition": "S",
+      "stage": "R1",
+      "prompt_sha256": "78148f5f825ef7320b6a523fdc229379fe739ce174dbd99f55265dec182be63d",
+      "checked_at": "2026-07-15T08:44:05.455Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "C",
+      "persona_label": "技术创业者",
+      "condition": "S",
+      "stage": "D3",
+      "prompt_sha256": "4db1d9978b4d11473c1ead77bd660c38eb215d47afc34bac00c1710f813a024a",
+      "checked_at": "2026-07-15T08:44:05.455Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "C",
+      "persona_label": "技术创业者",
+      "condition": "S",
+      "stage": "D4",
+      "prompt_sha256": "1177e8f9de1d3de58b19a5a21a51e6dff9841c476ff1e5606f3c10107f377bd6",
+      "checked_at": "2026-07-15T08:44:05.455Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "C",
+      "persona_label": "技术创业者",
+      "condition": "S",
+      "stage": "D5",
+      "prompt_sha256": "d154d36694f962684c8cea4dc00c61bc7c2288f9387cc65c61d7b9bb2c1b7fb3",
+      "checked_at": "2026-07-15T08:44:05.455Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "C",
+      "persona_label": "技术创业者",
+      "condition": "Q",
+      "stage": "Dq_R1",
+      "prompt_sha256": "561529a9d9673ca3a1d533ac213303ceb9f7d1768e9b5ea1a943abaeb532c383",
+      "checked_at": "2026-07-15T08:44:05.455Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "C",
+      "persona_label": "技术创业者",
+      "condition": "Q",
+      "stage": "Dq_D4",
+      "prompt_sha256": "31c51bfb36674146bb8ef1c568092179bea00eb86f577eefbfe288f3dfb7cbb6",
+      "checked_at": "2026-07-15T08:44:05.455Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "C",
+      "persona_label": "技术创业者",
+      "condition": "Q",
+      "stage": "Dq_D5",
+      "prompt_sha256": "b1c43b44a424691f5795c4175fd706c84d82e8a912b5fb304da404e97717db52",
+      "checked_at": "2026-07-15T08:44:05.455Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "C",
+      "persona_label": "技术创业者",
+      "condition": "Q",
+      "stage": "R1",
+      "prompt_sha256": "5d6ed23769a7f6965827792ec75be86bc63517452df1179fde87c657df7b4715",
+      "checked_at": "2026-07-15T08:44:05.455Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "C",
+      "persona_label": "技术创业者",
+      "condition": "Q",
+      "stage": "D3",
+      "prompt_sha256": "26aae6c088f69bf7bde0aa060114a5e8ec64584c1927c0e10fd4a282b876fd45",
+      "checked_at": "2026-07-15T08:44:05.456Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "C",
+      "persona_label": "技术创业者",
+      "condition": "Q",
+      "stage": "D4",
+      "prompt_sha256": "25ae5dbb3c7035c52f07586d13b2b9eb2fe9d99acbdef5016d3a56d0e2a4ea3c",
+      "checked_at": "2026-07-15T08:44:05.456Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "C",
+      "persona_label": "技术创业者",
+      "condition": "Q",
+      "stage": "D5",
+      "prompt_sha256": "25c12187bb2aa4666979fda9c578400df1058c4d2ca6b1a217b859cdc48712cc",
+      "checked_at": "2026-07-15T08:44:05.456Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "G",
+      "persona_label": "互联网PM转型",
+      "condition": "S",
+      "stage": "R1",
+      "prompt_sha256": "acc0ebf38de45920ab604c46605f8a3cad68432128d911beba001cd6b5598b7f",
+      "checked_at": "2026-07-15T08:44:05.456Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "G",
+      "persona_label": "互联网PM转型",
+      "condition": "S",
+      "stage": "D3",
+      "prompt_sha256": "fc1e5d29829aebcfbf1bf76a76be48e2818ca1f6fa3cd58aca658da80903497e",
+      "checked_at": "2026-07-15T08:44:05.456Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "G",
+      "persona_label": "互联网PM转型",
+      "condition": "S",
+      "stage": "D4",
+      "prompt_sha256": "da7d1d26990b469589a362bd75eeb4ab0d9eb6ee1e5af05b088cb59cfa5291a5",
+      "checked_at": "2026-07-15T08:44:05.456Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "G",
+      "persona_label": "互联网PM转型",
+      "condition": "S",
+      "stage": "D5",
+      "prompt_sha256": "cf6efab0cb57b8ac2a40c9cba2b7828a37eee2f6cf1fac65fbb561e950659578",
+      "checked_at": "2026-07-15T08:44:05.457Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "G",
+      "persona_label": "互联网PM转型",
+      "condition": "Q",
+      "stage": "Dq_R1",
+      "prompt_sha256": "6261bf3ed9df54907ae87ed80f12b5e1fa3c950e5a86135aac4573d69a538d40",
+      "checked_at": "2026-07-15T08:44:05.457Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "G",
+      "persona_label": "互联网PM转型",
+      "condition": "Q",
+      "stage": "Dq_D4",
+      "prompt_sha256": "87a2124dbf779f80d1a4cf042c249393afd695a8ed4f9c02acbb5b69b18b40f1",
+      "checked_at": "2026-07-15T08:44:05.457Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "G",
+      "persona_label": "互联网PM转型",
+      "condition": "Q",
+      "stage": "Dq_D5",
+      "prompt_sha256": "469984efa80e96bea91d309a14e177bb712416377a7b7a25757b6ec069de4225",
+      "checked_at": "2026-07-15T08:44:05.457Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "G",
+      "persona_label": "互联网PM转型",
+      "condition": "Q",
+      "stage": "R1",
+      "prompt_sha256": "7075d8466236c52881e531d72c929fbe8a3ff00c4fe647e38b6feda6aa054251",
+      "checked_at": "2026-07-15T08:44:05.457Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "G",
+      "persona_label": "互联网PM转型",
+      "condition": "Q",
+      "stage": "D3",
+      "prompt_sha256": "9a0ca9fc9af9159f4c11d57f26d94277b31397d5604a76c2cd3d6147999070ac",
+      "checked_at": "2026-07-15T08:44:05.457Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "G",
+      "persona_label": "互联网PM转型",
+      "condition": "Q",
+      "stage": "D4",
+      "prompt_sha256": "9e89a763a48b678c0b8f0129285499ef8fa98606570f117105fe6519c9bd9d70",
+      "checked_at": "2026-07-15T08:44:05.457Z",
+      "status": "PASS"
+    },
+    {
+      "persona_id": "G",
+      "persona_label": "互联网PM转型",
+      "condition": "Q",
+      "stage": "D5",
+      "prompt_sha256": "a3e04f3dd09a3a916f3923adba8948b8cd3363c0bebdd2efa04d98522b804658",
+      "checked_at": "2026-07-15T08:44:05.457Z",
+      "status": "PASS"
+    }
+  ],
+  "persona_map_sha256": {
+    "草根老板": "956b0ff7c29a40924bfec8a9d10679ca75645cfee82ad2a5eae72694a36ef941",
+    "二代接班人": "faf422d5a87097922ff6a00cc5a9bb3016dd4cf935fa37e077b642074682ebcc",
+    "体制转型者": "322408d954f20a4bc7f4d9680777e5cfc9d21247fe223a6c20fff6406efb78dd",
+    "职业经理人": "eff9c147034ba2b49d7e283f0274aff7e0d855ddd8a91e85079016cd8e5131e8",
+    "销售铁军": "71d37121a47415aa86ad3ea31a9e165ab60eb9a3b43a10ee08d94944b4d3a1cb",
+    "技术创业者": "c392c42d255e29f1982874baa20711163dc225807a51c514ac45414ec1eb6a7f",
+    "互联网PM转型": "03ed4036c3389750193d475fa84e789a59d45a5b8ccad6fa6b7750590568d9d3"
+  },
+  "config_sha256": {
+    "docs/CODEX_QUESTION_DEFINITION_PILOT.md": "b501bc0104ee7c5b7fce4e14df9bb7852986421f97dbe5adf689a6a16995882d",
+    "docs/CODEX_INFO_SET_ALIGNMENT.md": "1dc28cde899df68ab00d1ae93861af1e6bc0685533a16aaf73418f776c0c1a0a",
+    "scripts/analysis/question_definition_pilot.js": "e37b051d58d74ee1a98b24c6415f41d129fcbd502962fe3d5e3ea68293b0a431",
+    "scripts/analysis/full_game_all_personas.js": "73a30936ea61b9abda58512b15d54bdf4da99877f92433dafa860dc5c2a1c64f",
+    "scripts/analysis/info_set_assert.js": "936086cdde9142926f6754a885d9eb399ecb3e3fba331a345251e9cb218c7867",
+    "scripts/analysis/full_game_all_personas_v1_2026-07-14.jsonl": "eccb77a5a7337a7c04ed782074dcd217256d1df87384566885b50bb98899f1bb"
+  },
+  "output_sha256": {
+    "jsonl": "cb511d9f2955ea5463b3fc83b42be790a4a01b3a28d41e3520673261b7270d7f",
+    "summary": "ea801116a34010ebe5ef37f5d74a1992fd6bfb71c81d11b4f398752aab695234",
+    "raw_samples": "c6ad87b766d8aacdbf047f314c65b87b827334e5132db97a2db419573956e9ec",
+    "audit": "135d90d712bee8927f30e2c97897fe43031d1ceea218e22207ee13efa9fbc4a1",
+    "question_list": "40392e58a2b3f7cf9b4c6b29d5c8eb2bb56ef886f584d0aa9477384fb5768c00"
+  }
+}
