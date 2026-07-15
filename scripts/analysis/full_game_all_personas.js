@@ -202,6 +202,72 @@ function renderStack(records) {
   ].join("\n");
 }
 
+function validateQuestionDefinition(raw) {
+  const parsed = parseJsonObject(raw);
+  return {
+    question: requireText(parsed.question, "question")
+  };
+}
+
+function buildQuestionDefinitionPrompt(persona, stack, neutralDescription) {
+  return [
+    `你是一位"${persona.label}"型的企业管理者。`,
+    `一句话背景：${persona.desc}`,
+    `核心盲区摘要：${persona.core_blind_spot || persona.profile.blindSpots || ""}`,
+    "【你的认知地图；M 条件，全量在场】",
+    renderMap(persona.map_items),
+    renderStack(stack),
+    "【中性局面描述】",
+    neutralDescription,
+    "【问题定义】在做这个决策之前，以你的经验和直觉，你觉得此刻必须先搞清楚的问题是什么？只写问题本身（一两句话），不要回答它。",
+    '输出 JSON：{"question":"<问题本身>"}',
+    "只输出可 JSON.parse 的 JSON，不要 Markdown，不要额外文字。"
+  ].join("\n");
+}
+
+function questionStackRecord(stage, question) {
+  return {
+    point: `问题定义(${stage})`,
+    summary: `此刻先问：${question}`
+  };
+}
+
+function neutralQuestionDescription(stage) {
+  if (stage === "R1") {
+    return "现在到了开局选定位的环节。可见边界：12 个市场格子（3 类人群 × 2 类渠道 × 2 类策略）与 3 个架构标签。";
+  }
+  if (stage === "D4") {
+    return "现在到了配置产品能力卡的环节。可见边界：每个能力维度至少 1 张，总数至少 6 张，tier 有 low/mid/high 三档。";
+  }
+  if (stage === "D5") {
+    return "现在到了定价环节。可见边界：价格范围 1000-6000 元，步进 100 元。";
+  }
+  return "现在到了一个新的决策环节。";
+}
+
+async function runQuestionDefinition(runtime, options, row, persona, stage, stack) {
+  if (!options?.questionDefinition) return null;
+  const neutralDescription = neutralQuestionDescription(stage);
+  const prompt = buildQuestionDefinitionPrompt(persona, stack, neutralDescription);
+  const startedAt = new Date().toISOString();
+  const call = await callJson(runtime.chatCompletion, prompt, validateQuestionDefinition, {
+    max_tokens: 500,
+    infoSetStage: stage
+  });
+  const record = {
+    stage,
+    neutral_description: neutralDescription,
+    started_at: startedAt,
+    ended_at: new Date().toISOString(),
+    ...call
+  };
+  row.question_definition = row.question_definition || { enabled: true, calls: [] };
+  row.question_definition.calls.push(record);
+  row.calls.question_definition = Number(row.calls.question_definition || 0) + Number(call.attempts || 0);
+  if (call.status !== "OK") throw new Error(`D_q ${stage} failed: ${call.error}`);
+  return record;
+}
+
 function normalizeArchitecture(value) {
   const raw = String(value || "").trim();
   const low = raw.toLowerCase();
@@ -525,7 +591,17 @@ function validateR1Choice(raw, persona) {
   };
 }
 
-function buildR1Prompt(persona, draw) {
+function buildR1Prompt(persona, draw, questionDefinition = null) {
+  const qLines = questionDefinition
+    ? [
+      "【你刚刚提出的问题】",
+      questionDefinition.parsed.question,
+      "【输出契约】围绕你自己的问题，填好 R1 JSON：grid_id 必须来自上方 12 个合法市场格子；architecture 必须是 Experience/Hybrid/Function；VP 草稿必须包含 WHO/PAIN/HOW；updated_constraints 与 map_sources 必须引用真实地图 id。"
+    ]
+    : [
+      "【任务】做出 R1 的第一个战略选择：自选完整 12 格之一、架构标签、VP 草稿（WHO/PAIN/HOW），并把你的当前约束压栈。",
+      "不要为了分散而分散；按你的认知地图自然判断。updated_constraints 与 map_sources 必须引用真实地图 id。"
+    ];
   return [
     `你是一位"${persona.label}"型的企业管理者。`,
     `一句话背景：${persona.desc}`,
@@ -538,8 +614,7 @@ function buildR1Prompt(persona, draw) {
     "【12 个合法市场格子；必须自选其中一个完整 grid_id】",
     GRID_OPTIONS.map((item) => `- ${item.grid_id}: ${item.label}`).join("\n"),
     "【架构标签；必须自选其一】Experience=体验型，Hybrid=混合型，Function=功能型。",
-    "【任务】做出 R1 的第一个战略选择：自选完整 12 格之一、架构标签、VP 草稿（WHO/PAIN/HOW），并把你的当前约束压栈。",
-    "不要为了分散而分散；按你的认知地图自然判断。updated_constraints 与 map_sources 必须引用真实地图 id。",
+    ...qLines,
     '输出 JSON：{"grid_id":"ToC_DIFF_CHILD|...","architecture":"Experience|Hybrid|Function","vp_draft":{"who":"...","pain":"...","how":"..."},"choice_reason":"一句话理由","map_sources":["map_xx"],"updated_constraints":[{"text":"...","source":"map_xx"}]}',
     "只输出可 JSON.parse 的 JSON，不要 Markdown，不要额外文字。"
   ].join("\n");
@@ -893,8 +968,17 @@ function validateD4(raw, persona, materials) {
   };
 }
 
-function buildD4Prompt(persona, stack, materials, d3Summary, r1Outcome) {
+function buildD4Prompt(persona, stack, materials, d3Summary, r1Outcome, questionDefinition = null) {
   void r1Outcome;
+  const qLines = questionDefinition
+    ? [
+      "【你刚刚提出的问题】",
+      questionDefinition.parsed.question,
+      "【输出契约】围绕你自己的问题，填好能力卡 JSON：每张卡必须同时选择真实 cap_id 和 low/mid/high tier；每个维度至少 1 张、总数至少 6 张；具体张数、卡片和 tier 都由你决定。"
+    ]
+    : [
+      "【任务】依据 R1-R2 栈选择能力卡。每张卡必须同时选择真实 cap_id 和 low/mid/high tier；每个维度至少 1 张、总数至少 6 张。具体张数、卡片和 tier 都由你决定。"
+    ];
   return [
     `你是一位"${persona.label}"型的企业管理者。`,
     "【你的认知地图】",
@@ -906,7 +990,7 @@ function buildD4Prompt(persona, stack, materials, d3Summary, r1Outcome) {
     JSON.stringify(publicCardRows(materials), null, 2),
     "【兼容提示；学生可见文字提示】",
     qualitativeCompatibilityHints(materials).join("\n") || "无额外提示。",
-    "【任务】依据 R1-R2 栈选择能力卡。每张卡必须同时选择真实 cap_id 和 low/mid/high tier；每个维度至少 1 张、总数至少 6 张。具体张数、卡片和 tier 都由你决定。",
+    ...qLines,
     "cost_stance.source 必须引用真实地图 id 或承前:R1/承前:D3。",
     '输出 JSON：{"cards":[{"id":"<真实cap_id>","tier":"low|mid|high"}],"cost_stance":{"text":"<成本立场>","source":"map_xx或承前:D3"},"updated_constraints":[{"text":"<约束>","source":"map_xx或承前:D3"}]}',
     "只输出可 JSON.parse 的 JSON，不要 Markdown，不要额外文字。"
@@ -945,14 +1029,23 @@ function validateD5(raw, persona) {
   };
 }
 
-function buildD5Prompt(persona, stack, r1Outcome) {
+function buildD5Prompt(persona, stack, r1Outcome, questionDefinition = null) {
   void r1Outcome;
+  const qLines = questionDefinition
+    ? [
+      "【你刚刚提出的问题】",
+      questionDefinition.parsed.question,
+      "【输出契约】围绕你自己的问题，填好定价 JSON：价格范围 1000-6000 元，步进 100 元。"
+    ]
+    : [
+      "【任务】依据既有栈做最终定价，赚最多的钱。可定价范围 1000-6000 元，步进 100 元。"
+    ];
   return [
     `你是一位"${persona.label}"型的企业管理者。`,
     "【你的认知地图】",
     renderMap(persona.map_items),
     renderStack(stack),
-    "【任务】依据既有栈做最终定价，赚最多的钱。可定价范围 1000-6000 元，步进 100 元。",
+    ...qLines,
     "basis.source 必须引用真实地图 id 或承前:R1/承前:Coach/承前:D3/承前:D4。",
     '输出 JSON：{"price":1000到6000之间、且为100的整数倍,"basis":{"text":"<依据>","source":"map_xx或承前:D4"},"reasoning":"<理由>"}',
     "只输出可 JSON.parse 的 JSON，不要 Markdown，不要额外文字。"
@@ -1055,18 +1148,20 @@ async function runPlaythrough(runtime, persona, materials, runId, options = {}) 
     map_sha256: persona.map_sha256,
     defect: options.defect || null,
     defect_audit: {},
+    question_definition: options.questionDefinition ? { enabled: true, calls: [] } : null,
     r0_jinang: null,
     r1_choice: null,
     coach: null,
     vp_report_only: null,
     r1_settlement: null,
     r2: null,
-    calls: { decision_json: 0, coach_persona_replies: 0, persona_generator: 0, tag_extractor: 0, vp_word_scorer: 0 }
+    calls: { decision_json: 0, question_definition: 0, coach_persona_replies: 0, persona_generator: 0, tag_extractor: 0, vp_word_scorer: 0 }
   };
   try {
     const draw = options.jinangDraw || drawJinang(materials.jinangConfig);
     row.r0_jinang = draw;
 
+    const r1Question = await runQuestionDefinition(runtime, options, row, persona, "R1", []);
     const r1Context = await preparePromptContext(
       options,
       row,
@@ -1076,12 +1171,15 @@ async function runPlaythrough(runtime, persona, materials, runId, options = {}) 
       "R1 选战略：在中国推广陪伴机器人，自选 12 格市场、架构标签、VP 草稿与当前约束。",
       { callId: "R1" }
     );
-    const r1Prompt = buildR1Prompt(r1Context.persona, draw);
+    const r1Prompt = buildR1Prompt(r1Context.persona, draw, r1Question);
     const r1Call = await callJson(runtime.chatCompletion, r1Prompt, (raw) => validateR1Choice(raw, persona), { max_tokens: 1800, infoSetStage: "R1" });
     row.calls.decision_json += r1Call.attempts;
     if (r1Call.status !== "OK") throw new Error(`R1 choice failed: ${r1Call.error}`);
     row.r1_choice = r1Call;
-    let stack = [r1StackRecord(r1Call.parsed)];
+    let stack = [
+      ...(r1Question ? [questionStackRecord("R1", r1Question.parsed.question)] : []),
+      r1StackRecord(r1Call.parsed)
+    ];
 
     const coach = await runCoach(runtime, persona, r1Call.parsed, draw, stack, { ...options, row });
     row.calls.coach_persona_replies += COACH_ROUNDS;
@@ -1143,6 +1241,8 @@ async function runPlaythrough(runtime, persona, materials, runId, options = {}) 
     const evidenceSignals = await extractEvidenceSignals(runtime, d3Call.parsed, d3SummaryText, materials);
     row.calls.tag_extractor += 1;
 
+    const d4Question = await runQuestionDefinition(runtime, options, row, persona, "D4", stack);
+    if (d4Question) stack = [...stack, questionStackRecord("D4", d4Question.parsed.question)];
     const d4Context = await preparePromptContext(
       options,
       row,
@@ -1157,7 +1257,8 @@ async function runPlaythrough(runtime, persona, materials, runId, options = {}) 
       d4Context.stack,
       materials,
       `${d3Call.parsed.key_evidence.join("；")} / ${d3Call.parsed.market_judgment}`,
-      row.r1_settlement
+      row.r1_settlement,
+      d4Question
     );
     const d4Call = await callJson(runtime.chatCompletion, d4Prompt, (raw) => validateD4(raw, persona, materials), { max_tokens: 4000, infoSetStage: "D4" });
     row.calls.decision_json += d4Call.attempts;
@@ -1175,6 +1276,8 @@ async function runPlaythrough(runtime, persona, materials, runId, options = {}) 
       d5PromptOutcome = result.r1Outcome || d5PromptOutcome;
       row.defect_audit.d5_prompt = result.audit || null;
     }
+    const d5Question = await runQuestionDefinition(runtime, options, row, persona, "D5", stack);
+    if (d5Question) stack = [...stack, questionStackRecord("D5", d5Question.parsed.question)];
     const d5Context = await preparePromptContext(
       options,
       row,
@@ -1184,7 +1287,7 @@ async function runPlaythrough(runtime, persona, materials, runId, options = {}) 
       "D5 最终定价：依据既有栈与选卡方案，在价格滑块范围内确定最终价格。",
       { callId: "D5" }
     );
-    const d5Prompt = buildD5Prompt(d5Context.persona, d5Context.stack, d5PromptOutcome);
+    const d5Prompt = buildD5Prompt(d5Context.persona, d5Context.stack, d5PromptOutcome, d5Question);
     const d5Call = await callJson(runtime.chatCompletion, d5Prompt, (raw) => validateD5(raw, persona), { max_tokens: 1600, infoSetStage: "D5" });
     row.calls.decision_json += d5Call.attempts;
     if (d5Call.status !== "OK") throw new Error(`D5 failed: ${d5Call.error}`);
@@ -1680,6 +1783,8 @@ module.exports = {
   validateD3,
   validateD4,
   validateD5,
+  buildQuestionDefinitionPrompt,
+  neutralQuestionDescription,
   buildRound1Outcome,
   settleJinang,
   calculateR2,

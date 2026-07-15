@@ -42,6 +42,7 @@ function stripWhitelistedSourceNumbers(promptText) {
   text = stripSection(text, /【D3 市场证据摘要|【D3 证据摘要/);
   text = stripSection(text, /【动态用户画像 summary|【动态用户画像|【用户画像 summary|【客户画像|【访谈素材/);
   text = stripSection(text, /【本轮随机锦囊|【随机锦囊/);
+  text = stripSection(text, /【问题定义|【你刚刚提出的问题|【你自己的问题/);
   return text;
 }
 
