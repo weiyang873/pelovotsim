@@ -315,11 +315,7 @@ async function submitTeamSolution(api, { teamId, memberId, recap, selections }) 
     memberId,
     price,
     selections,
-    mergedInterview: {
-      radar: merged.mergedInterview.radar,
-      tags: merged.mergedInterview.tags,
-      evi: merged.mergedInterview.evi
-    },
+    mergedInterview: merged.mergedInterview || null,
     bestGrid: recap.final_grid_id
   });
   const result = await getJson(api, `/api/round2/team-result?teamId=${encodeURIComponent(teamId)}&sessionId=default`);

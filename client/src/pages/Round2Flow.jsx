@@ -503,6 +503,16 @@ function buildInterviewSummary(result, memberDims) {
   return tagText ? `访谈关键词包括 ${tagText}。` : "";
 }
 
+function isStudentMergedInterviewReady(mergeData) {
+  const mergedInterview = mergeData?.mergedInterview;
+  if (!mergedInterview || typeof mergedInterview !== "object") return false;
+  if (String(mergedInterview.summaryText || mergedInterview.summary_text || "").trim()) return true;
+  if (String(mergedInterview.selectedArchetypeId || mergedInterview.selected_archetype_id || "").trim()) return true;
+  if (String(mergeData?.selected_persona_id || mergeData?.selectedPersonaId || "").trim()) return true;
+  if (Array.isArray(mergedInterview.tags) && mergedInterview.tags.length > 0) return true;
+  return Number.isFinite(Number(mergedInterview.evi));
+}
+
 function renderInlineBold(text) {
   const parts = String(text || "").split(/(\*\*[^*]+\*\*)/g);
   return parts.map((part, index) => {
@@ -1482,10 +1492,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
   const showInterviewComposer = Boolean(interviewSessionId) && !interviewTransition && interviewRetryAction?.type !== "rescore";
   const showInterviewSummary = !showInterviewComposer && Boolean(interviewResult);
   const showInterviewEndButton = showInterviewComposer && interviewCanEnd && interviewRound >= INTERVIEW_MIN_TURNS && interviewRound < INTERVIEW_MAX_TURNS;
-  const hasMergedInterviewReady = Boolean(
-    mergeData?.mergedInterview?.radar
-    && Object.keys(mergeData.mergedInterview.radar || {}).length > 0
-  );
+  const hasMergedInterviewReady = isStudentMergedInterviewReady(mergeData);
   const completedInterviewMaterials = useMemo(() => {
     if (isSummaryMode) return [];
     const completed = Array.isArray(interviewProgress?.completedInterviews)
