@@ -4739,9 +4739,8 @@ async function saveMemberSelectionApi(body) {
     }
     if (team) {
       const sessionConfig = await getSessionConfig(sessionId);
-      let frozenChoice = null;
       if (isSummaryModeSession(sessionConfig)) {
-        frozenChoice = await freezeStaticSummaryChoiceForTeam(team, sessionId, memberId);
+        await freezeStaticSummaryChoiceForTeam(team, sessionId, memberId);
       }
     }
     const markedSubmitted = await markMemberCardsSubmittedIfOpen(teamId, memberId, selections.length);
@@ -4795,8 +4794,9 @@ async function forceAdvanceRound2Api(body = {}) {
         (member) => String(member.readingStatus || "") !== "completed"
       );
       const sessionConfig = await getSessionConfig(sessionId);
+      let summaryChoice = null;
       if (isSummaryModeSession(sessionConfig)) {
-        await freezeStaticSummaryChoiceForTeam(team, sessionId, memberId);
+        summaryChoice = await freezeStaticSummaryChoiceForTeam(team, sessionId, memberId);
       }
       const skippedMembers = [];
       for (const skipped of plannedSkippedMembers) {
@@ -4822,8 +4822,11 @@ async function forceAdvanceRound2Api(body = {}) {
       return makeResponse(200, {
         ok: true,
         team_id: teamId,
+        force_gate: "round2_reading",
+        force_advanced: true,
         team_status: afterState?.r2?.status || statusResult.team_status || "R2_INDIVIDUAL_CARDS",
-        choice: sanitizeStudentPersonaChoice(frozenChoice),
+        choice: sanitizeStudentPersonaChoice(summaryChoice),
+        evi: summaryChoice?.evi ?? null,
         skipped_members: skippedMembers,
         ...buildLeaderMeta(afterState || team, memberId)
       });
@@ -4866,6 +4869,8 @@ async function forceAdvanceRound2Api(body = {}) {
     return makeResponse(200, {
       ok: true,
       team_id: teamId,
+      force_gate: "round2_cards",
+      force_advanced: true,
       team_status: afterState?.r2?.status || statusResult.team_status || "R2_TEAM_MERGE",
       skipped_members: skippedMembers,
       submitted_member_count: submittedMembers.length,

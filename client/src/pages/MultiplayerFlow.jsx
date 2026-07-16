@@ -33,6 +33,18 @@ import {
   isRound1FinalizedStatus
 } from "../utils/round1ResultGate";
 
+const FORCE_ADVANCE_DELAY_MS = 60000;
+
+function getForceAdvanceRemainingMs(submittedAt, now) {
+  const ts = Number(submittedAt || 0);
+  if (!ts) return FORCE_ADVANCE_DELAY_MS;
+  return Math.max(0, FORCE_ADVANCE_DELAY_MS - Math.max(0, Number(now || Date.now()) - ts));
+}
+
+function formatForceAdvanceCountdown(ms) {
+  return `${Math.ceil(Math.max(0, Number(ms || 0)) / 1000)} 秒`;
+}
+
 // ── Data: 20 锦囊 Cards ──────────────────────────────────────────
 const MARKET_CARDS = [
   {
@@ -1091,6 +1103,8 @@ export default function App() {
   const [isLeader, setIsLeader] = useState(false);
   const [round1PendingMembers, setRound1PendingMembers] = useState([]);
   const [isForceAdvancingRound1, setIsForceAdvancingRound1] = useState(false);
+  const [round1SubmittedAt, setRound1SubmittedAt] = useState(0);
+  const [forceAdvanceNow, setForceAdvanceNow] = useState(() => Date.now());
   const [memberLinks, setMemberLinks] = useState([]);
   const [vpDraft, setVpDraft] = useState("");
   const [coachVpText, setCoachVpText] = useState("");
@@ -1481,6 +1495,33 @@ export default function App() {
   const techUiId = toUiCard(jinangPair.tech, "tech")?.id || "T02";
   const cardsReady = Boolean(jinangPair.market && jinangPair.tech);
   const cardsRevealed = Boolean(revealedCards[marketUiId] && revealedCards[techUiId]);
+  const round1ForcePendingMembers = (round1PendingMembers || []).filter(
+    (item) => String(item?.id || "") !== String(memberId || "")
+  );
+  const round1ForceRemainingMs = getForceAdvanceRemainingMs(round1SubmittedAt, forceAdvanceNow);
+  const canShowForceAdvanceRound1 =
+    selfSubmitted
+    && isLeader
+    && round1ForcePendingMembers.length > 0
+    && round1ForceRemainingMs <= 0;
+
+  useEffect(() => {
+    if (!selfSubmitted || !round1ForcePendingMembers.length) {
+      if (round1SubmittedAt) setRound1SubmittedAt(0);
+      return;
+    }
+    if (!round1SubmittedAt) {
+      setRound1SubmittedAt(Date.now());
+    }
+  }, [round1ForcePendingMembers.length, round1SubmittedAt, selfSubmitted]);
+
+  useEffect(() => {
+    if (!selfSubmitted || !round1ForcePendingMembers.length || round1ForceRemainingMs <= 0) return undefined;
+    const timer = window.setInterval(() => {
+      setForceAdvanceNow(Date.now());
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [round1ForcePendingMembers.length, round1ForceRemainingMs, selfSubmitted]);
 
   useEffect(() => {
     if (!teamId) return;
@@ -1496,6 +1537,7 @@ export default function App() {
         setTeamStatus(status.status || "forming");
         setStatusLine(`已提交 ${status.submitted_count}/${status.member_count}`);
         setRound1PendingMembers(Array.isArray(status.pending_members) ? status.pending_members : []);
+        setSelfSubmitted(Boolean(status.self_submitted));
         setLeaderMemberId(String(status.leader_member_id || ""));
         setLeaderName(String(status.leader_name || ""));
         setIsLeader(Boolean(status.is_leader));
@@ -1941,6 +1983,8 @@ export default function App() {
         how: vpDraft || "待补充"
       });
       setSelfSubmitted(true);
+      setRound1SubmittedAt(Date.now());
+      setForceAdvanceNow(Date.now());
       setStatusLine(`已提交 (${out.submitted_count}/${out.team_size})`);
       if (out.team_status_updated_to_phase2) {
         setStep(3);
@@ -1954,7 +1998,8 @@ export default function App() {
 
   const handleForceAdvanceRound1 = async () => {
     if (!teamId || !memberId || !isLeader || isForceAdvancingRound1) return;
-    const pending = (round1PendingMembers || []).filter((item) => String(item?.id || "") !== String(memberId || ""));
+    if (round1ForceRemainingMs > 0) return;
+    const pending = round1ForcePendingMembers;
     if (!pending.length) {
       setStatusLine("没有未完成成员需要跳过。");
       return;
@@ -2959,19 +3004,25 @@ export default function App() {
                   ? "请选择目标市场并选择产品定位方向"
                   : (!selectedCell ? "请选择目标市场" : "请选择产品定位方向")
             }</button>
-            {selfSubmitted && isLeader && round1PendingMembers.filter((item) => String(item?.id || "") !== String(memberId || "")).length > 0 && (
+            {selfSubmitted && isLeader && round1ForcePendingMembers.length > 0 && (
               <div style={{marginTop:14,padding:"12px 14px",borderRadius:10,background:"#fff7ed",border:"1px solid #fed7aa"}}>
-                <div style={{fontSize:12,color:"#9a3412",lineHeight:1.6,marginBottom:10}}>
-                  仍有成员未提交：{round1PendingMembers.filter((item) => String(item?.id || "") !== String(memberId || "")).map((item) => item.name || item.id).join("、")}
+                <div style={{fontSize:12,color:"#9a3412",lineHeight:1.7}}>
+                  等待 {round1ForcePendingMembers.map((item) => item.name || item.id).join("、")} 提交中…
                 </div>
-                <button
-                  type="button"
-                  onClick={handleForceAdvanceRound1}
-                  disabled={isForceAdvancingRound1}
-                  style={{padding:"10px 14px",borderRadius:8,border:"none",background:isForceAdvancingRound1 ? "#fdba74" : "#ea580c",color:"#fff",fontSize:13,fontWeight:800,cursor:isForceAdvancingRound1 ? "wait" : "pointer"}}
-                >
-                  {isForceAdvancingRound1 ? "正在推进…" : "跳过未完成成员，继续推进"}
-                </button>
+                {canShowForceAdvanceRound1 ? (
+                  <button
+                    type="button"
+                    onClick={handleForceAdvanceRound1}
+                    disabled={isForceAdvancingRound1}
+                    style={{marginTop:8,padding:"7px 0",borderRadius:0,border:"none",background:"transparent",color:"#c2410c",fontSize:12,fontWeight:800,cursor:isForceAdvancingRound1 ? "wait" : "pointer",textDecoration:"underline"}}
+                  >
+                    {isForceAdvancingRound1 ? "正在推进…" : "长时间未响应？跳过未完成成员，继续推进"}
+                  </button>
+                ) : (
+                  <div style={{marginTop:6,fontSize:12,color:"#b45309",lineHeight:1.7}}>
+                    {`为防误触，${formatForceAdvanceCountdown(round1ForceRemainingMs)}后可由组长跳过未完成成员。`}
+                  </div>
+                )}
               </div>
             )}
           </div>

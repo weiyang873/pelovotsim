@@ -1882,6 +1882,8 @@ async function forceAdvancePhase1(teamId, body = {}) {
       return makeResponse(200, {
         ok: true,
         team_id: teamId,
+        force_gate: "round1_strategy",
+        force_advanced: false,
         team_status: normal.team_status || updatedTeam?.status || "phase2",
         skipped_members: [],
         ...buildLeaderMeta(updatedTeam || team, memberId)
@@ -1907,6 +1909,8 @@ async function forceAdvancePhase1(teamId, body = {}) {
     return makeResponse(200, {
       ok: true,
       team_id: teamId,
+      force_gate: "round1_strategy",
+      force_advanced: true,
       team_status: statusResult.team_status || "phase2",
       skipped_members: skippedMembers,
       ...buildLeaderMeta(team, memberId)
@@ -3492,7 +3496,8 @@ async function getTeamStatus(teamId, requesterMemberId = "", options = {}) {
       team = await assignRound1LeaderIfNeeded(teamId) || team;
     }
     const memberCount = Array.isArray(team.members) ? team.members.length : 0;
-    const submittedCount = await countTeamSubmissions(teamId);
+    const submissions = await readTeamSubmissions(teamId);
+    const submittedCount = submissions.filter((item) => item?.submitted).length;
     const status = String(team.status || "forming");
     const draft = await readRound1TeamDraft(teamId);
     const body = {
@@ -3504,7 +3509,10 @@ async function getTeamStatus(teamId, requesterMemberId = "", options = {}) {
       all_submitted: submittedCount >= memberCount && memberCount > 0,
       member_count: memberCount,
       submitted_count: submittedCount,
-      pending_members: pendingRound1SubmissionMembers(team, await readTeamSubmissions(teamId)),
+      pending_members: pendingRound1SubmissionMembers(team, submissions),
+      self_submitted: submissions.some(
+        (item) => item?.submitted && String(item.member_id || "").trim() === String(requesterMemberId || "").trim()
+      ),
       ...buildLeaderMeta(team, requesterMemberId),
       team_draft: draft
     };

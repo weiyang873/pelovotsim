@@ -93,6 +93,17 @@ const INTERVIEW_MAX_TURNS = 10;
 const MIN_INTERVIEWS_REQUIRED = 2;
 const MIN_TEAM_CARDS = 6;
 const INTERVIEW_START_DEBOUNCE_MS = 3000;
+const FORCE_ADVANCE_DELAY_MS = 60000;
+
+function getForceAdvanceRemainingMs(submittedAt, now) {
+  const ts = Number(submittedAt || 0);
+  if (!ts) return FORCE_ADVANCE_DELAY_MS;
+  return Math.max(0, FORCE_ADVANCE_DELAY_MS - Math.max(0, Number(now || Date.now()) - ts));
+}
+
+function formatForceAdvanceCountdown(ms) {
+  return `${Math.ceil(Math.max(0, Number(ms || 0)) / 1000)} 秒`;
+}
 
 function createEmptyInterviewProgress() {
   return {
@@ -902,6 +913,8 @@ export default function App() {
   const [leaderName, setLeaderName] = useState("");
   const [isLeader, setIsLeader] = useState(false);
   const [forceAdvanceGate, setForceAdvanceGate] = useState("");
+  const [forceAdvanceSubmittedAt, setForceAdvanceSubmittedAt] = useState({ reading: 0, cards: 0 });
+  const [forceAdvanceNow, setForceAdvanceNow] = useState(() => Date.now());
   const [systemNotice, setSystemNotice] = useState("");
   const [interviewSessionId, setInterviewSessionId] = useState("");
   const [interviewPersonas, setInterviewPersonas] = useState([]);
@@ -1519,6 +1532,22 @@ export default function App() {
     [round2Members]
   );
   const mySummaryReadingDone = String(summaryReadingStatus?.my_reading_status || "") === "completed";
+  const myCardSelectionSubmitted = String(memberState?.card_status || memberState?.cardStatus || "") === "submitted";
+  const readingForceRemainingMs = getForceAdvanceRemainingMs(forceAdvanceSubmittedAt.reading, forceAdvanceNow);
+  const cardsForceRemainingMs = getForceAdvanceRemainingMs(forceAdvanceSubmittedAt.cards, forceAdvanceNow);
+  const canShowForceAdvanceReading =
+    isLeader
+    && mySummaryReadingDone
+    && summaryReadingSubStep === SUMMARY_READING_TEAM_SUMMARY
+    && !summaryAllMembersDone
+    && pendingSummaryReadingMembers.length > 0
+    && readingForceRemainingMs <= 0;
+  const canShowForceAdvanceCards =
+    isLeader
+    && myCardSelectionSubmitted
+    && teamStatus === "R2_INDIVIDUAL_CARDS"
+    && pendingCardMembers.length > 0
+    && cardsForceRemainingMs <= 0;
   const selectedPersonaSummaryText = String(
     selectedPersonaChoice?.summary_text
       || activeSummaryReport?.summary_text
@@ -1533,6 +1562,51 @@ export default function App() {
     () => buildPersonaIntro(activeInterviewPersona),
     [activeInterviewPersona]
   );
+
+  useEffect(() => {
+    const shouldTick =
+      (isLeader && mySummaryReadingDone && pendingSummaryReadingMembers.length > 0 && readingForceRemainingMs > 0)
+      || (isLeader && myCardSelectionSubmitted && pendingCardMembers.length > 0 && cardsForceRemainingMs > 0);
+    if (!shouldTick) return undefined;
+    const timer = window.setInterval(() => {
+      setForceAdvanceNow(Date.now());
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [
+    cardsForceRemainingMs,
+    isLeader,
+    myCardSelectionSubmitted,
+    mySummaryReadingDone,
+    pendingCardMembers.length,
+    pendingSummaryReadingMembers.length,
+    readingForceRemainingMs
+  ]);
+
+  useEffect(() => {
+    setForceAdvanceSubmittedAt((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      if (mySummaryReadingDone && pendingSummaryReadingMembers.length > 0) {
+        if (!next.reading) {
+          next.reading = Date.now();
+          changed = true;
+        }
+      } else if (next.reading) {
+        next.reading = 0;
+        changed = true;
+      }
+      if (myCardSelectionSubmitted && pendingCardMembers.length > 0) {
+        if (!next.cards) {
+          next.cards = Date.now();
+          changed = true;
+        }
+      } else if (next.cards) {
+        next.cards = 0;
+        changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [myCardSelectionSubmitted, mySummaryReadingDone, pendingCardMembers.length, pendingSummaryReadingMembers.length]);
   const interviewGridId = String(
     teamInfo?.grid_selection ||
     teamInfo?.final_grid_id ||
@@ -1725,6 +1799,8 @@ export default function App() {
         my_reading_status: String(out?.my_reading_status || "completed")
       };
       setSummaryReadingStatus(nextStatus);
+      setForceAdvanceSubmittedAt((prev) => ({ ...prev, reading: Date.now() }));
+      setForceAdvanceNow(Date.now());
       if (nextStatus.all_completed && nextStatus.members.length <= 1) {
         const freezeOut = await continueRound2SummaryReading({
           teamId,
@@ -1767,6 +1843,7 @@ export default function App() {
 
   const handleForceAdvanceReading = useCallback(async () => {
     if (!teamId || !memberId || !isLeader || forceAdvanceGate) return;
+    if (readingForceRemainingMs > 0) return;
     const pending = pendingSummaryReadingMembers;
     if (!pending.length) return;
     const names = pending.map((item) => item.name || item.member_name || item.member_id || item.id).join("、");
@@ -1792,10 +1869,11 @@ export default function App() {
     } finally {
       setForceAdvanceGate("");
     }
-  }, [commitSelectedPersonaChoice, forceAdvanceGate, isLeader, memberId, pendingSummaryReadingMembers, sessionId, teamId]);
+  }, [commitSelectedPersonaChoice, forceAdvanceGate, isLeader, memberId, pendingSummaryReadingMembers, readingForceRemainingMs, sessionId, teamId]);
 
   const handleForceAdvanceCards = useCallback(async () => {
     if (!teamId || !memberId || !isLeader || forceAdvanceGate) return;
+    if (cardsForceRemainingMs > 0) return;
     const pending = pendingCardMembers;
     if (!pending.length) return;
     if (submittedCardMemberCount < 1) {
@@ -1822,7 +1900,7 @@ export default function App() {
     } finally {
       setForceAdvanceGate("");
     }
-  }, [forceAdvanceGate, isLeader, memberId, pendingCardMembers, sessionId, submittedCardMemberCount, teamId]);
+  }, [cardsForceRemainingMs, forceAdvanceGate, isLeader, memberId, pendingCardMembers, sessionId, submittedCardMemberCount, teamId]);
 
   const handleDownloadInterviewTxt = useCallback(() => {
     const lines = [];
@@ -2399,6 +2477,8 @@ export default function App() {
         setSystemNotice("全员已提交，进入团队合并。");
         setStep(3);
       } else {
+        setForceAdvanceSubmittedAt((prev) => ({ ...prev, cards: Date.now() }));
+        setForceAdvanceNow(Date.now());
         setSystemNotice("个人选卡已提交，等待其他成员提交。");
       }
     } catch (err) {
@@ -3208,15 +3288,26 @@ export default function App() {
                       ? (summaryAllMembersDone ? "继续，进入个人选卡" : "等待团队完成阅读")
                       : (mySummaryReadingDone ? "已完成阅读" : "完成阅读，等待团队")}
                 </button>
-                {summaryReadingSubStep === SUMMARY_READING_TEAM_SUMMARY && isLeader && !summaryAllMembersDone && pendingSummaryReadingMembers.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={handleForceAdvanceReading}
-                    disabled={forceAdvanceGate === "reading"}
-                    style={{padding:"12px 16px",borderRadius:10,background:forceAdvanceGate === "reading" ? "#fdba74" : "#ea580c",color:"#fff",border:"none",fontSize:14,fontWeight:800,cursor:forceAdvanceGate === "reading" ? "wait" : "pointer"}}
-                  >
-                    {forceAdvanceGate === "reading" ? "正在推进…" : "跳过未完成成员，继续推进"}
-                  </button>
+                {summaryReadingSubStep === SUMMARY_READING_TEAM_SUMMARY && isLeader && mySummaryReadingDone && !summaryAllMembersDone && pendingSummaryReadingMembers.length > 0 && (
+                  <div style={{flexBasis:"100%",padding:"12px 14px",borderRadius:10,background:"#fff7ed",border:"1px solid #fed7aa",fontSize:12,color:"#9a3412",lineHeight:1.7}}>
+                    <div>
+                      等待 {pendingSummaryReadingMembers.map((item) => item.name || item.member_name || item.member_id || item.id).join("、")} 完成阅读中…
+                    </div>
+                    {canShowForceAdvanceReading ? (
+                      <button
+                        type="button"
+                        onClick={handleForceAdvanceReading}
+                        disabled={forceAdvanceGate === "reading"}
+                        style={{marginTop:8,padding:"7px 0",borderRadius:0,border:"none",background:"transparent",color:"#c2410c",fontSize:12,fontWeight:800,cursor:forceAdvanceGate === "reading" ? "wait" : "pointer",textDecoration:"underline"}}
+                      >
+                        {forceAdvanceGate === "reading" ? "正在推进…" : "长时间未响应？跳过未完成成员，继续推进"}
+                      </button>
+                    ) : (
+                      <div style={{marginTop:6,color:"#b45309"}}>
+                        {`为防误触，${formatForceAdvanceCountdown(readingForceRemainingMs)}后可由组长跳过未完成成员。`}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
@@ -3536,19 +3627,25 @@ export default function App() {
               正在提交个人选卡，请稍候。提交成功后会自动进入团队合并。
             </div>
           )}
-          {isLeader && String(memberState?.card_status || memberState?.cardStatus || "") === "submitted" && teamStatus === "R2_INDIVIDUAL_CARDS" && pendingCardMembers.length > 0 && (
+          {isLeader && myCardSelectionSubmitted && teamStatus === "R2_INDIVIDUAL_CARDS" && pendingCardMembers.length > 0 && (
             <div style={{margin:"0 0 12px",padding:"12px 14px",borderRadius:10,background:"#fff7ed",border:"1px solid #fed7aa",fontSize:12,color:"#9a3412",lineHeight:1.7}}>
-              <div style={{marginBottom:10}}>
-                仍有成员未提交选卡：{pendingCardMembers.map((item) => item.name || item.id).join("、")}
+              <div>
+                等待 {pendingCardMembers.map((item) => item.name || item.id).join("、")} 提交选卡中…
               </div>
-              <button
-                type="button"
-                onClick={handleForceAdvanceCards}
-                disabled={forceAdvanceGate === "cards"}
-                style={{padding:"10px 14px",borderRadius:8,border:"none",background:forceAdvanceGate === "cards" ? "#fdba74" : "#ea580c",color:"#fff",fontSize:13,fontWeight:800,cursor:forceAdvanceGate === "cards" ? "wait" : "pointer"}}
-              >
-                {forceAdvanceGate === "cards" ? "正在推进…" : "跳过未完成成员，继续推进"}
-              </button>
+              {canShowForceAdvanceCards ? (
+                <button
+                  type="button"
+                  onClick={handleForceAdvanceCards}
+                  disabled={forceAdvanceGate === "cards"}
+                  style={{marginTop:8,padding:"7px 0",borderRadius:0,border:"none",background:"transparent",color:"#c2410c",fontSize:12,fontWeight:800,cursor:forceAdvanceGate === "cards" ? "wait" : "pointer",textDecoration:"underline"}}
+                >
+                  {forceAdvanceGate === "cards" ? "正在推进…" : "长时间未响应？跳过未完成成员，继续推进"}
+                </button>
+              ) : (
+                <div style={{marginTop:6,color:"#b45309"}}>
+                  {`为防误触，${formatForceAdvanceCountdown(cardsForceRemainingMs)}后可由组长跳过未完成成员。`}
+                </div>
+              )}
             </div>
           )}
 
