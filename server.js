@@ -2290,7 +2290,7 @@ function handleApi(req, res) {
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "phase3 synthesize-vp failed" }));
   }
 
-  if (req.method === "POST" && /^\/api\/team\/[^/]+\/phase2\/draft$/.test(String(req.url || ""))) {
+  if (req.method === "POST" && /^\/api\/team\/[^/]+\/(?:phase2\/draft|r1-draft)$/.test(reqPath)) {
     const parts = String(req.url || "").split("/");
     const teamId = decodeURIComponent(parts[3] || "");
     return readBody(req)
@@ -2317,7 +2317,7 @@ function handleApi(req, res) {
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "phase3 chat failed" }));
   }
 
-  if (req.method === "POST" && /^\/api\/team\/[^/]+\/phase3\/finalize$/.test(String(req.url || ""))) {
+  if (req.method === "POST" && /^\/api\/team\/[^/]+\/(?:phase3\/finalize|r1-finalize)$/.test(reqPath)) {
     const parts = String(req.url || "").split("/");
     const teamId = decodeURIComponent(parts[3] || "");
     return readBody(req)

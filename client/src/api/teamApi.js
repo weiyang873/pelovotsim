@@ -102,7 +102,7 @@ export async function getSubmissions(teamId, memberId = "", options = {}) {
 }
 
 export async function savePhase2Draft(teamId, payload) {
-  const res = await fetch(`${BASE}/team/${encodeURIComponent(teamId)}/phase2/draft`, {
+  const res = await fetch(`${BASE}/team/${encodeURIComponent(teamId)}/r1-draft`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload || {})
@@ -149,7 +149,7 @@ export async function chatWithCoach(teamId, payload, options = {}) {
 }
 
 export async function finalizeDecision(teamId, finalData) {
-  const res = await fetch(`${BASE}/team/${encodeURIComponent(teamId)}/phase3/finalize`, {
+  const res = await fetch(`${BASE}/team/${encodeURIComponent(teamId)}/r1-finalize`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(finalData)
