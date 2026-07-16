@@ -9,6 +9,8 @@ const { chatCompletion } = require("./deepseekClient");
 const { withLlmLogging } = require("./llm_logger");
 const embeddingService = require("./embeddingService");
 
+const LLM_TIMEOUT_MS = 60000;
+
 const CACHE_PATH = path.join(__dirname, "..", "..", "game_config_v0.1", "vp_word_cache.json");
 
 const VP_SCORE_EXPONENTS = {
@@ -302,7 +304,7 @@ ${diagnosisSummary}
     }, () => chatCompletion(messages, {
       temperature: 0.3,
       max_tokens: 500,
-      timeoutMs: Number.isFinite(Number(timeoutMs)) ? Number(timeoutMs) : undefined
+      timeoutMs: Number.isFinite(Number(timeoutMs)) ? Number(timeoutMs) : LLM_TIMEOUT_MS
     }));
     const cleaned = String(raw || "")
       .replace(/\r/g, "")

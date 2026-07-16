@@ -48,6 +48,7 @@ const TAG_MAP = require("../../data/tag_map_v2_1.json");
 
 const ROOT = path.join(__dirname, "..", "..");
 let __round2RoutesSchemaPromise = null;
+const ROUND2_LLM_TIMEOUT_MS = 60000;
 const CONFIG_DIR = path.join(ROOT, "game_config_v0.1");
 const GRID_PRIOR_PATH = path.join(ROOT, "data", "grid_priors_v4_cap_weights.json");
 const ROUND2_ENGINE_PARAMS_PATH = path.join(CONFIG_DIR, "round2_engine_params.json");
@@ -1007,7 +1008,12 @@ async function renderPersonaSummaryWithLlm({ teamId, prompt }) {
     teamId,
     memberId: null,
     messages
-  }, () => chatCompletion(messages, { temperature: 0.6, max_tokens: 1200, maxRetries: 2 }));
+  }, () => chatCompletion(messages, {
+    temperature: 0.6,
+    max_tokens: 1200,
+    maxRetries: 2,
+    timeoutMs: ROUND2_LLM_TIMEOUT_MS
+  }));
 }
 
 async function ensurePersonaReportsForTeam(teamId, sessionId = "default") {
@@ -2114,7 +2120,12 @@ async function extractInterviewResult({ gridId, architecture, memberDims, histor
       teamId: null,
       memberId: null,
       messages
-    }, () => chatCompletion(messages, { temperature: 0.2, max_tokens: 2500, maxRetries: 3 }));
+    }, () => chatCompletion(messages, {
+      temperature: 0.2,
+      max_tokens: 2500,
+      maxRetries: 3,
+      timeoutMs: ROUND2_LLM_TIMEOUT_MS
+    }));
     const txt = String(raw || "").replace(/```json|```/g, "").trim();
     if (!txt) {
       throw new InterviewScoringError("llm_empty");
@@ -4283,7 +4294,7 @@ async function interviewReply(body) {
         teamId: session?.team_id || session?.teamId || null,
         memberId: session?.member_id || session?.memberId || null,
         messages: llmMessages
-      }, () => chatCompletion(llmMessages, { temperature: 0.7, max_tokens: 300 }));
+      }, () => chatCompletion(llmMessages, { temperature: 0.7, max_tokens: 300, timeoutMs: ROUND2_LLM_TIMEOUT_MS }));
       reply = String(out || "").trim();
       if (!reply) {
         throw new Error("llm returned empty reply");
@@ -4315,7 +4326,7 @@ async function interviewReply(body) {
           teamId: session?.team_id || session?.teamId || null,
           memberId: session?.member_id || session?.memberId || null,
           messages: retryMessages
-        }, () => chatCompletion(retryMessages, { temperature: 0.9, max_tokens: 300 }));
+        }, () => chatCompletion(retryMessages, { temperature: 0.9, max_tokens: 300, timeoutMs: ROUND2_LLM_TIMEOUT_MS }));
         if (String(out || "").trim()) reply = String(out).trim();
       } catch (_) {}
     }
@@ -5130,7 +5141,7 @@ async function reflectionApi(body) {
         teamId,
         memberId: null,
         messages
-      }, () => chatCompletion(messages, { temperature: 0.3, max_tokens: 600 }));
+      }, () => chatCompletion(messages, { temperature: 0.3, max_tokens: 600, timeoutMs: ROUND2_LLM_TIMEOUT_MS }));
     } catch (_) {
       report = [
         "策略亮点：方案在核心体验与成本约束之间做了平衡。",

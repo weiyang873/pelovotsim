@@ -2,6 +2,8 @@
 const { chatCompletion } = require("./deepseekClient");
 const { withLlmLogging } = require("./llm_logger");
 
+const LLM_TIMEOUT_MS = 60000;
+
 function parseJsonLoose(raw) {
   const t = String(raw || "").replace(/```json|```/g, "").trim();
   try {
@@ -91,7 +93,7 @@ async function generateRequirements(session) {
       teamId: session?.teamId || session?.team_id || session?.teamKey || null,
       memberId: session?.memberId || session?.member_id || null,
       messages
-    }, () => chatCompletion(messages, { temperature: 0.35, max_tokens: 1200 }));
+    }, () => chatCompletion(messages, { temperature: 0.35, max_tokens: 1200, timeoutMs: LLM_TIMEOUT_MS }));
     const parsed = parseJsonLoose(raw);
     const coerced = coerceRequirementsPayload(parsed);
     const balanced = rebalancePriorities(coerced.requirements || []);
@@ -114,7 +116,7 @@ async function generateRequirements(session) {
         teamId: session?.teamId || session?.team_id || session?.teamKey || null,
         memberId: session?.memberId || session?.member_id || null,
         messages: retryMessages
-      }, () => chatCompletion(retryMessages, { temperature: 0.2, max_tokens: 1200 }));
+      }, () => chatCompletion(retryMessages, { temperature: 0.2, max_tokens: 1200, timeoutMs: LLM_TIMEOUT_MS }));
       const parsed2 = parseJsonLoose(raw2);
       const coerced2 = coerceRequirementsPayload(parsed2);
       const balanced2 = rebalancePriorities(coerced2.requirements || []);
@@ -166,7 +168,7 @@ ${conversation}`
       teamId: null,
       memberId: null,
       messages: summaryMessages
-    }, () => chatCompletion(summaryMessages, { temperature: 0.3, max_tokens: 300 }));
+    }, () => chatCompletion(summaryMessages, { temperature: 0.3, max_tokens: 300, timeoutMs: LLM_TIMEOUT_MS }));
     return String(raw || "").trim();
   } catch (e) {
     console.error("[generateInterviewSummary error]", e);

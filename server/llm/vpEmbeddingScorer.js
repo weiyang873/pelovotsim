@@ -7,6 +7,8 @@ const { chatCompletion } = require("./deepseekClient");
 const { withLlmLogging } = require("./llm_logger");
 const embeddingService = require("./embeddingService");
 
+const LLM_TIMEOUT_MS = 60000;
+
 const PROFILES_PATH = path.join(__dirname, "..", "..", "game_config_v0.1", "vp_anchor_profiles.json");
 const EMBEDDINGS_PATH = path.join(__dirname, "..", "..", "game_config_v0.1", "vp_anchor_embeddings.json");
 
@@ -166,7 +168,7 @@ async function extractVpFields(vpText, options = {}) {
     teamId: null,
     memberId: null,
     messages
-  }, () => chatCompletion(messages, { temperature: 0, max_tokens: 300 }));
+  }, () => chatCompletion(messages, { temperature: 0, max_tokens: 300, timeoutMs: LLM_TIMEOUT_MS }));
 
   const parsed = parseJsonLoose(raw);
   return {

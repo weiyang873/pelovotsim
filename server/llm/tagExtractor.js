@@ -4,6 +4,8 @@ const { chatCompletion } = require("./deepseekClient");
 const { withLlmLogging } = require("./llm_logger");
 const { kvGet, kvSet } = require("../db/kvCache");
 
+const LLM_TIMEOUT_MS = 60000;
+
 const CACHE_NAME = "tag_extractor_v2";
 
 function normalizeText(text) {
@@ -69,7 +71,7 @@ async function extractTags(messages) {
     teamId: null,
     memberId: null,
     messages: llmMessages
-  }, () => chatCompletion(llmMessages, { temperature: 0, max_tokens: 300 }));
+  }, () => chatCompletion(llmMessages, { temperature: 0, max_tokens: 300, timeoutMs: LLM_TIMEOUT_MS }));
 
   let tags;
   try {

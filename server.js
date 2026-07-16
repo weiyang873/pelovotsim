@@ -33,6 +33,8 @@ loadLocalEnvFile();
 const Engine = require("./engine");
 const { chatCompletion, hasAnyKey } = require("./server/llm/deepseekClient");
 const Sessions = require("./server/llm/sessions");
+
+const LLM_HEALTH_TIMEOUT_MS = 60000;
 const MarketingSessions = require("./server/llm/marketingSessions");
 const VpChat = require("./server/routes/vpChat");
 const Marketing = require("./server/routes/marketing");
@@ -938,7 +940,7 @@ async function handleLlmHealth(req, res) {
         { role: "system", content: "health check" },
         { role: "user", content: "ok" }
       ],
-      { temperature: 0, max_tokens: 1 }
+      { temperature: 0, max_tokens: 1, timeoutMs: LLM_HEALTH_TIMEOUT_MS }
     );
     return sendJson(res, 200, {
       ok: true,

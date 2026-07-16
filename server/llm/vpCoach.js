@@ -2,6 +2,8 @@
 const { chatCompletion } = require("./deepseekClient");
 const { withLlmLogging } = require("./llm_logger");
 
+const LLM_TIMEOUT_MS = 60000;
+
 const CELL_RULES = {
   ToB_ELDER: {
     label: "ToB·老人",
@@ -608,7 +610,7 @@ async function chat(session, userMessage, options = {}) {
     teamId: session?.teamId || session?.team_id || session?.teamKey || null,
     memberId: session?.memberId || session?.member_id || null,
     messages
-  }, () => chatCompletion(messages, { temperature, max_tokens: maxTokens }));
+  }, () => chatCompletion(messages, { temperature, max_tokens: maxTokens, timeoutMs: LLM_TIMEOUT_MS }));
   const vpResult = parseVpResult(rawReply);
   const vpResultRaw = extractVpResultRaw(rawReply);
   let replyText = compactText(stripVpResultTag(rawReply));
@@ -714,7 +716,7 @@ async function generateSynthesisFeedback(session, synthesizedVP, teamJinangs = n
     teamId: session?.teamId || session?.team_id || null,
     memberId: null,
     messages
-  }, () => chatCompletion(messages, { temperature: 0.3, max_tokens: 400 }));
+  }, () => chatCompletion(messages, { temperature: 0.3, max_tokens: 400, timeoutMs: LLM_TIMEOUT_MS }));
 
   const mismatch = detectCellMismatch(session?.strategy || {}, synthesizedVP);
   const sanitized = sanitizeSynthesisFeedback(raw, synthesizedVP, session?.strategy || {}, abilityList);
@@ -775,7 +777,7 @@ ${history}
     teamId: session?.teamId || session?.team_id || null,
     memberId: null,
     messages
-  }, () => chatCompletion(messages, { temperature: 0.3, max_tokens: 300 }));
+  }, () => chatCompletion(messages, { temperature: 0.3, max_tokens: 300, timeoutMs: LLM_TIMEOUT_MS }));
 
   const quotedMatch = String(raw || "").match(/["“「]([^"”」]{20,})["”」]/);
   const vpText = quotedMatch

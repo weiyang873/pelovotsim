@@ -14,6 +14,7 @@ const {
 } = require("../multiplayer/moneyScale");
 const Round2 = require("./round2Routes");
 const PROMPT_CACHE_VERSION = `teacher_debrief_v3_money_scale_${String(PRICE_SCALE).replace(".", "_")}`;
+const DEBRIEF_LLM_TIMEOUT_MS = 60000;
 const ROUND2_BASE_VARIABLE_COST = 600;
 const TEAM_COLORS = [
   "#E8634A", "#3B82C4", "#2FAB6E", "#D4A03C", "#8B5CF6",
@@ -1214,7 +1215,7 @@ async function generateGlobalDebrief(round, sessionId) {
     teamId: null,
     memberId: null,
     messages: globalMessages
-  }, () => chatCompletion(globalMessages, { temperature: 0.4, max_tokens: 1400 }));
+  }, () => chatCompletion(globalMessages, { temperature: 0.4, max_tokens: 1400, timeoutMs: DEBRIEF_LLM_TIMEOUT_MS }));
 
   const payload = {
     round: Number(round),
@@ -1271,7 +1272,7 @@ async function generateTeamReview(teamId, sessionId) {
     teamId,
     memberId: null,
     messages: teamMessages
-  }, () => chatCompletion(teamMessages, { temperature: 0.4, max_tokens: 700 }));
+  }, () => chatCompletion(teamMessages, { temperature: 0.4, max_tokens: 700, timeoutMs: DEBRIEF_LLM_TIMEOUT_MS }));
   const parsed = extractJsonObject(raw);
   if (!parsed?.insight || !parsed?.review) {
     throw new Error("team review parse failed");

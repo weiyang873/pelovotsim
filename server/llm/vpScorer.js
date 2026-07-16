@@ -1,6 +1,8 @@
 const { chatCompletion } = require("./deepseekClient");
 const { withLlmLogging } = require("./llm_logger");
 
+const LLM_TIMEOUT_MS = 60000;
+
 const FEATURE_KEYS = [
   "has_clear_customer",
   "has_scenario",
@@ -376,7 +378,7 @@ async function extractFeaturesDetailed(conversation, cellLabel, architectureLabe
       teamId: null,
       memberId: null,
       messages
-    }, () => chatCompletion(messages, { temperature: 0, max_tokens: 400 }));
+    }, () => chatCompletion(messages, { temperature: 0, max_tokens: 400, timeoutMs: LLM_TIMEOUT_MS }));
     lastRaw = raw;
     try {
       const parsed = parseJsonLoose(raw);
@@ -501,7 +503,7 @@ async function generateFeedbackDetailed(scores, features, latestVpText, cellLabe
         content: buildFeedbackPrompt(scores, features, latestVpText, cellLabel)
       }
     ],
-    { temperature: 0.4, max_tokens: 320 }
+    { temperature: 0.4, max_tokens: 320, timeoutMs: LLM_TIMEOUT_MS }
   ));
 
   return {
@@ -533,7 +535,7 @@ async function scoreVpText(vpText, cellLabel, architectureLabel) {
       teamId: null,
       memberId: null,
       messages: extractMessages
-    }, () => chatCompletion(extractMessages, { temperature: 0, max_tokens: 400 }));
+    }, () => chatCompletion(extractMessages, { temperature: 0, max_tokens: 400, timeoutMs: LLM_TIMEOUT_MS }));
     extractRaw = raw;
     try {
       const parsed = parseJsonLoose(raw);
