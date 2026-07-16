@@ -35,10 +35,12 @@ const {
 } = require("../multiplayer/teamManager");
 const {
   getTeamRound2State,
-  updateTeamRound2Status,
+  ensureSchema: ensureRound2StateSchema,
+  refreshCachedTeamRound2State,
   logTeacherAction,
   nowIso
 } = require("../multiplayer/round2State");
+const { clearTeamStateCache } = require("../cache/teamStateCache");
 const { computeJinangWtpBonus } = require("../multiplayer/jinangCoeff");
 const { getSessionConfig } = require("../multiplayer/sessionConfig");
 const {
@@ -53,6 +55,7 @@ let cachedEngineConfig = null;
 const VP_FEEDBACK_VERSION = 3;
 const VP_LLM_TIMEOUT_MS = 60000;
 const vpFeedbackJobs = new Set();
+const freezeRefreshJobs = new Set();
 
 function makeResponse(status, body) {
   return { status, body };
@@ -2156,6 +2159,54 @@ function schedulePhase4VpFeedbackGeneration(args) {
   return true;
 }
 
+async function runFreezePostCommitRefresh({ teamId }) {
+  const jobKey = String(teamId || "").trim();
+  const startedAt = Date.now();
+  const timing = {};
+  let ok = false;
+  try {
+    const cacheStartedAt = Date.now();
+    await refreshCachedTeamRound2State(jobKey);
+    timing.r2_cache_refresh_ms = Date.now() - cacheStartedAt;
+
+    const phase4StartedAt = Date.now();
+    const phase4 = await buildPhase4Data(jobKey);
+    timing.phase4_recompute_ms = Date.now() - phase4StartedAt;
+    ok = phase4?.ok === true;
+    if (!ok) {
+      console.warn("[round1/freeze-bg] phase4 refresh returned non-ok:", {
+        team_id: jobKey,
+        status: phase4?.status,
+        error: phase4?.error
+      });
+    }
+  } catch (err) {
+    console.warn("[round1/freeze-bg] failed:", {
+      team_id: jobKey,
+      error: err?.message || String(err)
+    });
+  } finally {
+    freezeRefreshJobs.delete(jobKey);
+    console.log("[round1/freeze-bg-timing]", JSON.stringify({
+      team_id: jobKey,
+      ok,
+      ...timing,
+      total_ms: Date.now() - startedAt
+    }));
+  }
+}
+
+function scheduleFreezePostCommitRefresh(teamId) {
+  const jobKey = String(teamId || "").trim();
+  if (!jobKey) return false;
+  if (freezeRefreshJobs.has(jobKey)) return true;
+  freezeRefreshJobs.add(jobKey);
+  setTimeout(() => {
+    runFreezePostCommitRefresh({ teamId: jobKey });
+  }, 0);
+  return true;
+}
+
 async function synthesizePhase3Vp(teamId, body) {
   try {
     const payload = body || {};
@@ -3448,26 +3499,76 @@ async function getPhase3Scores(teamId) {
 }
 
 async function freezeTeam(teamId, body = {}) {
+  const timingStartedAt = Date.now();
+  const timing = {};
   try {
     const memberId = readRequesterMemberId(body);
+    const authStartedAt = Date.now();
     const permission = await ensureLeaderPermission(teamId, memberId);
+    timing.leader_auth_ms = Date.now() - authStartedAt;
     if (!permission.ok) return permission.response;
     const team = permission.team;
     if (!team.final_grid_id) {
       return makeResponse(400, { ok: false, error: "must finalize before freezing" });
     }
+    const sessionConfigStartedAt = Date.now();
     const sessionConfig = await getSessionConfig(team.session_id || "default");
+    timing.session_config_ms = Date.now() - sessionConfigStartedAt;
     const nextRound2Status = sessionConfig.hold_before_r2 ? "R2_NOT_STARTED" : "R2_INTERVIEWING";
-    await updateTeamStatus(teamId, "frozen");
-    await updateTeamRound2Status(teamId, nextRound2Status);
+    const criticalPersistStartedAt = Date.now();
+    await ensureRound2StateSchema();
+    const rows = await runSql(`
+      UPDATE teams
+      SET status = 'frozen',
+          r2_status = ${sqlQuote(nextRound2Status)},
+          r2_status_entered_at = CASE
+            WHEN r2_status IS DISTINCT FROM ${sqlQuote(nextRound2Status)}
+              OR r2_status_entered_at IS NULL
+            THEN ${sqlQuote(nowIso())}
+            ELSE r2_status_entered_at
+          END
+      WHERE id = ${sqlQuote(teamId)}
+      RETURNING id, status, r2_status;
+    `);
+    if (!rows[0]) {
+      return makeResponse(404, { ok: false, error: "team not found" });
+    }
+    clearTeamStateCache(teamId);
+    timing.freeze_db_ms = Date.now() - criticalPersistStartedAt;
+
+    const enqueueStartedAt = Date.now();
+    const refreshPending = scheduleFreezePostCommitRefresh(teamId);
+    timing.phase4_refresh_enqueue_ms = Date.now() - enqueueStartedAt;
+
+    console.log("[round1/freeze-timing]", JSON.stringify({
+      team_id: teamId,
+      ...timing,
+      deferred: {
+        r2_cache_refresh: refreshPending,
+        phase4_recompute: refreshPending,
+        jinang_settlement: refreshPending,
+        round1_engine: refreshPending,
+        phase4_assembly: refreshPending
+      },
+      total_ms: Date.now() - timingStartedAt
+    }));
+
     return makeResponse(200, {
       ok: true,
       status: "frozen",
       r2_status: nextRound2Status,
+      freeze_async: true,
+      freeze_refresh_pending: refreshPending,
       session_config: sessionConfig,
       ...buildLeaderMeta(team, memberId)
     });
   } catch (e) {
+    console.warn("[round1/freeze-timing]", JSON.stringify({
+      team_id: teamId,
+      ...timing,
+      total_ms: Date.now() - timingStartedAt,
+      error: e.message
+    }));
     return makeResponse(400, { ok: false, error: e.message });
   }
 }
