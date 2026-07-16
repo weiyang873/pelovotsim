@@ -3414,8 +3414,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
       {step===3 && (() => {
         // Margin calculation for display
         const currentGM = calcGM(teamCalc.cost, teamPrice || fallbackPrice, channelFee, baseCost);
-        const gmColor = currentGM >= 40 ? "#166534" : currentGM >= 25 ? "#D97706" : "#DC2626";
-        const gmStatus = currentGM >= 40 ? "\u5065\u5EB7" : currentGM >= 25 ? "\u504F\u7D27" : "\u5371\u9669";
+        const gmColor = "#374151";
         return (
         <div data-testid="r2-merge-container" style={{background:"#fff",borderRadius:14,padding:24,border:"1px solid #e5e7eb"}}>
           <h2 style={{fontSize:18,fontWeight:800,margin:"0 0 8px"}}>团队合并 — 成本结构第一次揭示</h2>
@@ -3475,14 +3474,13 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
 
           {/* Merge summary */}
           <div style={{display:"flex",gap:10,marginBottom:12,flexWrap:"wrap"}}>
-            <div style={{flex:"1 1 260px",padding:"16px 20px",borderRadius:12,background:currentGM>=40?"#F0FDF4":currentGM>=25?"#FFFBEB":"#FEF2F2",border:currentGM>=40?"1.5px solid #BBF7D0":currentGM>=25?"1.5px solid #FDE68A":"1.5px solid #FECACA"}}>
+            <div style={{flex:"1 1 260px",padding:"16px 20px",borderRadius:12,background:"#f9fafb",border:"1.5px solid #e5e7eb"}}>
               <div style={{fontSize:12,fontWeight:600,color:"#6b7280",marginBottom:4}}>当前毛利率</div>
               <div style={{display:"flex",alignItems:"baseline",gap:8}}>
                 <span style={{fontSize:32,fontWeight:800,color:gmColor}}>{currentGM.toFixed(0)}%</span>
-                <span style={{fontSize:14,fontWeight:600,color:gmColor}}>· {gmStatus}</span>
               </div>
               <div style={{width:"100%",height:8,borderRadius:4,background:"#e5e7eb",marginTop:8}}>
-                <div style={{width:`${Math.min(Math.max(currentGM,0)/60*100,100)}%`,height:"100%",borderRadius:4,background:gmColor,transition:"width 0.3s"}}/>
+                <div style={{width:`${Math.min(Math.max(currentGM,0)/60*100,100)}%`,height:"100%",borderRadius:4,background:"#64748b",transition:"width 0.3s"}}/>
               </div>
             </div>
             <div style={{flex:"1 1 220px",padding:"16px 20px",borderRadius:12,background:teamCalc.cost>=0?"#fff7ed":"#ecfdf5",border:teamCalc.cost>=0?"1.5px solid #fed7aa":"1.5px solid #bbf7d0"}}>
@@ -3530,12 +3528,6 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
             </div>
           </div>
 
-          {currentGM < 25 && (
-            <div style={{padding:"10px 14px",borderRadius:8,background:"#FEF2F2",border:"1px solid #FECACA",fontSize:13,color:"#991B1B",marginBottom:12}}>
-              ⚠ 当前技术选择成本过高，毛利率已降至危险区间。在后续团队讨论中，你们需要砍掉或降档一些能力卡来恢复利润空间。
-            </div>
-          )}
-
           <div style={{padding:"10px 14px",borderRadius:8,background:"#FEF3C7",border:"1px solid #FDE68A",fontSize:12,color:"#92400E"}}>
             💡 接下来进入团队讨论和定价。你们已经能看到每张卡的具体 dCOGS 和 NRE，可以开始砍卡、降档或改价格。
           </div>
@@ -3548,8 +3540,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
       {step===4 && (() => {
         const currentGM = calcGM(teamCalc.cost, teamPrice || fallbackPrice, channelFee, baseCost);
         const gmOk = currentGM >= GM_FLOOR;
-        const gmTier = currentGM >= 40 ? "健康" : currentGM >= 30 ? "良好" : currentGM >= 20 ? "偏紧" : "危险";
-        const gmColor = currentGM >= 40 ? "#166534" : currentGM >= 30 ? "#2FAB6E" : currentGM >= 20 ? "#D97706" : "#DC2626";
+        const gmColor = "#374151";
         return (
         <div>
           <div style={{background:"#fff",padding:"14px 18px",borderRadius:"14px 14px 0 0",border:"1px solid #e5e7eb",borderBottom:"none"}}>
@@ -3598,17 +3589,17 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
             </details>
           </div>
 
-          {/* Sticky metrics — qualitative margin */}
+          {/* Sticky metrics — neutral margin */}
           <div style={{position:"sticky",top:0,zIndex:10,display:"flex",gap:10,padding:"10px 16px",background:"#fff",border:"1px solid #e5e7eb",borderTop:"none",borderRadius:"0 0 14px 14px",marginBottom:8,boxShadow:"0 2px 8px rgba(0,0,0,0.04)",flexWrap:"wrap"}}>
-            <div style={{padding:"6px 14px",borderRadius:8,background:gmOk?"#F0FDF4":"#FEF2F2",border:gmOk?"1px solid #BBF7D0":"1px solid #FECACA",fontSize:13,fontWeight:700,color:gmColor}}>
-              预期毛利：{gmTier}
+            <div style={{padding:"6px 14px",borderRadius:8,background:"#f9fafb",border:"1px solid #e5e7eb",fontSize:13,fontWeight:700,color:gmColor}}>
+              预期毛利率：{currentGM.toFixed(0)}%
             </div>
             <div style={{padding:"6px 14px",borderRadius:8,background:"#f9fafb",border:"1px solid #e5e7eb",fontSize:13}}>
               已选 <strong>{teamCalc.cnt}</strong> 张
             </div>
             <div style={{flex:1}}/>
             <div style={{padding:"6px 14px",borderRadius:8,background:(teamCalc.cnt>=MIN_TEAM_CARDS&&gmOk)?"#F0FDF4":"#FEF2F2",border:(teamCalc.cnt>=MIN_TEAM_CARDS&&gmOk)?"1px solid #BBF7D0":"1px solid #FECACA",fontSize:12,fontWeight:600,color:(teamCalc.cnt>=MIN_TEAM_CARDS&&gmOk)?"#166534":"#DC2626"}}>
-              {!gmOk?"\u26A0 预期毛利过低":teamCalc.cnt<MIN_TEAM_CARDS?`还需 ${MIN_TEAM_CARDS-teamCalc.cnt} 张`:"\u2713 选卡就绪，下方定价"}
+              {!gmOk?`毛利率需 ≥ ${GM_FLOOR}%`:teamCalc.cnt<MIN_TEAM_CARDS?`还需 ${MIN_TEAM_CARDS-teamCalc.cnt} 张`:"\u2713 选卡就绪，下方定价"}
             </div>
           </div>
           {DIMS.map(dim => renderDimGroup(dim.id, teamSel, true, "team"))}
@@ -3770,7 +3761,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
               {round2TeamControlsLocked
                 ? `仅组长 ${leaderDisplayName(leaderName)} 可继续`
                 : !gmOk
-                  ? "预期毛利过低，请先调整选卡"
+                  ? `毛利率需 ≥ ${GM_FLOOR}% 才可提交`
                   : teamCalc.cnt < MIN_TEAM_CARDS
                     ? `还需选 ${MIN_TEAM_CARDS-teamCalc.cnt} 张能力卡`
                     : "提交并查看结果"}

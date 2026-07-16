@@ -5,7 +5,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const ROOT = path.join(__dirname, "..");
-const REPORTS_PATH = path.join(ROOT, "game_config_v0.1", "persona_reports_v1.1.json");
+const REPORTS_PATH = path.join(ROOT, "game_config_v0.1", "persona_reports_v1.2.json");
 const V1_PATH = path.join(ROOT, "game_config_v0.1", "grid_dimension_evidence_v1.json");
 const OUTPUT_PATH = path.join(ROOT, "game_config_v0.1", "grid_dimension_evidence_v2.json");
 const SYNONYMS_PATH = path.join(ROOT, "game_config_v0.1", "report_tag_synonyms_v1.json");
