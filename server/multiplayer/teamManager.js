@@ -226,6 +226,8 @@ async function createTeam(teamName, teamSize) {
 
   const id = crypto.randomUUID();
   const createdAt = nowIso();
+  const memberIds = Array.from({ length: size }, () => crypto.randomUUID());
+  const leaderMemberId = memberIds[0];
 
   await runSql(`
     INSERT INTO teams (
@@ -240,7 +242,7 @@ async function createTeam(teamName, teamSize) {
       ${size},
       'forming',
       ${sqlQuote(createdAt)},
-      NULL,
+      ${sqlQuote(leaderMemberId)},
       NULL, NULL, 'player_selected', NULL, NULL,
       NULL, NULL, NULL, NULL, NULL, NULL,
       NULL, NULL, NULL, NULL, NULL, NULL, NULL,
@@ -250,7 +252,7 @@ async function createTeam(teamName, teamSize) {
 
   // 建组即生成全部成员槽位，并立刻发牌（不等待其他人进入页面）。
   for (let i = 1; i <= size; i += 1) {
-    const mid = crypto.randomUUID();
+    const mid = memberIds[i - 1];
     await runSql(`
       INSERT INTO team_members (
         id, team_id, member_name, member_index, is_leader, jinang_market_id, jinang_tech_id, joined_at
@@ -259,7 +261,7 @@ async function createTeam(teamName, teamSize) {
         ${sqlQuote(id)},
         ${sqlQuote(`成员${i}`)},
         ${i},
-        FALSE,
+        ${i === 1 ? "TRUE" : "FALSE"},
         NULL,
         NULL,
         ${sqlQuote(createdAt)}

@@ -870,24 +870,28 @@ async function assertMemberInTeam(teamId, memberId) {
   return rows[0];
 }
 
-async function getFirstRound1Submitter(teamId) {
+async function getDefaultTeamLeaderMemberId(teamId) {
   const rows = await runSql(`
-    SELECT member_id
-    FROM member_submissions
+    SELECT id
+    FROM team_members
     WHERE team_id = ${sqlQuote(teamId)}
-    ORDER BY submitted_at ASC, id ASC
+    ORDER BY member_index ASC, joined_at ASC, id ASC
     LIMIT 1;
   `);
-  return String(rows[0]?.member_id || "").trim() || null;
+  return String(rows[0]?.id || "").trim() || null;
+}
+
+function shouldAssignLeaderForStatus(status) {
+  return ["forming", "phase1", "phase2", "phase3", "phase4", "frozen"].includes(String(status || ""));
 }
 
 async function assignRound1LeaderIfNeeded(teamId) {
   const team = await getTeam(teamId);
   if (!team) return null;
   if (String(team.leader_member_id || "").trim()) return team;
-  const firstSubmitterId = await getFirstRound1Submitter(teamId);
-  if (!firstSubmitterId) return team;
-  return setTeamLeader(teamId, firstSubmitterId);
+  const defaultLeaderId = await getDefaultTeamLeaderMemberId(teamId);
+  if (!defaultLeaderId) return team;
+  return setTeamLeader(teamId, defaultLeaderId);
 }
 
 async function ensureLeaderPermission(teamId, memberId) {
@@ -1722,7 +1726,7 @@ async function getTeamApi(teamId) {
     const tid = String(teamId || "").trim();
     let team = await getTeam(tid);
     if (!team) return makeResponse(404, { ok: false, error: "team not found" });
-    if (!String(team.leader_member_id || "").trim() && ["phase2", "phase3", "phase4", "frozen"].includes(String(team.status || ""))) {
+    if (!String(team.leader_member_id || "").trim() && shouldAssignLeaderForStatus(team.status)) {
       team = await assignRound1LeaderIfNeeded(tid) || team;
     }
     return makeResponse(200, {
@@ -1823,7 +1827,7 @@ async function teamSubmissions(teamId) {
   try {
     let team = await getTeam(teamId);
     if (!team) return makeResponse(404, { ok: false, error: "team not found" });
-    if (!String(team.leader_member_id || "").trim() && ["phase2", "phase3", "phase4", "frozen"].includes(String(team.status || ""))) {
+    if (!String(team.leader_member_id || "").trim() && shouldAssignLeaderForStatus(team.status)) {
       team = await assignRound1LeaderIfNeeded(teamId) || team;
     }
     const submissions = await readTeamSubmissions(teamId);
@@ -3291,7 +3295,7 @@ async function phase3State(teamId, requesterMemberId = "") {
   try {
     let team = await getTeam(teamId);
     if (!team) return makeResponse(404, { ok: false, error: "team not found" });
-    if (!String(team.leader_member_id || "").trim() && ["phase2", "phase3", "phase4", "frozen"].includes(String(team.status || ""))) {
+    if (!String(team.leader_member_id || "").trim() && shouldAssignLeaderForStatus(team.status)) {
       team = await assignRound1LeaderIfNeeded(teamId) || team;
     }
     const draft = await readRound1TeamDraft(teamId);
@@ -3492,7 +3496,7 @@ async function getTeamStatus(teamId, requesterMemberId = "", options = {}) {
     const lite = options?.lite === true;
     let team = await getTeam(teamId);
     if (!team) return makeResponse(404, { ok: false, error: "team not found" });
-    if (!String(team.leader_member_id || "").trim() && ["phase2", "phase3", "phase4", "frozen"].includes(String(team.status || ""))) {
+    if (!String(team.leader_member_id || "").trim() && shouldAssignLeaderForStatus(team.status)) {
       team = await assignRound1LeaderIfNeeded(teamId) || team;
     }
     const memberCount = Array.isArray(team.members) ? team.members.length : 0;
