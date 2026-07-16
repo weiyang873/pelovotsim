@@ -165,6 +165,21 @@ async function ensureSchema() {
 
       CREATE INDEX IF NOT EXISTS idx_teacher_actions_team_time
         ON teacher_actions(team_id, performed_at DESC);
+
+      CREATE TABLE IF NOT EXISTS round2_member_selections (
+        team_id TEXT NOT NULL,
+        member_id TEXT NOT NULL,
+        selections_json TEXT NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL,
+        PRIMARY KEY (team_id, member_id)
+      );
+
+      ALTER TABLE round2_member_selections ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'submitted';
+      ALTER TABLE round2_member_selections ADD COLUMN IF NOT EXISTS skipped_by TEXT;
+      ALTER TABLE round2_member_selections ADD COLUMN IF NOT EXISTS skipped_at TIMESTAMPTZ;
+      UPDATE round2_member_selections
+      SET status = COALESCE(status, 'submitted')
+      WHERE status IS NULL;
     `);
   })();
   try {
@@ -202,10 +217,11 @@ async function updateTeamRound2Status(teamId, status, enteredAt = nowIso()) {
   await refreshCachedTeamRound2State(teamId);
 }
 
-async function updateTeamRound2StatusFromInterviewCompletion(teamId, enteredAt = nowIso()) {
+async function updateTeamRound2StatusFromInterviewCompletion(teamId, enteredAt = nowIso(), options = {}) {
   await ensureSchema();
   const tid = String(teamId || "").trim();
   if (!tid) throw new Error("teamId required");
+  const force = options?.force === true;
 
   const rows = await runSql(`
     WITH counts AS (
@@ -218,7 +234,7 @@ async function updateTeamRound2StatusFromInterviewCompletion(teamId, enteredAt =
     target AS (
       SELECT
         CASE
-          WHEN member_count > 0 AND completed_count >= member_count
+          WHEN member_count > 0 AND (${force ? "TRUE" : "FALSE"} OR completed_count >= member_count)
             THEN 'R2_INDIVIDUAL_CARDS'
           ELSE 'R2_INTERVIEWING'
         END AS next_status
@@ -252,10 +268,11 @@ async function updateTeamRound2StatusFromInterviewCompletion(teamId, enteredAt =
   };
 }
 
-async function updateTeamRound2StatusFromCardSubmissions(teamId, enteredAt = nowIso()) {
+async function updateTeamRound2StatusFromCardSubmissions(teamId, enteredAt = nowIso(), options = {}) {
   await ensureSchema();
   const tid = String(teamId || "").trim();
   if (!tid) throw new Error("teamId required");
+  const force = options?.force === true;
 
   const rows = await runSql(`
     WITH counts AS (
@@ -268,7 +285,7 @@ async function updateTeamRound2StatusFromCardSubmissions(teamId, enteredAt = now
     target AS (
       SELECT
         CASE
-          WHEN member_count > 0 AND submitted_count >= member_count
+          WHEN member_count > 0 AND (${force ? "TRUE" : "FALSE"} OR submitted_count >= member_count)
             THEN 'R2_TEAM_MERGE'
           ELSE 'R2_INDIVIDUAL_CARDS'
         END AS next_status
@@ -455,9 +472,10 @@ async function clearMemberRound2Artifacts(teamId, memberId, resetTo) {
 function deriveMemberCardStatus(memberRow, selectionRow) {
   console.log(`[round2State] deriveMemberCardStatus input=${JSON.stringify({ memberRow, selectionRow })}`);
   const stored = String(memberRow.cardStatusStored || memberRow.card_status || "").trim();
-  if (stored === "submitted" || stored === "selecting" || stored === "not_started") {
+  if (stored === "submitted" || stored === "selecting" || stored === "not_started" || stored === "skipped_by_leader") {
     if (stored === "submitted") return "submitted";
     if (stored === "selecting") return "selecting";
+    if (stored === "skipped_by_leader") return "skipped_by_leader";
   }
   const count = Array.isArray(selectionRow?.selections) ? selectionRow.selections.length : 0;
   if (count > 0) return "selecting";
@@ -660,6 +678,18 @@ async function loadRound2State(teamIds = null) {
     WHERE team_id IN (${inSql})
     ORDER BY team_id, submitted_at DESC;
   `);
+  const forceActionRows = await runSql(`
+    SELECT DISTINCT ON (team_id)
+      team_id,
+      action,
+      member_id,
+      details,
+      performed_at
+    FROM teacher_actions
+    WHERE team_id IN (${inSql})
+      AND action IN ('force_advance_by_leader')
+    ORDER BY team_id, performed_at DESC;
+  `);
 
   const assignmentMap = new Map();
   assignmentRows.forEach((row) => {
@@ -716,11 +746,21 @@ async function loadRound2State(teamIds = null) {
       selections: safeJsonParse(row.selections_json, [])
     });
   });
+  const forceActionMap = new Map();
+  forceActionRows.forEach((row) => {
+    forceActionMap.set(row.team_id, {
+      action: row.action,
+      memberId: row.member_id,
+      details: safeJsonParse(row.details, {}),
+      performedAt: row.performed_at
+    });
+  });
 
   return allTeamIds.map((teamId) => {
     const team = teamMap.get(teamId);
     const memberAssignments = assignmentMap.get(teamId) || new Map();
     const teamSubmission = submissionMap.get(teamId) || null;
+    const latestLeaderForceAction = forceActionMap.get(teamId) || null;
 
     const members = team.members.map((member) => {
       const selection = selectionMap.get(`${teamId}::${member.id}`) || null;
@@ -754,6 +794,7 @@ async function loadRound2State(teamIds = null) {
         currentStep,
         currentStepLabel: MEMBER_STEP_LABELS[currentStep] || currentStep,
         forcedByTeacher: member.forcedByTeacher,
+        skippedByLeader: member.cardStatusStored === "skipped_by_leader" || member.readingStatusStored === "skipped_by_leader",
         lastActivityAt,
         lastActivityMinutes: diffMinutes(lastActivityAt),
         interviewResultReady: Boolean(interview?.result),
@@ -789,6 +830,7 @@ async function loadRound2State(teamIds = null) {
         durationMinutes: diffMinutes(enteredAt),
         sessionSubmittedAt: teamSubmission?.submitted_at || null
       },
+      latestLeaderForceAction,
       submission: teamSubmission,
       members
     };

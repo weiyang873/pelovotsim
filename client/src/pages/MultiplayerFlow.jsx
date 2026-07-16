@@ -16,7 +16,8 @@ import {
   finalizeDecision,
   getPhase3State,
   getResults,
-  freezeTeam
+  freezeTeam,
+  forceAdvanceRound1Strategy
 } from "../api/teamApi";
 import {
   consumeRound1ReviewIntent,
@@ -1088,6 +1089,8 @@ export default function App() {
   const [leaderMemberId, setLeaderMemberId] = useState("");
   const [leaderName, setLeaderName] = useState("");
   const [isLeader, setIsLeader] = useState(false);
+  const [round1PendingMembers, setRound1PendingMembers] = useState([]);
+  const [isForceAdvancingRound1, setIsForceAdvancingRound1] = useState(false);
   const [memberLinks, setMemberLinks] = useState([]);
   const [vpDraft, setVpDraft] = useState("");
   const [coachVpText, setCoachVpText] = useState("");
@@ -1492,6 +1495,7 @@ export default function App() {
         });
         setTeamStatus(status.status || "forming");
         setStatusLine(`已提交 ${status.submitted_count}/${status.member_count}`);
+        setRound1PendingMembers(Array.isArray(status.pending_members) ? status.pending_members : []);
         setLeaderMemberId(String(status.leader_member_id || ""));
         setLeaderName(String(status.leader_name || ""));
         setIsLeader(Boolean(status.is_leader));
@@ -1945,6 +1949,29 @@ export default function App() {
       setStatusLine(`提交失败: ${e.message || e}`);
     } finally {
       setIsSubmittingPersonal(false);
+    }
+  };
+
+  const handleForceAdvanceRound1 = async () => {
+    if (!teamId || !memberId || !isLeader || isForceAdvancingRound1) return;
+    const pending = (round1PendingMembers || []).filter((item) => String(item?.id || "") !== String(memberId || ""));
+    if (!pending.length) {
+      setStatusLine("没有未完成成员需要跳过。");
+      return;
+    }
+    const names = pending.map((item) => item.name || item.id).join("、");
+    const ok = window.confirm(`成员 ${names} 尚未完成。强行推进后，他们将无法补交，团队结果只基于已完成成员的决策。\n\n确定继续？`);
+    if (!ok) return;
+    try {
+      setIsForceAdvancingRound1(true);
+      const out = await forceAdvanceRound1Strategy(teamId, memberId);
+      setStatusLine(`已跳过 ${Number(out?.skipped_members?.length || 0)} 名未完成成员，继续推进。`);
+      setTeamStatus(out.team_status || "phase2");
+      setStep(3);
+    } catch (e) {
+      setStatusLine(`强行推进失败: ${formatLeaderError(e)}`);
+    } finally {
+      setIsForceAdvancingRound1(false);
     }
   };
 
@@ -2932,6 +2959,21 @@ export default function App() {
                   ? "请选择目标市场并选择产品定位方向"
                   : (!selectedCell ? "请选择目标市场" : "请选择产品定位方向")
             }</button>
+            {selfSubmitted && isLeader && round1PendingMembers.filter((item) => String(item?.id || "") !== String(memberId || "")).length > 0 && (
+              <div style={{marginTop:14,padding:"12px 14px",borderRadius:10,background:"#fff7ed",border:"1px solid #fed7aa"}}>
+                <div style={{fontSize:12,color:"#9a3412",lineHeight:1.6,marginBottom:10}}>
+                  仍有成员未提交：{round1PendingMembers.filter((item) => String(item?.id || "") !== String(memberId || "")).map((item) => item.name || item.id).join("、")}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleForceAdvanceRound1}
+                  disabled={isForceAdvancingRound1}
+                  style={{padding:"10px 14px",borderRadius:8,border:"none",background:isForceAdvancingRound1 ? "#fdba74" : "#ea580c",color:"#fff",fontSize:13,fontWeight:800,cursor:isForceAdvancingRound1 ? "wait" : "pointer"}}
+                >
+                  {isForceAdvancingRound1 ? "正在推进…" : "跳过未完成成员，继续推进"}
+                </button>
+              </div>
+            )}
           </div>
         )}
 

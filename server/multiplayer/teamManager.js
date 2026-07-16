@@ -385,10 +385,11 @@ async function updateTeamStatus(teamId, newStatus) {
   return getTeamRow(tid);
 }
 
-async function advanceTeamStatusToPhase2IfAllSubmitted(teamId) {
+async function advanceTeamStatusToPhase2IfAllSubmitted(teamId, options = {}) {
   await ensureSchema();
   const tid = String(teamId || "").trim();
   if (!tid) throw new Error("teamId required");
+  const force = options?.force === true;
 
   const rows = await runSql(`
     WITH counts AS (
@@ -407,7 +408,7 @@ async function advanceTeamStatusToPhase2IfAllSubmitted(teamId) {
     WHERE teams.id = ${sqlQuote(tid)}
       AND teams.status IN ('forming', 'phase1', 'phase2')
       AND counts.team_size > 0
-      AND counts.submitted_count >= counts.team_size
+      AND (${force ? "TRUE" : "FALSE"} OR counts.submitted_count >= counts.team_size)
       AND teams.status <> 'phase2'
     RETURNING teams.status;
   `);

@@ -30,7 +30,8 @@ const {
   updateTeamRound2StatusFromInterviewCompletion,
   updateTeamRound2StatusFromCardSubmissions,
   statusIndex,
-  getTeamRound2State
+  getTeamRound2State,
+  logTeacherAction
 } = require("../multiplayer/round2State");
 const {
   SUMMARY_FLOW_VERSION,
@@ -353,6 +354,12 @@ async function ensureSchema() {
         updated_at TIMESTAMPTZ NOT NULL,
         PRIMARY KEY (team_id, member_id)
       );
+      ALTER TABLE round2_member_selections ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'submitted';
+      ALTER TABLE round2_member_selections ADD COLUMN IF NOT EXISTS skipped_by TEXT;
+      ALTER TABLE round2_member_selections ADD COLUMN IF NOT EXISTS skipped_at TIMESTAMPTZ;
+      UPDATE round2_member_selections
+      SET status = COALESCE(status, 'submitted')
+      WHERE status IS NULL;
 
       CREATE TABLE IF NOT EXISTS round2_interview_sessions (
         session_id TEXT PRIMARY KEY,
@@ -2741,17 +2748,98 @@ async function saveMemberSelections(teamId, memberId, selections) {
   await ensureSchema();
   const now = nowIso();
   await runSql(`
-    INSERT INTO round2_member_selections (team_id, member_id, selections_json, updated_at)
+    INSERT INTO round2_member_selections (team_id, member_id, selections_json, updated_at, status, skipped_by, skipped_at)
     VALUES (
       ${sqlQuote(teamId)},
       ${sqlQuote(memberId)},
       ${sqlQuote(JSON.stringify(Array.isArray(selections) ? selections : []))},
-      ${sqlQuote(now)}
+      ${sqlQuote(now)},
+      'submitted',
+      NULL,
+      NULL
     )
     ON CONFLICT(team_id, member_id) DO UPDATE SET
       selections_json = excluded.selections_json,
-      updated_at = excluded.updated_at;
+      updated_at = excluded.updated_at,
+      status = 'submitted',
+      skipped_by = NULL,
+      skipped_at = NULL;
   `);
+}
+
+async function markMemberSelectionSkippedByLeader(teamId, memberId, leaderMemberId) {
+  await ensureSchema();
+  const now = nowIso();
+  await runSql(`
+    INSERT INTO round2_member_selections (team_id, member_id, selections_json, updated_at, status, skipped_by, skipped_at)
+    VALUES (
+      ${sqlQuote(teamId)},
+      ${sqlQuote(memberId)},
+      '[]',
+      ${sqlQuote(now)},
+      'skipped_by_leader',
+      ${sqlQuote(leaderMemberId)},
+      ${sqlQuote(now)}
+    )
+    ON CONFLICT(team_id, member_id) DO UPDATE SET
+      selections_json = '[]',
+      updated_at = EXCLUDED.updated_at,
+      status = 'skipped_by_leader',
+      skipped_by = EXCLUDED.skipped_by,
+      skipped_at = EXCLUDED.skipped_at;
+  `);
+}
+
+async function markReadingSkippedByLeaderIfPending(teamId, memberId) {
+  await ensureSchema();
+  const rows = await runSql(`
+    UPDATE team_members
+    SET reading_status = 'skipped_by_leader',
+        current_step = 'selecting_cards',
+        last_activity_at = ${sqlQuote(nowIso())}
+    WHERE team_id = ${sqlQuote(teamId)}
+      AND id = ${sqlQuote(memberId)}
+      AND COALESCE(reading_status, 'not_started') <> 'completed'
+    RETURNING id;
+  `);
+  return rows.length > 0;
+}
+
+async function markCardsSkippedByLeaderIfPending(teamId, memberId, leaderMemberId) {
+  await ensureSchema();
+  const rows = await runSql(`
+    UPDATE team_members
+    SET card_status = 'skipped_by_leader',
+        cards_selected = 0,
+        current_step = 'waiting_merge',
+        last_activity_at = ${sqlQuote(nowIso())}
+    WHERE team_id = ${sqlQuote(teamId)}
+      AND id = ${sqlQuote(memberId)}
+      AND COALESCE(card_status, 'not_started') <> 'submitted'
+    RETURNING id;
+  `);
+  if (!rows.length) return false;
+  await markMemberSelectionSkippedByLeader(teamId, memberId, leaderMemberId);
+  return true;
+}
+
+async function markMemberCardsSubmittedIfOpen(teamId, memberId, selectedCount) {
+  await ensureSchema();
+  const rows = await runSql(`
+    UPDATE team_members
+    SET card_status = 'submitted',
+        cards_selected = ${Math.max(0, Math.floor(Number(selectedCount || 0)))},
+        current_step = 'waiting_merge',
+        last_activity_at = ${sqlQuote(nowIso())}
+    FROM teams
+    WHERE team_members.team_id = ${sqlQuote(teamId)}
+      AND team_members.id = ${sqlQuote(memberId)}
+      AND teams.id = team_members.team_id
+      AND teams.r2_status IN ('R2_INDIVIDUAL_CARDS', 'R2_TEAM_MERGE')
+      AND COALESCE(team_members.card_status, 'not_started') <> 'skipped_by_leader'
+    RETURNING team_members.id;
+  `);
+  return rows.length > 0;
 }
 
 async function getMemberSelections(teamId) {
@@ -3958,6 +4046,15 @@ async function completeSummaryReadingApi(body) {
 
     const team = await getTeam(teamId);
     if (!team) return makeResponse(404, { ok: false, error: "team not found" });
+    const teamState = await getTeamRound2State(teamId);
+    const memberState = (teamState?.members || []).find((member) => member.id === memberId) || null;
+    if (memberState?.readingStatus === "skipped_by_leader") {
+      return makeResponse(409, {
+        ok: false,
+        error: "reading_skipped_by_leader",
+        message: "组长已跳过该成员的阅读完成，本轮不能补交。"
+      });
+    }
     const myViewed = await getMemberViewedPersonas(teamId, memberId, sessionId);
     if (!myViewed.length) {
       return makeResponse(400, { ok: false, error: "read at least one report before completing" });
@@ -4624,24 +4721,156 @@ async function saveMemberSelectionApi(body) {
     const selections = Array.isArray(body?.selections) ? body.selections : [];
     if (!teamId || !memberId) return makeResponse(400, { ok: false, error: "teamId/memberId required" });
     const team = await getTeam(teamId);
+    const teamState = await getTeamRound2State(teamId);
+    const memberState = (teamState?.members || []).find((member) => member.id === memberId) || null;
+    if (memberState?.cardStatus === "skipped_by_leader") {
+      return makeResponse(409, {
+        ok: false,
+        error: "submission_skipped_by_leader",
+        message: "组长已跳过该成员的个人选卡，本轮不能补交。"
+      });
+    }
+    if (statusIndex(teamState?.r2?.status) >= statusIndex("R2_TEAM_MERGE") && memberState?.cardStatus !== "submitted") {
+      return makeResponse(409, {
+        ok: false,
+        error: "submission_closed",
+        message: "团队已进入合并阶段，个人选卡提交已关闭。"
+      });
+    }
     if (team) {
       const sessionConfig = await getSessionConfig(sessionId);
+      let frozenChoice = null;
       if (isSummaryModeSession(sessionConfig)) {
-        await freezeStaticSummaryChoiceForTeam(team, sessionId, memberId);
+        frozenChoice = await freezeStaticSummaryChoiceForTeam(team, sessionId, memberId);
       }
     }
+    const markedSubmitted = await markMemberCardsSubmittedIfOpen(teamId, memberId, selections.length);
+    if (!markedSubmitted) {
+      return makeResponse(409, {
+        ok: false,
+        error: "submission_closed",
+        message: "团队已进入合并阶段或该成员已被组长跳过，个人选卡提交已关闭。"
+      });
+    }
     await saveMemberSelections(teamId, memberId, selections);
-    await updateMemberProgress(teamId, memberId, {
-      card_status: "submitted",
-      cards_selected: selections.length,
-      current_step: "waiting_merge",
-      last_activity_at: nowIso()
-    });
 
     const statusResult = await updateTeamRound2StatusFromCardSubmissions(teamId);
     const finalStatus = statusResult.team_status || "R2_INDIVIDUAL_CARDS";
 
     return makeResponse(200, { ok: true, teamId, memberId, count: selections.length, team_status: finalStatus });
+  } catch (e) {
+    return makeResponse(400, { ok: false, error: e.message });
+  }
+}
+
+function summarizeSkippedMembers(members, predicate) {
+  return (Array.isArray(members) ? members : [])
+    .filter(predicate)
+    .map((member) => ({
+      id: member.id,
+      name: member.name || member.memberName || member.id
+    }));
+}
+
+async function forceAdvanceRound2Api(body = {}) {
+  try {
+    const teamId = String(body?.teamId || body?.team_id || "").trim();
+    const memberId = String(body?.memberId || body?.member_id || "").trim();
+    const gate = String(body?.gate || body?.target_gate || body?.targetGate || "").trim().toLowerCase();
+    const sessionId = normalizeSessionId(body?.sessionId || body?.session_id);
+    if (!teamId || !memberId) return makeResponse(400, { ok: false, error: "teamId/memberId required" });
+    if (!["reading", "cards"].includes(gate)) {
+      return makeResponse(400, { ok: false, error: "invalid_force_gate" });
+    }
+
+    const permission = await ensureRound2LeaderPermission(teamId, memberId);
+    if (!permission.ok) return permission.response;
+    const team = permission.team;
+    const beforeState = await getTeamRound2State(teamId);
+    if (!beforeState) return makeResponse(404, { ok: false, error: "team not found" });
+
+    if (gate === "reading") {
+      const plannedSkippedMembers = summarizeSkippedMembers(
+        beforeState.members,
+        (member) => String(member.readingStatus || "") !== "completed"
+      );
+      const sessionConfig = await getSessionConfig(sessionId);
+      if (isSummaryModeSession(sessionConfig)) {
+        await freezeStaticSummaryChoiceForTeam(team, sessionId, memberId);
+      }
+      const skippedMembers = [];
+      for (const skipped of plannedSkippedMembers) {
+        if (await markReadingSkippedByLeaderIfPending(teamId, skipped.id)) {
+          skippedMembers.push(skipped);
+        }
+      }
+      const statusResult = await updateTeamRound2StatusFromInterviewCompletion(teamId, nowIso(), { force: true });
+      await logTeacherAction({
+        action: "force_advance_by_leader",
+        teamId,
+        memberId,
+        details: {
+          gate: "round2_reading",
+          from: beforeState.r2.status,
+          to: statusResult.team_status || "R2_INDIVIDUAL_CARDS",
+          force_advanced_by: memberId,
+          force_advanced_at: nowIso(),
+          skipped_members: skippedMembers
+        }
+      });
+      const afterState = await getTeamRound2State(teamId);
+      return makeResponse(200, {
+        ok: true,
+        team_id: teamId,
+        team_status: afterState?.r2?.status || statusResult.team_status || "R2_INDIVIDUAL_CARDS",
+        choice: sanitizeStudentPersonaChoice(frozenChoice),
+        skipped_members: skippedMembers,
+        ...buildLeaderMeta(afterState || team, memberId)
+      });
+    }
+
+    const submittedMembers = (beforeState.members || []).filter((member) => member.cardStatus === "submitted");
+    if (!submittedMembers.length) {
+      return makeResponse(400, {
+        ok: false,
+        error: "no_submitted_member_selections",
+        message: "至少需要一名成员已提交选卡，才能由组长强推合并。"
+      });
+    }
+    const plannedSkippedMembers = summarizeSkippedMembers(
+      beforeState.members,
+      (member) => member.cardStatus !== "submitted"
+    );
+    const skippedMembers = [];
+    for (const skipped of plannedSkippedMembers) {
+      if (await markCardsSkippedByLeaderIfPending(teamId, skipped.id, memberId)) {
+        skippedMembers.push(skipped);
+      }
+    }
+    const statusResult = await updateTeamRound2StatusFromCardSubmissions(teamId, nowIso(), { force: true });
+    await logTeacherAction({
+      action: "force_advance_by_leader",
+      teamId,
+      memberId,
+      details: {
+        gate: "round2_cards",
+        from: beforeState.r2.status,
+        to: statusResult.team_status || "R2_TEAM_MERGE",
+        force_advanced_by: memberId,
+        force_advanced_at: nowIso(),
+        skipped_members: skippedMembers,
+        submitted_member_count: submittedMembers.length
+      }
+    });
+    const afterState = await getTeamRound2State(teamId);
+    return makeResponse(200, {
+      ok: true,
+      team_id: teamId,
+      team_status: afterState?.r2?.status || statusResult.team_status || "R2_TEAM_MERGE",
+      skipped_members: skippedMembers,
+      submitted_member_count: submittedMembers.length,
+      ...buildLeaderMeta(afterState || team, memberId)
+    });
   } catch (e) {
     return makeResponse(400, { ok: false, error: e.message });
   }
@@ -5184,6 +5413,7 @@ module.exports = {
   interviewReply,
   rescoreInterview,
   saveMemberSelectionApi,
+  forceAdvanceRound2Api,
   mergeApi,
   reflectionApi,
   __test: {

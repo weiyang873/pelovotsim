@@ -190,6 +190,15 @@ export async function saveRound2MemberSelection(payload) {
   return asJson(res);
 }
 
+export async function forceAdvanceRound2(payload) {
+  const res = await fetch(`${BASE}/round2/force-advance`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {})
+  });
+  return asJson(res);
+}
+
 export async function mergeRound2Selections(payload) {
   const res = await fetch(`${BASE}/round2/merge`, {
     method: "POST",

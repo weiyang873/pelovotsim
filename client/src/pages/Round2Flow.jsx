@@ -12,6 +12,7 @@ import {
   getRound2TeamResult,
   replyRound2Interview,
   rescoreRound2Interview,
+  forceAdvanceRound2,
   saveRound2MemberSelection,
   saveRound2TeamDraft,
   startRound2Interview,
@@ -896,9 +897,11 @@ export default function App() {
   const [isSubmittingFinal, setIsSubmittingFinal] = useState(false);
   const [teamStatus, setTeamStatus] = useState("");
   const [memberState, setMemberState] = useState(null);
+  const [round2Members, setRound2Members] = useState([]);
   const [leaderMemberId, setLeaderMemberId] = useState("");
   const [leaderName, setLeaderName] = useState("");
   const [isLeader, setIsLeader] = useState(false);
+  const [forceAdvanceGate, setForceAdvanceGate] = useState("");
   const [systemNotice, setSystemNotice] = useState("");
   const [interviewSessionId, setInterviewSessionId] = useState("");
   const [interviewPersonas, setInterviewPersonas] = useState([]);
@@ -1000,6 +1003,7 @@ export default function App() {
         }
         setSessionConfig(stateRes?.session_config || { reveal_r1_results: false, hold_before_r2: false, interview_mode: "summary" });
         setMemberState(stateRes?.member || null);
+        setRound2Members(Array.isArray(stateRes?.members) ? stateRes.members : []);
         setTeamStatus(String(stateRes?.team_status || ""));
         setInterviewMode(String(stateRes?.session_config?.interview_mode || "summary").trim().toLowerCase() === "live" ? "live" : "summary");
         const initialChoice = stateRes?.persona_choice || null;
@@ -1117,6 +1121,7 @@ export default function App() {
 
         const nextStatus = String(data?.team_status || "");
         setMemberState(data?.member || null);
+        setRound2Members(Array.isArray(data?.members) ? data.members : []);
         setSessionConfig(data?.session_config || { reveal_r1_results: false, hold_before_r2: false, interview_mode: "summary" });
         const nextPricingContext = normalizePricingContext(data);
         if (nextPricingContext) {
@@ -1498,6 +1503,21 @@ export default function App() {
     [summaryReadingStatus]
   );
   const summaryAllMembersDone = summaryReadingStatus?.all_completed === true;
+  const pendingSummaryReadingMembers = useMemo(
+    () => summaryReadingMembers.filter((member) => String(member?.reading_status || "") !== "completed"),
+    [summaryReadingMembers]
+  );
+  const pendingCardMembers = useMemo(
+    () => (Array.isArray(round2Members) ? round2Members : [])
+      .filter((member) => String(member?.card_status || member?.cardStatus || "") !== "submitted")
+      .map((member) => ({ id: member.id, name: member.name || member.member_name || member.id })),
+    [round2Members]
+  );
+  const submittedCardMemberCount = useMemo(
+    () => (Array.isArray(round2Members) ? round2Members : [])
+      .filter((member) => String(member?.card_status || member?.cardStatus || "") === "submitted").length,
+    [round2Members]
+  );
   const mySummaryReadingDone = String(summaryReadingStatus?.my_reading_status || "") === "completed";
   const selectedPersonaSummaryText = String(
     selectedPersonaChoice?.summary_text
@@ -1744,6 +1764,65 @@ export default function App() {
       setIsFreezingSummary(false);
     }
   }, [isFreezingSummary, memberId, sessionId, summaryReportReady, teamId]);
+
+  const handleForceAdvanceReading = useCallback(async () => {
+    if (!teamId || !memberId || !isLeader || forceAdvanceGate) return;
+    const pending = pendingSummaryReadingMembers;
+    if (!pending.length) return;
+    const names = pending.map((item) => item.name || item.member_name || item.member_id || item.id).join("、");
+    const ok = window.confirm(`成员 ${names} 尚未完成。强行推进后，他们将无法补交，团队结果只基于已完成成员的决策。\n\n确定继续？`);
+    if (!ok) return;
+    try {
+      setForceAdvanceGate("reading");
+      setSummaryReportError("");
+      const out = await forceAdvanceRound2({
+        teamId,
+        memberId,
+        session_id: sessionId,
+        gate: "reading"
+      });
+      if (out?.choice) {
+        commitSelectedPersonaChoice(out.choice);
+      }
+      setTeamStatus(out?.team_status || "R2_INDIVIDUAL_CARDS");
+      setSystemNotice("已跳过未完成阅读成员，进入个人选卡。");
+      setStep(2);
+    } catch (err) {
+      setSummaryReportError(err.message || "强行推进失败");
+    } finally {
+      setForceAdvanceGate("");
+    }
+  }, [commitSelectedPersonaChoice, forceAdvanceGate, isLeader, memberId, pendingSummaryReadingMembers, sessionId, teamId]);
+
+  const handleForceAdvanceCards = useCallback(async () => {
+    if (!teamId || !memberId || !isLeader || forceAdvanceGate) return;
+    const pending = pendingCardMembers;
+    if (!pending.length) return;
+    if (submittedCardMemberCount < 1) {
+      setIndividualSubmitError("至少需要一名成员已提交选卡，才能由组长强推合并。");
+      return;
+    }
+    const names = pending.map((item) => item.name || item.id).join("、");
+    const ok = window.confirm(`成员 ${names} 尚未完成。强行推进后，他们将无法补交，团队结果只基于已完成成员的决策。\n\n确定继续？`);
+    if (!ok) return;
+    try {
+      setForceAdvanceGate("cards");
+      setIndividualSubmitError("");
+      const out = await forceAdvanceRound2({
+        teamId,
+        memberId,
+        session_id: sessionId,
+        gate: "cards"
+      });
+      setTeamStatus(out?.team_status || "R2_TEAM_MERGE");
+      setSystemNotice("已跳过未提交选卡成员，进入团队合并。");
+      setStep(3);
+    } catch (err) {
+      setIndividualSubmitError(err.message || "强行推进失败");
+    } finally {
+      setForceAdvanceGate("");
+    }
+  }, [forceAdvanceGate, isLeader, memberId, pendingCardMembers, sessionId, submittedCardMemberCount, teamId]);
 
   const handleDownloadInterviewTxt = useCallback(() => {
     const lines = [];
@@ -3120,15 +3199,25 @@ export default function App() {
                 <button
                   type="button"
                   onClick={summaryReadingSubStep === SUMMARY_READING_TEAM_SUMMARY ? handleContinueFromSummary : handleCompleteSummaryReading}
-                  disabled={!summaryReportReady || isFreezingSummary || (summaryReadingSubStep === SUMMARY_READING_TEAM_SUMMARY && !summaryAllMembersDone && !isLeader)}
-                  style={{padding:"12px 16px",borderRadius:10,background:summaryReportReady && (summaryReadingSubStep !== SUMMARY_READING_TEAM_SUMMARY || summaryAllMembersDone || isLeader) ? "#1a5c3a" : "#d1d5db",color:"#fff",border:"none",fontSize:14,fontWeight:700,cursor:summaryReportReady && !isFreezingSummary && (summaryReadingSubStep !== SUMMARY_READING_TEAM_SUMMARY || summaryAllMembersDone || isLeader) ? "pointer" : "not-allowed",opacity:summaryReportReady ? 1 : 0.6}}
+                  disabled={!summaryReportReady || isFreezingSummary || (summaryReadingSubStep === SUMMARY_READING_TEAM_SUMMARY && !summaryAllMembersDone)}
+                  style={{padding:"12px 16px",borderRadius:10,background:summaryReportReady && (summaryReadingSubStep !== SUMMARY_READING_TEAM_SUMMARY || summaryAllMembersDone) ? "#1a5c3a" : "#d1d5db",color:"#fff",border:"none",fontSize:14,fontWeight:700,cursor:summaryReportReady && !isFreezingSummary && (summaryReadingSubStep !== SUMMARY_READING_TEAM_SUMMARY || summaryAllMembersDone) ? "pointer" : "not-allowed",opacity:summaryReportReady ? 1 : 0.6}}
                 >
                   {isFreezingSummary
                     ? "处理中…"
                     : summaryReadingSubStep === SUMMARY_READING_TEAM_SUMMARY
-                      ? (summaryAllMembersDone || isLeader ? "继续，进入个人选卡" : "等待团队完成阅读")
+                      ? (summaryAllMembersDone ? "继续，进入个人选卡" : "等待团队完成阅读")
                       : (mySummaryReadingDone ? "已完成阅读" : "完成阅读，等待团队")}
                 </button>
+                {summaryReadingSubStep === SUMMARY_READING_TEAM_SUMMARY && isLeader && !summaryAllMembersDone && pendingSummaryReadingMembers.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleForceAdvanceReading}
+                    disabled={forceAdvanceGate === "reading"}
+                    style={{padding:"12px 16px",borderRadius:10,background:forceAdvanceGate === "reading" ? "#fdba74" : "#ea580c",color:"#fff",border:"none",fontSize:14,fontWeight:800,cursor:forceAdvanceGate === "reading" ? "wait" : "pointer"}}
+                  >
+                    {forceAdvanceGate === "reading" ? "正在推进…" : "跳过未完成成员，继续推进"}
+                  </button>
+                )}
               </div>
             </div>
           ) : (
@@ -3445,6 +3534,21 @@ export default function App() {
           {isSubmittingIndividual && (
             <div style={{margin:"0 0 12px",padding:"10px 14px",borderRadius:8,background:"#fffbeb",border:"1px solid #fde68a",fontSize:12,color:"#92400e",lineHeight:1.7}}>
               正在提交个人选卡，请稍候。提交成功后会自动进入团队合并。
+            </div>
+          )}
+          {isLeader && String(memberState?.card_status || memberState?.cardStatus || "") === "submitted" && teamStatus === "R2_INDIVIDUAL_CARDS" && pendingCardMembers.length > 0 && (
+            <div style={{margin:"0 0 12px",padding:"12px 14px",borderRadius:10,background:"#fff7ed",border:"1px solid #fed7aa",fontSize:12,color:"#9a3412",lineHeight:1.7}}>
+              <div style={{marginBottom:10}}>
+                仍有成员未提交选卡：{pendingCardMembers.map((item) => item.name || item.id).join("、")}
+              </div>
+              <button
+                type="button"
+                onClick={handleForceAdvanceCards}
+                disabled={forceAdvanceGate === "cards"}
+                style={{padding:"10px 14px",borderRadius:8,border:"none",background:forceAdvanceGate === "cards" ? "#fdba74" : "#ea580c",color:"#fff",fontSize:13,fontWeight:800,cursor:forceAdvanceGate === "cards" ? "wait" : "pointer"}}
+              >
+                {forceAdvanceGate === "cards" ? "正在推进…" : "跳过未完成成员，继续推进"}
+              </button>
             </div>
           )}
 

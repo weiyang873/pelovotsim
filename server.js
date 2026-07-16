@@ -2218,6 +2218,15 @@ function handleApi(req, res) {
       .catch((err) => sendJson(res, 400, { ok: false, error: err.message || "phase1 submit failed" }));
   }
 
+  if (req.method === "POST" && /^\/api\/team\/[^/]+\/force-phase1$/.test(String(req.url || ""))) {
+    const parts = String(req.url || "").split("/");
+    const teamId = decodeURIComponent(parts[3] || "");
+    return readBody(req)
+      .then((p) => TeamRoutes.forceAdvancePhase1(teamId, p))
+      .then((out) => sendJson(res, out.status, out.body))
+      .catch((err) => sendJson(res, 400, { ok: false, error: err.message || "phase1 force advance failed" }));
+  }
+
   if (req.method === "GET" && /^\/api\/team\/[^/]+\/member\/[^/]+\/jinang$/.test(String(req.url || ""))) {
     const parts = String(req.url || "").split("/");
     const teamId = decodeURIComponent(parts[3] || "");
@@ -2715,6 +2724,13 @@ function handleApi(req, res) {
       .then((p) => Round2.saveMemberSelectionApi(p))
       .then((out) => sendJson(res, out.status, out.body))
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "round2 member selection save failed" }));
+  }
+
+  if (req.method === "POST" && req.url === "/api/round2/force-advance") {
+    return readBody(req)
+      .then((p) => Round2.forceAdvanceRound2Api(p))
+      .then((out) => sendJson(res, out.status, out.body))
+      .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "round2 force advance failed" }));
   }
 
   if (req.method === "POST" && req.url === "/api/round2/individual-submit") {

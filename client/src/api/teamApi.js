@@ -71,6 +71,15 @@ export async function submitPersonalChoice(teamId, memberId, choice) {
   return asJson(res);
 }
 
+export async function forceAdvanceRound1Strategy(teamId, memberId) {
+  const res = await fetch(`${BASE}/team/${encodeURIComponent(teamId)}/force-phase1`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ memberId })
+  });
+  return asJson(res);
+}
+
 export async function getTeamStatus(teamId, memberId = "", options = {}) {
   const params = new URLSearchParams();
   if (memberId) params.set("memberId", String(memberId).trim());

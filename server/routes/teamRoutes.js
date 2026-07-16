@@ -35,7 +35,9 @@ const {
 } = require("../multiplayer/teamManager");
 const {
   getTeamRound2State,
-  updateTeamRound2Status
+  updateTeamRound2Status,
+  logTeacherAction,
+  nowIso
 } = require("../multiplayer/round2State");
 const { computeJinangWtpBonus } = require("../multiplayer/jinangCoeff");
 const { getSessionConfig } = require("../multiplayer/sessionConfig");
@@ -964,6 +966,14 @@ async function submitPhase1(teamId, memberId, body) {
     if (!team) return makeResponse(404, { ok: false, error: "team not found" });
     await assertMemberInTeam(teamId, memberId);
     const existing = await readSubmission(teamId, memberId);
+    if (!existing && ["phase2", "phase3", "phase4", "frozen"].includes(String(team.status || ""))) {
+      return makeResponse(409, {
+        ok: false,
+        error: "submission_closed",
+        message: "团队已被推进，个人战略提交已关闭。",
+        ...buildLeaderMeta(team, memberId)
+      });
+    }
     if (existing) {
       const submittedCount = await countTeamSubmissions(teamId);
       const teamSize = Number(team.team_size || 0);
@@ -1001,7 +1011,8 @@ async function submitPhase1(teamId, memberId, body) {
     const inserted = await runSql(`
       INSERT INTO member_submissions (
         id, member_id, team_id, grid_id, architecture, channel_pref, vp_draft, personal_gm_max, submitted_at
-      ) VALUES (
+      )
+      SELECT
         ${sqlQuote(id)},
         ${sqlQuote(memberId)},
         ${sqlQuote(teamId)},
@@ -1011,6 +1022,10 @@ async function submitPhase1(teamId, memberId, body) {
         ${sqlQuote(vpDraft)},
         ${Number(calc.gmMax)},
         ${sqlQuote(now)}
+      WHERE EXISTS (
+        SELECT 1 FROM teams
+        WHERE id = ${sqlQuote(teamId)}
+          AND status IN ('forming', 'phase1')
       )
       ON CONFLICT (team_id, member_id) DO NOTHING
       RETURNING id, personal_gm_max;
@@ -1024,7 +1039,12 @@ async function submitPhase1(teamId, memberId, body) {
     } else {
       const winner = await readSubmission(teamId, memberId);
       if (!winner) {
-        return makeResponse(500, { ok: false, error: "submission lost after conflict" });
+        return makeResponse(409, {
+          ok: false,
+          error: "submission_closed",
+          message: "团队已被推进，个人战略提交已关闭。",
+          ...buildLeaderMeta(await getTeam(teamId), memberId)
+        });
       }
       actualId = winner.id;
       actualGmMax = Number(winner.personal_gm_max);
@@ -1819,6 +1839,77 @@ async function teamSubmissions(teamId) {
       },
       team_draft: draft,
       submissions
+    });
+  } catch (e) {
+    return makeResponse(400, { ok: false, error: e.message });
+  }
+}
+
+function pendingRound1SubmissionMembers(team, submissions) {
+  const submittedIds = new Set(
+    (Array.isArray(submissions) ? submissions : [])
+      .filter((item) => item?.submitted)
+      .map((item) => String(item.member_id || "").trim())
+  );
+  return (Array.isArray(team?.members) ? team.members : [])
+    .filter((member) => !submittedIds.has(String(member.id || "").trim()))
+    .map((member) => ({
+      id: member.id,
+      name: member.member_name || member.name || member.id
+    }));
+}
+
+async function forceAdvancePhase1(teamId, body = {}) {
+  try {
+    const memberId = readRequesterMemberId(body);
+    let team = await getTeam(teamId);
+    if (!team) return makeResponse(404, { ok: false, error: "team not found" });
+    if (!String(team.leader_member_id || "").trim()) {
+      team = await assignRound1LeaderIfNeeded(teamId) || team;
+    }
+    await assertMemberInTeam(teamId, memberId);
+    const leaderMeta = buildLeaderMeta(team, memberId);
+    if (!leaderMeta.is_leader) {
+      return makeOnlyLeaderResponse(team, memberId);
+    }
+
+    const submissions = await readTeamSubmissions(teamId);
+    const skippedMembers = pendingRound1SubmissionMembers(team, submissions);
+    const fromStatus = String(team.status || "forming");
+    if (!skippedMembers.length) {
+      const normal = await advanceTeamStatusToPhase2IfAllSubmitted(teamId);
+      const updatedTeam = await getTeam(teamId);
+      return makeResponse(200, {
+        ok: true,
+        team_id: teamId,
+        team_status: normal.team_status || updatedTeam?.status || "phase2",
+        skipped_members: [],
+        ...buildLeaderMeta(updatedTeam || team, memberId)
+      });
+    }
+
+    const statusResult = await advanceTeamStatusToPhase2IfAllSubmitted(teamId, { force: true });
+    team = await getTeam(teamId) || team;
+    await logTeacherAction({
+      action: "force_advance_by_leader",
+      teamId,
+      memberId,
+      details: {
+        gate: "round1_strategy",
+        from: fromStatus,
+        to: statusResult.team_status || "phase2",
+        force_advanced_by: memberId,
+        force_advanced_at: nowIso(),
+        skipped_members: skippedMembers
+      }
+    });
+
+    return makeResponse(200, {
+      ok: true,
+      team_id: teamId,
+      team_status: statusResult.team_status || "phase2",
+      skipped_members: skippedMembers,
+      ...buildLeaderMeta(team, memberId)
     });
   } catch (e) {
     return makeResponse(400, { ok: false, error: e.message });
@@ -3413,6 +3504,7 @@ async function getTeamStatus(teamId, requesterMemberId = "", options = {}) {
       all_submitted: submittedCount >= memberCount && memberCount > 0,
       member_count: memberCount,
       submitted_count: submittedCount,
+      pending_members: pendingRound1SubmissionMembers(team, await readTeamSubmissions(teamId)),
       ...buildLeaderMeta(team, requesterMemberId),
       team_draft: draft
     };
@@ -3477,6 +3569,7 @@ module.exports = {
   freezeTeam,
   leaderStartRound2,
   getTeamStatus,
+  forceAdvancePhase1,
   getMemberJinangApi,
   hideDeferredRound1Fields,
   sanitizeStudentVpConfirmationResponse,

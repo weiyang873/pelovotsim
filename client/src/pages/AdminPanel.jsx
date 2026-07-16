@@ -194,6 +194,21 @@ function isMarkedAbsent(member) {
   );
 }
 
+function leaderForceSummary(action) {
+  const details = action?.details || {};
+  const gateMap = {
+    round1_strategy: "R1 战略提交",
+    round2_reading: "R2 阅读完成",
+    round2_cards: "R2 选卡提交"
+  };
+  const skipped = Array.isArray(details.skipped_members) ? details.skipped_members : [];
+  return {
+    gate: gateMap[details.gate] || details.gate || "组长强推",
+    skippedNames: skipped.map((item) => item.name || item.member_name || item.id).filter(Boolean),
+    at: details.force_advanced_at || action?.performedAt || ""
+  };
+}
+
 function formatDims(dims) {
   return (Array.isArray(dims) ? dims : []).map((dim) => DIM_LABELS[dim] || dim);
 }
@@ -435,6 +450,21 @@ function TeamCard({ team, expanded, onToggle, onAction, busy, productImage, prod
 
       {expanded && (
         <div style={{ borderTop: "1px solid #e2e8f0", padding: "18px" }}>
+          {team.latestLeaderForceAction && (
+            <div style={{marginBottom:16,padding:"10px 12px",borderRadius:12,background:"#fff7ed",border:"1px solid #fed7aa",fontSize:12,color:"#9a3412",lineHeight:1.7}}>
+              {(() => {
+                const summary = leaderForceSummary(team.latestLeaderForceAction);
+                return (
+                  <>
+                    <strong>组长强推记录：</strong>
+                    {summary.gate}
+                    {summary.skippedNames.length ? ` · 跳过：${summary.skippedNames.join("、")}` : " · 无跳过成员"}
+                    {summary.at ? ` · ${new Date(summary.at).toLocaleString()}` : ""}
+                  </>
+                );
+              })()}
+            </div>
+          )}
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
             <div style={{ fontSize: 13, color: "#334155" }}>
               团队状态: <strong>{team.r2.status}</strong>
