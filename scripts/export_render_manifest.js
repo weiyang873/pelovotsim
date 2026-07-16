@@ -184,6 +184,14 @@ function buildRound2Stage(round2Source, capabilities) {
           risk_note: copy.riskNote || String(capability.risk_note || capability.risk || ""),
           nre_desc: String(capability.nre_desc || copy.nreDesc || ""),
           tag: copy.tag || "",
+          dependencies: (copy.deps || []).map((dep) => ({
+            ...dep,
+            visibility: "conditional_after_selection"
+          })),
+          conflicts: (copy.conflicts || []).map((target) => ({
+            target,
+            visibility: "conditional_after_selection"
+          })),
           visibility: "primary",
           fields: [
             { path: "card.name", form: "text", visibility: "primary" },

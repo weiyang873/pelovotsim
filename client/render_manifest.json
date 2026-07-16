@@ -1,18 +1,18 @@
 {
-  "manifest_version": "c978114b932114264d79a0fb3b09ecd3d88bf11bf46b7ba280ec0f8155094fc8",
-  "generated_from": "be06157a1d647038d78cc043a1d2461596bfd54a",
-  "generated_from_worktree_dirty": true,
+  "manifest_version": "d29aeded3689963095c210da7209b5d1eb650e7882707aa6b7ea5880b4fcea89",
+  "generated_from": "1a14f7ded15c9582bf888d0d77446c73b67528ea",
+  "generated_from_worktree_dirty": false,
   "generator": "scripts/export_render_manifest.js",
   "source_files": [
     {
       "path": "client/src/pages/Round2Flow.jsx",
       "sha256": "f1e0bc65d6f09cdf393b3d05c634282bb411a0e41e099d6dfefeac2cbf4b5cb8",
-      "git_status_dirty": true
+      "git_status_dirty": false
     },
     {
       "path": "client/src/pages/MultiplayerFlow.jsx",
       "sha256": "5d7586bdd2ff1e303a4abe81898490fe14ab8626cda1518ee94eb03fa297c0de",
-      "git_status_dirty": true
+      "git_status_dirty": false
     },
     {
       "path": "data/capability_groups_v2.json",
@@ -263,6 +263,8 @@
               "risk_note": "技术成熟度高，风险可控",
               "nre_desc": "嵌入式8月+语音算法6月+QA4月+SDK授权+消音室+样机",
               "tag": "",
+              "dependencies": [],
+              "conflicts": [],
               "visibility": "primary",
               "fields": [
                 {
@@ -415,6 +417,17 @@
               "risk_note": "依赖大模型能力，对话质量波动大",
               "nre_desc": "NLP高级10月+嵌入式AI8月+后端6月+标注×2人6月+QA4月+GPU算力+训练数据+样机",
               "tag": "",
+              "dependencies": [
+                {
+                  "tier": "high",
+                  "type": "需要",
+                  "target": "cloud_update",
+                  "tl": "标准",
+                  "cross": true,
+                  "visibility": "conditional_after_selection"
+                }
+              ],
+              "conflicts": [],
               "visibility": "primary",
               "fields": [
                 {
@@ -567,6 +580,8 @@
               "risk_note": "传感器硬件成熟，集成风险低",
               "nre_desc": "硬件8月+嵌入式6月+结构4月+QA3月+柔性PCB打样+传感器样品+样机",
               "tag": "",
+              "dependencies": [],
+              "conflicts": [],
               "visibility": "primary",
               "fields": [
                 {
@@ -719,6 +734,8 @@
               "risk_note": "版权与音频适配需要持续维护",
               "nre_desc": "嵌入式6月+音频4月+QA2月+版权授权+音频测试+样机",
               "tag": "",
+              "dependencies": [],
+              "conflicts": [],
               "visibility": "primary",
               "fields": [
                 {
@@ -871,6 +888,13 @@
               "risk_note": "显示模组和动画体验会明显拉高开发复杂度",
               "nre_desc": "显示驱动8月+嵌入式6月+结构6月+工业设计师6月+动画4月+QA4月+OLED样品+动画外包+显示模具+样机",
               "tag": "",
+              "dependencies": [],
+              "conflicts": [
+                {
+                  "target": "no_screen",
+                  "visibility": "conditional_after_selection"
+                }
+              ],
               "visibility": "primary",
               "fields": [
                 {
@@ -1023,6 +1047,8 @@
               "risk_note": "风格做得好很加分，但打磨周期长",
               "nre_desc": "工业设计师8月+结构6月+动作设计6月+QA3月+外壳开模30万+3D打样+样机",
               "tag": "",
+              "dependencies": [],
+              "conflicts": [],
               "visibility": "primary",
               "fields": [
                 {
@@ -1175,6 +1201,13 @@
               "risk_note": "用户体验可能受限，需验证接受度",
               "nre_desc": "结构4月+嵌入式3月+QA回归4月+认证2月+结构件打样+重新认证费+回归测试",
               "tag": "降本",
+              "dependencies": [],
+              "conflicts": [
+                {
+                  "target": "visual_expr",
+                  "visibility": "conditional_after_selection"
+                }
+              ],
               "visibility": "primary",
               "fields": [
                 {
@@ -1354,6 +1387,8 @@
               "risk_note": "硬件方案成熟，但需要稳定标定",
               "nre_desc": "视觉6月+嵌入式6月+QA3月+摄像头样品+ISP工具+标定设备+样机",
               "tag": "",
+              "dependencies": [],
+              "conflicts": [],
               "visibility": "primary",
               "fields": [
                 {
@@ -1506,6 +1541,30 @@
               "risk_note": "算法精度不稳定，场景与光线变化影响大",
               "nre_desc": "CV高级10月+嵌入式AI8月+标注×2人6月+QA4月+GPU算力+表情数据集+AI芯片+样机",
               "tag": "",
+              "dependencies": [
+                {
+                  "tier": "low",
+                  "type": "需要",
+                  "target": "percep_base",
+                  "tl": "基础",
+                  "visibility": "conditional_after_selection"
+                },
+                {
+                  "tier": "mid",
+                  "type": "需要",
+                  "target": "percep_base",
+                  "tl": "标准",
+                  "visibility": "conditional_after_selection"
+                },
+                {
+                  "tier": "high",
+                  "type": "需要",
+                  "target": "percep_base",
+                  "tl": "旗舰",
+                  "visibility": "conditional_after_selection"
+                }
+              ],
+              "conflicts": [],
               "visibility": "primary",
               "fields": [
                 {
@@ -1658,6 +1717,25 @@
               "risk_note": "冷启动体验弱，需要长期数据积累",
               "nre_desc": "ML高级12月+嵌入式AI8月+数据工程6月+QA6月+GPU算力12月+边缘模组+用户测试+样机",
               "tag": "",
+              "dependencies": [
+                {
+                  "tier": "mid",
+                  "type": "需要",
+                  "target": "cloud_update",
+                  "tl": "标准",
+                  "cross": true,
+                  "visibility": "conditional_after_selection"
+                },
+                {
+                  "tier": "high",
+                  "type": "需要",
+                  "target": "cloud_update",
+                  "tl": "旗舰",
+                  "cross": true,
+                  "visibility": "conditional_after_selection"
+                }
+              ],
+              "conflicts": [],
               "visibility": "primary",
               "fields": [
                 {
@@ -1810,6 +1888,17 @@
               "risk_note": "涉及隐私和记忆边界，信任设计很关键",
               "nre_desc": "后端8月+安全高级6月+QA4月+隐私审查律所+渗透测试+加密芯片+样机",
               "tag": "",
+              "dependencies": [
+                {
+                  "tier": "high",
+                  "type": "需要",
+                  "target": "privacy_trust",
+                  "tl": "标准",
+                  "cross": true,
+                  "visibility": "conditional_after_selection"
+                }
+              ],
+              "conflicts": [],
               "visibility": "primary",
               "fields": [
                 {
@@ -1989,6 +2078,8 @@
               "risk_note": "基础方案成熟，但复杂家庭环境仍需测试",
               "nre_desc": "嵌入式6月+算法3月+QA3月+超声波模组+测试场地+样机",
               "tag": "",
+              "dependencies": [],
+              "conflicts": [],
               "visibility": "primary",
               "fields": [
                 {
@@ -2141,6 +2232,8 @@
               "risk_note": "跟随稳定性和安全边界都不好做",
               "nre_desc": "电机控制8月+算法8月+硬件4月+QA6月+伺服电机样品+路测+开发板+样机",
               "tag": "",
+              "dependencies": [],
+              "conflicts": [],
               "visibility": "primary",
               "fields": [
                 {
@@ -2293,6 +2386,25 @@
               "risk_note": "LiDAR 硬件和 SLAM 调参都很重，投入高",
               "nre_desc": "SLAM高级10月+嵌入式8月+电机控制4月+QA8月+LiDAR多款评估+SLAM平台+大量路测+地图设备+样机",
               "tag": "",
+              "dependencies": [
+                {
+                  "tier": "mid",
+                  "type": "需要",
+                  "target": "cloud_update",
+                  "tl": "标准",
+                  "cross": true,
+                  "visibility": "conditional_after_selection"
+                },
+                {
+                  "tier": "high",
+                  "type": "需要",
+                  "target": "cloud_update",
+                  "tl": "标准",
+                  "cross": true,
+                  "visibility": "conditional_after_selection"
+                }
+              ],
+              "conflicts": [],
               "visibility": "primary",
               "fields": [
                 {
@@ -2472,6 +2584,8 @@
               "risk_note": "合规要求明确，但不能只做表面开关",
               "nre_desc": "安全高级8月+嵌入式4月+认证4月+渗透测试+安全认证+SE芯片+样机",
               "tag": "",
+              "dependencies": [],
+              "conflicts": [],
               "visibility": "primary",
               "fields": [
                 {
@@ -2624,6 +2738,8 @@
               "risk_note": "认证和可靠性测试周期长",
               "nre_desc": "硬件6月+结构4月+QA专项6月+认证6月+GB认证15万+跌落测试+材料检测+样机",
               "tag": "",
+              "dependencies": [],
+              "conflicts": [],
               "visibility": "primary",
               "fields": [
                 {
@@ -2776,6 +2892,33 @@
               "risk_note": "隐私与监护的平衡很难，过度监控会惹人反感",
               "nre_desc": "架构师8月+硬件8月+嵌入式6月+后端4月+QA8月+紧急通信认证+可靠性测试+融合套件+样机",
               "tag": "",
+              "dependencies": [
+                {
+                  "tier": "low",
+                  "type": "需要",
+                  "target": "privacy_trust",
+                  "tl": "基础",
+                  "cross": true,
+                  "visibility": "conditional_after_selection"
+                },
+                {
+                  "tier": "mid",
+                  "type": "需要",
+                  "target": "privacy_trust",
+                  "tl": "标准",
+                  "cross": true,
+                  "visibility": "conditional_after_selection"
+                },
+                {
+                  "tier": "high",
+                  "type": "需要",
+                  "target": "privacy_trust",
+                  "tl": "旗舰",
+                  "cross": true,
+                  "visibility": "conditional_after_selection"
+                }
+              ],
+              "conflicts": [],
               "visibility": "primary",
               "fields": [
                 {
@@ -2955,6 +3098,8 @@
               "risk_note": "灰度和回滚机制能明显降低线上事故",
               "nre_desc": "后端6月+嵌入式6月+安全3月+QA4月+云服务器+灰度平台+安全芯片+样机",
               "tag": "",
+              "dependencies": [],
+              "conflicts": [],
               "visibility": "primary",
               "fields": [
                 {
@@ -3107,6 +3252,17 @@
               "risk_note": "协议兼容和认证测试工作量大",
               "nre_desc": "IoT8月+后端6月+硬件RF4月+认证4月+协议认证18万+天线外包+网关开发板+样机",
               "tag": "",
+              "dependencies": [
+                {
+                  "tier": "high",
+                  "type": "需要",
+                  "target": "privacy_trust",
+                  "tl": "标准",
+                  "cross": true,
+                  "visibility": "conditional_after_selection"
+                }
+              ],
+              "conflicts": [],
               "visibility": "primary",
               "fields": [
                 {
@@ -3259,6 +3415,8 @@
               "risk_note": "内容持续供给和版权都需要长期投入",
               "nre_desc": "前端6月+后端6月+内容运营8月+QA3月+内容授权12万+CMS平台+合规审查+用户测试",
               "tag": "",
+              "dependencies": [],
+              "conflicts": [],
               "visibility": "primary",
               "fields": [
                 {
@@ -3438,6 +3596,8 @@
               "risk_note": "投入不大，但对长期可维护性很重要",
               "nre_desc": "嵌入式6月+QA4月+诊断传感器+故障注入设备+样机",
               "tag": "",
+              "dependencies": [],
+              "conflicts": [],
               "visibility": "primary",
               "fields": [
                 {
@@ -3590,6 +3750,8 @@
               "risk_note": "云端监控能省售后，但也要做好权限边界",
               "nre_desc": "后端8月+嵌入式4月+QA3月+认证2月+云平台+通信认证+样机",
               "tag": "",
+              "dependencies": [],
+              "conflicts": [],
               "visibility": "primary",
               "fields": [
                 {
@@ -3742,6 +3904,8 @@
               "risk_note": "需要长期数据和更多传感器支持，开发周期长",
               "nre_desc": "ML高级10月+嵌入式6月+数据工程6月+QA6月+GPU算力+长期测试15万+传感器+样机",
               "tag": "",
+              "dependencies": [],
+              "conflicts": [],
               "visibility": "primary",
               "fields": [
                 {
