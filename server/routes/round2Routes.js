@@ -68,6 +68,7 @@ const DEFAULT_ROUND2_PRICING_CONTEXT = {
   price_step: 100,
   default_price: 3500
 };
+const ROUND1_NOT_FINALIZED_MESSAGE = "第一轮尚未定稿,无法进行第二轮操作";
 
 const DIM_KEYS_SHORT = ["interaction", "perception", "motion", "safety", "extend", "ops"];
 const DIM_SHORT_TO_GROUP = {
@@ -335,6 +336,31 @@ function makeOnlyLeaderResponse(team, requesterMemberId = "") {
     error: "only_leader",
     ...buildLeaderMeta(team, requesterMemberId)
   });
+}
+
+function isRound1FinalizedTeam(team) {
+  return String(team?.status || "").trim() === "frozen"
+    && String(team?.final_grid_id || "").trim().length > 0;
+}
+
+async function ensureRound1Finalized(teamOrId) {
+  const team = typeof teamOrId === "string"
+    ? await getTeam(teamOrId)
+    : teamOrId;
+  if (!team) {
+    return { ok: false, response: makeResponse(404, { ok: false, error: "team not found" }) };
+  }
+  if (!isRound1FinalizedTeam(team)) {
+    return {
+      ok: false,
+      response: makeResponse(400, {
+        ok: false,
+        error: "round1_not_finalized",
+        message: ROUND1_NOT_FINALIZED_MESSAGE
+      })
+    };
+  }
+  return { ok: true, team };
 }
 
 async function ensureSchema() {
@@ -3979,6 +4005,8 @@ async function personaReportByIndexApi(params, query) {
 
     const team = await getTeam(teamId);
     if (!team) return makeResponse(404, { ok: false, error: "team not found" });
+    const finalized = await ensureRound1Finalized(team);
+    if (!finalized.ok) return finalized.response;
 
     const calcGridId = toCalcGridId(team?.final_grid_id || "", team?.final_architecture || "");
     const report = getStaticPersonaReportByIndex(calcGridId, reportIndex);
@@ -4046,6 +4074,8 @@ async function completeSummaryReadingApi(body) {
 
     const team = await getTeam(teamId);
     if (!team) return makeResponse(404, { ok: false, error: "team not found" });
+    const finalized = await ensureRound1Finalized(team);
+    if (!finalized.ok) return finalized.response;
     const teamState = await getTeamRound2State(teamId);
     const memberState = (teamState?.members || []).find((member) => member.id === memberId) || null;
     if (memberState?.readingStatus === "skipped_by_leader") {
@@ -4100,6 +4130,8 @@ async function selectPersonaArchetypeApi(body) {
 
     const team = await getTeam(teamId);
     if (!team) return makeResponse(404, { ok: false, error: "team not found" });
+    const finalized = await ensureRound1Finalized(team);
+    if (!finalized.ok) return finalized.response;
 
     const nextChoice = await freezeStaticSummaryChoiceForTeam(team, sessionId, memberId);
     if (!nextChoice) {
@@ -4126,6 +4158,8 @@ async function assignDimensionsApi(body) {
     if (!teamId) return makeResponse(400, { ok: false, error: "teamId required" });
     const team = await getTeam(teamId);
     if (!team) return makeResponse(404, { ok: false, error: "team not found" });
+    const finalized = await ensureRound1Finalized(team);
+    if (!finalized.ok) return finalized.response;
 
     const memberCount = Number(body?.memberCount || listTeamMembers(team).length || 4);
     const assignments = await buildAssignments(team, memberCount);
@@ -4153,6 +4187,9 @@ async function interviewAuto(body) {
     if (!teamId || !memberId) return makeResponse(400, { ok: false, error: "teamId/memberId required" });
 
     const team = await getTeam(teamId);
+    if (!team) return makeResponse(404, { ok: false, error: "team not found" });
+    const finalized = await ensureRound1Finalized(team);
+    if (!finalized.ok) return finalized.response;
     const member = listTeamMembers(team).find((m) => m.id === memberId);
     const assignments = await ensureAssignments(team);
     const row = assignments.find((x) => x.memberId === memberId);
@@ -4215,6 +4252,8 @@ async function interviewStart(body) {
 
     const team = await getTeam(teamId);
     if (!team) return makeResponse(404, { ok: false, error: "team not found" });
+    const finalized = await ensureRound1Finalized(team);
+    if (!finalized.ok) return finalized.response;
 
     const member = listTeamMembers(team).find((m) => m.id === memberId);
     const assignments = await ensureAssignments(team);
@@ -4336,6 +4375,8 @@ async function interviewReply(body) {
 
     const session = await getInterviewSession(sessionId);
     if (!session) return makeResponse(404, { ok: false, error: "session not found" });
+    const finalized = await ensureRound1Finalized(session.team_id);
+    if (!finalized.ok) return finalized.response;
 
     if (session.is_complete) {
       const studentResult = sanitizeStudentInterviewResult(session.result);
@@ -4501,6 +4542,8 @@ async function rescoreInterview(body) {
 
     const session = await getInterviewSession(sessionId);
     if (!session) return makeResponse(404, { ok: false, error: "session not found" });
+    const finalized = await ensureRound1Finalized(session.team_id);
+    if (!finalized.ok) return finalized.response;
 
     if (session.is_complete) {
       const studentResult = sanitizeStudentInterviewResult(session.result);
@@ -4574,6 +4617,8 @@ async function interviewEnd(body) {
 
     const session = await getInterviewSession(sessionId);
     if (!session) return makeResponse(404, { ok: false, error: "session not found" });
+    const finalized = await ensureRound1Finalized(session.team_id);
+    if (!finalized.ok) return finalized.response;
     if (session.is_complete) {
       const studentResult = sanitizeStudentInterviewResult(session.result);
       const sessions = await listInterviewSessionsForMember(session.team_id, session.member_id);
@@ -4680,6 +4725,9 @@ async function interviewSessionApi(query) {
     }
 
     const team = await getTeam(teamId);
+    if (!team) return makeResponse(404, { ok: false, error: "team not found" });
+    const finalized = await ensureRound1Finalized(team);
+    if (!finalized.ok) return finalized.response;
     const member = listTeamMembers(team).find((item) => item.id === memberId);
     let sessions = await listInterviewSessionsForMember(teamId, memberId);
     const completedSessions = sessions.filter((item) => item.is_complete);
@@ -4721,6 +4769,9 @@ async function saveMemberSelectionApi(body) {
     const selections = Array.isArray(body?.selections) ? body.selections : [];
     if (!teamId || !memberId) return makeResponse(400, { ok: false, error: "teamId/memberId required" });
     const team = await getTeam(teamId);
+    if (!team) return makeResponse(404, { ok: false, error: "team not found" });
+    const finalized = await ensureRound1Finalized(team);
+    if (!finalized.ok) return finalized.response;
     const teamState = await getTeamRound2State(teamId);
     const memberState = (teamState?.members || []).find((member) => member.id === memberId) || null;
     if (memberState?.cardStatus === "skipped_by_leader") {
@@ -4781,6 +4832,8 @@ async function forceAdvanceRound2Api(body = {}) {
     if (!["reading", "cards"].includes(gate)) {
       return makeResponse(400, { ok: false, error: "invalid_force_gate" });
     }
+    const finalized = await ensureRound1Finalized(teamId);
+    if (!finalized.ok) return finalized.response;
 
     const permission = await ensureRound2LeaderPermission(teamId, memberId);
     if (!permission.ok) return permission.response;
@@ -4889,6 +4942,8 @@ async function mergeApi(body) {
     if (!teamId) return makeResponse(400, { ok: false, error: "teamId required" });
     let team = await getTeam(teamId);
     if (!team) return makeResponse(404, { ok: false, error: "team not found" });
+    const finalized = await ensureRound1Finalized(team);
+    if (!finalized.ok) return finalized.response;
     if (!String(team.leader_member_id || "").trim() && memberId) {
       team = await setTeamLeader(teamId, memberId);
     }
@@ -4987,6 +5042,8 @@ async function saveTeamDraftApi(body) {
     const teamId = String(body?.teamId || body?.team_id || "").trim();
     const memberId = String(body?.memberId || body?.member_id || "").trim();
     if (!teamId || !memberId) return makeResponse(400, { ok: false, error: "teamId/memberId required" });
+    const finalized = await ensureRound1Finalized(teamId);
+    if (!finalized.ok) return finalized.response;
 
     const permission = await ensureRound2LeaderPermission(teamId, memberId);
     if (!permission.ok) return permission.response;
@@ -5036,6 +5093,8 @@ async function teamSubmitApi(body) {
     const memberId = String(body?.memberId || body?.member_id || "").trim();
     const sessionId = normalizeSessionId(body?.sessionId || body?.session_id);
     if (!teamId) return makeResponse(400, { ok: false, error: "teamId required" });
+    const finalized = await ensureRound1Finalized(teamId);
+    if (!finalized.ok) return finalized.response;
 
     const permission = await ensureRound2LeaderPermission(teamId, memberId);
     if (!permission.ok) return permission.response;
@@ -5357,6 +5416,8 @@ async function reflectionApi(body) {
     const teamId = String(body?.teamId || "").trim();
     const calcResult = body?.calcResult || {};
     if (!teamId) return makeResponse(400, { ok: false, error: "teamId required" });
+    const finalized = await ensureRound1Finalized(teamId);
+    if (!finalized.ok) return finalized.response;
 
     const prompt = [
       "请用中文输出一段 Round 2 反思报告，包含：策略亮点、主要取舍、风险点、下一步改进建议。",
