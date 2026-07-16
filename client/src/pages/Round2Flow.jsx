@@ -18,6 +18,7 @@ import {
   submitRound2TeamDecision
 } from "../api/round2Api";
 import { getRdCards } from "../api/rdApi";
+import { formatSignedYuan, formatWan, formatYuan } from "../utils/formatMoney";
 import { clearStudentSession, mergeStudentSession, readStudentSession } from "../utils/studentSession";
 import { downloadTxtFile, formatExportTime } from "../utils/txtExport";
 
@@ -338,8 +339,7 @@ function calcCostFromCatalog(s, cardCatalog) {
 }
 
 function formatSignedCurrency(value) {
-  const num = Number(value || 0);
-  return `${num > 0 ? "+" : ""}¥${num.toLocaleString()}`;
+  return formatSignedYuan(value);
 }
 
 function readTeamContextFromUrl() {
@@ -692,14 +692,14 @@ function formatRecapComparison(recap) {
     round1: {
       gridLabel: String(src.round1_grid_label || formatGridLabel(src.final_grid_id) || "待揭示").trim() || "待揭示",
       sam: round1Sam != null ? `${Math.round(round1Sam).toLocaleString()} 亿` : "待揭示",
-      wtp: round1WtpAdj != null ? `¥${Math.round(round1WtpAdj).toLocaleString()}` : "待揭示"
+      wtp: round1WtpAdj != null ? formatYuan(round1WtpAdj) : "待揭示"
     },
     round2: {
       gridLabel: String(src.matched_grid_label || "待揭示").trim() || "待揭示",
       sam: matchedSam != null ? `${Math.round(matchedSam).toLocaleString()} 亿` : "待揭示",
-      wtp: matchedWtpRef != null ? `¥${Math.round(matchedWtpRef).toLocaleString()}` : "待揭示",
+      wtp: matchedWtpRef != null ? formatYuan(matchedWtpRef) : "待揭示",
       detail: matchedWtpMean != null
-        ? `WTPmean ¥${Math.round(matchedWtpMean).toLocaleString()}`
+        ? `WTPmean ${formatYuan(matchedWtpMean)}`
         : ""
     },
     alignmentLabel: String(src.execution_alignment_label || "").trim(),
@@ -1383,7 +1383,7 @@ export default function App() {
   const fixedBaseWan = Number(effectivePricingContext?.fixed_base_wan ?? teamRecap?.fixed_base_wan ?? 0);
   const fixedBase = Number(effectivePricingContext?.fixed_base ?? teamRecap?.fixed_base ?? fixedBaseWan * 10000);
   const teamFixedCost = fixedBase + teamCalc.nreWan * 10000;
-  const teamFixedCostWan = Number((fixedBaseWan + teamCalc.nreWan).toFixed(1));
+  const teamFixedCostWan = fixedBaseWan + teamCalc.nreWan;
   const previewUnitMargin = Math.round((teamPrice || fallbackPrice) * (1 - channelFee) - teamUnitCost);
   const previewBreakevenQ = previewUnitMargin > 0 ? Math.ceil(teamFixedCost / previewUnitMargin) : null;
   const submittedCalc = teamResultSnapshot?.result || null;
@@ -2551,7 +2551,7 @@ export default function App() {
                     <>
                       <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:6}}>
                         <span style={{fontSize:10,padding:"2px 6px",borderRadius:999,background:"#f9fafb",color:"#374151",fontWeight:700,border:"1px solid #e5e7eb"}}>
-                          单位成本 {formatSignedCurrency(td.cost)}/台 · 研发投入 {td.nre}万
+                          单位成本 {formatSignedCurrency(td.cost)}/台 · 研发投入 {formatWan(td.nre)}
                         </span>
                       </div>
                       <div style={{fontSize:10,color:"#6b7280",lineHeight:1.6,marginTop:6}}>
@@ -2567,7 +2567,7 @@ export default function App() {
                       {formatSignedCurrency(td.cost)}/台
                     </span>
                     <span style={{fontSize:11,fontWeight:700,color:"#7c2d12"}}>
-                      NRE {td.nre}万
+                      NRE {formatWan(td.nre)}
                     </span>
                   </div>
                 )}
@@ -3425,7 +3425,7 @@ export default function App() {
           {/* Sticky bar */}
           <div style={{position:"sticky",top:0,zIndex:10,display:"flex",gap:10,padding:"10px 16px",background:"#fff",border:"1px solid #e5e7eb",borderTop:"none",borderRadius:"0 0 14px 14px",marginBottom:8,boxShadow:"0 2px 8px rgba(0,0,0,0.04)",flexWrap:"wrap",alignItems:"center"}}>
             <div data-testid="r2-budget-display" style={{padding:"6px 14px",borderRadius:8,background:"#f9fafb",border:"1px solid #e5e7eb",fontSize:13,color:"#374151"}}>
-              已选 <strong>{indCalc.cnt}</strong> 张 · dCOGS 小计 <strong>{formatSignedCurrency(indCalc.cost)}/台</strong> · NRE 小计 <strong>{indCalc.nreWan} 万</strong>
+              已选 <strong>{indCalc.cnt}</strong> 张 · dCOGS 小计 <strong>{formatSignedCurrency(indCalc.cost)}/台</strong> · NRE 小计 <strong>{formatWan(indCalc.nreWan)}</strong>
             </div>
             <div style={{flex:1}}/>
             <button onClick={handleIndividualSubmit} disabled={!cardsLoaded || indCalc.cnt < 1 || isSubmittingIndividual} style={{padding:"6px 20px",borderRadius:8,background:(cardsLoaded&&indCalc.cnt>=1)?"#1a5c3a":"#d1d5db",color:"#fff",border:"none",fontSize:13,fontWeight:700,cursor:isSubmittingIndividual?"wait":(cardsLoaded&&indCalc.cnt>=1?"pointer":"not-allowed"),opacity:isSubmittingIndividual?0.7:1}}>
@@ -3550,7 +3550,7 @@ export default function App() {
             <div style={{flex:"1 1 220px",padding:"16px 20px",borderRadius:12,background:"#fffbeb",border:"1.5px solid #fde68a"}}>
               <div style={{fontSize:12,fontWeight:600,color:"#6b7280",marginBottom:4}}>研发投入合计</div>
               <div style={{fontSize:28,fontWeight:800,color:"#92400e",marginTop:4}}>
-                {teamCalc.nreWan}万
+                {formatWan(teamCalc.nreWan)}
               </div>
               <div style={{fontSize:11,color:"#999"}}>按当前档位累加的一次性 NRE</div>
             </div>
@@ -3562,7 +3562,7 @@ export default function App() {
           </div>
           {teamCalc.cnt > 12 && (
             <div style={{fontSize:13,color:"#6b7280",marginBottom:12}}>
-              当前共选 {teamCalc.cnt} 张卡，研发投入 {teamCalc.nreWan} 万。
+              当前共选 {teamCalc.cnt} 张卡，研发投入 {formatWan(teamCalc.nreWan)}。
             </div>
           )}
 
@@ -3577,7 +3577,7 @@ export default function App() {
                     const td = card.tiers[teamSel[card.id]];
                     return (
                       <span key={card.id} style={{fontSize:11,padding:"4px 8px",borderRadius:999,background:"#fff",border:"1px solid #e5e7eb",color:"#374151"}}>
-                        {card.n} · {td.l} · {formatSignedCurrency(td.cost)}/台 · NRE {td.nre}万
+                        {card.n} · {td.l} · {formatSignedCurrency(td.cost)}/台 · NRE {formatWan(td.nre)}
                       </span>
                     );
                   });
@@ -3667,7 +3667,7 @@ export default function App() {
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10,marginBottom:12}}>
               <div style={{padding:"12px 14px",borderRadius:10,background:"#f9fafb",border:"1px solid #e5e7eb"}}>
                 <div style={{fontSize:11,color:"#6b7280"}}>基础制造成本</div>
-                <div style={{fontSize:22,fontWeight:800,color:"#374151",marginTop:4}}>¥{baseCost.toLocaleString()}</div>
+                <div style={{fontSize:22,fontWeight:800,color:"#374151",marginTop:4}}>{formatYuan(baseCost)}</div>
                 <div style={{fontSize:10,color:"#999"}}>材料+组装+包装/台</div>
               </div>
               <div style={{padding:"12px 14px",borderRadius:10,background:teamCalc.cost>0?"#FEF3C7":"#F0FDF4",border:teamCalc.cost>0?"1px solid #FDE68A":"1px solid #BBF7D0"}}>
@@ -3677,12 +3677,12 @@ export default function App() {
               </div>
               <div style={{padding:"12px 14px",borderRadius:10,background:"#fffbeb",border:"1px solid #fde68a"}}>
                 <div style={{fontSize:11,color:"#6b7280"}}>NRE 合计</div>
-                <div style={{fontSize:22,fontWeight:800,color:"#92400e",marginTop:4}}>{teamCalc.nreWan}万</div>
+                <div style={{fontSize:22,fontWeight:800,color:"#92400e",marginTop:4}}>{formatWan(teamCalc.nreWan)}</div>
                 <div style={{fontSize:10,color:"#999"}}>按当前档位累加的一次性研发投入</div>
               </div>
               <div style={{padding:"12px 14px",borderRadius:10,background:"#EFF6FF",border:"1px solid #BFDBFE"}}>
                 <div style={{fontSize:11,color:"#6b7280"}}>单台总变动成本</div>
-                <div style={{fontSize:22,fontWeight:800,color:"#1E40AF",marginTop:4}}>¥{teamUnitCost.toLocaleString()}</div>
+                <div style={{fontSize:22,fontWeight:800,color:"#1E40AF",marginTop:4}}>{formatYuan(teamUnitCost)}</div>
                 <div style={{fontSize:10,color:"#999"}}>V + dCOGS</div>
               </div>
             </div>
@@ -3695,7 +3695,7 @@ export default function App() {
                 if (dimCost === 0 && dimNre === 0) return null;
                 return (
                   <span key={dim.id} style={{fontSize:11,padding:"3px 8px",borderRadius:4,background:dim.c+"10",color:dim.c,fontWeight:600,border:`1px solid ${dim.c}25`}}>
-                    {dim.icon} {formatSignedCurrency(dimCost)} / NRE {dimNre}万
+                    {dim.icon} {formatSignedCurrency(dimCost)} / NRE {formatWan(dimNre)}
                   </span>
                 );
               })}
@@ -3721,7 +3721,7 @@ export default function App() {
               </div>
             </div>
             <div style={{fontSize:12,color:"#555",lineHeight:1.7,padding:"10px 14px",borderRadius:8,background:"#f9fafb",border:"1px solid #e5e7eb"}}>
-              <strong>定价参考框架：</strong>当前单台变动成本是 ¥{teamUnitCost.toLocaleString()}，固定成本是 {teamFixedCostWan} 万（基础 {fixedBaseWan} 万 + NRE {teamCalc.nreWan} 万）。渠道抽走 {Math.round(channelFee*100)}% 后到手更少，你们需要在价格、销量和固定投入之间找到平衡。
+              <strong>定价参考框架：</strong>当前单台变动成本是 {formatYuan(teamUnitCost)}，固定成本是 {formatWan(teamFixedCostWan)}（基础 {formatWan(fixedBaseWan)} + NRE {formatWan(teamCalc.nreWan)}）。渠道抽走 {Math.round(channelFee*100)}% 后到手更少，你们需要在价格、销量和固定投入之间找到平衡。
             </div>
           </div>
 
@@ -3748,7 +3748,7 @@ export default function App() {
             {/* Price slider */}
             <div style={{padding:"20px",borderRadius:12,background:"#f0fdf4",border:"1.5px solid #bbf7d0",marginBottom:16}}>
               <div style={{fontSize:14,fontWeight:700,color:"#374151",marginBottom:12}}>产品售价</div>
-              <div style={{fontSize:36,fontWeight:800,color:"#1a5c3a",marginBottom:8}}>¥{teamPrice.toLocaleString()}</div>
+              <div style={{fontSize:36,fontWeight:800,color:"#1a5c3a",marginBottom:8}}>{formatYuan(teamPrice)}</div>
               <input
                 data-testid="r2-price-input"
                 type="range"
@@ -3768,8 +3768,8 @@ export default function App() {
                 style={{width:"100%",height:8,borderRadius:4,cursor:(round2TeamControlsLocked || !priceSliderReady) ? "not-allowed" : "pointer"}}
               />
               <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#999",marginTop:4}}>
-                <span>{priceSliderReady ? `¥${priceMin.toLocaleString()}（低价走量）` : "定价区间加载中"}</span>
-                <span>{priceSliderReady ? `¥${priceMax.toLocaleString()}（高端定位）` : ""}</span>
+                <span>{priceSliderReady ? `${formatYuan(priceMin)}（低价走量）` : "定价区间加载中"}</span>
+                <span>{priceSliderReady ? `${formatYuan(priceMax)}（高端定位）` : ""}</span>
               </div>
             </div>
 
@@ -3778,11 +3778,11 @@ export default function App() {
               <div style={{flex:1,padding:"12px 16px",borderRadius:10,border:"1.5px solid #D9770630",background:"#D9770608",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div>
                   <div style={{fontSize:11,color:"#6b7280"}}>渠道抽成 {Math.round(channelFee*100)}% 后，每台到手</div>
-                  <div style={{fontSize:24,fontWeight:800,color:"#D97706",marginTop:2}}>¥{Math.round(teamPrice*(1-channelFee)).toLocaleString()}</div>
+                  <div style={{fontSize:24,fontWeight:800,color:"#D97706",marginTop:2}}>{formatYuan(teamPrice * (1 - channelFee))}</div>
                 </div>
                 <div style={{fontSize:12,color:"#999",textAlign:"right"}}>
-                  售价 ¥{teamPrice.toLocaleString()}<br/>
-                  − 渠道 ¥{Math.round(teamPrice*channelFee).toLocaleString()}
+                  售价 {formatYuan(teamPrice)}<br/>
+                  − 渠道 {formatYuan(teamPrice * channelFee)}
                 </div>
               </div>
             </div>
@@ -3790,8 +3790,8 @@ export default function App() {
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10,marginBottom:16}}>
               <div style={{padding:"12px 14px",borderRadius:10,background:"#f9fafb",border:"1px solid #e5e7eb"}}>
                 <div style={{fontSize:11,color:"#6b7280"}}>总固定成本</div>
-                <div style={{fontSize:22,fontWeight:800,color:"#374151",marginTop:4}}>{teamFixedCostWan}万</div>
-                <div style={{fontSize:10,color:"#999"}}>基础 {fixedBaseWan} 万 + 研发 {teamCalc.nreWan} 万</div>
+                <div style={{fontSize:22,fontWeight:800,color:"#374151",marginTop:4}}>{formatWan(teamFixedCostWan)}</div>
+                <div style={{fontSize:10,color:"#999"}}>基础 {formatWan(fixedBaseWan)} + 研发 {formatWan(teamCalc.nreWan)}</div>
               </div>
               <div style={{padding:"12px 14px",borderRadius:10,background:previewBreakevenQ ? "#eff6ff" : "#fef2f2",border:previewBreakevenQ ? "1px solid #bfdbfe" : "1px solid #fecaca"}}>
                 <div style={{fontSize:11,color:"#6b7280"}}>盈亏平衡销量</div>
@@ -3875,19 +3875,19 @@ export default function App() {
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10,marginBottom:16}}>
             <div style={{padding:"12px 14px",borderRadius:10,background:"#f9fafb",border:"1px solid #e5e7eb"}}>
               <div style={{fontSize:11,color:"#6b7280"}}>单台总变动成本</div>
-              <div style={{fontSize:20,fontWeight:800,color:"#374151",marginTop:4}}>¥{teamUnitCost.toLocaleString()}</div>
+              <div style={{fontSize:20,fontWeight:800,color:"#374151",marginTop:4}}>{formatYuan(teamUnitCost)}</div>
             </div>
             <div style={{padding:"12px 14px",borderRadius:10,background:"#f0fdf4",border:"1.5px solid #bbf7d0"}}>
               <div style={{fontSize:11,color:"#6b7280"}}>定价</div>
-              <div style={{fontSize:20,fontWeight:800,color:"#166534",marginTop:4}}>¥{teamPrice.toLocaleString()}</div>
+              <div style={{fontSize:20,fontWeight:800,color:"#166534",marginTop:4}}>{formatYuan(teamPrice)}</div>
             </div>
             <div style={{padding:"12px 14px",borderRadius:10,background:"#D9770608",border:"1.5px solid #D9770630"}}>
               <div style={{fontSize:11,color:"#6b7280"}}>渠道抽成后到手</div>
-              <div style={{fontSize:20,fontWeight:800,color:"#D97706",marginTop:4}}>¥{Math.round(teamPrice*(1-channelFee)).toLocaleString()}</div>
+              <div style={{fontSize:20,fontWeight:800,color:"#D97706",marginTop:4}}>{formatYuan(teamPrice * (1 - channelFee))}</div>
             </div>
             <div style={{padding:"12px 14px",borderRadius:10,background:"#fffbeb",border:"1.5px solid #fde68a"}}>
               <div style={{fontSize:11,color:"#6b7280"}}>固定成本</div>
-              <div style={{fontSize:20,fontWeight:800,color:"#92400e",marginTop:4}}>{teamFixedCostWan}万</div>
+              <div style={{fontSize:20,fontWeight:800,color:"#92400e",marginTop:4}}>{formatWan(teamFixedCostWan)}</div>
             </div>
             <div style={{padding:"12px 14px",borderRadius:10,background:previewBreakevenQ ? "#eff6ff" : "#fef2f2",border:previewBreakevenQ ? "1px solid #bfdbfe" : "1px solid #fecaca"}}>
               <div style={{fontSize:11,color:"#6b7280"}}>盈亏平衡销量</div>
@@ -3989,11 +3989,11 @@ export default function App() {
                 </div>
                 <div style={{padding:"14px 16px",borderRadius:10,background:"#f0fdf4",border:"1px solid #bbf7d0"}}>
                   <div style={{fontSize:11,color:"#6b7280"}}>收入（渠道后）</div>
-                  <div style={{fontSize:26,fontWeight:800,color:"#166534",marginTop:4}}>¥{Math.round(Number(submittedCalc.revenueNet || 0)).toLocaleString()}</div>
+                  <div style={{fontSize:26,fontWeight:800,color:"#166534",marginTop:4}}>{formatYuan(submittedCalc.revenueNet)}</div>
                 </div>
                 <div style={{padding:"14px 16px",borderRadius:10,background:"#fff7ed",border:"1px solid #fed7aa"}}>
                   <div style={{fontSize:11,color:"#6b7280"}}>变动成本</div>
-                  <div style={{fontSize:26,fontWeight:800,color:"#c2410c",marginTop:4}}>¥{Math.round(Number(submittedCalc.variableCost || 0)).toLocaleString()}</div>
+                  <div style={{fontSize:26,fontWeight:800,color:"#c2410c",marginTop:4}}>{formatYuan(submittedCalc.variableCost)}</div>
                 </div>
                 <div style={{padding:"14px 16px",borderRadius:10,background:Number(submittedCalc.profit || 0) >= 0 ? "#f0fdf4" : "#fef2f2",border:Number(submittedCalc.profit || 0) >= 0 ? "1px solid #bbf7d0" : "1px solid #fecaca"}}>
                   <div style={{fontSize:11,color:"#6b7280"}}>利润</div>
@@ -4006,8 +4006,8 @@ export default function App() {
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10,marginBottom:16}}>
                 <div style={{padding:"12px 14px",borderRadius:10,background:"#f9fafb",border:"1px solid #e5e7eb"}}>
                   <div style={{fontSize:11,color:"#6b7280"}}>固定成本</div>
-                  <div style={{fontSize:22,fontWeight:800,color:"#374151",marginTop:4}}>¥{Math.round(Number(submittedCalc.fixedCost || submittedCalc.f_total || 0)).toLocaleString()}</div>
-                  <div style={{fontSize:10,color:"#999"}}>基础 {fixedBaseWan} 万 + 研发 {Number(submittedCalc.nre_total_wan || 0)} 万</div>
+                  <div style={{fontSize:22,fontWeight:800,color:"#374151",marginTop:4}}>{formatYuan(Number(submittedCalc.fixedCost || submittedCalc.f_total || 0))}</div>
+                  <div style={{fontSize:10,color:"#999"}}>基础 {formatWan(fixedBaseWan)} + 研发 {formatWan(submittedCalc.nre_total_wan || 0)}</div>
                 </div>
                 <div style={{padding:"12px 14px",borderRadius:10,background:"#fffbeb",border:"1px solid #fde68a"}}>
                   <div style={{fontSize:11,color:"#6b7280"}}>盈亏平衡销量</div>
@@ -4024,11 +4024,11 @@ export default function App() {
               </div>
               <div style={{padding:"14px 18px",borderRadius:10,background:"#f9fafb",border:"1px solid #e5e7eb",fontSize:13,color:"#374151",lineHeight:1.8}}>
                 <strong>利润拆解：</strong>
-                收入 ¥{Math.round(Number(submittedCalc.revenueNet || 0)).toLocaleString()}
-                {" "}− 变动成本 ¥{Math.round(Number(submittedCalc.variableCost || 0)).toLocaleString()}
-                {" "}− 固定成本 ¥{Math.round(Number(submittedCalc.fixedCost || submittedCalc.f_total || 0)).toLocaleString()}
-                {Number(submittedCalc.profitSub || 0) ? ` + 订阅贡献 ¥${Math.round(Number(submittedCalc.profitSub || 0)).toLocaleString()}` : ""}
-                {Number(submittedCalc.penalty || 0) ? ` − Penalty ¥${Math.round(Number(submittedCalc.penalty || 0)).toLocaleString()}` : ""}
+                收入 {formatYuan(submittedCalc.revenueNet)}
+                {" "}− 变动成本 {formatYuan(submittedCalc.variableCost)}
+                {" "}− 固定成本 {formatYuan(Number(submittedCalc.fixedCost || submittedCalc.f_total || 0))}
+                {Number(submittedCalc.profitSub || 0) ? ` + 订阅贡献 ${formatYuan(submittedCalc.profitSub)}` : ""}
+                {Number(submittedCalc.penalty || 0) ? ` − Penalty ${formatYuan(submittedCalc.penalty)}` : ""}
                 {" "} = 利润 {formatSignedCurrency(Math.round(Number(submittedCalc.profit || 0)))}
               </div>
             </>
