@@ -2,7 +2,7 @@
 const { chatCompletion } = require("./deepseekClient");
 const { withLlmLogging } = require("./llm_logger");
 
-const LLM_TIMEOUT_MS = 60000;
+const INTERVIEW_LLM_TIMEOUT_MS = 60000;
 
 const MAX_TURNS = 10;
 const MIN_TURNS_TO_END = 5;
@@ -92,7 +92,7 @@ async function assessInfoCompleteness(messages, persona, session) {
       teamId: session?.teamId || session?.team_id || session?.teamKey || null,
       memberId: session?.memberId || session?.member_id || null,
       messages: checkMessages
-    }, () => chatCompletion(checkMessages, { temperature: 0.1, max_tokens: 300, timeoutMs: LLM_TIMEOUT_MS }));
+    }, () => chatCompletion(checkMessages, { temperature: 0.1, max_tokens: 300, timeoutMs: INTERVIEW_LLM_TIMEOUT_MS }));
     return parseJsonLoose(raw);
   } catch (_) {
     return { complete: false, coverage: 50, uncovered: [], reason: "评估失败" };
@@ -120,7 +120,7 @@ async function conductInterview(session, userMessage) {
     teamId: session?.teamId || session?.team_id || session?.teamKey || null,
     memberId: session?.memberId || session?.member_id || null,
     messages
-  }, () => chatCompletion(messages, { temperature: 0.8, max_tokens: 300, timeoutMs: LLM_TIMEOUT_MS }));
+  }, () => chatCompletion(messages, { temperature: 0.8, max_tokens: 300, timeoutMs: INTERVIEW_LLM_TIMEOUT_MS }));
 
   for (let retry = 0; retry < 2 && isPersonaLeakage(reply, persona); retry++) {
     console.warn(`[interviewCoach] persona leakage detected, retry ${retry + 1}`);
@@ -131,7 +131,7 @@ async function conductInterview(session, userMessage) {
       teamId: session?.teamId || session?.team_id || session?.teamKey || null,
       memberId: session?.memberId || session?.member_id || null,
       messages
-    }, () => chatCompletion(messages, { temperature: 0.9, max_tokens: 300, timeoutMs: LLM_TIMEOUT_MS }));
+    }, () => chatCompletion(messages, { temperature: 0.9, max_tokens: 300, timeoutMs: INTERVIEW_LLM_TIMEOUT_MS }));
   }
 
   if (isPersonaLeakage(reply, persona)) {
