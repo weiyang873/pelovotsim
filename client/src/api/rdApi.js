@@ -6,8 +6,8 @@ async function asJson(res) {
   return data;
 }
 
-export async function getRdCards() {
-  const res = await fetch(`${BASE}/rd/cards`);
+export async function getRdCards(options = {}) {
+  const res = await fetch(`${BASE}/rd/cards`, options);
   return asJson(res);
 }
 

@@ -283,7 +283,14 @@ function loadRound2PricingContextConfig() {
 }
 
 function buildRound2PricingContextForTeam(_team) {
-  return loadRound2PricingContextConfig();
+  const pricing = loadRound2PricingContextConfig();
+  const fixedBase = Number(GLOBAL_PARAMS.F || 0);
+  return {
+    ...pricing,
+    COGSbase: Number(GLOBAL_PARAMS.V || 0),
+    fixed_base: fixedBase,
+    fixed_base_wan: Number((fixedBase / 10000).toFixed(1))
+  };
 }
 
 function validateRound2PriceForTeam(team, price) {
