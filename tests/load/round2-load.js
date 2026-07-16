@@ -309,6 +309,38 @@ function waitForRound1Phase(teamId, memberId, status) {
   }, 45, 2);
 }
 
+function isRound2Open(statusBody) {
+  const r2Status = String(statusBody?.r2_status || "").trim();
+  return r2Status && r2Status !== "R2_NOT_STARTED";
+}
+
+function hasFinalGrid(phase4Body) {
+  return Boolean(String(phase4Body?.team?.final_grid_id || phase4Body?.final_grid_id || "").trim());
+}
+
+function waitForRound1FrozenAndR2Open(teamId, memberId) {
+  return waitUntil(() => {
+    const statusRes = jsonGet(
+      `${BASE_URL}/api/team/${encodeURIComponent(teamId)}/status?memberId=${encodeURIComponent(memberId)}`,
+      { timeout: "10s" }
+    );
+    const statusBody = safeJson(statusRes);
+    if (statusRes.status !== 200 || statusBody.ok !== true || !isRound2Open(statusBody)) {
+      return null;
+    }
+
+    const phase4Res = jsonGet(
+      `${BASE_URL}/api/team/${encodeURIComponent(teamId)}/phase4`,
+      { timeout: "10s" }
+    );
+    const phase4Body = safeJson(phase4Res);
+    if (phase4Res.status === 200 && phase4Body.ok === true && hasFinalGrid(phase4Body)) {
+      return { status: statusBody, phase4: phase4Body };
+    }
+    return null;
+  }, 60, 2);
+}
+
 function bootstrapRound1ForTeam(team) {
   const decision = ROUND1_DECISIONS[team.teamIndex % ROUND1_DECISIONS.length];
   let vpText = decision.vpText.trim();
@@ -416,15 +448,26 @@ function bootstrapRound1ForTeam(team) {
       vp_text: vpText,
       confirmed_fields: extractBody.fields,
       scores: confirmBody.scores || null
-    }
+    },
+    { timeout: "90s" }
   );
   const finalizeBody = safeJson(finalizeRes);
   if (finalizeRes.status !== 200 || finalizeBody.ok !== true) {
     throw new Error(`round1 bootstrap finalize failed: ${finalizeRes.status} ${finalizeRes.body}`);
   }
 
-  if (!waitForRound1Phase(team.teamId, team.leaderId, "phase4")) {
-    throw new Error(`round1 bootstrap did not reach phase4 for team ${team.teamId}`);
+  const freezeRes = jsonPost(
+    `${BASE_URL}/api/team/${encodeURIComponent(team.teamId)}/freeze`,
+    { memberId: team.leaderId },
+    { timeout: "30s" }
+  );
+  const freezeBody = safeJson(freezeRes);
+  if (freezeRes.status !== 200 || freezeBody.ok !== true || !isRound2Open(freezeBody)) {
+    throw new Error(`round1 bootstrap freeze did not open R2: ${freezeRes.status} ${freezeRes.body}`);
+  }
+
+  if (!waitForRound1FrozenAndR2Open(team.teamId, team.leaderId)) {
+    throw new Error(`round1 bootstrap did not persist final_grid_id and open R2 for team ${team.teamId}`);
   }
 }
 

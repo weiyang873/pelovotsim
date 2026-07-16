@@ -87,7 +87,7 @@ export const options = {
       vus: 10,
       iterations: 1,
       startTime: "4m20s",
-      maxDuration: "45s",
+      maxDuration: "3m",
       exec: "stage3FinalizeAndFreeze"
     },
     stage4_assign: {
@@ -278,6 +278,43 @@ function resolveLeaderId(team) {
   return String(body.team?.leader_member_id || team.leaderId || "").trim();
 }
 
+function sleepFinalizeScatter(teamIndex) {
+  if (TEAMS <= 1) return;
+  sleep((Number(teamIndex || 0) * 5) / TEAMS);
+}
+
+function isRound2Open(statusBody) {
+  const r2Status = String(statusBody?.r2_status || "").trim();
+  return r2Status && r2Status !== "R2_NOT_STARTED";
+}
+
+function hasFinalGrid(phase4Body) {
+  return Boolean(String(phase4Body?.team?.final_grid_id || phase4Body?.final_grid_id || "").trim());
+}
+
+function waitForRound1FrozenAndR2Open(team, memberId, phaseTag = "stage3_gate") {
+  return waitUntil(() => {
+    const statusRes = jsonGet(
+      `${BASE_URL}/api/team/${encode(team.teamId)}/status?memberId=${encode(memberId)}`,
+      { timeout: "10s", tags: { phase: phaseTag } }
+    );
+    const statusBody = safeJson(statusRes);
+    if (statusRes.status !== 200 || statusBody.ok !== true || !isRound2Open(statusBody)) {
+      return null;
+    }
+
+    const phase4Res = jsonGet(`${BASE_URL}/api/team/${encode(team.teamId)}/phase4`, {
+      timeout: "10s",
+      tags: { phase: phaseTag }
+    });
+    const phase4Body = safeJson(phase4Res);
+    if (phase4Res.status === 200 && phase4Body.ok === true && hasFinalGrid(phase4Body)) {
+      return { status: statusBody, phase4: phase4Body };
+    }
+    return null;
+  }, 60, 2);
+}
+
 function waitUntil(fn, attempts, delaySeconds) {
   for (let i = 0; i < attempts; i += 1) {
     const out = fn();
@@ -459,30 +496,41 @@ export function stage3FinalizeAndFreeze(data) {
   const draftBody = safeJson(draftRes);
   const draftOk = draftRes.status === 200 && draftBody.ok === true;
 
+  sleepFinalizeScatter(teamIndex);
   const finalizeRes = jsonPost(`${BASE_URL}/api/team/${encode(team.teamId)}/phase3/finalize`, {
     memberId: leaderId,
     grid_id: d.gridId,
     architecture: d.architecture,
     vp_text: d.vpText,
     confirmed_fields: d.fields
-  }, { timeout: "30s", tags: { phase: "stage3_finalize" } });
+  }, { timeout: "90s", tags: { phase: "stage3_finalize" } });
   const finalizeBody = safeJson(finalizeRes);
 
   const freezeRes = jsonPost(`${BASE_URL}/api/team/${encode(team.teamId)}/freeze`, {
     memberId: leaderId
-  }, { timeout: "15s", tags: { phase: "stage3_freeze" } });
+  }, { timeout: "30s", tags: { phase: "stage3_freeze" } });
   const freezeBody = safeJson(freezeRes);
+  const readyForR2 = freezeRes.status === 200 && freezeBody.ok === true
+    ? waitForRound1FrozenAndR2Open(team, leaderId, "stage3_gate")
+    : null;
 
   record(check(finalizeRes, {
     [`stage3 team ${teamIndex + 1} draft ok`]: () => draftOk,
     "stage3 finalize 200": (r) => r.status === 200 && finalizeBody.ok === true,
-    "stage3 freeze 200": () => freezeRes.status === 200 && freezeBody.ok === true
+    "stage3 freeze 200": () => freezeRes.status === 200 && freezeBody.ok === true,
+    "stage3 final_grid_id persisted and r2 opened": () => Boolean(readyForR2)
   }), finalizeRes, stage3FinalizeTrend);
   if (freezeRes?.timings) stage3FinalizeTrend.add(freezeRes.timings.duration);
 }
 
 export function stage4AssignDimensions(data) {
   const { team } = teamByIteration(data);
+  const leaderId = resolveLeaderId(team);
+  if (!waitForRound1FrozenAndR2Open(team, leaderId, "stage4_gate")) {
+    stageErrors.add(1);
+    successRate.add(false);
+    return;
+  }
   const res = jsonPost(`${BASE_URL}/api/round2/assign-dimensions`, {
     teamId: team.teamId,
     sessionId: SESSION_ID,

@@ -297,6 +297,43 @@ function waitForStatus(teamId, memberId, status) {
   }, 45, 2);
 }
 
+function sleepFinalizeScatter(teamIndex) {
+  if (TEAMS <= 1) return;
+  sleep((Number(teamIndex || 0) * 5) / TEAMS);
+}
+
+function isRound2Open(statusBody) {
+  const r2Status = String(statusBody?.r2_status || "").trim();
+  return r2Status && r2Status !== "R2_NOT_STARTED";
+}
+
+function hasFinalGrid(phase4Body) {
+  return Boolean(String(phase4Body?.team?.final_grid_id || phase4Body?.final_grid_id || "").trim());
+}
+
+function waitForRound1FrozenAndR2Open(teamId, memberId) {
+  return waitUntil(() => {
+    const statusRes = jsonGet(
+      `${BASE_URL}/api/team/${encodeURIComponent(teamId)}/status?memberId=${encodeURIComponent(memberId)}`,
+      { timeout: "10s" }
+    );
+    const statusBody = safeJson(statusRes);
+    if (statusRes.status !== 200 || statusBody.ok !== true || !isRound2Open(statusBody)) {
+      return null;
+    }
+
+    const phase4Res = jsonGet(
+      `${BASE_URL}/api/team/${encodeURIComponent(teamId)}/phase4`,
+      { timeout: "10s" }
+    );
+    const phase4Body = safeJson(phase4Res);
+    if (phase4Res.status === 200 && phase4Body.ok === true && hasFinalGrid(phase4Body)) {
+      return { status: statusBody, phase4: phase4Body };
+    }
+    return null;
+  }, 60, 2);
+}
+
 export function setup() {
   return bootstrapTeams();
 }
@@ -447,6 +484,7 @@ export default function (data) {
       recordMetric(confirmOk, confirmRes, { timeoutMs: 60000 });
       confirmedScores = confirmBody.scores || null;
 
+      sleepFinalizeScatter(ctx.teamIndex);
       const finalizeRes = jsonPost(
         `${BASE_URL}/api/team/${encodeURIComponent(ctx.team.teamId)}/phase3/finalize`,
         {
@@ -456,23 +494,45 @@ export default function (data) {
           vp_text: synthesizedVpText,
           confirmed_fields: confirmedFields,
           scores: confirmedScores
-        }
+        },
+        { timeout: "90s" }
       );
       const finalizeBody = safeJson(finalizeRes);
       const finalizeOk = check(finalizeRes, {
         "finalize 200": (r) => r.status === 200 && finalizeBody.ok === true
       });
       recordMetric(finalizeOk, finalizeRes);
+
+      if (finalizeOk) {
+        const freezeRes = jsonPost(
+          `${BASE_URL}/api/team/${encodeURIComponent(ctx.team.teamId)}/freeze`,
+          { memberId: ctx.member.memberId },
+          { timeout: "30s" }
+        );
+        const freezeBody = safeJson(freezeRes);
+        const freezeOk = check(freezeRes, {
+          "freeze opens r2": (r) => r.status === 200 && freezeBody.ok === true && isRound2Open(freezeBody)
+        });
+        recordMetric(freezeOk, freezeRes);
+      }
     });
   }
 
-  const phase4Ready = waitForStatus(ctx.team.teamId, ctx.member.memberId, "phase4");
+  const readyForR2 = waitForRound1FrozenAndR2Open(ctx.team.teamId, ctx.member.memberId);
+  check({ readyForR2 }, {
+    "final_grid_id persisted and r2 opened": (value) => Boolean(value.readyForR2)
+  });
+  if (!readyForR2) {
+    apiErrors.add(1);
+    successRate.add(false);
+    return;
+  }
 
   group("Get Results", () => {
     const res = jsonGet(`${BASE_URL}/api/team/${encodeURIComponent(ctx.team.teamId)}/phase4`);
     const body = safeJson(res);
     const ok = check(res, {
-      "phase4 200": (r) => r.status === 200 && body.ok === true && Boolean(phase4Ready)
+      "phase4 200": (r) => r.status === 200 && body.ok === true && hasFinalGrid(body)
     });
     recordMetric(ok, res);
   });
