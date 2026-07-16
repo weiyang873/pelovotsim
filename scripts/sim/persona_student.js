@@ -59,7 +59,7 @@ function gridDescription(gridChoice) {
 
 function buildBaseSystemPrompt(student) {
   const genderLabel = student.gender === "male" ? "男" : "女";
-  return `你是一位正在读 EMBA 的中国商业人士，正在参加 LOVOT 陪伴机器人的中国市场战略模拟课程。
+  return `你是一位正在读 EMBA 的中国商业人士，正在参加 AI 宠物机器人的中国市场战略模拟课程。
 
 ## 你的个人信息
 - 姓名：${student.name}
@@ -632,7 +632,7 @@ class PersonaStudent {
           "",
           "WHO：你第一个想到的客户（一句话）",
           "PAIN：你觉得他们最大的问题（一句话）",
-          "HOW：你觉得 LOVOT 怎么帮他们（一句话）",
+          "HOW：你觉得这款 AI 宠物机器人怎么帮他们（一句话）",
           "",
           `注意你的表达特点：${this.student.vpQuirks}`,
           getVPLengthConstraint(this.student?.education),
@@ -707,7 +707,7 @@ class PersonaStudent {
         role: "user",
         content: `你们小组刚完成了战略定位的选择。你选了：${gridDescription(choice)}（${choice.grid_id}），架构：${choice.architecture}。
 
-你刚看完 LOVOT 的产品介绍视频：一个有温度、会撒娇、能认人、能主动靠近人的陪伴机器人，日本研发，现在要进中国市场。
+你刚看完 AI 宠物机器人的产品介绍视频：一个有温度、会撒娇、能认人、能主动靠近人的陪伴机器人，日本研发，现在要进中国市场。
 
 现在进入小组讨论环节。界面上有一个空白文本框，让每个人先写下自己对这个方向的初步想法，作为讨论的起点。AI 策略顾问会在你们写完后加入讨论，帮你们完善。
 
@@ -716,7 +716,7 @@ class PersonaStudent {
 - 可以模糊、可以不完整
 - 不要编数据
 - 不要写系统架构
-- 不要把产品改成别的东西，你写的必须还是 LOVOT 这个陪伴机器人
+- 不要把产品改成别的东西，你写的必须还是 AI 宠物机器人这个陪伴机器人
 
 把你的想法直接打进去，1-4 句话。`
       }
@@ -921,7 +921,7 @@ class PersonaStudent {
         role: "user",
         content: [
           "## 当前场景",
-          "你在对 LOVOT 潜在用户进行焦点访谈。",
+          "你在对 AI 宠物机器人的潜在用户进行焦点访谈。",
           `你的访谈风格：${this.student.interviewStyleFull || this.student.interviewStyle}`,
           `你负责的产品维度：${assignedDimsDesc || "综合探索"}`,
           `当前轮次：第 ${turn + 1} 轮`,
@@ -1010,7 +1010,7 @@ class PersonaStudent {
         role: "user",
         content: [
           "## 当前场景",
-          "你需要为 LOVOT 定价。",
+          "你需要为你们的 AI 宠物机器人定价。",
           `你的定价倾向：${this.student.pricingBias}`,
           "",
           "已知信息：",
@@ -1131,7 +1131,7 @@ class PersonaStudent {
         role: "user",
         content: [
           "## 当前任务",
-          "你正在为 LOVOT 机器人选择研发能力卡。",
+          "你正在为 AI 宠物机器人选择研发能力卡。",
           "",
           "## 你的访谈发现",
           interviewSummary,

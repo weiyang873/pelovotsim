@@ -422,7 +422,7 @@ function buildVpRecapSentence(summary, fallbackText) {
   const boundary = String(src.boundary || "").trim();
 
   if (who && pain && how) {
-    let sentence = `为${who}，在${pain}的场景下，LOVOT通过${how}创造更好的结果。`;
+    let sentence = `为${who}，在${pain}的场景下，这款 AI 宠物机器人通过${how}创造更好的结果。`;
     if (boundary && boundary !== "未明确") {
       sentence += ` 适用边界：${boundary}。`;
     }
@@ -434,7 +434,7 @@ function buildVpRecapSentence(summary, fallbackText) {
   return raw
     .replace(/\bWHO\s*[：:]\s*/g, "为")
     .replace(/\bPAIN\s*[：:]\s*/g, "，在")
-    .replace(/\bHOW\s*[：:]\s*/g, "的场景下，LOVOT通过")
+    .replace(/\bHOW\s*[：:]\s*/g, "的场景下，这款 AI 宠物机器人通过")
     .replace(/\bBOUNDARY\s*[：:]\s*/g, "。适用边界：")
     .replace(/\s+/g, " ")
     .trim();
@@ -2491,7 +2491,7 @@ export default function App() {
             border: "1px solid #e5e7eb", textAlign: "center",
           }}>
             <h2 style={{ fontSize: 20, fontWeight: 800, color: "#111827", marginTop: 0 }}>
-              👋 欢迎进入 LOVOT 产品创新战略模拟
+              👋 欢迎进入 AI 宠物机器人产品创新战略模拟
             </h2>
             <p style={{ fontSize: 14, color: "#666", marginTop: 4, marginBottom: 28, lineHeight: 1.7 }}>
               请选择你的进入方式。
@@ -2807,7 +2807,7 @@ export default function App() {
 
             <div style={{ marginTop: 26 }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: "#111827", marginBottom: 14 }}>
-                你希望 LOVOT 在这个市场中主要靠什么打动用户？
+                你希望这款 AI 宠物机器人在这个市场中主要靠什么打动用户？
               </div>
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                 {[
@@ -2815,7 +2815,7 @@ export default function App() {
                     key: "Experience",
                     label: "体验型 ●",
                     desc: "用户买的是情感价值和陪伴体验，功能够用就行",
-                    example: "例：老人每天和 LOVOT 说话解闷；孩子把它当宠物养",
+                    example: "例：老人每天和有生命感的机器人说话解闷；孩子把它当宠物养",
                     color: "#8B5CF6"
                   },
                   {

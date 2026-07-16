@@ -191,7 +191,7 @@ export default function EntryPage() {
         }}
       >
         <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: "#fff", margin: 0 }}>LOVOT 战略模拟</h1>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: "#fff", margin: 0 }}>AI 宠物机器人战略模拟</h1>
           <div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", marginTop: 6 }}>高管教育创新战略AI模拟练习</div>
         </div>
 

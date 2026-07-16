@@ -48,7 +48,7 @@ let __round2RoutesSchemaPromise = null;
 const CONFIG_DIR = path.join(ROOT, "game_config_v0.1");
 const GRID_PRIOR_PATH = path.join(ROOT, "data", "grid_priors_v4_cap_weights.json");
 const ROUND2_ENGINE_PARAMS_PATH = path.join(CONFIG_DIR, "round2_engine_params.json");
-const STATIC_PERSONA_REPORTS_PATH = path.join(CONFIG_DIR, "persona_reports_v1.2.json");
+const STATIC_PERSONA_REPORTS_PATH = path.join(CONFIG_DIR, "persona_reports_v1.3.json");
 const GRID_DIMENSION_EVIDENCE_PATH = path.join(CONFIG_DIR, "grid_dimension_evidence_v2.json");
 let cachedEngineConfig = null;
 let cachedGridPriors = null;
@@ -150,7 +150,7 @@ const DIMENSION_GUIDE = {
     hint: "聊聊日常使用的顾虑：充电麻烦吗？坏了谁修？需要经常更新吗？用着用着会不会淘汰？"
   }
 };
-const PRODUCT_TERMS_RE = /LOVOT|机器人|智能家居|家用机器人|产品|功能|设备|机器人类|认得|识别|提醒|报警|跟随|充电|联动|传感|监测|摄像|语音|屏幕|APP|远程/iu;
+const PRODUCT_TERMS_RE = /AI\s*宠物机器人|机器人|智能家居|家用机器人|产品|功能|设备|机器人类|认得|识别|提醒|报警|跟随|充电|联动|传感|监测|摄像|语音|屏幕|APP|远程/iu;
 
 class InterviewScoringError extends Error {
   constructor(reason, cause) {
@@ -2081,7 +2081,7 @@ function buildInterviewSystemPrompt({ persona, gridDesc, vpSummary, memberDims }
     "4. 回答要简短自然，像真实对话",
     "5. 如果学生问得很表面，你就给表面答案；问得深入，你才深入回答",
     "6. 你是被邀请来聊天的，不是来咨询产品的",
-    "7. 除非学生先介绍了产品并邀请你评价，否则不要主动提到 LOVOT、机器人、功能，也不要主动追问产品能做什么",
+    "7. 除非学生先介绍了产品并邀请你评价，否则不要主动提到 AI 宠物机器人、机器人、功能，也不要主动追问产品能做什么",
     "8. 你的默认状态是：聊自己的生活、困扰、期待和真实场景",
     "",
     "## 关于访谈背景",
@@ -4264,7 +4264,7 @@ async function interviewReply(body) {
       role: "system",
       content: productIntroduced
         ? systemPrompt
-        : `${systemPrompt}\n\n【当前轮额外约束】学生还没有介绍具体产品。你这轮只能聊自己的生活、困扰、期待和真实场景，不能提 LOVOT、机器人、产品、功能，也不能反问学生。`
+        : `${systemPrompt}\n\n【当前轮额外约束】学生还没有介绍具体产品。你这轮只能聊自己的生活、困扰、期待和真实场景，不能提 AI 宠物机器人、机器人、产品、功能，也不能反问学生。`
     }];
     if (round >= 8) {
       llmMessages[0].content += "\n\n【注意】这是访谈的最后几轮，你可以适当透露更多信息，帮助访谈收尾。";

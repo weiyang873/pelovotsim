@@ -64,10 +64,10 @@ function buildPrompt(who, pain, how, gridLabel, arch) {
   const architectureStyle = extractArchitectureStyle(arch);
 
   return [
-    "Generate a single presentation-ready illustration of a LOVOT companion robot.",
+    "Generate a single presentation-ready illustration of an AI pet robot.",
     "",
-    "Keep LOVOT's core appearance fixed. Do not redesign the robot itself.",
-    "LOVOT fixed appearance:",
+    "Keep the AI pet robot's core appearance fixed. Do not redesign the robot itself.",
+    "AI pet robot fixed appearance:",
     "- Round, soft, plump body shape like a bean-sized companion robot",
     "- Two very large expressive eyes on top of the head",
     "- Small flipper-like arms on the sides",
@@ -79,7 +79,7 @@ function buildPrompt(who, pain, how, gridLabel, arch) {
     `- Eye expression: ${ageScene.emotion}`,
     `- Body accent color: ${ageScene.color}`,
     `- One small accessory or nearby prop representing this solution: ${how || "the team's product idea"}`,
-    `- Show ${ageScene.userDesc} nearby or interacting with the LOVOT`,
+    `- Show ${ageScene.userDesc} nearby or interacting with the AI pet robot`,
     architectureStyle ? `- ${architectureStyle}` : "",
     "",
     `Target user: ${who || "A clearly defined customer segment"}`,
@@ -188,7 +188,7 @@ async function generateWithImagen(prompt, apiKey) {
   return parseImagenPrediction(data);
 }
 
-async function generateLovotImage(vpData) {
+async function generateProductImage(vpData) {
   const { who, pain, how, gridLabel, arch } = vpData || {};
   const apiKey = requireApiKey();
   const prompt = buildPrompt(who, pain, how, gridLabel, arch);
@@ -212,7 +212,7 @@ async function generateLovotImage(vpData) {
     return { ...image, modelUsed: IMAGEN_MODEL };
   } catch (error) {
     errors.push(error.message || String(error));
-    throw new Error(`LOVOT image generation failed. ${errors.join(" | ")}`);
+    throw new Error(`Product image generation failed. ${errors.join(" | ")}`);
   }
 }
 
@@ -220,5 +220,5 @@ module.exports = {
   buildDataUrl,
   extractAgeScene,
   buildPrompt,
-  generateLovotImage
+  generateProductImage
 };

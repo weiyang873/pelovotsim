@@ -3,10 +3,10 @@ import * as XLSX from "xlsx";
 import TeacherDebriefTabs from "../components/TeacherDebriefTabs";
 import {
   exportTeacherResults,
-  generateTeacherLovot,
-  generateTeacherLovotBatch,
+  generateTeacherProductImage,
+  generateTeacherProductImageBatch,
   getTeacherSessionStatus,
-  getTeacherLovotImage,
+  getTeacherProductImage,
   importStudentsForTeacher,
   openTeacherRound2,
   teacherForceAdvance,
@@ -289,16 +289,16 @@ function AuthGate({ onVerified }) {
   );
 }
 
-function TeamCard({ team, expanded, onToggle, onAction, busy, lovotImage, lovotLoading, onLoadLovotImage }) {
+function TeamCard({ team, expanded, onToggle, onAction, busy, productImage, productImageLoading, onLoadProductImage }) {
   const timeout = timeoutState(team);
   const statusColor = STATUS_COLORS[team.r2.status] || "#64748b";
   const submittedMembers = team.members.filter((member) => member.cardStatus === "submitted").length;
   const [actionChoice, setActionChoice] = useState("");
 
   useEffect(() => {
-    if (!expanded || !team.hasLovotImage || lovotImage || lovotLoading) return;
-    onLoadLovotImage(team.id);
-  }, [expanded, team.hasLovotImage, team.id, lovotImage, lovotLoading, onLoadLovotImage]);
+    if (!expanded || !team.hasProductImage || productImage || productImageLoading) return;
+    onLoadProductImage(team.id);
+  }, [expanded, team.hasProductImage, team.id, productImage, productImageLoading, onLoadProductImage]);
 
   const handleTeamAction = () => {
     if (!actionChoice) return;
@@ -391,7 +391,7 @@ function TeamCard({ team, expanded, onToggle, onAction, busy, lovotImage, lovotL
                 <option value="forceMerge">推进：强制合并（用已提交的卡）</option>
                 <option value="forceAdvancePricing">推进：强制推进到定价</option>
                 <option value="forceAdvanceSubmitted">推进：强制提交</option>
-                <option value="generateLovot">生成团队 LOVOT</option>
+                <option value="generateProductImage">生成团队 AI 宠物机器人</option>
                 <option value="resetTeamInterview">重置：到访谈阶段（清空全部 R2）</option>
                 <option value="resetTeamCards">重置：到选卡阶段（清空选卡及之后）</option>
                 <option value="resetTeamMerge">重置：到合并阶段（清空合并及之后）</option>
@@ -523,21 +523,21 @@ function TeamCard({ team, expanded, onToggle, onAction, busy, lovotImage, lovotL
             可在上方“操作”菜单中执行推进或重置。
           </div>
 
-          {lovotLoading && (
+          {productImageLoading && (
             <div style={{ marginTop: 16, textAlign: "center", padding: 20, color: "#64748b", borderRadius: 14, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
-              正在准备该组的 LOVOT 形象，通常需要几秒钟...
+              正在准备该组的 AI 宠物机器人形象，通常需要几秒钟...
             </div>
           )}
 
-          {lovotImage && (
+          {productImage && (
             <div style={{ marginTop: 16, padding: 16, background: "#f8fafc", borderRadius: 14, border: "1px solid #e2e8f0", textAlign: "center" }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: "#334155", marginBottom: 12, textAlign: "center" }}>
-                团队专属 LOVOT
+                团队专属 AI 宠物机器人
               </div>
               <div style={{ display: "flex", justifyContent: "center" }}>
                 <img
-                  src={lovotImage}
-                  alt={`${team.name} LOVOT`}
+                  src={productImage}
+                  alt={`${team.name} AI 宠物机器人`}
                   style={{
                     maxWidth: 480,
                     width: "100%",
@@ -597,8 +597,8 @@ export default function AdminPanel() {
   const [importPreviewFileName, setImportPreviewFileName] = useState("");
   const [lastUpdatedAt, setLastUpdatedAt] = useState("");
   const [toasts, setToasts] = useState([]);
-  const [lovotImages, setLovotImages] = useState({});
-  const [generatingLovot, setGeneratingLovot] = useState({});
+  const [productImages, setProductImages] = useState({});
+  const [generatingProductImage, setGeneratingProductImage] = useState({});
   const [batchGenerating, setBatchGenerating] = useState(false);
   const fileRef = useRef(null);
   const toastTimersRef = useRef([]);
@@ -734,19 +734,19 @@ export default function AdminPanel() {
       await withRefresh("forceAdvance", () => teacherForceAdvance(teacherCode, payload), "已推进该组状态");
       return;
     }
-    if (type === "generateLovot") {
+    if (type === "generateProductImage") {
       const teamId = String(payload?.team_id || "").trim();
       if (!teamId) return;
-      setGeneratingLovot((prev) => ({ ...prev, [teamId]: true }));
+      setGeneratingProductImage((prev) => ({ ...prev, [teamId]: true }));
       try {
-        const out = await generateTeacherLovot(teacherCode, teamId);
-        setLovotImages((prev) => ({ ...prev, [teamId]: out.image }));
+        const out = await generateTeacherProductImage(teacherCode, teamId);
+        setProductImages((prev) => ({ ...prev, [teamId]: out.image }));
         await loadSession(true);
-        pushToast("success", "已生成该组的 LOVOT 形象");
+        pushToast("success", "已生成该组的 AI 宠物机器人形象");
       } catch (err) {
-        pushToast("error", err.message || "生成 LOVOT 失败");
+        pushToast("error", err.message || "生成 AI 宠物机器人失败");
       } finally {
-        setGeneratingLovot((prev) => ({ ...prev, [teamId]: false }));
+        setGeneratingProductImage((prev) => ({ ...prev, [teamId]: false }));
       }
       return;
     }
@@ -811,21 +811,21 @@ export default function AdminPanel() {
     }
   };
 
-  const loadLovotImage = async (teamId, options = {}) => {
+  const loadProductImage = async (teamId, options = {}) => {
     const force = options.force === true;
     if (!teacherCode || !teamId) return null;
-    if (!force && lovotImages[teamId]) return lovotImages[teamId];
-    if (generatingLovot[teamId]) return null;
+    if (!force && productImages[teamId]) return productImages[teamId];
+    if (generatingProductImage[teamId]) return null;
 
-    setGeneratingLovot((prev) => ({ ...prev, [teamId]: true }));
+    setGeneratingProductImage((prev) => ({ ...prev, [teamId]: true }));
     try {
-      const out = await getTeacherLovotImage(teacherCode, teamId);
-      setLovotImages((prev) => ({ ...prev, [teamId]: out.image }));
+      const out = await getTeacherProductImage(teacherCode, teamId);
+      setProductImages((prev) => ({ ...prev, [teamId]: out.image }));
       return out.image;
     } catch (_) {
       return null;
     } finally {
-      setGeneratingLovot((prev) => ({ ...prev, [teamId]: false }));
+      setGeneratingProductImage((prev) => ({ ...prev, [teamId]: false }));
     }
   };
 
@@ -917,16 +917,16 @@ export default function AdminPanel() {
     }
   };
 
-  const handleBatchGenerateLovot = async () => {
+  const handleBatchGenerateProductImage = async () => {
     if (!teacherCode) return;
     setBatchGenerating(true);
     try {
-      const out = await generateTeacherLovotBatch(teacherCode);
+      const out = await generateTeacherProductImageBatch(teacherCode);
       const successCount = (out.results || []).filter((item) => item.ok).length;
-      pushToast("success", `已生成 ${successCount}/${Number(out.total || 0)} 组 LOVOT`);
+      pushToast("success", `已生成 ${successCount}/${Number(out.total || 0)} 组 AI 宠物机器人`);
       await loadSession(true);
     } catch (err) {
-      pushToast("error", err.message || "批量生成 LOVOT 失败");
+      pushToast("error", err.message || "批量生成 AI 宠物机器人失败");
     } finally {
       setBatchGenerating(false);
     }
@@ -1185,11 +1185,11 @@ export default function AdminPanel() {
                 全部强制合并
               </button>
               <button
-                onClick={handleBatchGenerateLovot}
+                onClick={handleBatchGenerateProductImage}
                 disabled={Boolean(busyAction) || batchGenerating}
                 style={actionButtonStyle("#f59e0b")}
               >
-                {batchGenerating ? "批量生成中..." : "批量生成 LOVOT"}
+                {batchGenerating ? "批量生成中..." : "批量生成 AI 宠物机器人"}
               </button>
               <button
                 onClick={handleExport}
@@ -1324,9 +1324,9 @@ export default function AdminPanel() {
                       onToggle={() => setExpanded((prev) => ({ ...prev, [team.id]: !prev[team.id] }))}
                       onAction={handleAction}
                       busy={Boolean(busyAction)}
-                      lovotImage={lovotImages[team.id] || ""}
-                      lovotLoading={Boolean(generatingLovot[team.id])}
-                      onLoadLovotImage={loadLovotImage}
+                      productImage={productImages[team.id] || ""}
+                      productImageLoading={Boolean(generatingProductImage[team.id])}
+                      onLoadProductImage={loadProductImage}
                     />
                   ))
                 )}

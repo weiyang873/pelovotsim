@@ -21,7 +21,7 @@ const sampleReport = fs.readFileSync(
 
 const ROOT = path.join(__dirname, "..");
 const OUTPUT_BRIEFS = path.join(ROOT, "game_config_v0.1", "persona_briefs_v1.json");
-const OUTPUT_REPORTS = path.join(ROOT, "game_config_v0.1", "persona_reports_v1.2.json");
+const OUTPUT_REPORTS = path.join(ROOT, "game_config_v0.1", "persona_reports_v1.3.json");
 const OUTPUT_EVIDENCE = path.join(ROOT, "game_config_v0.1", "grid_dimension_evidence_v1.json");
 const TRANSCRIPT_DIR = path.join(ROOT, "data", "interview_transcripts");
 

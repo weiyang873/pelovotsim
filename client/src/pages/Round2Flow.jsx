@@ -654,7 +654,7 @@ function buildVpRecapSentence(summary, fallbackText) {
   const boundary = String(src.boundary || "").trim();
 
   if (who && pain && how) {
-    let sentence = `为${who}，在${pain}的场景下，LOVOT通过${how}创造更好的结果。`;
+    let sentence = `为${who}，在${pain}的场景下，这款 AI 宠物机器人通过${how}创造更好的结果。`;
     if (boundary && boundary !== "未明确") {
       sentence += ` 适用边界：${boundary}。`;
     }
@@ -2833,7 +2833,7 @@ export default function App() {
               📋 决策任务回顾：AI 硬件中国市场的创新战略
             </div>
             <div style={{fontSize:14,color:"#555",lineHeight:1.8}}>
-              LOVOT 是一款 AI 机器人，你们的团队正在为它寻找<strong>中国市场的最佳定位</strong>，并基于这个定位进行<strong>产品创新改造</strong>。第一轮你们确定了战略方向，第二轮你们将把战略落地为具体的产品。
+              你们正在为一款 AI 宠物机器人寻找<strong>中国市场的最佳定位</strong>，并基于这个定位进行<strong>产品创新改造</strong>。第一轮你们确定了战略方向，第二轮你们将把战略落地为具体的产品。
             </div>
           </div>
 

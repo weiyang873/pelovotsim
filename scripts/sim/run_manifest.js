@@ -7,7 +7,7 @@ const { spawnSync } = require("node:child_process");
 
 const ROOT = path.join(__dirname, "..", "..");
 const LOCAL_EVIDENCE_PATH = path.join(ROOT, "game_config_v0.1", "grid_dimension_evidence_v2.json");
-const LOCAL_REPORTS_PATH = path.join(ROOT, "game_config_v0.1", "persona_reports_v1.2.json");
+const LOCAL_REPORTS_PATH = path.join(ROOT, "game_config_v0.1", "persona_reports_v1.3.json");
 
 function sha256File(filePath) {
   return crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");

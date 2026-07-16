@@ -3,7 +3,7 @@ const { runSql, sqlQuote } = require("../db/pgSql");
 const { chatCompletion } = require("../llm/deepseekClient");
 const { withLlmLogging } = require("../llm/llm_logger");
 const { getTeamSessions } = require("../llm/sessions");
-const { buildDataUrl, generateLovotImage } = require("../llm/lovotImageGen");
+const { buildDataUrl, generateProductImage } = require("../llm/lovotImageGen");
 const { loadJinangConfig } = require("../multiplayer/jinangDealer");
 const { listTeamIterations } = require("../multiplayer/vpIterationStore");
 const { ensureSessionConfigSchema } = require("../multiplayer/sessionConfig");
@@ -899,7 +899,7 @@ async function buildTeamRecord(teamRow, sessionId, teamIndex) {
     displayName: formatDisplayName(teamRow.team_name, teamIndex),
     color: TEAM_COLORS[teamIndex % TEAM_COLORS.length],
     teamIndex,
-    hasLovotImage: Boolean(teamRow.has_lovot_image),
+    hasProductImage: Boolean(teamRow.has_lovot_image),
     has_lovot_image: Boolean(teamRow.has_lovot_image),
     members,
     memberCount: Number(teamRow.team_size || members.length || 0),
@@ -910,7 +910,7 @@ async function buildTeamRecord(teamRow, sessionId, teamIndex) {
   };
 }
 
-function extractLovotVpData(teamRow) {
+function extractProductImageVpData(teamRow) {
   const summary = safeJsonParse(teamRow?.final_vp_summary, {}) || {};
   const who = String(summary.who || summary.WHO || extractVpField(teamRow?.final_vp_text, "WHO") || "").trim();
   const pain = String(summary.pain || summary.PAIN || extractVpField(teamRow?.final_vp_text, "PAIN") || "").trim();
@@ -919,7 +919,7 @@ function extractLovotVpData(teamRow) {
   return { who, pain, how };
 }
 
-async function getLovotTeamRow(teamId) {
+async function getProductImageTeamRow(teamId) {
   await ensureSchema();
   const rows = await runSql(`
     SELECT
@@ -939,15 +939,15 @@ async function getLovotTeamRow(teamId) {
   return rows[0] || null;
 }
 
-async function generateLovotForTeam(teamId) {
-  const team = await getLovotTeamRow(teamId);
+async function generateProductImageForTeam(teamId) {
+  const team = await getProductImageTeamRow(teamId);
   if (!team) {
     const notFound = new Error("Team not found");
     notFound.status = 404;
     throw notFound;
   }
 
-  const { who, pain, how } = extractLovotVpData(team);
+  const { who, pain, how } = extractProductImageVpData(team);
   if (!who && !pain && !how) {
     const invalid = new Error("该组尚未提交 VP，无法生成形象");
     invalid.status = 400;
@@ -955,7 +955,7 @@ async function generateLovotForTeam(teamId) {
   }
 
   const gridLabel = formatGridLabel(team.final_grid_id);
-  const generated = await generateLovotImage({
+  const generated = await generateProductImage({
     who,
     pain,
     how,
@@ -979,8 +979,8 @@ async function generateLovotForTeam(teamId) {
   };
 }
 
-async function getLovotImageApi(teamId) {
-  const team = await getLovotTeamRow(teamId);
+async function getProductImageApi(teamId) {
+  const team = await getProductImageTeamRow(teamId);
   if (!team || !String(team.lovot_image || "").trim()) {
     return makeResponse(404, { ok: false, error: "尚未生成" });
   }
@@ -1341,11 +1341,11 @@ async function generateTeamReviewApi(body) {
   }
 }
 
-async function generateLovotApi(body) {
+async function generateProductImageApi(body) {
   try {
     const teamId = String(body?.team_id || body?.teamId || "").trim();
     if (!teamId) return makeResponse(400, { ok: false, error: "team_id required" });
-    const out = await generateLovotForTeam(teamId);
+    const out = await generateProductImageForTeam(teamId);
     return makeResponse(200, out);
   } catch (e) {
     const status = Number(e?.status || 0);
@@ -1353,7 +1353,7 @@ async function generateLovotApi(body) {
   }
 }
 
-async function generateLovotBatchApi() {
+async function generateProductImageBatchApi() {
   try {
     await ensureSchema();
     const teamRows = await runSql(`
@@ -1367,7 +1367,7 @@ async function generateLovotBatchApi() {
     const results = [];
     for (const row of teamRows) {
       try {
-        await generateLovotForTeam(row.id);
+        await generateProductImageForTeam(row.id);
         results.push({ team_id: row.id, ok: true });
       } catch (e) {
         results.push({ team_id: row.id, ok: false, error: e.message || String(e) });
@@ -1410,9 +1410,9 @@ module.exports = {
   vpIterationsApi,
   generateDebriefApi,
   generateTeamReviewApi,
-  generateLovotApi,
-  generateLovotBatchApi,
-  getLovotImageApi,
+  generateProductImageApi,
+  generateProductImageBatchApi,
+  getProductImageApi,
   exportCsv,
   exportPptApi,
   exportPdfApi,
