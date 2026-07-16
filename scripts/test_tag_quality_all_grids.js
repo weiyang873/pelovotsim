@@ -389,11 +389,7 @@ async function runRound2Calculation(transport, teamId, memberId) {
     memberId,
     price: pickPrice(recap),
     selections: DEFAULT_SELECTIONS,
-    mergedInterview: {
-      radar: merged?.mergedInterview?.radar || {},
-      tags: merged?.mergedInterview?.tags || [],
-      evi: merged?.mergedInterview?.evi || 0.7
-    },
+    mergedInterview: merged?.mergedInterview || null,
     bestGrid: recap.final_grid_id
   });
   const teamResult = await transport.get(

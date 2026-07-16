@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { formatYuan as formatMoney, formatWanFromYuan as formatWan } from "../utils/formatMoney";
 
 const COLORS = {
   bg: "#F8F7F4",
@@ -41,20 +42,6 @@ function formatScore(value, digits = 2) {
   const n = Number(value);
   if (!Number.isFinite(n)) return "—";
   return n.toFixed(digits);
-}
-
-function formatMoney(value) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return "—";
-  return `${Math.round(n).toLocaleString()}`;
-}
-
-function formatWan(value) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return "—";
-  const wan = n / 10000;
-  const sign = wan > 0 ? "+" : (wan < 0 ? "-" : "");
-  return `${sign}${Math.abs(wan).toFixed(0)}万`;
 }
 
 function getTeamName(team) {

@@ -17,6 +17,8 @@ import {
   startRound2Interview,
   submitRound2TeamDecision
 } from "../api/round2Api";
+import { getRdCards } from "../api/rdApi";
+import { formatSignedYuan, formatWan, formatYuan } from "../utils/formatMoney";
 import { clearStudentSession, mergeStudentSession, readStudentSession } from "../utils/studentSession";
 import { downloadTxtFile, formatExportTime } from "../utils/txtExport";
 
@@ -32,8 +34,6 @@ const DIMS = [
 const DEFAULT_MEMBER_DIMS = ["interaction", "safety"];
 const SUMMARY_READING_INDIVIDUAL = "READING_INDIVIDUAL";
 const SUMMARY_READING_TEAM_SUMMARY = "READING_TEAM_SUMMARY";
-const IMP = { interaction:"高", perception:"高", motion:"中", safety:"中", extend:"低", ops:"中" };
-const IMP_C = { "高":"#DC2626", "中":"#D4A03C", "低":"#9CA3AF" };
 const STARTER_QUESTIONS = {
   ELDER: [
     "{name}您好！能聊聊您平时一个人在家的时候，一般怎么度过一天吗？",
@@ -92,7 +92,6 @@ const INTERVIEW_MAX_TURNS = 10;
 const MIN_INTERVIEWS_REQUIRED = 2;
 const MIN_TEAM_CARDS = 6;
 const INTERVIEW_START_DEBOUNCE_MS = 3000;
-const PRICE_SCALE = 0.3;
 
 function createEmptyInterviewProgress() {
   return {
@@ -137,141 +136,113 @@ const ROUND2_NARRATIVE_STAGES = [
   { id: "review", label: "经营复盘", steps: [5] }
 ];
 
-const F_BASE_WAN = 500 * PRICE_SCALE;
-const F_BASE = F_BASE_WAN * 10000;
 function deriveChannelFeeFromGrid(gridId) {
   const raw = String(gridId || "").trim().toLowerCase();
   return raw.startsWith("tob") || raw.startsWith("b2b") ? 0.15 : 0.25;
 }
 
-// ── Card data: hidden qualitative hints in individual mode, numeric reveal in team mode ──
-const CC = {
+// ── Card copy only: numeric dCOGS/NRE values are loaded from /api/rd/cards ──
+const CARD_COPY = {
 interaction: [
-  { id:"voice_basic", n:"语音基础", what:"能听懂指令并用语音回应", nreDesc:"嵌入式8月+语音算法6月+QA4月+SDK授权+消音室+样机",
+  { id:"voice_basic", n:"语音基础", what:"能听懂指令并用语音回应",
     riskNote:"技术成熟度高，风险可控",
-    tiers:{ low:{l:"基础",d:"固定指令，预设回复",cost:150,nre:59}, mid:{l:"标准",d:"日常对话，自然语调",cost:280,nre:98}, high:{l:"旗舰",d:"多方言+情感语调",cost:420,nre:157} } },
-  { id:"persona_dialog", n:"多轮对话个性化", what:"记住上下文，越聊越懂你，像朋友一样对话", nreDesc:"NLP高级10月+嵌入式AI8月+后端6月+标注×2人6月+QA4月+GPU算力+训练数据+样机",
+    tiers:{ low:{l:"基础",d:"固定指令，预设回复"}, mid:{l:"标准",d:"日常对话，自然语调"}, high:{l:"旗舰",d:"多方言+情感语调"} } },
+  { id:"persona_dialog", n:"多轮对话个性化", what:"记住上下文，越聊越懂你，像朋友一样对话",
     riskNote:"依赖大模型能力，对话质量波动大",
-    tiers:{ low:{l:"基础",d:"简单多轮，记住近期话题",cost:400,nre:127}, mid:{l:"标准",d:"个性化风格+长期记忆",cost:650,nre:211}, high:{l:"旗舰",d:"深度个性化，模拟角色性格",cost:950,nre:338} },
+    tiers:{ low:{l:"基础",d:"简单多轮，记住近期话题"}, mid:{l:"标准",d:"个性化风格+长期记忆"}, high:{l:"旗舰",d:"深度个性化，模拟角色性格"} },
     deps:[{tier:"high",type:"需要",target:"cloud_update",tl:"标准",cross:true}] },
-  { id:"touch_hug", n:"触摸/拥抱交互增强", what:"感知拥抱和抚摸，做出温暖回应", nreDesc:"硬件8月+嵌入式6月+结构4月+QA3月+柔性PCB打样+传感器样品+样机",
+  { id:"touch_hug", n:"触摸/拥抱交互增强", what:"感知拥抱和抚摸，做出温暖回应",
     riskNote:"传感器硬件成熟，集成风险低",
-    tiers:{ low:{l:"基础",d:"基本触摸感应",cost:180,nre:59}, mid:{l:"标准",d:"多区域触感，不同反应",cost:350,nre:99}, high:{l:"旗舰",d:"全身压力感应+体温变化",cost:520,nre:158} } },
-  { id:"music_companion", n:"音乐播放与陪伴", what:"会放音乐、哼唱或陪着孩子练习", nreDesc:"嵌入式6月+音频4月+QA2月+版权授权+音频测试+样机",
+    tiers:{ low:{l:"基础",d:"基本触摸感应"}, mid:{l:"标准",d:"多区域触感，不同反应"}, high:{l:"旗舰",d:"全身压力感应+体温变化"} } },
+  { id:"music_companion", n:"音乐播放与陪伴", what:"会放音乐、哼唱或陪着孩子练习",
     riskNote:"版权与音频适配需要持续维护",
-    tiers:{ low:{l:"基础",d:"固定歌单与简单播控",cost:100,nre:38}, mid:{l:"标准",d:"情境音乐与互动播放",cost:200,nre:64}, high:{l:"旗舰",d:"更丰富内容与情绪联动",cost:320,nre:102} } },
-  { id:"visual_expr", n:"视觉表达（OLED/灯效）", what:"通过屏幕表情或灯光变化表达情绪", nreDesc:"显示驱动8月+嵌入式6月+结构6月+工业设计师6月+动画4月+QA4月+OLED样品+动画外包+显示模具+样机",
+    tiers:{ low:{l:"基础",d:"固定歌单与简单播控"}, mid:{l:"标准",d:"情境音乐与互动播放"}, high:{l:"旗舰",d:"更丰富内容与情绪联动"} } },
+  { id:"visual_expr", n:"视觉表达（OLED/灯效）", what:"通过屏幕表情或灯光变化表达情绪",
     riskNote:"显示模组和动画体验会明显拉高开发复杂度",
-    tiers:{ low:{l:"基础",d:"灯效表达",cost:300,nre:115}, mid:{l:"标准",d:"OLED 丰富表情动画",cost:600,nre:191}, high:{l:"旗舰",d:"全彩表情+氛围灯联动",cost:850,nre:306} },
+    tiers:{ low:{l:"基础",d:"灯效表达"}, mid:{l:"标准",d:"OLED 丰富表情动画"}, high:{l:"旗舰",d:"全彩表情+氛围灯联动"} },
     conflicts:["no_screen"] },
-  { id:"style_pack", n:"表达风格包", what:"让机器人在语气、角色和动作上更有个性", nreDesc:"工业设计师8月+结构6月+动作设计6月+QA3月+外壳开模9万+3D打样+样机",
+  { id:"style_pack", n:"表达风格包", what:"让机器人在语气、角色和动作上更有个性",
     riskNote:"风格做得好很加分，但打磨周期长",
-    tiers:{ low:{l:"基础",d:"少量角色与固定语气",cost:120,nre:91}, mid:{l:"标准",d:"多风格切换+动作脚本",cost:250,nre:151}, high:{l:"旗舰",d:"完整角色包+更强表现力",cost:400,nre:242} } },
-  { id:"no_screen", n:"无屏降本（删OLED）", what:"去掉屏幕降成本，改用纯语音+灯光", nreDesc:"结构4月+嵌入式3月+QA回归4月+认证2月+结构件打样+重新认证费+回归测试",
+    tiers:{ low:{l:"基础",d:"少量角色与固定语气"}, mid:{l:"标准",d:"多风格切换+动作脚本"}, high:{l:"旗舰",d:"完整角色包+更强表现力"} } },
+  { id:"no_screen", n:"无屏降本（删OLED）", what:"去掉屏幕降成本，改用纯语音+灯光",
     riskNote:"用户体验可能受限，需验证接受度", tag:"降本",
-    tiers:{ low:{l:"基础",d:"去屏保留LED",cost:-250,nre:37}, mid:{l:"标准",d:"去屏+简化外壳",cost:-450,nre:61}, high:{l:"旗舰",d:"极简纯语音方案",cost:-600,nre:98} },
+    tiers:{ low:{l:"基础",d:"去屏保留LED"}, mid:{l:"标准",d:"去屏+简化外壳"}, high:{l:"旗舰",d:"极简纯语音方案"} },
     conflicts:["visual_expr"] }
 ],
 perception: [
-  { id:"percep_base", n:"基础感知（摄像头/语音）", what:"看到和听到周围环境，识别人和物体", nreDesc:"视觉6月+嵌入式6月+QA3月+摄像头样品+ISP工具+标定设备+样机",
+  { id:"percep_base", n:"基础感知（摄像头/语音）", what:"看到和听到周围环境，识别人和物体",
     riskNote:"硬件方案成熟，但需要稳定标定",
-    tiers:{ low:{l:"基础",d:"单摄像头+单麦克风",cost:200,nre:46}, mid:{l:"标准",d:"广角+基础识别",cost:380,nre:76}, high:{l:"旗舰",d:"双目视觉+阵列麦克风",cost:550,nre:122} } },
-  { id:"emotion_recog", n:"情绪识别与表情捕捉", what:"读懂表情和语气，判断开心还是难过", nreDesc:"CV高级10月+嵌入式AI8月+标注×2人6月+QA4月+GPU算力+表情数据集+AI芯片+样机",
+    tiers:{ low:{l:"基础",d:"单摄像头+单麦克风"}, mid:{l:"标准",d:"广角+基础识别"}, high:{l:"旗舰",d:"双目视觉+阵列麦克风"} } },
+  { id:"emotion_recog", n:"情绪识别与表情捕捉", what:"读懂表情和语气，判断开心还是难过",
     riskNote:"算法精度不稳定，场景与光线变化影响大",
-    tiers:{ low:{l:"基础",d:"基础情绪分类",cost:350,nre:112}, mid:{l:"标准",d:"多模态融合识别",cost:600,nre:186}, high:{l:"旗舰",d:"细粒度识别+趋势追踪",cost:880,nre:298} },
+    tiers:{ low:{l:"基础",d:"基础情绪分类"}, mid:{l:"标准",d:"多模态融合识别"}, high:{l:"旗舰",d:"细粒度识别+趋势追踪"} },
     deps:[{tier:"low",type:"需要",target:"percep_base",tl:"基础"},{tier:"mid",type:"需要",target:"percep_base",tl:"标准"},{tier:"high",type:"需要",target:"percep_base",tl:"旗舰"}] },
-  { id:"adaptive_learn", n:"自适应学习（习惯/偏好）", what:"越用越懂你——记住习惯、喜好、作息", nreDesc:"ML高级12月+嵌入式AI8月+数据工程6月+QA6月+GPU算力12月+边缘模组+用户测试+样机",
+  { id:"adaptive_learn", n:"自适应学习（习惯/偏好）", what:"越用越懂你——记住习惯、喜好、作息",
     riskNote:"冷启动体验弱，需要长期数据积累",
-    tiers:{ low:{l:"基础",d:"记住常用设置",cost:350,nre:118}, mid:{l:"标准",d:"学习日常规律",cost:620,nre:197}, high:{l:"旗舰",d:"跨场景预测需求",cost:900,nre:315} },
+    tiers:{ low:{l:"基础",d:"记住常用设置"}, mid:{l:"标准",d:"学习日常规律"}, high:{l:"旗舰",d:"跨场景预测需求"} },
     deps:[{tier:"mid",type:"需要",target:"cloud_update",tl:"标准",cross:true},{tier:"high",type:"需要",target:"cloud_update",tl:"旗舰",cross:true}] },
-  { id:"memory_social", n:"社交记忆", what:"记住家庭成员、关系和偏好，互动更像熟人", nreDesc:"后端8月+安全高级6月+QA4月+隐私审查律所+渗透测试+加密芯片+样机",
+  { id:"memory_social", n:"社交记忆", what:"记住家庭成员、关系和偏好，互动更像熟人",
     riskNote:"涉及隐私和记忆边界，信任设计很关键",
-    tiers:{ low:{l:"基础",d:"记住称呼与基本偏好",cost:250,nre:63}, mid:{l:"标准",d:"记住家庭关系和互动习惯",cost:450,nre:105}, high:{l:"旗舰",d:"跨场景长期记忆",cost:680,nre:168} },
+    tiers:{ low:{l:"基础",d:"记住称呼与基本偏好"}, mid:{l:"标准",d:"记住家庭关系和互动习惯"}, high:{l:"旗舰",d:"跨场景长期记忆"} },
     deps:[{tier:"high",type:"需要",target:"privacy_trust",tl:"标准",cross:true}] }
 ],
 motion: [
-  { id:"basic_avoid", n:"基础避障", what:"遇到障碍物会停下或绕开", nreDesc:"嵌入式6月+算法3月+QA3月+超声波模组+测试场地+样机",
+  { id:"basic_avoid", n:"基础避障", what:"遇到障碍物会停下或绕开",
     riskNote:"基础方案成熟，但复杂家庭环境仍需测试",
-    tiers:{ low:{l:"基础",d:"简单碰撞保护",cost:150,nre:33}, mid:{l:"标准",d:"提前减速绕开",cost:300,nre:55}, high:{l:"旗舰",d:"更平滑避障策略",cost:450,nre:88} } },
-  { id:"auto_follow", n:"跟随/伴行模式", what:"像小宠物一样跟着你在家走", nreDesc:"电机控制8月+算法8月+硬件4月+QA6月+伺服电机样品+路测+开发板+样机",
+    tiers:{ low:{l:"基础",d:"简单碰撞保护"}, mid:{l:"标准",d:"提前减速绕开"}, high:{l:"旗舰",d:"更平滑避障策略"} } },
+  { id:"auto_follow", n:"跟随/伴行模式", what:"像小宠物一样跟着你在家走",
     riskNote:"跟随稳定性和安全边界都不好做",
-    tiers:{ low:{l:"基础",d:"简单跟随",cost:320,nre:73}, mid:{l:"标准",d:"视觉跟随伴行",cost:550,nre:122}, high:{l:"旗舰",d:"预测路径伴行",cost:800,nre:195} } },
-  { id:"lidar_nav", n:"激光雷达导航", what:"自主在家走动，记住房间布局", nreDesc:"SLAM高级10月+嵌入式8月+电机控制4月+QA8月+LiDAR多款评估+SLAM平台+大量路测+地图设备+样机",
+    tiers:{ low:{l:"基础",d:"简单跟随"}, mid:{l:"标准",d:"视觉跟随伴行"}, high:{l:"旗舰",d:"预测路径伴行"} } },
+  { id:"lidar_nav", n:"激光雷达导航", what:"自主在家走动，记住房间布局",
     riskNote:"LiDAR 硬件和 SLAM 调参都很重，投入高",
-    tiers:{ low:{l:"基础",d:"简单建图导航",cost:500,nre:110}, mid:{l:"标准",d:"精准房间级导航",cost:850,nre:184}, high:{l:"旗舰",d:"复杂户型与更强鲁棒性",cost:1200,nre:294} },
+    tiers:{ low:{l:"基础",d:"简单建图导航"}, mid:{l:"标准",d:"精准房间级导航"}, high:{l:"旗舰",d:"复杂户型与更强鲁棒性"} },
     deps:[{tier:"mid",type:"需要",target:"cloud_update",tl:"标准",cross:true},{tier:"high",type:"需要",target:"cloud_update",tl:"标准",cross:true}] }
 ],
 safety: [
-  { id:"privacy_trust", n:"隐私与信任保障", what:"数据加密，用户可控制自己的数据", nreDesc:"安全高级8月+嵌入式4月+认证4月+渗透测试+安全认证+SE芯片+样机",
+  { id:"privacy_trust", n:"隐私与信任保障", what:"数据加密，用户可控制自己的数据",
     riskNote:"合规要求明确，但不能只做表面开关",
-    tiers:{ low:{l:"基础",d:"本地加密存储",cost:180,nre:64}, mid:{l:"标准",d:"端到端加密+权限面板",cost:350,nre:107}, high:{l:"旗舰",d:"更严格可信架构",cost:520,nre:171} } },
-  { id:"child_safety", n:"儿童安全", what:"更关注碰撞、防夹、材料与儿童使用风险", nreDesc:"硬件6月+结构4月+QA专项6月+认证6月+GB认证4.5万+跌落测试+材料检测+样机",
+    tiers:{ low:{l:"基础",d:"本地加密存储"}, mid:{l:"标准",d:"端到端加密+权限面板"}, high:{l:"旗舰",d:"更严格可信架构"} } },
+  { id:"child_safety", n:"儿童安全", what:"更关注碰撞、防夹、材料与儿童使用风险",
     riskNote:"认证和可靠性测试周期长",
-    tiers:{ low:{l:"基础",d:"基础儿童防护",cost:250,nre:68}, mid:{l:"标准",d:"更完整的儿童安全设计",cost:450,nre:113}, high:{l:"旗舰",d:"强化防护与更高认证标准",cost:650,nre:181} } },
-  { id:"family_guardian", n:"家庭监护", what:"家长远程查看孩子/老人状态，设置使用边界", nreDesc:"架构师8月+硬件8月+嵌入式6月+后端4月+QA8月+紧急通信认证+可靠性测试+融合套件+样机",
+    tiers:{ low:{l:"基础",d:"基础儿童防护"}, mid:{l:"标准",d:"更完整的儿童安全设计"}, high:{l:"旗舰",d:"强化防护与更高认证标准"} } },
+  { id:"family_guardian", n:"家庭监护", what:"家长远程查看孩子/老人状态，设置使用边界",
     riskNote:"隐私与监护的平衡很难，过度监控会惹人反感",
-    tiers:{ low:{l:"基础",d:"基础远程提醒与边界",cost:420,nre:121}, mid:{l:"标准",d:"远程查看+行为边界",cost:750,nre:201}, high:{l:"旗舰",d:"多角色权限+异常报警",cost:1050,nre:322} },
+    tiers:{ low:{l:"基础",d:"基础远程提醒与边界"}, mid:{l:"标准",d:"远程查看+行为边界"}, high:{l:"旗舰",d:"多角色权限+异常报警"} },
     deps:[{tier:"low",type:"需要",target:"privacy_trust",tl:"基础",cross:true},{tier:"mid",type:"需要",target:"privacy_trust",tl:"标准",cross:true},{tier:"high",type:"需要",target:"privacy_trust",tl:"旗舰",cross:true}] }
 ],
 extend: [
-  { id:"cloud_update", n:"云端智能更新（OTA）", what:"自动接收新功能和修复", nreDesc:"后端6月+嵌入式6月+安全3月+QA4月+云服务器+灰度平台+安全芯片+样机",
+  { id:"cloud_update", n:"云端智能更新（OTA）", what:"自动接收新功能和修复",
     riskNote:"灰度和回滚机制能明显降低线上事故",
-    tiers:{ low:{l:"基础",d:"手动更新",cost:150,nre:56}, mid:{l:"标准",d:"自动静默+回滚",cost:300,nre:94}, high:{l:"旗舰",d:"灰度发布+更强遥测",cost:480,nre:150} } },
-  { id:"api_iot", n:"API / IoT 联动", what:"连接手机和家里其他设备，做更多场景联动", nreDesc:"IoT8月+后端6月+硬件RF4月+认证4月+协议认证5.4万+天线外包+网关开发板+样机",
+    tiers:{ low:{l:"基础",d:"手动更新"}, mid:{l:"标准",d:"自动静默+回滚"}, high:{l:"旗舰",d:"灰度发布+更强遥测"} } },
+  { id:"api_iot", n:"API / IoT 联动", what:"连接手机和家里其他设备，做更多场景联动",
     riskNote:"协议兼容和认证测试工作量大",
-    tiers:{ low:{l:"基础",d:"少量设备接入",cost:250,nre:68}, mid:{l:"标准",d:"主流平台兼容",cost:450,nre:114}, high:{l:"旗舰",d:"开放 API + 深度联动",cost:680,nre:182} },
+    tiers:{ low:{l:"基础",d:"少量设备接入"}, mid:{l:"标准",d:"主流平台兼容"}, high:{l:"旗舰",d:"开放 API + 深度联动"} },
     deps:[{tier:"high",type:"需要",target:"privacy_trust",tl:"标准",cross:true}] },
-  { id:"edu_content", n:"教育内容", what:"提供更丰富的学习内容、课程和陪练素材", nreDesc:"前端6月+后端6月+内容运营8月+QA3月+内容授权3.6万+CMS平台+合规审查+用户测试",
+  { id:"edu_content", n:"教育内容", what:"提供更丰富的学习内容、课程和陪练素材",
     riskNote:"内容持续供给和版权都需要长期投入",
-    tiers:{ low:{l:"基础",d:"少量固定内容",cost:200,nre:61}, mid:{l:"标准",d:"更系统的内容库",cost:380,nre:102}, high:{l:"旗舰",d:"可持续运营的内容平台",cost:580,nre:163} } }
+    tiers:{ low:{l:"基础",d:"少量固定内容"}, mid:{l:"标准",d:"更系统的内容库"}, high:{l:"旗舰",d:"可持续运营的内容平台"} } }
 ],
 ops: [
-  { id:"self_diag", n:"自诊断", what:"机器人能自己发现故障并提示处理", nreDesc:"嵌入式6月+QA4月+诊断传感器+故障注入设备+样机",
+  { id:"self_diag", n:"自诊断", what:"机器人能自己发现故障并提示处理",
     riskNote:"投入不大，但对长期可维护性很重要",
-    tiers:{ low:{l:"基础",d:"基础错误自检",cost:130,nre:25}, mid:{l:"标准",d:"更系统的故障定位",cost:260,nre:42}, high:{l:"旗舰",d:"硬件+软件联合诊断",cost:400,nre:67} } },
-  { id:"remote_monitor", n:"远程监控", what:"远程查看设备状态、异常和运行日志", nreDesc:"后端8月+嵌入式4月+QA3月+认证2月+云平台+通信认证+样机",
+    tiers:{ low:{l:"基础",d:"基础错误自检"}, mid:{l:"标准",d:"更系统的故障定位"}, high:{l:"旗舰",d:"硬件+软件联合诊断"} } },
+  { id:"remote_monitor", n:"远程监控", what:"远程查看设备状态、异常和运行日志",
     riskNote:"云端监控能省售后，但也要做好权限边界",
-    tiers:{ low:{l:"基础",d:"基础状态上报",cost:200,nre:47}, mid:{l:"标准",d:"实时监控+日志分析",cost:380,nre:78}, high:{l:"旗舰",d:"更强告警与远程处置",cost:580,nre:125} } },
-  { id:"predictive_maint", n:"预测性维护", what:"在坏掉前就预警，减少突然故障", nreDesc:"ML高级10月+嵌入式6月+数据工程6月+QA6月+GPU算力+长期测试4.5万+传感器+样机",
+    tiers:{ low:{l:"基础",d:"基础状态上报"}, mid:{l:"标准",d:"实时监控+日志分析"}, high:{l:"旗舰",d:"更强告警与远程处置"} } },
+  { id:"predictive_maint", n:"预测性维护", what:"在坏掉前就预警，减少突然故障",
     riskNote:"需要长期数据和更多传感器支持，开发周期长",
-    tiers:{ low:{l:"基础",d:"简单预警规则",cost:350,nre:103}, mid:{l:"标准",d:"基于数据的预警模型",cost:650,nre:172}, high:{l:"旗舰",d:"更完整的预测维护体系",cost:950,nre:275} } }
+    tiers:{ low:{l:"基础",d:"简单预警规则"}, mid:{l:"标准",d:"基于数据的预警模型"}, high:{l:"旗舰",d:"更完整的预测维护体系"} } }
 ]
 };
-Object.values(CC).flat().forEach((card) => {
-  Object.values(card.tiers || {}).forEach((tier) => {
-    if (tier.cost != null) tier.cost = Math.round(Number(tier.cost || 0) * PRICE_SCALE);
-    if (tier.nre != null) tier.nre = Number((Number(tier.nre || 0) * PRICE_SCALE).toFixed(1));
-  });
-});
-const ALL = Object.values(CC).flat();
-const fc = id => ALL.find(c => c.id === id);
 const TI = {low:0,mid:1,high:2};
 const TS = ["low","mid","high"];
 
-const calcCost = (s) => {
-  let cost = 0;
-  let nreWan = 0;
-  let cnt = 0;
-  Object.entries(s).forEach(([id, t]) => {
-    const c = fc(id);
-    const tier = c?.tiers?.[t];
-    if (c && tier) {
-      cost += Number(tier.cost || 0);
-      nreWan += Number(tier.nre || 0);
-      cnt += 1;
-    }
-  });
-  return { cost, nreWan, cnt };
-};
-
-// Real parameters from framework doc §12.2, §11.3, §16.1, scaled by PRICE_SCALE.
-const V = 2000 * PRICE_SCALE;         // variable cost per unit
 // GM = (P×(1-f) - V - dCOGS) / P
-const calcGM = (dCOGS, price, f, baseCost = V) => {
+const calcGM = (dCOGS, price, f, baseCost = 0) => {
   const netRev = price * (1 - f);
   return ((netRev - baseCost - dCOGS) / price) * 100;
 };
-const GM_FLOOR = 20; // below this = danger zone
+const GM_FLOOR = 20;
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const FRONT_TO_BACK_ID = {
   visual_expr: "visual_expression",
@@ -293,34 +264,82 @@ BACK_TO_FRONT_ID.home_iot = "api_iot";
 BACK_TO_FRONT_ID.kids_mode = "child_safety";
 BACK_TO_FRONT_ID.remote_diagnostics = "remote_monitor";
 
-function getDcogsLabel(dcogsValue) {
-  const value = Number(dcogsValue || 0);
-  const abs = Math.abs(value);
-  if (value < 0) return "降本";
-  if (abs < 300) return "轻";
-  if (abs < 500) return "中";
-  if (abs < 750) return "较重";
-  return "重";
+const DIM_GROUP_TO_FRONT_ID = {
+  interaction_expression: "interaction",
+  perception_understanding: "perception",
+  mobility_navigation: "motion",
+  safety_trust: "safety",
+  expand_connect: "extend",
+  ops_maintenance: "ops"
+};
+const EMPTY_CARD_CATALOG = DIMS.reduce((acc, dim) => {
+  acc[dim.id] = [];
+  return acc;
+}, {});
+const TIER_LABELS = { low: "基础", mid: "标准", high: "旗舰" };
+const CARD_COPY_BY_ID = Object.values(CARD_COPY).flat().reduce((acc, card) => {
+  acc[card.id] = card;
+  return acc;
+}, {});
+
+function buildCardCatalog(rdCards) {
+  const next = DIMS.reduce((acc, dim) => {
+    acc[dim.id] = [];
+    return acc;
+  }, {});
+  (Array.isArray(rdCards?.groups) ? rdCards.groups : []).forEach((group) => {
+    const dimId = DIM_GROUP_TO_FRONT_ID[String(group?.group_id || "").trim()];
+    if (!dimId) return;
+    (Array.isArray(group?.capabilities) ? group.capabilities : []).forEach((cap) => {
+      const backendId = String(cap?.cap_id || cap?.id || "").trim();
+      if (!backendId) return;
+      const id = BACK_TO_FRONT_ID[backendId] || backendId;
+      const copy = CARD_COPY_BY_ID[id] || {};
+      const tiers = TS.reduce((acc, tierId) => {
+        const sourceTier = cap?.tiers?.[tierId] || {};
+        const copyTier = copy?.tiers?.[tierId] || {};
+        acc[tierId] = {
+          l: copyTier.l || TIER_LABELS[tierId],
+          d: copyTier.d || String(sourceTier.description || sourceTier.desc || ""),
+          cost: Number(sourceTier.dCOGS || 0),
+          nre: Number(cap.nre || 0)
+        };
+        return acc;
+      }, {});
+      next[dimId].push({
+        ...copy,
+        id,
+        backendId,
+        n: copy.n || cap.name || backendId,
+        what: copy.what || String(cap.what || cap.description || ""),
+        nreDesc: String(cap.nre_desc || copy.nreDesc || ""),
+        riskNote: copy.riskNote || String(cap.risk_note || cap.risk || ""),
+        tiers
+      });
+    });
+  });
+  return next;
 }
 
-function getNreLabel(nreWan) {
-  const value = Number(nreWan || 0);
-  if (value < 60) return "轻";
-  if (value < 120) return "中";
-  if (value < 180) return "较重";
-  return "重";
-}
-
-function getHintTone(label) {
-  if (label === "降本" || label === "轻") return { bg: "#ecfdf5", fg: "#166534", border: "#bbf7d0" };
-  if (label === "中") return { bg: "#fffbeb", fg: "#92400e", border: "#fde68a" };
-  if (label === "较重") return { bg: "#fff7ed", fg: "#c2410c", border: "#fdba74" };
-  return { bg: "#fef2f2", fg: "#b91c1c", border: "#fecaca" };
+function calcCostFromCatalog(s, cardCatalog) {
+  let cost = 0;
+  let nreWan = 0;
+  let cnt = 0;
+  const allCards = Object.values(cardCatalog || {}).flat();
+  Object.entries(s || {}).forEach(([id, t]) => {
+    const c = allCards.find((card) => card.id === id);
+    const tier = c?.tiers?.[t];
+    if (c && tier) {
+      cost += Number(tier.cost || 0);
+      nreWan += Number(tier.nre || 0);
+      cnt += 1;
+    }
+  });
+  return { cost, nreWan, cnt };
 }
 
 function formatSignedCurrency(value) {
-  const num = Number(value || 0);
-  return `${num > 0 ? "+" : ""}¥${num.toLocaleString()}`;
+  return formatSignedYuan(value);
 }
 
 function readTeamContextFromUrl() {
@@ -455,11 +474,17 @@ function normalizePricingContext(...sources) {
     const defaultPrice = parsePositiveNumberOrNull(ctx.default_price)
       || parsePositiveNumberOrNull(ctx.P)
       || Math.round((min + max) / 2 / step) * step;
+    const fixedBaseWan = parseFiniteNumberOrNull(ctx.fixed_base_wan);
+    const fixedBase = parseFiniteNumberOrNull(ctx.fixed_base);
+    const cogsBase = parseFiniteNumberOrNull(ctx.COGSbase);
     return {
       price_min: min,
       price_max: max,
       price_step: step,
-      default_price: Math.max(min, Math.min(max, defaultPrice))
+      default_price: Math.max(min, Math.min(max, defaultPrice)),
+      fixed_base_wan: fixedBaseWan,
+      fixed_base: fixedBase,
+      COGSbase: cogsBase
     };
   }
   return null;
@@ -474,9 +499,9 @@ function clampPriceToContext(price, pricingContext) {
   return Math.max(min, Math.min(max, parsed));
 }
 
-function buildRadarFromSelections(sels) {
+function buildRadarFromSelections(sels, cardCatalog = EMPTY_CARD_CATALOG) {
   return DIMS.reduce((acc, dim) => {
-    const cards = CC[dim.id] || [];
+    const cards = cardCatalog[dim.id] || [];
     const total = cards.reduce((sum, card) => {
       const tier = sels[card.id];
       return tier ? sum + TI[tier] + 1 : sum;
@@ -484,25 +509,6 @@ function buildRadarFromSelections(sels) {
     acc[dim.id] = Number(clamp(4 + total, 1, 9).toFixed(1));
     return acc;
   }, {});
-}
-
-function radarToInterviewScores(radar) {
-  const src = radar && typeof radar === "object" ? radar : {};
-  return {
-    interaction: Number(src.interaction || 0),
-    perception: Number(src.perception || 0),
-    motion: Number(src.motion != null ? src.motion : src.mobility || 0),
-    safety: Number(src.safety != null ? src.safety : src.safety_privacy || 0),
-    extend: Number(src.extend != null ? src.extend : src.integration || 0),
-    ops: Number(src.ops != null ? src.ops : src.operations || 0)
-  };
-}
-
-function scoreToImportance(score) {
-  const n = Number(score || 0);
-  if (n >= 7) return "高";
-  if (n >= 5) return "中";
-  return "低";
 }
 
 function selectionsMapToArray(sels) {
@@ -516,27 +522,22 @@ function buildInterviewSummary(result, memberDims) {
   if (!result) return "";
   const explicitSummary = String(result.summary || "").trim();
   if (explicitSummary) return explicitSummary;
-  const scores = radarToInterviewScores(result.radar);
-  const topDims = (Array.isArray(memberDims) ? memberDims : [])
-    .map((dimId) => ({
-      dimId,
-      dim: DIMS.find((item) => item.id === dimId),
-      score: Number(scores[dimId] || 0)
-    }))
-    .filter((item) => item.dim)
-    .sort((a, b) => b.score - a.score);
   const tagText = (Array.isArray(result.tags) ? result.tags : [])
     .map((item) => String(item?.tag || "").trim())
     .filter(Boolean)
     .slice(0, 4)
     .join("、");
-  if (!topDims.length && !tagText) return "";
-  const dimText = topDims
-    .slice(0, 2)
-    .map((item) => `${item.dim.l}（${scoreToImportance(item.score)}）`)
-    .join("、");
-  if (dimText && tagText) return `访谈显示用户最关注 ${dimText}，关键词包括 ${tagText}。`;
-  return dimText || tagText;
+  return tagText ? `访谈关键词包括 ${tagText}。` : "";
+}
+
+function isStudentMergedInterviewReady(mergeData) {
+  const mergedInterview = mergeData?.mergedInterview;
+  if (!mergedInterview || typeof mergedInterview !== "object") return false;
+  if (String(mergedInterview.summaryText || mergedInterview.summary_text || "").trim()) return true;
+  if (String(mergedInterview.selectedArchetypeId || mergedInterview.selected_archetype_id || "").trim()) return true;
+  if (String(mergeData?.selected_persona_id || mergeData?.selectedPersonaId || "").trim()) return true;
+  if (Array.isArray(mergedInterview.tags) && mergedInterview.tags.length > 0) return true;
+  return Number.isFinite(Number(mergedInterview.evi));
 }
 
 function renderInlineBold(text) {
@@ -653,7 +654,7 @@ function buildVpRecapSentence(summary, fallbackText) {
   const boundary = String(src.boundary || "").trim();
 
   if (who && pain && how) {
-    let sentence = `为${who}，在${pain}的场景下，LOVOT通过${how}创造更好的结果。`;
+    let sentence = `为${who}，在${pain}的场景下，这款 AI 宠物机器人通过${how}创造更好的结果。`;
     if (boundary && boundary !== "未明确") {
       sentence += ` 适用边界：${boundary}。`;
     }
@@ -691,14 +692,14 @@ function formatRecapComparison(recap) {
     round1: {
       gridLabel: String(src.round1_grid_label || formatGridLabel(src.final_grid_id) || "待揭示").trim() || "待揭示",
       sam: round1Sam != null ? `${Math.round(round1Sam).toLocaleString()} 亿` : "待揭示",
-      wtp: round1WtpAdj != null ? `¥${Math.round(round1WtpAdj).toLocaleString()}` : "待揭示"
+      wtp: round1WtpAdj != null ? formatYuan(round1WtpAdj) : "待揭示"
     },
     round2: {
       gridLabel: String(src.matched_grid_label || "待揭示").trim() || "待揭示",
       sam: matchedSam != null ? `${Math.round(matchedSam).toLocaleString()} 亿` : "待揭示",
-      wtp: matchedWtpRef != null ? `¥${Math.round(matchedWtpRef).toLocaleString()}` : "待揭示",
+      wtp: matchedWtpRef != null ? formatYuan(matchedWtpRef) : "待揭示",
       detail: matchedWtpMean != null
-        ? `WTPmean ¥${Math.round(matchedWtpMean).toLocaleString()}`
+        ? `WTPmean ${formatYuan(matchedWtpMean)}`
         : ""
     },
     alignmentLabel: String(src.execution_alignment_label || "").trim(),
@@ -916,10 +917,13 @@ export default function App() {
   const [isSendingInterview, setIsSendingInterview] = useState(false);
   const [isSubmittingIndividual, setIsSubmittingIndividual] = useState(false);
   const [individualSubmitError, setIndividualSubmitError] = useState("");
+  const [isResearchDrawerOpen, setIsResearchDrawerOpen] = useState(false);
   const [mergeData, setMergeData] = useState(null);
   const [mergeError, setMergeError] = useState("");
   const [teamDraftSelections, setTeamDraftSelections] = useState({});
   const [teamResultSnapshot, setTeamResultSnapshot] = useState(null);
+  const [rdCards, setRdCards] = useState(null);
+  const [rdCardsError, setRdCardsError] = useState("");
   const interviewInputRef = useRef(null);
   const round2DraftTouchedRef = useRef(false);
   const previousStatusRef = useRef("");
@@ -935,6 +939,29 @@ export default function App() {
 
   const isTeamMode = Boolean(teamId);
   const isSummaryMode = interviewMode !== "live";
+  const cardCatalog = useMemo(() => buildCardCatalog(rdCards), [rdCards]);
+  const cardsLoaded = Object.values(cardCatalog).some((cards) => cards.length > 0);
+  const allCards = useMemo(() => Object.values(cardCatalog).flat(), [cardCatalog]);
+  const findCard = useCallback((id) => allCards.find((card) => card.id === id), [allCards]);
+
+  useEffect(() => {
+    let canceled = false;
+    const controller = new AbortController();
+    getRdCards({ signal: controller.signal })
+      .then((out) => {
+        if (canceled) return;
+        setRdCards(out || null);
+        setRdCardsError("");
+      })
+      .catch((error) => {
+        if (error?.name === "AbortError" || canceled) return;
+        setRdCardsError(error?.message || "研发能力卡数据加载失败");
+      });
+    return () => {
+      canceled = true;
+      controller.abort();
+    };
+  }, []);
 
   useEffect(() => {
     const ctx = readTeamContextFromUrl();
@@ -1335,8 +1362,8 @@ export default function App() {
     return sel;
   }, [serverSelections, teamDraftSelections, sel]);
 
-const indCalc = useMemo(() => calcCost(sel), [sel]);
-  const teamCalc = useMemo(() => calcCost(teamSel), [teamSel]);
+  const indCalc = useMemo(() => calcCostFromCatalog(sel, cardCatalog), [sel, cardCatalog]);
+  const teamCalc = useMemo(() => calcCostFromCatalog(teamSel, cardCatalog), [teamSel, cardCatalog]);
   const effectivePricingContext = useMemo(
     () => normalizePricingContext(round2PricingContext, mergeData, teamRecap),
     [round2PricingContext, mergeData, teamRecap]
@@ -1346,15 +1373,17 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
   const priceStep = parsePositiveNumberOrNull(effectivePricingContext?.price_step) || 100;
   const fallbackPrice = parsePositiveNumberOrNull(effectivePricingContext?.default_price) || 0;
   const priceSliderReady = priceMin > 0 && priceMax > priceMin;
-  const baseCost = Number(teamRecap?.COGSbase || V);
+  const baseCost = Number(teamRecap?.COGSbase || effectivePricingContext?.COGSbase || 0);
   const channelFee = Number(
     teamRecap?.f != null
       ? teamRecap.f
       : deriveChannelFeeFromGrid(teamInfo?.final_grid_id || teamRecap?.final_grid_id || "")
   );
   const teamUnitCost = baseCost + teamCalc.cost;
-  const teamFixedCost = F_BASE + teamCalc.nreWan * 10000;
-  const teamFixedCostWan = F_BASE_WAN + teamCalc.nreWan;
+  const fixedBaseWan = Number(effectivePricingContext?.fixed_base_wan ?? teamRecap?.fixed_base_wan ?? 0);
+  const fixedBase = Number(effectivePricingContext?.fixed_base ?? teamRecap?.fixed_base ?? fixedBaseWan * 10000);
+  const teamFixedCost = fixedBase + teamCalc.nreWan * 10000;
+  const teamFixedCostWan = fixedBaseWan + teamCalc.nreWan;
   const previewUnitMargin = Math.round((teamPrice || fallbackPrice) * (1 - channelFee) - teamUnitCost);
   const previewBreakevenQ = previewUnitMargin > 0 ? Math.ceil(teamFixedCost / previewUnitMargin) : null;
   const submittedCalc = teamResultSnapshot?.result || null;
@@ -1426,10 +1455,6 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
   const interviewDimensionGuide = useMemo(
     () => buildDimensionGuideItems(memberDims),
     [memberDims]
-  );
-  const mergedInterviewScores = useMemo(
-    () => radarToInterviewScores(mergeData?.mergedInterview?.radar),
-    [mergeData]
   );
   const activeInterviewPersona = interviewPersonas[0] || null;
   const activeSummaryReport = useMemo(() => {
@@ -1521,10 +1546,35 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
   const showInterviewComposer = Boolean(interviewSessionId) && !interviewTransition && interviewRetryAction?.type !== "rescore";
   const showInterviewSummary = !showInterviewComposer && Boolean(interviewResult);
   const showInterviewEndButton = showInterviewComposer && interviewCanEnd && interviewRound >= INTERVIEW_MIN_TURNS && interviewRound < INTERVIEW_MAX_TURNS;
-  const hasMergedInterviewReady = Boolean(
-    mergeData?.mergedInterview?.radar
-    && Object.keys(mergeData.mergedInterview.radar || {}).length > 0
-  );
+  const hasMergedInterviewReady = isStudentMergedInterviewReady(mergeData);
+  const completedInterviewMaterials = useMemo(() => {
+    if (isSummaryMode) return [];
+    const completed = Array.isArray(interviewProgress?.completedInterviews)
+      ? interviewProgress.completedInterviews
+      : [];
+    if (completed.length) {
+      return completed.map((session, sessionIndex) => ({
+        id: session.session_id || `completed-${sessionIndex}`,
+        personaName: session.persona_name || session.persona?.name || `访谈对象 ${sessionIndex + 1}`,
+        summary: String(session.result?.summary || session.summary || "").trim(),
+        messages: (Array.isArray(session.messages) ? session.messages : [])
+          .map((message, index) => toInterviewMessage(message, index))
+          .filter((message) => message.text)
+      }));
+    }
+    const messages = (Array.isArray(interviewMessages) ? interviewMessages : [])
+      .filter((message) => message?.text);
+    if (!messages.length && !interviewResult) return [];
+    return [{
+      id: "current-interview",
+      personaName: activeInterviewPersona?.name || "访谈对象",
+      summary: String(interviewResult?.summary || buildInterviewSummary(interviewResult, memberDims) || "").trim(),
+      messages
+    }];
+  }, [activeInterviewPersona, interviewMessages, interviewProgress, interviewResult, isSummaryMode, memberDims]);
+  const hasResearchMaterials = isSummaryMode
+    ? Boolean(selectedPersonaSummaryText)
+    : completedInterviewMaterials.some((item) => item.summary || item.messages.length);
   const canEnterCards = isSummaryMode
     ? Boolean(selectedPersonaChoice?.summary_text)
     : Boolean(interviewProgress.canProceed || memberState?.interview_status === "completed");
@@ -1877,13 +1927,8 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
       setInterviewRetryAction(null);
       const out = await endRound2Interview({ sessionId: interviewSessionId });
       setInterviewResult({
-        radar: out.radar || null,
         tags: out.tags || [],
         evi: out.evi,
-        confidence: out.confidence || {},
-        lowConfidenceDims: out.lowConfidenceDims || [],
-        insightsByDim: out.insightsByDim || {},
-        scoreSource: out.scoreSource || {},
         summary: out.summary || ""
       });
       setInterviewSessionId("");
@@ -2089,13 +2134,8 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
       setInterviewCanEnd(Boolean(out.canEnd));
       if (out.isComplete) {
         const nextResult = {
-          radar: out.radar || null,
           tags: out.tags || [],
           evi: out.evi,
-          confidence: out.confidence || {},
-          lowConfidenceDims: out.lowConfidenceDims || [],
-          insightsByDim: out.insightsByDim || {},
-          scoreSource: out.scoreSource || {},
           summary: out.summary || ""
         };
         setInterviewResult(nextResult);
@@ -2187,13 +2227,8 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
         setInterviewCanEnd(Boolean(out.canEnd));
         if (out.isComplete) {
           const nextResult = {
-            radar: out.radar || null,
             tags: out.tags || [],
             evi: out.evi,
-            confidence: out.confidence || {},
-            lowConfidenceDims: out.lowConfidenceDims || [],
-            insightsByDim: out.insightsByDim || {},
-            scoreSource: out.scoreSource || {},
             summary: out.summary || ""
           };
           setInterviewResult(nextResult);
@@ -2214,13 +2249,8 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
       const out = await rescoreRound2Interview(interviewRetryAction.sessionId);
       setInterviewRetryAction(null);
       setInterviewResult({
-        radar: out.radar || null,
         tags: out.tags || [],
         evi: out.evi,
-        confidence: out.confidence || {},
-        lowConfidenceDims: out.lowConfidenceDims || [],
-        insightsByDim: out.insightsByDim || {},
-        scoreSource: out.scoreSource || {},
         summary: out.summary || ""
       });
       const refreshed = await getRound2InterviewSession(teamId, memberId, "", {});
@@ -2313,7 +2343,6 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
     try {
       setIsSubmittingFinal(true);
       setSubmitError("");
-      const radar = mergeData?.mergedInterview?.radar || buildRadarFromSelections(teamSel);
       const submitSelections = toSubmitSelectionsMap(teamSel);
       const finalPrice = parsePositiveNumberOrNull(teamPrice)
         || parsePositiveNumberOrNull(teamRecap?.P)
@@ -2324,7 +2353,6 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
         session_id: sessionId,
         price: finalPrice,
         selections: submitSelections,
-        radar,
         mergedInterview: mergeData?.mergedInterview || null
       });
       setTeamPrice(finalPrice);
@@ -2347,6 +2375,118 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
       setIsSubmittingFinal(false);
     }
   }, [fallbackPrice, hasMergedInterviewReady, isTeamMode, isSubmittingFinal, memberId, mergeData, round2TeamControlsLocked, sessionId, teamId, teamPrice, teamRecap, teamSel]);
+
+  const renderResearchDrawer = () => (
+    <>
+      <button
+        type="button"
+        onClick={() => setIsResearchDrawerOpen((open) => !open)}
+        aria-expanded={isResearchDrawerOpen}
+        aria-label={isResearchDrawerOpen ? "收起调研资料" : "展开调研资料"}
+        style={{
+          position: "fixed",
+          right: isResearchDrawerOpen ? "min(420px, 86vw)" : 0,
+          top: "calc(50% + 132px)",
+          transform: "translateY(-50%)",
+          zIndex: 1000,
+          width: 30,
+          minHeight: 110,
+          border: "none",
+          borderRadius: "6px 0 0 6px",
+          background: "rgba(26, 92, 58, 0.9)",
+          color: "#fff",
+          font: "inherit",
+          fontSize: 13,
+          fontWeight: 800,
+          letterSpacing: "0.08em",
+          boxShadow: "0 10px 24px rgba(15, 23, 42, 0.16)",
+          cursor: "pointer",
+          transition: "right 220ms ease, background 180ms ease"
+        }}
+      >
+        <span style={{writingMode:"vertical-rl",textOrientation:"mixed",display:"inline-block",padding:"14px 6px"}}>
+          调研资料
+        </span>
+      </button>
+      <aside
+        aria-label="调研资料"
+        style={{
+          position: "fixed",
+          top: 0,
+          right: 0,
+          width: "min(420px, 86vw)",
+          height: "100vh",
+          zIndex: 999,
+          background: "#fafaf8",
+          borderLeft: "1px solid #dbe5dd",
+          boxShadow: isResearchDrawerOpen ? "-16px 0 36px rgba(15, 23, 42, 0.16)" : "none",
+          transform: isResearchDrawerOpen ? "translateX(0)" : "translateX(100%)",
+          transition: "transform 220ms ease",
+          display: "flex",
+          flexDirection: "column",
+          pointerEvents: isResearchDrawerOpen ? "auto" : "none"
+        }}
+      >
+        <div style={{padding:"16px 18px",background:"#fff",borderBottom:"1px solid #e5e7eb",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
+          <div>
+            <div style={{fontSize:15,fontWeight:900,color:"#111827"}}>调研资料</div>
+            <div style={{fontSize:12,color:"#6b7280",marginTop:3}}>
+              仅回看本局已获得材料
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsResearchDrawerOpen(false)}
+            aria-label="关闭调研资料"
+            style={{width:34,height:34,borderRadius:8,border:"1px solid #d1d5db",background:"#fff",fontSize:20,lineHeight:1,cursor:"pointer"}}
+          >
+            ×
+          </button>
+        </div>
+        <div style={{flex:1,minHeight:0,overflowY:"auto",padding:16}}>
+          {!hasResearchMaterials ? (
+            <div style={{padding:"24px 18px",borderRadius:12,background:"#fff",border:"1px solid #e5e7eb",fontSize:13,color:"#6b7280",lineHeight:1.8,textAlign:"center"}}>
+              本局暂无调研资料
+            </div>
+          ) : isSummaryMode ? (
+            <div style={{padding:"16px 18px",borderRadius:12,background:"#fff",border:"1px solid #dbe5dd",fontSize:13,color:"#374151",lineHeight:1.85}}>
+              <div style={{fontSize:14,fontWeight:800,color:"#166534",marginBottom:10}}>{summaryReportTitle}</div>
+              {renderReportText(selectedPersonaSummaryText)}
+            </div>
+          ) : (
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              {completedInterviewMaterials.map((item, index) => (
+                <div key={item.id || index} style={{padding:"14px 16px",borderRadius:12,background:"#fff",border:"1px solid #e5e7eb"}}>
+                  <div style={{fontSize:14,fontWeight:800,color:"#111827",marginBottom:8}}>
+                    {item.personaName || `访谈对象 ${index + 1}`}
+                  </div>
+                  {item.summary && (
+                    <div style={{fontSize:13,color:"#374151",lineHeight:1.8,marginBottom:10}}>
+                      {item.summary}
+                    </div>
+                  )}
+                  {item.messages.length > 0 && (
+                    <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                      {item.messages.map((message, messageIndex) => (
+                        <div key={`${item.id || index}-${message.id || messageIndex}`} style={{padding:"8px 10px",borderRadius:8,background:message.role === "user" ? "#f0fdf4" : "#f9fafb",border:"1px solid #e5e7eb"}}>
+                          <div style={{fontSize:11,fontWeight:800,color:message.role === "user" ? "#166534" : "#6b7280",marginBottom:4}}>
+                            {message.speaker || (message.role === "user" ? "你" : "访谈对象")}
+                          </div>
+                          <div style={{fontSize:12,color:"#374151",lineHeight:1.7,whiteSpace:"pre-wrap"}}>
+                            {message.text}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </aside>
+    </>
+  );
 
   // ── Render card (individual mode: no cost numbers) ──
   const renderCard = (card, dim, sels, showCost, mode) => {
@@ -2389,10 +2529,6 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
             const td = card.tiers[t];
             const active = tier===t && isOn;
             const ac = card.tag==="降本"?"#2FAB6E":dim.c;
-            const dcogsLabel = getDcogsLabel(td.cost);
-            const nreLabel = getNreLabel(td.nre);
-            const dcogsTone = getHintTone(dcogsLabel);
-            const nreTone = getHintTone(nreLabel);
             return (
               <div
                 key={t}
@@ -2413,12 +2549,9 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                   </div>
                   {!showCost && (
                     <>
-                      <div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:6}}>
-                        <span style={{fontSize:10,padding:"2px 6px",borderRadius:999,background:dcogsTone.bg,color:dcogsTone.fg,fontWeight:700,border:`1px solid ${dcogsTone.border}`}}>
-                          单位成本：{dcogsLabel}
-                        </span>
-                        <span style={{fontSize:10,padding:"2px 6px",borderRadius:999,background:nreTone.bg,color:nreTone.fg,fontWeight:700,border:`1px solid ${nreTone.border}`}}>
-                          研发投入：{nreLabel}
+                      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:6}}>
+                        <span style={{fontSize:10,padding:"2px 6px",borderRadius:999,background:"#f9fafb",color:"#374151",fontWeight:700,border:"1px solid #e5e7eb"}}>
+                          单位成本 {formatSignedCurrency(td.cost)}/台 · 研发投入 {formatWan(td.nre)}
                         </span>
                       </div>
                       <div style={{fontSize:10,color:"#6b7280",lineHeight:1.6,marginTop:6}}>
@@ -2434,7 +2567,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                       {formatSignedCurrency(td.cost)}/台
                     </span>
                     <span style={{fontSize:11,fontWeight:700,color:"#7c2d12"}}>
-                      NRE {td.nre}万
+                      NRE {formatWan(td.nre)}
                     </span>
                   </div>
                 )}
@@ -2446,7 +2579,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
         {/* Dependencies */}
         {isOn && card.deps?.filter(d => TS.indexOf(d.tier) <= TS.indexOf(tier)).map((dep, i) => (
           <div key={`${dep.type}-${dep.target}-${dep.tl}-${dep.tier || i}`} style={{marginTop:6,marginLeft:24,padding:"4px 8px",borderRadius:4,background:dep.cross?"#EFF6FF":"#FEF3C7",border:dep.cross?"1px solid #BFDBFE":"1px solid #FDE68A",fontSize:11,color:dep.cross?"#1E40AF":"#92400E"}}>
-            {dep.type} <strong>{fc(dep.target)?.n||dep.target}</strong> 达到{dep.tl}以上{dep.cross && <span style={{opacity:0.7}}>（其他成员负责）</span>}
+            {dep.type} <strong>{findCard(dep.target)?.n||dep.target}</strong> 达到{dep.tl}以上{dep.cross && <span style={{opacity:0.7}}>（其他成员负责）</span>}
           </div>
         ))}
         {hasConflict && !isOn && <div style={{marginTop:6,marginLeft:24,fontSize:11,color:"#DC2626"}}>✕ 与已选能力卡冲突</div>}
@@ -2456,9 +2589,8 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
 
   const renderDimGroup = (dimId, sels, showCost, mode) => {
     const dim = DIMS.find(d=>d.id===dimId);
-    const cards = CC[dimId]||[];
+    const cards = cardCatalog[dimId]||[];
     const cnt = cards.filter(c=>!!sels[c.id]).length;
-    const imp = IMP[dimId];
     return (
       <div key={dimId} data-testid={`r2-dim-${dimId}`} style={{marginBottom:8}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",background:dim.c+"10",borderBottom:`3px solid ${dim.c}`,borderRadius:"10px 10px 0 0"}}>
@@ -2467,7 +2599,6 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
             <span style={{fontSize:12,color:"#666",marginLeft:8}}>{dim.desc}</span>
           </div>
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
-            <span style={{fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:4,background:IMP_C[imp]+"15",color:IMP_C[imp]}}>用户需求：{imp}</span>
             <span style={{fontSize:12,fontWeight:600,color:dim.c}}>{cnt > 0 ? `已选 ${cnt} 张` : ""}</span>
           </div>
         </div>
@@ -2480,7 +2611,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
 
   // ── Simple radar chart (SVG) ──
   const RadarChart = ({sels}) => {
-    const capabilityScores = buildRadarFromSelections(sels || {});
+    const capabilityScores = buildRadarFromSelections(sels || {}, cardCatalog);
     const hasAnySelection = Object.keys(sels || {}).length > 0;
     const dimScores = DIMS.map((dim) => {
       if (!hasAnySelection) return 0;
@@ -2702,7 +2833,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
               📋 决策任务回顾：AI 硬件中国市场的创新战略
             </div>
             <div style={{fontSize:14,color:"#555",lineHeight:1.8}}>
-              LOVOT 是一款 AI 机器人，你们的团队正在为它寻找<strong>中国市场的最佳定位</strong>，并基于这个定位进行<strong>产品创新改造</strong>。第一轮你们确定了战略方向，第二轮你们将把战略落地为具体的产品。
+              你们正在为一款 AI 宠物机器人寻找<strong>中国市场的最佳定位</strong>，并基于这个定位进行<strong>产品创新改造</strong>。第一轮你们确定了战略方向，第二轮你们将把战略落地为具体的产品。
             </div>
           </div>
 
@@ -3223,21 +3354,6 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                 <p style={{fontSize:12,color:"#888",margin:"0 0 8px"}}>
                   {showInterviewSummary ? buildInterviewSummary(interviewResult, memberDims) : "当前完成一场访谈后，这里会展示对应的真实提炼结果。"}
                 </p>
-                {showInterviewSummary && (
-                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                    {memberDims.map((dimId) => {
-                      const dim = DIMS.find((item) => item.id === dimId);
-                      if (!dim) return null;
-                      const interviewScores = radarToInterviewScores(interviewResult?.radar);
-                      const importance = scoreToImportance(interviewScores[dim.id]);
-                      return (
-                        <span key={dim.id} style={{fontSize:11,padding:"4px 10px",borderRadius:6,background:IMP_C[importance]+"12",color:IMP_C[importance],fontWeight:600,border:`1px solid ${IMP_C[importance]}30`}}>
-                          {dim.icon} {dim.l}：{importance}
-                        </span>
-                      );
-                    })}
-                  </div>
-                )}
                 {showInterviewSummary && interviewResult?.tags?.length > 0 && (
                   <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:10}}>
                     {interviewResult.tags.slice(0, 6).map((item, index) => (
@@ -3295,26 +3411,37 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
         </div>
       )}
 
-      {/* ═══ Step 2: 个人选卡 (NO cost numbers) ═══ */}
+      {/* ═══ Step 2: 个人选卡 ═══ */}
       {step===2 && (
         <div data-testid="r2-card-selection-container">
+          {renderResearchDrawer()}
           <div style={{background:"#fff",padding:"14px 18px",borderRadius:"14px 14px 0 0",border:"1px solid #e5e7eb",borderBottom:"none"}}>
             <h2 style={{fontSize:18,fontWeight:800,margin:"0 0 4px"}}>个人选卡（{memberName}）</h2>
             <p style={{fontSize:13,color:"#666",margin:0,lineHeight:1.6}}>
               为你负责的维度选择能力卡。根据访谈结果和你的判断，把你认为产品应该具备的能力都选上，再选择合适的档次。
-              <br/><span style={{color:"#999"}}>现在只展示<strong>单位成本</strong>和<strong>研发投入</strong>的定性标签，以及团队投入说明；具体数字会在团队合并后统一揭示。</span>
+              <br/><span style={{color:"#999"}}>每个档位会显示单位成本、研发投入和团队投入说明，便于你在能力与成本之间取舍。</span>
             </p>
           </div>
-          {/* Sticky bar — individual: no cost numbers */}
-          <div style={{position:"sticky",top:0,zIndex:10,display:"flex",gap:10,padding:"10px 16px",background:"#fff",border:"1px solid #e5e7eb",borderTop:"none",borderRadius:"0 0 14px 14px",marginBottom:8,boxShadow:"0 2px 8px rgba(0,0,0,0.04)"}}>
+          {/* Sticky bar */}
+          <div style={{position:"sticky",top:0,zIndex:10,display:"flex",gap:10,padding:"10px 16px",background:"#fff",border:"1px solid #e5e7eb",borderTop:"none",borderRadius:"0 0 14px 14px",marginBottom:8,boxShadow:"0 2px 8px rgba(0,0,0,0.04)",flexWrap:"wrap",alignItems:"center"}}>
             <div data-testid="r2-budget-display" style={{padding:"6px 14px",borderRadius:8,background:"#f9fafb",border:"1px solid #e5e7eb",fontSize:13,color:"#374151"}}>
-              已选 <strong>{indCalc.cnt}</strong> 张
+              已选 <strong>{indCalc.cnt}</strong> 张 · dCOGS 小计 <strong>{formatSignedCurrency(indCalc.cost)}/台</strong> · NRE 小计 <strong>{formatWan(indCalc.nreWan)}</strong>
             </div>
             <div style={{flex:1}}/>
-            <button onClick={handleIndividualSubmit} disabled={indCalc.cnt < 1 || isSubmittingIndividual} style={{padding:"6px 20px",borderRadius:8,background:indCalc.cnt>=1?"#1a5c3a":"#d1d5db",color:"#fff",border:"none",fontSize:13,fontWeight:700,cursor:isSubmittingIndividual?"wait":(indCalc.cnt>=1?"pointer":"not-allowed"),opacity:isSubmittingIndividual?0.7:1}}>
+            <button onClick={handleIndividualSubmit} disabled={!cardsLoaded || indCalc.cnt < 1 || isSubmittingIndividual} style={{padding:"6px 20px",borderRadius:8,background:(cardsLoaded&&indCalc.cnt>=1)?"#1a5c3a":"#d1d5db",color:"#fff",border:"none",fontSize:13,fontWeight:700,cursor:isSubmittingIndividual?"wait":(cardsLoaded&&indCalc.cnt>=1?"pointer":"not-allowed"),opacity:isSubmittingIndividual?0.7:1}}>
               {isSubmittingIndividual ? "提交中..." : "提交个人选卡 →"}
             </button>
           </div>
+          {rdCardsError && (
+            <div style={{margin:"0 0 12px",padding:"10px 14px",borderRadius:8,background:"#fef2f2",border:"1px solid #fecaca",fontSize:12,color:"#991b1b",lineHeight:1.7}}>
+              {rdCardsError}
+            </div>
+          )}
+          {!cardsLoaded && !rdCardsError && (
+            <div style={{margin:"0 0 12px",padding:"10px 14px",borderRadius:8,background:"#f9fafb",border:"1px solid #e5e7eb",fontSize:12,color:"#6b7280",lineHeight:1.7}}>
+              正在加载研发能力卡成本数据……
+            </div>
+          )}
           {isSubmittingIndividual && (
             <div style={{margin:"0 0 12px",padding:"10px 14px",borderRadius:8,background:"#fffbeb",border:"1px solid #fde68a",fontSize:12,color:"#92400e",lineHeight:1.7}}>
               正在提交个人选卡，请稍候。提交成功后会自动进入团队合并。
@@ -3329,22 +3456,6 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                 ? (selectedPersonaSummaryText || "请先在上一步阅读调研报告，再根据这份报告选卡。")
                 : (buildInterviewSummary(interviewResult, memberDims) || "请先完成真实访谈，再根据提炼结果选卡。")}
             </div>
-            {!isSummaryMode && (
-              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                {memberDims.map(d => {
-                  const dm = DIMS.find(x=>x.id===d);
-                  const interviewScores = radarToInterviewScores(interviewResult?.radar);
-                  const importance = Boolean(interviewResult)
-                    ? scoreToImportance(interviewScores[d])
-                    : IMP[d];
-                  return (
-                    <span key={d} style={{fontSize:11,padding:"3px 8px",borderRadius:4,background:IMP_C[importance]+"12",color:IMP_C[importance],fontWeight:600,border:`1px solid ${IMP_C[importance]}30`}}>
-                      {dm.icon} {dm.l}：{importance}
-                    </span>
-                  );
-                })}
-              </div>
-            )}
             {individualSubmitError && (
               <div style={{fontSize:12,color:"#b91c1c",marginTop:10}}>
                 {individualSubmitError}
@@ -3360,8 +3471,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
       {step===3 && (() => {
         // Margin calculation for display
         const currentGM = calcGM(teamCalc.cost, teamPrice || fallbackPrice, channelFee, baseCost);
-        const gmColor = currentGM >= 40 ? "#166534" : currentGM >= 25 ? "#D97706" : "#DC2626";
-        const gmStatus = currentGM >= 40 ? "\u5065\u5EB7" : currentGM >= 25 ? "\u504F\u7D27" : "\u5371\u9669";
+        const gmColor = "#374151";
         return (
         <div data-testid="r2-merge-container" style={{background:"#fff",borderRadius:14,padding:24,border:"1px solid #e5e7eb"}}>
           <h2 style={{fontSize:18,fontWeight:800,margin:"0 0 8px"}}>团队合并 — 成本结构第一次揭示</h2>
@@ -3375,7 +3485,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
             <RadarChart sels={teamSel}/>
             <div style={{display:"flex",justifyContent:"center",gap:12,marginTop:8,flexWrap:"wrap"}}>
               {DIMS.map(dim => {
-                const cards = CC[dim.id]||[];
+                const cards = cardCatalog[dim.id]||[];
                 const cnt = cards.filter(c=>!!teamSel[c.id]).length;
                 return (
                   <div key={dim.id} style={{minWidth:160,maxWidth:200,padding:"8px 10px",borderRadius:10,background:"#fff",border:`1px solid ${dim.c}22`,textAlign:"left"}}>
@@ -3394,9 +3504,9 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
             </div>
           </div>
 
-          {/* Interview insights organized BY DIMENSION */}
+          {/* Shared interview narrative */}
           <div style={{marginBottom:20}}>
-            <div style={{fontSize:14,fontWeight:700,color:"#374151",marginBottom:10}}>🎙️ 访谈洞察（按维度）</div>
+            <div style={{fontSize:14,fontWeight:700,color:"#374151",marginBottom:10}}>🎙️ 访谈洞察</div>
             {mergeError && (
               <div style={{padding:"10px 14px",borderRadius:8,background:"#FEF2F2",border:"1px solid #FECACA",fontSize:12,color:"#991B1B",marginBottom:10}}>
                 {mergeError}
@@ -3408,44 +3518,6 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                 {mergeData.mergedInterview.summaryText}
               </div>
             )}
-            {DIMS.map((dim) => {
-              const score = Number(mergedInterviewScores?.[dim.id] || 0);
-              const owners = Array.isArray(mergeData?.mergedInterview?.sourceByDim?.[dim.id])
-                ? mergeData.mergedInterview.sourceByDim[dim.id]
-                : [];
-              return (
-                <div key={dim.id} style={{padding:"10px 14px",borderRadius:8,marginBottom:6,background:dim.c+"06",borderLeft:`4px solid ${dim.c}`}}>
-                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
-                    <span style={{fontSize:13,fontWeight:700,color:dim.c}}>{dim.icon} {dim.l}</span>
-                    <span style={{fontSize:11,padding:"2px 6px",borderRadius:3,background:IMP_C[scoreToImportance(score)]+"12",color:IMP_C[scoreToImportance(score)],fontWeight:600}}>
-                      用户需求：{scoreToImportance(score)}
-                    </span>
-                  </div>
-                  <div style={{fontSize:11,color:"#6b7280",marginBottom:4}}>
-                    {dim.desc}
-                  </div>
-                  <div style={{fontSize:12,color:"#555",lineHeight:1.7}}>
-                    {owners.length
-                      ? owners
-                        .map((item) => {
-                          const sourceName = item.scoreSource === "interview_evidence"
-                            ? "真实访谈"
-                            : item.scoreSource === "grid_prior"
-                              ? "战略先验"
-                              : "当前输入";
-                          const insight = String(item.insight || "").trim();
-                          return insight
-                            ? `${item.memberName}（${sourceName}）：${insight}`
-                            : `${item.memberName}（${sourceName}）：当前合并评分 ${score.toFixed(1)} / 9。`;
-                        })
-                        .join("；")
-                      : (isSummaryMode
-                        ? "该维度来自团队已冻结的调研报告，请结合上方共享叙事和维度强弱做取舍。"
-                        : "当前还没有足够的真实访谈结果支撑该维度。")}
-                  </div>
-                </div>
-              );
-            })}
             {!isSummaryMode && mergeData?.mergedInterview?.tags?.length > 0 && (
               <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:8}}>
                 {mergeData.mergedInterview.tags.slice(0, 8).map((item, index) => (
@@ -3459,14 +3531,13 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
 
           {/* Merge summary */}
           <div style={{display:"flex",gap:10,marginBottom:12,flexWrap:"wrap"}}>
-            <div style={{flex:"1 1 260px",padding:"16px 20px",borderRadius:12,background:currentGM>=40?"#F0FDF4":currentGM>=25?"#FFFBEB":"#FEF2F2",border:currentGM>=40?"1.5px solid #BBF7D0":currentGM>=25?"1.5px solid #FDE68A":"1.5px solid #FECACA"}}>
+            <div style={{flex:"1 1 260px",padding:"16px 20px",borderRadius:12,background:"#f9fafb",border:"1.5px solid #e5e7eb"}}>
               <div style={{fontSize:12,fontWeight:600,color:"#6b7280",marginBottom:4}}>当前毛利率</div>
               <div style={{display:"flex",alignItems:"baseline",gap:8}}>
                 <span style={{fontSize:32,fontWeight:800,color:gmColor}}>{currentGM.toFixed(0)}%</span>
-                <span style={{fontSize:14,fontWeight:600,color:gmColor}}>· {gmStatus}</span>
               </div>
               <div style={{width:"100%",height:8,borderRadius:4,background:"#e5e7eb",marginTop:8}}>
-                <div style={{width:`${Math.min(Math.max(currentGM,0)/60*100,100)}%`,height:"100%",borderRadius:4,background:gmColor,transition:"width 0.3s"}}/>
+                <div style={{width:`${Math.min(Math.max(currentGM,0)/60*100,100)}%`,height:"100%",borderRadius:4,background:"#64748b",transition:"width 0.3s"}}/>
               </div>
             </div>
             <div style={{flex:"1 1 220px",padding:"16px 20px",borderRadius:12,background:teamCalc.cost>=0?"#fff7ed":"#ecfdf5",border:teamCalc.cost>=0?"1.5px solid #fed7aa":"1.5px solid #bbf7d0"}}>
@@ -3479,7 +3550,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
             <div style={{flex:"1 1 220px",padding:"16px 20px",borderRadius:12,background:"#fffbeb",border:"1.5px solid #fde68a"}}>
               <div style={{fontSize:12,fontWeight:600,color:"#6b7280",marginBottom:4}}>研发投入合计</div>
               <div style={{fontSize:28,fontWeight:800,color:"#92400e",marginTop:4}}>
-                {teamCalc.nreWan}万
+                {formatWan(teamCalc.nreWan)}
               </div>
               <div style={{fontSize:11,color:"#999"}}>按当前档位累加的一次性 NRE</div>
             </div>
@@ -3491,7 +3562,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
           </div>
           {teamCalc.cnt > 12 && (
             <div style={{fontSize:13,color:"#6b7280",marginBottom:12}}>
-              当前共选 {teamCalc.cnt} 张卡，研发投入 {teamCalc.nreWan} 万。
+              当前共选 {teamCalc.cnt} 张卡，研发投入 {formatWan(teamCalc.nreWan)}。
             </div>
           )}
 
@@ -3499,26 +3570,20 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
             <div style={{fontSize:13,fontWeight:700,color:"#374151",marginBottom:8}}>已合并能力卡</div>
             <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
               {DIMS.flatMap((dim) => {
-                const cards = CC[dim.id] || [];
+                const cards = cardCatalog[dim.id] || [];
                 return cards
                   .filter((card) => teamSel[card.id])
                   .map((card) => {
                     const td = card.tiers[teamSel[card.id]];
                     return (
                       <span key={card.id} style={{fontSize:11,padding:"4px 8px",borderRadius:999,background:"#fff",border:"1px solid #e5e7eb",color:"#374151"}}>
-                        {card.n} · {td.l} · {formatSignedCurrency(td.cost)}/台 · NRE {td.nre}万
+                        {card.n} · {td.l} · {formatSignedCurrency(td.cost)}/台 · NRE {formatWan(td.nre)}
                       </span>
                     );
                   });
               })}
             </div>
           </div>
-
-          {currentGM < 25 && (
-            <div style={{padding:"10px 14px",borderRadius:8,background:"#FEF2F2",border:"1px solid #FECACA",fontSize:13,color:"#991B1B",marginBottom:12}}>
-              ⚠ 当前技术选择成本过高，毛利率已降至危险区间。在后续团队讨论中，你们需要砍掉或降档一些能力卡来恢复利润空间。
-            </div>
-          )}
 
           <div style={{padding:"10px 14px",borderRadius:8,background:"#FEF3C7",border:"1px solid #FDE68A",fontSize:12,color:"#92400E"}}>
             💡 接下来进入团队讨论和定价。你们已经能看到每张卡的具体 dCOGS 和 NRE，可以开始砍卡、降档或改价格。
@@ -3532,8 +3597,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
       {step===4 && (() => {
         const currentGM = calcGM(teamCalc.cost, teamPrice || fallbackPrice, channelFee, baseCost);
         const gmOk = currentGM >= GM_FLOOR;
-        const gmTier = currentGM >= 40 ? "健康" : currentGM >= 30 ? "良好" : currentGM >= 20 ? "偏紧" : "危险";
-        const gmColor = currentGM >= 40 ? "#166534" : currentGM >= 30 ? "#2FAB6E" : currentGM >= 20 ? "#D97706" : "#DC2626";
+        const gmColor = "#374151";
         return (
         <div>
           <div style={{background:"#fff",padding:"14px 18px",borderRadius:"14px 14px 0 0",border:"1px solid #e5e7eb",borderBottom:"none"}}>
@@ -3557,22 +3621,24 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                 <div style={{padding:"10px 14px",borderRadius:8,border:"1px solid #e5e7eb",marginBottom:10,fontSize:13,lineHeight:1.7}}>
                   <strong>价值主张复盘：</strong>{vpRecapText || "暂无 VP 摘要"}
                 </div>
-                {/* Interview insights by dimension (condensed) */}
+                {/* Interview insights */}
                 <div style={{marginBottom:10}}>
                   <div style={{fontSize:12,fontWeight:700,color:"#374151",marginBottom:6}}>访谈洞察</div>
-                  {DIMS.map((item) => {
-                    const owners = Array.isArray(mergeData?.mergedInterview?.sourceByDim?.[item.id])
-                      ? mergeData.mergedInterview.sourceByDim[item.id]
-                      : [];
-                    const score = Number(mergedInterviewScores?.[item.id] || 0);
-                    if (!owners.length && score <= 0) return null;
-                    return (
-                      <div key={item.id} style={{fontSize:11,color:"#555",padding:"3px 0",display:"flex",gap:6}}>
-                        <span style={{color:item.c,fontWeight:600,flexShrink:0}}>{item.icon}</span>
-                        <span>{item.l}：{owners.length ? `${owners.map((row) => row.memberName).join("、")} 提供输入，评分 ${score.toFixed(1)}/9` : `评分 ${score.toFixed(1)}/9`}</span>
-                      </div>
-                    );
-                  })}
+                  {mergeData?.mergedInterview?.summaryText ? (
+                    <div style={{fontSize:12,color:"#555",lineHeight:1.7}}>
+                      {mergeData.mergedInterview.summaryText}
+                    </div>
+                  ) : mergeData?.mergedInterview?.tags?.length > 0 ? (
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                      {mergeData.mergedInterview.tags.slice(0, 8).map((item, index) => (
+                        <span key={`${item.tag || item}-${index}`} style={{fontSize:11,padding:"3px 8px",borderRadius:999,background:"#EFF6FF",color:"#1E40AF",fontWeight:600}}>
+                          #{String(item.tag || item)}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{fontSize:12,color:"#6b7280",lineHeight:1.7}}>请结合已经完成的访谈记录与团队讨论做取舍。</div>
+                  )}
                 </div>
                 {/* Mini radar */}
                 <RadarChart sels={teamSel}/>
@@ -3580,17 +3646,17 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
             </details>
           </div>
 
-          {/* Sticky metrics — qualitative margin */}
+          {/* Sticky metrics — neutral margin */}
           <div style={{position:"sticky",top:0,zIndex:10,display:"flex",gap:10,padding:"10px 16px",background:"#fff",border:"1px solid #e5e7eb",borderTop:"none",borderRadius:"0 0 14px 14px",marginBottom:8,boxShadow:"0 2px 8px rgba(0,0,0,0.04)",flexWrap:"wrap"}}>
-            <div style={{padding:"6px 14px",borderRadius:8,background:gmOk?"#F0FDF4":"#FEF2F2",border:gmOk?"1px solid #BBF7D0":"1px solid #FECACA",fontSize:13,fontWeight:700,color:gmColor}}>
-              预期毛利：{gmTier}
+            <div style={{padding:"6px 14px",borderRadius:8,background:"#f9fafb",border:"1px solid #e5e7eb",fontSize:13,fontWeight:700,color:gmColor}}>
+              预期毛利率：{currentGM.toFixed(0)}%
             </div>
             <div style={{padding:"6px 14px",borderRadius:8,background:"#f9fafb",border:"1px solid #e5e7eb",fontSize:13}}>
               已选 <strong>{teamCalc.cnt}</strong> 张
             </div>
             <div style={{flex:1}}/>
             <div style={{padding:"6px 14px",borderRadius:8,background:(teamCalc.cnt>=MIN_TEAM_CARDS&&gmOk)?"#F0FDF4":"#FEF2F2",border:(teamCalc.cnt>=MIN_TEAM_CARDS&&gmOk)?"1px solid #BBF7D0":"1px solid #FECACA",fontSize:12,fontWeight:600,color:(teamCalc.cnt>=MIN_TEAM_CARDS&&gmOk)?"#166534":"#DC2626"}}>
-              {!gmOk?"\u26A0 预期毛利过低":teamCalc.cnt<MIN_TEAM_CARDS?`还需 ${MIN_TEAM_CARDS-teamCalc.cnt} 张`:"\u2713 选卡就绪，下方定价"}
+              {!gmOk?`毛利率需 ≥ ${GM_FLOOR}%`:teamCalc.cnt<MIN_TEAM_CARDS?`还需 ${MIN_TEAM_CARDS-teamCalc.cnt} 张`:"\u2713 选卡就绪，下方定价"}
             </div>
           </div>
           {DIMS.map(dim => renderDimGroup(dim.id, teamSel, true, "team"))}
@@ -3601,7 +3667,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10,marginBottom:12}}>
               <div style={{padding:"12px 14px",borderRadius:10,background:"#f9fafb",border:"1px solid #e5e7eb"}}>
                 <div style={{fontSize:11,color:"#6b7280"}}>基础制造成本</div>
-                <div style={{fontSize:22,fontWeight:800,color:"#374151",marginTop:4}}>¥{baseCost.toLocaleString()}</div>
+                <div style={{fontSize:22,fontWeight:800,color:"#374151",marginTop:4}}>{formatYuan(baseCost)}</div>
                 <div style={{fontSize:10,color:"#999"}}>材料+组装+包装/台</div>
               </div>
               <div style={{padding:"12px 14px",borderRadius:10,background:teamCalc.cost>0?"#FEF3C7":"#F0FDF4",border:teamCalc.cost>0?"1px solid #FDE68A":"1px solid #BBF7D0"}}>
@@ -3611,25 +3677,25 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
               </div>
               <div style={{padding:"12px 14px",borderRadius:10,background:"#fffbeb",border:"1px solid #fde68a"}}>
                 <div style={{fontSize:11,color:"#6b7280"}}>NRE 合计</div>
-                <div style={{fontSize:22,fontWeight:800,color:"#92400e",marginTop:4}}>{teamCalc.nreWan}万</div>
+                <div style={{fontSize:22,fontWeight:800,color:"#92400e",marginTop:4}}>{formatWan(teamCalc.nreWan)}</div>
                 <div style={{fontSize:10,color:"#999"}}>按当前档位累加的一次性研发投入</div>
               </div>
               <div style={{padding:"12px 14px",borderRadius:10,background:"#EFF6FF",border:"1px solid #BFDBFE"}}>
                 <div style={{fontSize:11,color:"#6b7280"}}>单台总变动成本</div>
-                <div style={{fontSize:22,fontWeight:800,color:"#1E40AF",marginTop:4}}>¥{teamUnitCost.toLocaleString()}</div>
+                <div style={{fontSize:22,fontWeight:800,color:"#1E40AF",marginTop:4}}>{formatYuan(teamUnitCost)}</div>
                 <div style={{fontSize:10,color:"#999"}}>V + dCOGS</div>
               </div>
             </div>
             {/* Per-dimension cost breakdown */}
             <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
               {DIMS.map(dim => {
-                const cards = CC[dim.id]||[];
+                const cards = cardCatalog[dim.id]||[];
                 const dimCost = cards.reduce((sum,c) => sum + (teamSel[c.id] ? c.tiers[teamSel[c.id]].cost : 0), 0);
                 const dimNre = cards.reduce((sum,c) => sum + (teamSel[c.id] ? c.tiers[teamSel[c.id]].nre : 0), 0);
                 if (dimCost === 0 && dimNre === 0) return null;
                 return (
                   <span key={dim.id} style={{fontSize:11,padding:"3px 8px",borderRadius:4,background:dim.c+"10",color:dim.c,fontWeight:600,border:`1px solid ${dim.c}25`}}>
-                    {dim.icon} {formatSignedCurrency(dimCost)} / NRE {dimNre}万
+                    {dim.icon} {formatSignedCurrency(dimCost)} / NRE {formatWan(dimNre)}
                   </span>
                 );
               })}
@@ -3655,7 +3721,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
               </div>
             </div>
             <div style={{fontSize:12,color:"#555",lineHeight:1.7,padding:"10px 14px",borderRadius:8,background:"#f9fafb",border:"1px solid #e5e7eb"}}>
-              <strong>定价参考框架：</strong>当前单台变动成本是 ¥{teamUnitCost.toLocaleString()}，固定成本是 {teamFixedCostWan} 万（基础 {F_BASE_WAN} 万 + NRE {teamCalc.nreWan} 万）。渠道抽走 {Math.round(channelFee*100)}% 后到手更少，你们需要在价格、销量和固定投入之间找到平衡。
+              <strong>定价参考框架：</strong>当前单台变动成本是 {formatYuan(teamUnitCost)}，固定成本是 {formatWan(teamFixedCostWan)}（基础 {formatWan(fixedBaseWan)} + NRE {formatWan(teamCalc.nreWan)}）。渠道抽走 {Math.round(channelFee*100)}% 后到手更少，你们需要在价格、销量和固定投入之间找到平衡。
             </div>
           </div>
 
@@ -3674,7 +3740,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                   <strong>量价权衡：</strong>价格越高，每台赚得越多，但愿意买的用户越少。价格越低，用户越多，但可能卖一台亏一台。
                 </div>
                 <div>
-                  <strong>产品力影响：</strong>产品能力组合越精准匹配用户需求，用户对价格的敏感度越低——好产品可以卖更贵。
+                  <strong>产品力影响：</strong>产品能力组合越精准匹配目标场景，用户对价格的敏感度越低——好产品可以卖更贵。
                 </div>
               </div>
             </div>
@@ -3682,7 +3748,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
             {/* Price slider */}
             <div style={{padding:"20px",borderRadius:12,background:"#f0fdf4",border:"1.5px solid #bbf7d0",marginBottom:16}}>
               <div style={{fontSize:14,fontWeight:700,color:"#374151",marginBottom:12}}>产品售价</div>
-              <div style={{fontSize:36,fontWeight:800,color:"#1a5c3a",marginBottom:8}}>¥{teamPrice.toLocaleString()}</div>
+              <div style={{fontSize:36,fontWeight:800,color:"#1a5c3a",marginBottom:8}}>{formatYuan(teamPrice)}</div>
               <input
                 data-testid="r2-price-input"
                 type="range"
@@ -3702,8 +3768,8 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                 style={{width:"100%",height:8,borderRadius:4,cursor:(round2TeamControlsLocked || !priceSliderReady) ? "not-allowed" : "pointer"}}
               />
               <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#999",marginTop:4}}>
-                <span>{priceSliderReady ? `¥${priceMin.toLocaleString()}（低价走量）` : "定价区间加载中"}</span>
-                <span>{priceSliderReady ? `¥${priceMax.toLocaleString()}（高端定位）` : ""}</span>
+                <span>{priceSliderReady ? `${formatYuan(priceMin)}（低价走量）` : "定价区间加载中"}</span>
+                <span>{priceSliderReady ? `${formatYuan(priceMax)}（高端定位）` : ""}</span>
               </div>
             </div>
 
@@ -3712,11 +3778,11 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
               <div style={{flex:1,padding:"12px 16px",borderRadius:10,border:"1.5px solid #D9770630",background:"#D9770608",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div>
                   <div style={{fontSize:11,color:"#6b7280"}}>渠道抽成 {Math.round(channelFee*100)}% 后，每台到手</div>
-                  <div style={{fontSize:24,fontWeight:800,color:"#D97706",marginTop:2}}>¥{Math.round(teamPrice*(1-channelFee)).toLocaleString()}</div>
+                  <div style={{fontSize:24,fontWeight:800,color:"#D97706",marginTop:2}}>{formatYuan(teamPrice * (1 - channelFee))}</div>
                 </div>
                 <div style={{fontSize:12,color:"#999",textAlign:"right"}}>
-                  售价 ¥{teamPrice.toLocaleString()}<br/>
-                  − 渠道 ¥{Math.round(teamPrice*channelFee).toLocaleString()}
+                  售价 {formatYuan(teamPrice)}<br/>
+                  − 渠道 {formatYuan(teamPrice * channelFee)}
                 </div>
               </div>
             </div>
@@ -3724,8 +3790,8 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10,marginBottom:16}}>
               <div style={{padding:"12px 14px",borderRadius:10,background:"#f9fafb",border:"1px solid #e5e7eb"}}>
                 <div style={{fontSize:11,color:"#6b7280"}}>总固定成本</div>
-                <div style={{fontSize:22,fontWeight:800,color:"#374151",marginTop:4}}>{teamFixedCostWan}万</div>
-                <div style={{fontSize:10,color:"#999"}}>基础 {F_BASE_WAN} 万 + 研发 {teamCalc.nreWan} 万</div>
+                <div style={{fontSize:22,fontWeight:800,color:"#374151",marginTop:4}}>{formatWan(teamFixedCostWan)}</div>
+                <div style={{fontSize:10,color:"#999"}}>基础 {formatWan(fixedBaseWan)} + 研发 {formatWan(teamCalc.nreWan)}</div>
               </div>
               <div style={{padding:"12px 14px",borderRadius:10,background:previewBreakevenQ ? "#eff6ff" : "#fef2f2",border:previewBreakevenQ ? "1px solid #bfdbfe" : "1px solid #fecaca"}}>
                 <div style={{fontSize:11,color:"#6b7280"}}>盈亏平衡销量</div>
@@ -3752,7 +3818,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
               {round2TeamControlsLocked
                 ? `仅组长 ${leaderDisplayName(leaderName)} 可继续`
                 : !gmOk
-                  ? "预期毛利过低，请先调整选卡"
+                  ? `毛利率需 ≥ ${GM_FLOOR}% 才可提交`
                   : teamCalc.cnt < MIN_TEAM_CARDS
                     ? `还需选 ${MIN_TEAM_CARDS-teamCalc.cnt} 张能力卡`
                     : "提交并查看结果"}
@@ -3783,7 +3849,7 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
           <div style={{marginBottom:16}}>
             <div style={{fontSize:14,fontWeight:700,color:"#374151",marginBottom:8}}>产品能力组合（{teamCalc.cnt} 张）</div>
             {DIMS.map(dim => {
-              const cards = CC[dim.id]||[];
+              const cards = cardCatalog[dim.id]||[];
               const picked = cards.filter(c=>!!teamSel[c.id]);
               if (!picked.length) return null;
               return (
@@ -3809,19 +3875,19 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10,marginBottom:16}}>
             <div style={{padding:"12px 14px",borderRadius:10,background:"#f9fafb",border:"1px solid #e5e7eb"}}>
               <div style={{fontSize:11,color:"#6b7280"}}>单台总变动成本</div>
-              <div style={{fontSize:20,fontWeight:800,color:"#374151",marginTop:4}}>¥{teamUnitCost.toLocaleString()}</div>
+              <div style={{fontSize:20,fontWeight:800,color:"#374151",marginTop:4}}>{formatYuan(teamUnitCost)}</div>
             </div>
             <div style={{padding:"12px 14px",borderRadius:10,background:"#f0fdf4",border:"1.5px solid #bbf7d0"}}>
               <div style={{fontSize:11,color:"#6b7280"}}>定价</div>
-              <div style={{fontSize:20,fontWeight:800,color:"#166534",marginTop:4}}>¥{teamPrice.toLocaleString()}</div>
+              <div style={{fontSize:20,fontWeight:800,color:"#166534",marginTop:4}}>{formatYuan(teamPrice)}</div>
             </div>
             <div style={{padding:"12px 14px",borderRadius:10,background:"#D9770608",border:"1.5px solid #D9770630"}}>
               <div style={{fontSize:11,color:"#6b7280"}}>渠道抽成后到手</div>
-              <div style={{fontSize:20,fontWeight:800,color:"#D97706",marginTop:4}}>¥{Math.round(teamPrice*(1-channelFee)).toLocaleString()}</div>
+              <div style={{fontSize:20,fontWeight:800,color:"#D97706",marginTop:4}}>{formatYuan(teamPrice * (1 - channelFee))}</div>
             </div>
             <div style={{padding:"12px 14px",borderRadius:10,background:"#fffbeb",border:"1.5px solid #fde68a"}}>
               <div style={{fontSize:11,color:"#6b7280"}}>固定成本</div>
-              <div style={{fontSize:20,fontWeight:800,color:"#92400e",marginTop:4}}>{teamFixedCostWan}万</div>
+              <div style={{fontSize:20,fontWeight:800,color:"#92400e",marginTop:4}}>{formatWan(teamFixedCostWan)}</div>
             </div>
             <div style={{padding:"12px 14px",borderRadius:10,background:previewBreakevenQ ? "#eff6ff" : "#fef2f2",border:previewBreakevenQ ? "1px solid #bfdbfe" : "1px solid #fecaca"}}>
               <div style={{fontSize:11,color:"#6b7280"}}>盈亏平衡销量</div>
@@ -3923,11 +3989,11 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
                 </div>
                 <div style={{padding:"14px 16px",borderRadius:10,background:"#f0fdf4",border:"1px solid #bbf7d0"}}>
                   <div style={{fontSize:11,color:"#6b7280"}}>收入（渠道后）</div>
-                  <div style={{fontSize:26,fontWeight:800,color:"#166534",marginTop:4}}>¥{Math.round(Number(submittedCalc.revenueNet || 0)).toLocaleString()}</div>
+                  <div style={{fontSize:26,fontWeight:800,color:"#166534",marginTop:4}}>{formatYuan(submittedCalc.revenueNet)}</div>
                 </div>
                 <div style={{padding:"14px 16px",borderRadius:10,background:"#fff7ed",border:"1px solid #fed7aa"}}>
                   <div style={{fontSize:11,color:"#6b7280"}}>变动成本</div>
-                  <div style={{fontSize:26,fontWeight:800,color:"#c2410c",marginTop:4}}>¥{Math.round(Number(submittedCalc.variableCost || 0)).toLocaleString()}</div>
+                  <div style={{fontSize:26,fontWeight:800,color:"#c2410c",marginTop:4}}>{formatYuan(submittedCalc.variableCost)}</div>
                 </div>
                 <div style={{padding:"14px 16px",borderRadius:10,background:Number(submittedCalc.profit || 0) >= 0 ? "#f0fdf4" : "#fef2f2",border:Number(submittedCalc.profit || 0) >= 0 ? "1px solid #bbf7d0" : "1px solid #fecaca"}}>
                   <div style={{fontSize:11,color:"#6b7280"}}>利润</div>
@@ -3940,8 +4006,8 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10,marginBottom:16}}>
                 <div style={{padding:"12px 14px",borderRadius:10,background:"#f9fafb",border:"1px solid #e5e7eb"}}>
                   <div style={{fontSize:11,color:"#6b7280"}}>固定成本</div>
-                  <div style={{fontSize:22,fontWeight:800,color:"#374151",marginTop:4}}>¥{Math.round(Number(submittedCalc.fixedCost || submittedCalc.f_total || 0)).toLocaleString()}</div>
-                  <div style={{fontSize:10,color:"#999"}}>基础 {F_BASE_WAN} 万 + 研发 {Number(submittedCalc.nre_total_wan || 0)} 万</div>
+                  <div style={{fontSize:22,fontWeight:800,color:"#374151",marginTop:4}}>{formatYuan(Number(submittedCalc.fixedCost || submittedCalc.f_total || 0))}</div>
+                  <div style={{fontSize:10,color:"#999"}}>基础 {formatWan(fixedBaseWan)} + 研发 {formatWan(submittedCalc.nre_total_wan || 0)}</div>
                 </div>
                 <div style={{padding:"12px 14px",borderRadius:10,background:"#fffbeb",border:"1px solid #fde68a"}}>
                   <div style={{fontSize:11,color:"#6b7280"}}>盈亏平衡销量</div>
@@ -3958,11 +4024,11 @@ const indCalc = useMemo(() => calcCost(sel), [sel]);
               </div>
               <div style={{padding:"14px 18px",borderRadius:10,background:"#f9fafb",border:"1px solid #e5e7eb",fontSize:13,color:"#374151",lineHeight:1.8}}>
                 <strong>利润拆解：</strong>
-                收入 ¥{Math.round(Number(submittedCalc.revenueNet || 0)).toLocaleString()}
-                {" "}− 变动成本 ¥{Math.round(Number(submittedCalc.variableCost || 0)).toLocaleString()}
-                {" "}− 固定成本 ¥{Math.round(Number(submittedCalc.fixedCost || submittedCalc.f_total || 0)).toLocaleString()}
-                {Number(submittedCalc.profitSub || 0) ? ` + 订阅贡献 ¥${Math.round(Number(submittedCalc.profitSub || 0)).toLocaleString()}` : ""}
-                {Number(submittedCalc.penalty || 0) ? ` − Penalty ¥${Math.round(Number(submittedCalc.penalty || 0)).toLocaleString()}` : ""}
+                收入 {formatYuan(submittedCalc.revenueNet)}
+                {" "}− 变动成本 {formatYuan(submittedCalc.variableCost)}
+                {" "}− 固定成本 {formatYuan(Number(submittedCalc.fixedCost || submittedCalc.f_total || 0))}
+                {Number(submittedCalc.profitSub || 0) ? ` + 订阅贡献 ${formatYuan(submittedCalc.profitSub)}` : ""}
+                {Number(submittedCalc.penalty || 0) ? ` − Penalty ${formatYuan(submittedCalc.penalty)}` : ""}
                 {" "} = 利润 {formatSignedCurrency(Math.round(Number(submittedCalc.profit || 0)))}
               </div>
             </>

@@ -280,7 +280,7 @@ async function exportSession(sessionId) {
   if (!session) return makeResponse(404, { ok: false, error: "session not found" });
 
   const lines = [];
-  lines.push("=== LOVOT VP Coach 对话记录 ===");
+  lines.push("=== AI 宠物机器人 VP Coach 对话记录 ===");
   lines.push(`小组：${session.teamKey || ""}`);
   lines.push(`时间：${session.createdAt || ""}`);
   lines.push(`策略：${JSON.stringify(session.strategy || {})}`);

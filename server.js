@@ -1384,11 +1384,11 @@ function extractNumberedOptions(text) {
 }
 
 function enforceBrandHidden(assistantText, userMessage) {
-  const allowBrand = /lovot/i.test(String(userMessage || ""));
+  const allowBrand = /AI\s*宠物机器人|机器人/i.test(String(userMessage || ""));
   if (allowBrand) return String(assistantText || "");
   return String(assistantText || "")
-    .replace(/LOVOT类/gi, "陪伴机器人")
-    .replace(/LOVOT/gi, "机器人");
+    .replace(/AI\s*宠物机器人类/gi, "陪伴机器人")
+    .replace(/AI\s*宠物机器人/gi, "机器人");
 }
 
 async function handleRound1Chat(req, res) {
@@ -2059,30 +2059,30 @@ function handleApi(req, res) {
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher generate team review failed" }));
   }
 
-  if (req.method === "POST" && /^\/api\/teacher\/generate-lovot\/?$/.test(reqPath)) {
+  if (req.method === "POST" && /^\/api\/teacher\/generate-product-image\/?$/.test(reqPath)) {
     if (sendTeacherAuthFailureIfAny(req, res, reqUrl)) return;
     return readBody(req)
-      .then((payload) => TeacherDebrief.generateLovotApi(payload))
+      .then((payload) => TeacherDebrief.generateProductImageApi(payload))
       .then((out) => sendJson(res, out.status, out.body))
-      .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher generate lovot failed" }));
+      .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher generate product image failed" }));
   }
 
-  if (req.method === "POST" && /^\/api\/teacher\/generate-lovot-batch\/?$/.test(reqPath)) {
+  if (req.method === "POST" && /^\/api\/teacher\/generate-product-image-batch\/?$/.test(reqPath)) {
     if (sendTeacherAuthFailureIfAny(req, res, reqUrl)) return;
     return readBody(req)
-      .then((payload) => TeacherDebrief.generateLovotBatchApi(payload))
+      .then((payload) => TeacherDebrief.generateProductImageBatchApi(payload))
       .then((out) => sendJson(res, out.status, out.body))
-      .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher batch lovot failed" }));
+      .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher batch product image failed" }));
   }
 
-  if (req.method === "GET" && /^\/api\/teacher\/lovot-image\/[^/]+\/?$/.test(reqPath)) {
+  if (req.method === "GET" && /^\/api\/teacher\/product-image\/[^/]+\/?$/.test(reqPath)) {
     const url = new URL(reqUrl, `http://${req.headers.host || "127.0.0.1"}`);
     const auth = TeacherDebrief.verifyTeacherAuth({ headers: req.headers, query: url.searchParams, body: null });
     if (!auth?.body?.ok) return sendJson(res, auth.status, auth.body);
-    const teamId = decodeURIComponent(reqPath.replace(/^\/api\/teacher\/lovot-image\//, "").replace(/\/$/, ""));
-    return TeacherDebrief.getLovotImageApi(teamId)
+    const teamId = decodeURIComponent(reqPath.replace(/^\/api\/teacher\/product-image\//, "").replace(/\/$/, ""));
+    return TeacherDebrief.getProductImageApi(teamId)
       .then((out) => sendJson(res, out.status, out.body))
-      .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher lovot image failed" }));
+      .catch((err) => sendJson(res, 500, { ok: false, error: err.message || "teacher product image failed" }));
   }
 
   if (req.method === "POST" && /^\/api\/teacher\/export-ppt\/?$/.test(reqPath)) {

@@ -586,7 +586,7 @@ async function generateVpDraft(llm, gridId, architecture, simSeed) {
       `市场格子：${gridLabel(gridId)}`,
       `产品架构：${architecture}`,
       "",
-      "请为 LOVOT 中国市场模拟写一个认真、具体的价值主张初稿。",
+      "请为 AI 宠物机器人的中国市场模拟写一个认真、具体的价值主张初稿。",
       "每个字段 50-100 个中文字，不能空泛，必须有具体触发场景和解决机制。",
       parsed.strategy === "差异化" ? "该格倾向体验/品质溢价，请体现差异化体验价值。" : "该格倾向成本/实用，请体现可规模化、够用、省心。",
       parsed.channel === "ToB" ? "这是机构/企业采购场景，WHO 要写采购/运营决策者。" : "这是个人/家庭消费场景，WHO 要写个人/家庭购买者。",

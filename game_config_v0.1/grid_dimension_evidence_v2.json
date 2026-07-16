@@ -4,9 +4,9 @@
   "generated_at": "2026-07-12T15:34:10.714Z",
   "generation_method": "deterministic_report_keyword_mapping_v1",
   "source_reports": {
-    "file": "game_config_v0.1/persona_reports_v1.1.json",
-    "version": "v1.1",
-    "sha256": "900da996382e5eb5e2104e4da6871ceab861418ba1f3258931fa4691de431623"
+    "file": "game_config_v0.1/persona_reports_v1.3.json",
+    "version": "v1.3",
+    "sha256": "033da1b92433ea1ea1da10305f2d24090c69c8b64a721f41297af43f53eafff3"
   },
   "source_tag_map": {
     "file": "data/tag_map_v2_1.json",

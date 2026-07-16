@@ -1,0 +1,4213 @@
+{
+  "manifest_version": "684ccba867b4621327d91b2c16d7182517011bb490053a54df8b9f345f0c3e9e",
+  "generated_from": "bc5ce07527eb4a0673538e3ccf375f4eda41ae15",
+  "generated_from_worktree_dirty": true,
+  "generator": "scripts/export_render_manifest.js",
+  "source_files": [
+    {
+      "path": "client/src/pages/Round2Flow.jsx",
+      "sha256": "5fb92123df98b3005061401cc96aaba0add641e531120e00fcd6eb60583e9050",
+      "git_status_dirty": true
+    },
+    {
+      "path": "client/src/pages/MultiplayerFlow.jsx",
+      "sha256": "5d7586bdd2ff1e303a4abe81898490fe14ab8626cda1518ee94eb03fa297c0de",
+      "git_status_dirty": false
+    },
+    {
+      "path": "client/src/utils/formatMoney.js",
+      "sha256": "7fb655d66299caa3257ced9b861653e9c0e65202e5ef43a82be2fe59a728bb3c",
+      "git_status_dirty": true
+    },
+    {
+      "path": "data/capability_groups_v2.json",
+      "sha256": "89d38b8f4fba9d2ee5cd2ba398b4f4e449a27a6aedc70224375590db02fd28a3",
+      "git_status_dirty": false
+    },
+    {
+      "path": "game_config_v0.1/jinang_cards_v2.json",
+      "sha256": "087060d0a3543fb013056d0456a375b802e1ea68a034fe675a7294ce8ffd89ef",
+      "git_status_dirty": false
+    }
+  ],
+  "stages": {
+    "R1_grid_select": {
+      "source_component": "client/src/pages/MultiplayerFlow.jsx",
+      "mode": "individual",
+      "fields": [
+        {
+          "path": "grid.customer_type",
+          "form": "enum:ToC/ToB",
+          "visibility": "primary"
+        },
+        {
+          "path": "grid.strategy",
+          "form": "enum:差异化/成本领先",
+          "visibility": "primary"
+        },
+        {
+          "path": "grid.age",
+          "form": "enum:儿童/成人/老人",
+          "visibility": "primary"
+        },
+        {
+          "path": "architecture.option",
+          "form": "enum:Experience/Hybrid/Function + 中文解释",
+          "visibility": "primary"
+        },
+        {
+          "path": "jinang.market.title",
+          "form": "text",
+          "visibility": "primary"
+        },
+        {
+          "path": "jinang.market.desc",
+          "form": "text_with_numbers",
+          "visibility": "primary"
+        },
+        {
+          "path": "jinang.tech.title",
+          "form": "text",
+          "visibility": "primary"
+        },
+        {
+          "path": "jinang.tech.desc",
+          "form": "text_with_numbers",
+          "visibility": "primary"
+        }
+      ],
+      "grid_options": {
+        "customer": [
+          "ToC",
+          "ToB"
+        ],
+        "strategy": [
+          "差异化",
+          "成本领先"
+        ],
+        "age": [
+          "儿童",
+          "成人",
+          "老人"
+        ],
+        "count": 12
+      },
+      "architecture_options": [
+        {
+          "key": "Experience",
+          "label": "体验",
+          "symbol": "●"
+        },
+        {
+          "key": "Hybrid",
+          "label": "混合",
+          "symbol": "▲"
+        },
+        {
+          "key": "Function",
+          "label": "功能",
+          "symbol": "■"
+        }
+      ],
+      "data_sources": {
+        "jinang_config": "game_config_v0.1/jinang_cards_v2.json",
+        "jinang_counts": {
+          "market": 10,
+          "tech": 10
+        }
+      },
+      "allowed_numbers": [
+        "12",
+        "3",
+        "2"
+      ]
+    },
+    "R2_interview_summary": {
+      "source_component": "client/src/pages/Round2Flow.jsx",
+      "mode": "individual",
+      "fields": [
+        {
+          "path": "persona_report.summary",
+          "form": "text_with_numbers",
+          "visibility": "primary"
+        },
+        {
+          "path": "interview.messages",
+          "form": "text_with_numbers",
+          "visibility": "requires_scroll"
+        }
+      ],
+      "allowed_numbers": []
+    },
+    "R2_card_select": {
+      "source_component": "client/src/pages/Round2Flow.jsx",
+      "mode": "individual",
+      "fields": [
+        {
+          "path": "dimension.label",
+          "form": "text",
+          "visibility": "primary"
+        },
+        {
+          "path": "dimension.description",
+          "form": "text",
+          "visibility": "primary"
+        },
+        {
+          "path": "card.name",
+          "form": "text",
+          "visibility": "primary"
+        },
+        {
+          "path": "card.what",
+          "form": "text",
+          "visibility": "primary"
+        },
+        {
+          "path": "card.risk_note",
+          "form": "text",
+          "visibility": "primary"
+        },
+        {
+          "path": "card.tag",
+          "form": "badge",
+          "visibility": "primary",
+          "condition": "if present"
+        },
+        {
+          "path": "tier.label",
+          "form": "enum:基础/标准/旗舰",
+          "visibility": "primary"
+        },
+        {
+          "path": "tier.description",
+          "form": "text",
+          "visibility": "primary"
+        },
+        {
+          "path": "tier.unit_cost_exact",
+          "form": "currency_per_unit",
+          "visibility": "primary"
+        },
+        {
+          "path": "tier.rd_investment_wan",
+          "form": "wan_number",
+          "visibility": "primary"
+        },
+        {
+          "path": "card.nre_desc",
+          "form": "text_with_numbers",
+          "visibility": "primary"
+        },
+        {
+          "path": "tier.dependencies",
+          "form": "text",
+          "visibility": "conditional_after_selection"
+        },
+        {
+          "path": "card.conflicts",
+          "form": "text",
+          "visibility": "conditional_after_selection"
+        },
+        {
+          "path": "card.cap_id",
+          "form": "machine_id_for_output",
+          "visibility": "harness_schema"
+        }
+      ],
+      "omitted_fields_observed_in_prior_manual_whitelist": [
+        {
+          "path": "dimension.imp_label",
+          "reason": "current frontend branch does not render IMP labels in personal card selection"
+        },
+        {
+          "path": "card.covers",
+          "reason": "current frontend branch does not render covers in personal card selection"
+        },
+        {
+          "path": "tier.unit_cost_label",
+          "reason": "current frontend branch renders exact unit cost numbers instead of qualitative labels"
+        },
+        {
+          "path": "tier.rd_investment_label",
+          "reason": "current frontend branch renders exact rd investment numbers instead of qualitative labels"
+        }
+      ],
+      "dimensions": [
+        {
+          "path": "dimensions.interaction_expression",
+          "group_id": "interaction_expression",
+          "label": "交互与表达",
+          "icon": "💬",
+          "description": "语音对话、触摸互动、情感表达等能力",
+          "visibility": "primary",
+          "fields": [
+            {
+              "path": "dimension.label",
+              "form": "text",
+              "visibility": "primary"
+            },
+            {
+              "path": "dimension.description",
+              "form": "text",
+              "visibility": "primary"
+            },
+            {
+              "path": "dimension.selected_count",
+              "form": "dynamic_count",
+              "visibility": "primary"
+            }
+          ],
+          "cards": [
+            {
+              "path": "cards.voice_basic",
+              "cap_id": "voice_basic",
+              "front_id": "voice_basic",
+              "name": "语音基础",
+              "what": "能听懂指令并用语音回应",
+              "risk_note": "技术成熟度高，风险可控",
+              "nre_desc": "嵌入式8月+语音算法6月+QA4月+SDK授权+消音室+样机",
+              "tag": "",
+              "dependencies": [],
+              "conflicts": [],
+              "visibility": "primary",
+              "fields": [
+                {
+                  "path": "card.name",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.what",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.risk_note",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.tag",
+                  "form": "badge",
+                  "visibility": "primary",
+                  "condition": "if present"
+                },
+                {
+                  "path": "card.cap_id",
+                  "form": "machine_id_for_output",
+                  "visibility": "harness_schema"
+                }
+              ],
+              "tiers": [
+                {
+                  "tier": "low",
+                  "label": "基础",
+                  "description": "固定指令，预设回复",
+                  "unit_cost_exact": 150,
+                  "unit_cost_text": "+¥150/台",
+                  "rd_investment_wan": 98,
+                  "rd_investment_text": "98.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "mid",
+                  "label": "标准",
+                  "description": "日常对话，自然语调",
+                  "unit_cost_exact": 280,
+                  "unit_cost_text": "+¥280/台",
+                  "rd_investment_wan": 98,
+                  "rd_investment_text": "98.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "high",
+                  "label": "旗舰",
+                  "description": "多方言+情感语调",
+                  "unit_cost_exact": 420,
+                  "unit_cost_text": "+¥420/台",
+                  "rd_investment_wan": 98,
+                  "rd_investment_text": "98.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "path": "cards.persona_dialog",
+              "cap_id": "persona_dialog",
+              "front_id": "persona_dialog",
+              "name": "多轮对话个性化",
+              "what": "记住上下文，越聊越懂你，像朋友一样对话",
+              "risk_note": "依赖大模型能力，对话质量波动大",
+              "nre_desc": "NLP高级10月+嵌入式AI8月+后端6月+标注×2人6月+QA4月+GPU算力+训练数据+样机",
+              "tag": "",
+              "dependencies": [
+                {
+                  "tier": "high",
+                  "type": "需要",
+                  "target": "cloud_update",
+                  "tl": "标准",
+                  "cross": true,
+                  "visibility": "conditional_after_selection"
+                }
+              ],
+              "conflicts": [],
+              "visibility": "primary",
+              "fields": [
+                {
+                  "path": "card.name",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.what",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.risk_note",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.tag",
+                  "form": "badge",
+                  "visibility": "primary",
+                  "condition": "if present"
+                },
+                {
+                  "path": "card.cap_id",
+                  "form": "machine_id_for_output",
+                  "visibility": "harness_schema"
+                }
+              ],
+              "tiers": [
+                {
+                  "tier": "low",
+                  "label": "基础",
+                  "description": "简单多轮，记住近期话题",
+                  "unit_cost_exact": 400,
+                  "unit_cost_text": "+¥400/台",
+                  "rd_investment_wan": 211,
+                  "rd_investment_text": "211.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "mid",
+                  "label": "标准",
+                  "description": "个性化风格+长期记忆",
+                  "unit_cost_exact": 650,
+                  "unit_cost_text": "+¥650/台",
+                  "rd_investment_wan": 211,
+                  "rd_investment_text": "211.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "high",
+                  "label": "旗舰",
+                  "description": "深度个性化，模拟角色性格",
+                  "unit_cost_exact": 950,
+                  "unit_cost_text": "+¥950/台",
+                  "rd_investment_wan": 211,
+                  "rd_investment_text": "211.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "path": "cards.touch_hug",
+              "cap_id": "touch_hug",
+              "front_id": "touch_hug",
+              "name": "触摸/拥抱交互增强",
+              "what": "感知拥抱和抚摸，做出温暖回应",
+              "risk_note": "传感器硬件成熟，集成风险低",
+              "nre_desc": "硬件8月+嵌入式6月+结构4月+QA3月+柔性PCB打样+传感器样品+样机",
+              "tag": "",
+              "dependencies": [],
+              "conflicts": [],
+              "visibility": "primary",
+              "fields": [
+                {
+                  "path": "card.name",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.what",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.risk_note",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.tag",
+                  "form": "badge",
+                  "visibility": "primary",
+                  "condition": "if present"
+                },
+                {
+                  "path": "card.cap_id",
+                  "form": "machine_id_for_output",
+                  "visibility": "harness_schema"
+                }
+              ],
+              "tiers": [
+                {
+                  "tier": "low",
+                  "label": "基础",
+                  "description": "基本触摸感应",
+                  "unit_cost_exact": 180,
+                  "unit_cost_text": "+¥180/台",
+                  "rd_investment_wan": 99,
+                  "rd_investment_text": "99.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "mid",
+                  "label": "标准",
+                  "description": "多区域触感，不同反应",
+                  "unit_cost_exact": 350,
+                  "unit_cost_text": "+¥350/台",
+                  "rd_investment_wan": 99,
+                  "rd_investment_text": "99.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "high",
+                  "label": "旗舰",
+                  "description": "全身压力感应+体温变化",
+                  "unit_cost_exact": 520,
+                  "unit_cost_text": "+¥520/台",
+                  "rd_investment_wan": 99,
+                  "rd_investment_text": "99.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "path": "cards.music_companion",
+              "cap_id": "music_companion",
+              "front_id": "music_companion",
+              "name": "音乐播放与陪伴",
+              "what": "会放音乐、哼唱或陪着孩子练习",
+              "risk_note": "版权与音频适配需要持续维护",
+              "nre_desc": "嵌入式6月+音频4月+QA2月+版权授权+音频测试+样机",
+              "tag": "",
+              "dependencies": [],
+              "conflicts": [],
+              "visibility": "primary",
+              "fields": [
+                {
+                  "path": "card.name",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.what",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.risk_note",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.tag",
+                  "form": "badge",
+                  "visibility": "primary",
+                  "condition": "if present"
+                },
+                {
+                  "path": "card.cap_id",
+                  "form": "machine_id_for_output",
+                  "visibility": "harness_schema"
+                }
+              ],
+              "tiers": [
+                {
+                  "tier": "low",
+                  "label": "基础",
+                  "description": "固定歌单与简单播控",
+                  "unit_cost_exact": 100,
+                  "unit_cost_text": "+¥100/台",
+                  "rd_investment_wan": 64,
+                  "rd_investment_text": "64.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "mid",
+                  "label": "标准",
+                  "description": "情境音乐与互动播放",
+                  "unit_cost_exact": 200,
+                  "unit_cost_text": "+¥200/台",
+                  "rd_investment_wan": 64,
+                  "rd_investment_text": "64.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "high",
+                  "label": "旗舰",
+                  "description": "更丰富内容与情绪联动",
+                  "unit_cost_exact": 320,
+                  "unit_cost_text": "+¥320/台",
+                  "rd_investment_wan": 64,
+                  "rd_investment_text": "64.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "path": "cards.visual_expression",
+              "cap_id": "visual_expression",
+              "front_id": "visual_expr",
+              "name": "视觉表达（OLED/灯效）",
+              "what": "通过屏幕表情或灯光变化表达情绪",
+              "risk_note": "显示模组和动画体验会明显拉高开发复杂度",
+              "nre_desc": "显示驱动8月+嵌入式6月+结构6月+工业设计师6月+动画4月+QA4月+OLED样品+动画外包+显示模具+样机",
+              "tag": "",
+              "dependencies": [],
+              "conflicts": [
+                {
+                  "target": "no_screen",
+                  "visibility": "conditional_after_selection"
+                }
+              ],
+              "visibility": "primary",
+              "fields": [
+                {
+                  "path": "card.name",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.what",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.risk_note",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.tag",
+                  "form": "badge",
+                  "visibility": "primary",
+                  "condition": "if present"
+                },
+                {
+                  "path": "card.cap_id",
+                  "form": "machine_id_for_output",
+                  "visibility": "harness_schema"
+                }
+              ],
+              "tiers": [
+                {
+                  "tier": "low",
+                  "label": "基础",
+                  "description": "灯效表达",
+                  "unit_cost_exact": 300,
+                  "unit_cost_text": "+¥300/台",
+                  "rd_investment_wan": 191,
+                  "rd_investment_text": "191.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "mid",
+                  "label": "标准",
+                  "description": "OLED 丰富表情动画",
+                  "unit_cost_exact": 600,
+                  "unit_cost_text": "+¥600/台",
+                  "rd_investment_wan": 191,
+                  "rd_investment_text": "191.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "high",
+                  "label": "旗舰",
+                  "description": "全彩表情+氛围灯联动",
+                  "unit_cost_exact": 850,
+                  "unit_cost_text": "+¥850/台",
+                  "rd_investment_wan": 191,
+                  "rd_investment_text": "191.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "path": "cards.expressive_style_pack",
+              "cap_id": "expressive_style_pack",
+              "front_id": "style_pack",
+              "name": "表达风格包",
+              "what": "让机器人在语气、角色和动作上更有个性",
+              "risk_note": "风格做得好很加分，但打磨周期长",
+              "nre_desc": "工业设计师8月+结构6月+动作设计6月+QA3月+外壳开模30万+3D打样+样机",
+              "tag": "",
+              "dependencies": [],
+              "conflicts": [],
+              "visibility": "primary",
+              "fields": [
+                {
+                  "path": "card.name",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.what",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.risk_note",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.tag",
+                  "form": "badge",
+                  "visibility": "primary",
+                  "condition": "if present"
+                },
+                {
+                  "path": "card.cap_id",
+                  "form": "machine_id_for_output",
+                  "visibility": "harness_schema"
+                }
+              ],
+              "tiers": [
+                {
+                  "tier": "low",
+                  "label": "基础",
+                  "description": "少量角色与固定语气",
+                  "unit_cost_exact": 120,
+                  "unit_cost_text": "+¥120/台",
+                  "rd_investment_wan": 151,
+                  "rd_investment_text": "151.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "mid",
+                  "label": "标准",
+                  "description": "多风格切换+动作脚本",
+                  "unit_cost_exact": 250,
+                  "unit_cost_text": "+¥250/台",
+                  "rd_investment_wan": 151,
+                  "rd_investment_text": "151.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "high",
+                  "label": "旗舰",
+                  "description": "完整角色包+更强表现力",
+                  "unit_cost_exact": 400,
+                  "unit_cost_text": "+¥400/台",
+                  "rd_investment_wan": 151,
+                  "rd_investment_text": "151.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "path": "cards.no_screen_costdown",
+              "cap_id": "no_screen_costdown",
+              "front_id": "no_screen",
+              "name": "无屏降本（删OLED）",
+              "what": "去掉屏幕降成本，改用纯语音+灯光",
+              "risk_note": "用户体验可能受限，需验证接受度",
+              "nre_desc": "结构4月+嵌入式3月+QA回归4月+认证2月+结构件打样+重新认证费+回归测试",
+              "tag": "降本",
+              "dependencies": [],
+              "conflicts": [
+                {
+                  "target": "visual_expr",
+                  "visibility": "conditional_after_selection"
+                }
+              ],
+              "visibility": "primary",
+              "fields": [
+                {
+                  "path": "card.name",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.what",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.risk_note",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.tag",
+                  "form": "badge",
+                  "visibility": "primary",
+                  "condition": "if present"
+                },
+                {
+                  "path": "card.cap_id",
+                  "form": "machine_id_for_output",
+                  "visibility": "harness_schema"
+                }
+              ],
+              "tiers": [
+                {
+                  "tier": "low",
+                  "label": "基础",
+                  "description": "去屏保留LED",
+                  "unit_cost_exact": -250,
+                  "unit_cost_text": "-¥250/台",
+                  "rd_investment_wan": 61,
+                  "rd_investment_text": "61.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "mid",
+                  "label": "标准",
+                  "description": "去屏+简化外壳",
+                  "unit_cost_exact": -450,
+                  "unit_cost_text": "-¥450/台",
+                  "rd_investment_wan": 61,
+                  "rd_investment_text": "61.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "high",
+                  "label": "旗舰",
+                  "description": "极简纯语音方案",
+                  "unit_cost_exact": -600,
+                  "unit_cost_text": "-¥600/台",
+                  "rd_investment_wan": 61,
+                  "rd_investment_text": "61.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "path": "dimensions.perception_understanding",
+          "group_id": "perception_understanding",
+          "label": "感知与理解",
+          "icon": "👁",
+          "description": "识别人脸、情绪、环境的感知能力",
+          "visibility": "primary",
+          "fields": [
+            {
+              "path": "dimension.label",
+              "form": "text",
+              "visibility": "primary"
+            },
+            {
+              "path": "dimension.description",
+              "form": "text",
+              "visibility": "primary"
+            },
+            {
+              "path": "dimension.selected_count",
+              "form": "dynamic_count",
+              "visibility": "primary"
+            }
+          ],
+          "cards": [
+            {
+              "path": "cards.perception_base",
+              "cap_id": "perception_base",
+              "front_id": "percep_base",
+              "name": "基础感知（摄像头/语音）",
+              "what": "看到和听到周围环境，识别人和物体",
+              "risk_note": "硬件方案成熟，但需要稳定标定",
+              "nre_desc": "视觉6月+嵌入式6月+QA3月+摄像头样品+ISP工具+标定设备+样机",
+              "tag": "",
+              "dependencies": [],
+              "conflicts": [],
+              "visibility": "primary",
+              "fields": [
+                {
+                  "path": "card.name",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.what",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.risk_note",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.tag",
+                  "form": "badge",
+                  "visibility": "primary",
+                  "condition": "if present"
+                },
+                {
+                  "path": "card.cap_id",
+                  "form": "machine_id_for_output",
+                  "visibility": "harness_schema"
+                }
+              ],
+              "tiers": [
+                {
+                  "tier": "low",
+                  "label": "基础",
+                  "description": "单摄像头+单麦克风",
+                  "unit_cost_exact": 200,
+                  "unit_cost_text": "+¥200/台",
+                  "rd_investment_wan": 76,
+                  "rd_investment_text": "76.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "mid",
+                  "label": "标准",
+                  "description": "广角+基础识别",
+                  "unit_cost_exact": 380,
+                  "unit_cost_text": "+¥380/台",
+                  "rd_investment_wan": 76,
+                  "rd_investment_text": "76.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "high",
+                  "label": "旗舰",
+                  "description": "双目视觉+阵列麦克风",
+                  "unit_cost_exact": 550,
+                  "unit_cost_text": "+¥550/台",
+                  "rd_investment_wan": 76,
+                  "rd_investment_text": "76.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "path": "cards.emotion_recognition",
+              "cap_id": "emotion_recognition",
+              "front_id": "emotion_recog",
+              "name": "情绪识别与表情捕捉",
+              "what": "读懂表情和语气，判断开心还是难过",
+              "risk_note": "算法精度不稳定，场景与光线变化影响大",
+              "nre_desc": "CV高级10月+嵌入式AI8月+标注×2人6月+QA4月+GPU算力+表情数据集+AI芯片+样机",
+              "tag": "",
+              "dependencies": [
+                {
+                  "tier": "low",
+                  "type": "需要",
+                  "target": "percep_base",
+                  "tl": "基础",
+                  "visibility": "conditional_after_selection"
+                },
+                {
+                  "tier": "mid",
+                  "type": "需要",
+                  "target": "percep_base",
+                  "tl": "标准",
+                  "visibility": "conditional_after_selection"
+                },
+                {
+                  "tier": "high",
+                  "type": "需要",
+                  "target": "percep_base",
+                  "tl": "旗舰",
+                  "visibility": "conditional_after_selection"
+                }
+              ],
+              "conflicts": [],
+              "visibility": "primary",
+              "fields": [
+                {
+                  "path": "card.name",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.what",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.risk_note",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.tag",
+                  "form": "badge",
+                  "visibility": "primary",
+                  "condition": "if present"
+                },
+                {
+                  "path": "card.cap_id",
+                  "form": "machine_id_for_output",
+                  "visibility": "harness_schema"
+                }
+              ],
+              "tiers": [
+                {
+                  "tier": "low",
+                  "label": "基础",
+                  "description": "基础情绪分类",
+                  "unit_cost_exact": 350,
+                  "unit_cost_text": "+¥350/台",
+                  "rd_investment_wan": 186,
+                  "rd_investment_text": "186.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "mid",
+                  "label": "标准",
+                  "description": "多模态融合识别",
+                  "unit_cost_exact": 600,
+                  "unit_cost_text": "+¥600/台",
+                  "rd_investment_wan": 186,
+                  "rd_investment_text": "186.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "high",
+                  "label": "旗舰",
+                  "description": "细粒度识别+趋势追踪",
+                  "unit_cost_exact": 880,
+                  "unit_cost_text": "+¥880/台",
+                  "rd_investment_wan": 186,
+                  "rd_investment_text": "186.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "path": "cards.adaptive_learning",
+              "cap_id": "adaptive_learning",
+              "front_id": "adaptive_learn",
+              "name": "自适应学习（习惯/偏好）",
+              "what": "越用越懂你——记住习惯、喜好、作息",
+              "risk_note": "冷启动体验弱，需要长期数据积累",
+              "nre_desc": "ML高级12月+嵌入式AI8月+数据工程6月+QA6月+GPU算力12月+边缘模组+用户测试+样机",
+              "tag": "",
+              "dependencies": [
+                {
+                  "tier": "mid",
+                  "type": "需要",
+                  "target": "cloud_update",
+                  "tl": "标准",
+                  "cross": true,
+                  "visibility": "conditional_after_selection"
+                },
+                {
+                  "tier": "high",
+                  "type": "需要",
+                  "target": "cloud_update",
+                  "tl": "旗舰",
+                  "cross": true,
+                  "visibility": "conditional_after_selection"
+                }
+              ],
+              "conflicts": [],
+              "visibility": "primary",
+              "fields": [
+                {
+                  "path": "card.name",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.what",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.risk_note",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.tag",
+                  "form": "badge",
+                  "visibility": "primary",
+                  "condition": "if present"
+                },
+                {
+                  "path": "card.cap_id",
+                  "form": "machine_id_for_output",
+                  "visibility": "harness_schema"
+                }
+              ],
+              "tiers": [
+                {
+                  "tier": "low",
+                  "label": "基础",
+                  "description": "记住常用设置",
+                  "unit_cost_exact": 350,
+                  "unit_cost_text": "+¥350/台",
+                  "rd_investment_wan": 197,
+                  "rd_investment_text": "197.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "mid",
+                  "label": "标准",
+                  "description": "学习日常规律",
+                  "unit_cost_exact": 620,
+                  "unit_cost_text": "+¥620/台",
+                  "rd_investment_wan": 197,
+                  "rd_investment_text": "197.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "high",
+                  "label": "旗舰",
+                  "description": "跨场景预测需求",
+                  "unit_cost_exact": 900,
+                  "unit_cost_text": "+¥900/台",
+                  "rd_investment_wan": 197,
+                  "rd_investment_text": "197.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "path": "cards.memory_album",
+              "cap_id": "memory_album",
+              "front_id": "memory_social",
+              "name": "社交记忆",
+              "what": "记住家庭成员、关系和偏好，互动更像熟人",
+              "risk_note": "涉及隐私和记忆边界，信任设计很关键",
+              "nre_desc": "后端8月+安全高级6月+QA4月+隐私审查律所+渗透测试+加密芯片+样机",
+              "tag": "",
+              "dependencies": [
+                {
+                  "tier": "high",
+                  "type": "需要",
+                  "target": "privacy_trust",
+                  "tl": "标准",
+                  "cross": true,
+                  "visibility": "conditional_after_selection"
+                }
+              ],
+              "conflicts": [],
+              "visibility": "primary",
+              "fields": [
+                {
+                  "path": "card.name",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.what",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.risk_note",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.tag",
+                  "form": "badge",
+                  "visibility": "primary",
+                  "condition": "if present"
+                },
+                {
+                  "path": "card.cap_id",
+                  "form": "machine_id_for_output",
+                  "visibility": "harness_schema"
+                }
+              ],
+              "tiers": [
+                {
+                  "tier": "low",
+                  "label": "基础",
+                  "description": "记住称呼与基本偏好",
+                  "unit_cost_exact": 250,
+                  "unit_cost_text": "+¥250/台",
+                  "rd_investment_wan": 105,
+                  "rd_investment_text": "105.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "mid",
+                  "label": "标准",
+                  "description": "记住家庭关系和互动习惯",
+                  "unit_cost_exact": 450,
+                  "unit_cost_text": "+¥450/台",
+                  "rd_investment_wan": 105,
+                  "rd_investment_text": "105.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "high",
+                  "label": "旗舰",
+                  "description": "跨场景长期记忆",
+                  "unit_cost_exact": 680,
+                  "unit_cost_text": "+¥680/台",
+                  "rd_investment_wan": 105,
+                  "rd_investment_text": "105.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "path": "dimensions.mobility_navigation",
+          "group_id": "mobility_navigation",
+          "label": "运动与导航",
+          "icon": "🦿",
+          "description": "自主移动、跟随、避障的运动能力",
+          "visibility": "primary",
+          "fields": [
+            {
+              "path": "dimension.label",
+              "form": "text",
+              "visibility": "primary"
+            },
+            {
+              "path": "dimension.description",
+              "form": "text",
+              "visibility": "primary"
+            },
+            {
+              "path": "dimension.selected_count",
+              "form": "dynamic_count",
+              "visibility": "primary"
+            }
+          ],
+          "cards": [
+            {
+              "path": "cards.basic_avoidance",
+              "cap_id": "basic_avoidance",
+              "front_id": "basic_avoid",
+              "name": "基础避障",
+              "what": "遇到障碍物会停下或绕开",
+              "risk_note": "基础方案成熟，但复杂家庭环境仍需测试",
+              "nre_desc": "嵌入式6月+算法3月+QA3月+超声波模组+测试场地+样机",
+              "tag": "",
+              "dependencies": [],
+              "conflicts": [],
+              "visibility": "primary",
+              "fields": [
+                {
+                  "path": "card.name",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.what",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.risk_note",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.tag",
+                  "form": "badge",
+                  "visibility": "primary",
+                  "condition": "if present"
+                },
+                {
+                  "path": "card.cap_id",
+                  "form": "machine_id_for_output",
+                  "visibility": "harness_schema"
+                }
+              ],
+              "tiers": [
+                {
+                  "tier": "low",
+                  "label": "基础",
+                  "description": "简单碰撞保护",
+                  "unit_cost_exact": 150,
+                  "unit_cost_text": "+¥150/台",
+                  "rd_investment_wan": 55,
+                  "rd_investment_text": "55.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "mid",
+                  "label": "标准",
+                  "description": "提前减速绕开",
+                  "unit_cost_exact": 300,
+                  "unit_cost_text": "+¥300/台",
+                  "rd_investment_wan": 55,
+                  "rd_investment_text": "55.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "high",
+                  "label": "旗舰",
+                  "description": "更平滑避障策略",
+                  "unit_cost_exact": 450,
+                  "unit_cost_text": "+¥450/台",
+                  "rd_investment_wan": 55,
+                  "rd_investment_text": "55.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "path": "cards.follow_mode",
+              "cap_id": "follow_mode",
+              "front_id": "auto_follow",
+              "name": "跟随/伴行模式",
+              "what": "像小宠物一样跟着你在家走",
+              "risk_note": "跟随稳定性和安全边界都不好做",
+              "nre_desc": "电机控制8月+算法8月+硬件4月+QA6月+伺服电机样品+路测+开发板+样机",
+              "tag": "",
+              "dependencies": [],
+              "conflicts": [],
+              "visibility": "primary",
+              "fields": [
+                {
+                  "path": "card.name",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.what",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.risk_note",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.tag",
+                  "form": "badge",
+                  "visibility": "primary",
+                  "condition": "if present"
+                },
+                {
+                  "path": "card.cap_id",
+                  "form": "machine_id_for_output",
+                  "visibility": "harness_schema"
+                }
+              ],
+              "tiers": [
+                {
+                  "tier": "low",
+                  "label": "基础",
+                  "description": "简单跟随",
+                  "unit_cost_exact": 320,
+                  "unit_cost_text": "+¥320/台",
+                  "rd_investment_wan": 122,
+                  "rd_investment_text": "122.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "mid",
+                  "label": "标准",
+                  "description": "视觉跟随伴行",
+                  "unit_cost_exact": 550,
+                  "unit_cost_text": "+¥550/台",
+                  "rd_investment_wan": 122,
+                  "rd_investment_text": "122.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "high",
+                  "label": "旗舰",
+                  "description": "预测路径伴行",
+                  "unit_cost_exact": 800,
+                  "unit_cost_text": "+¥800/台",
+                  "rd_investment_wan": 122,
+                  "rd_investment_text": "122.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "path": "cards.lidar_nav",
+              "cap_id": "lidar_nav",
+              "front_id": "lidar_nav",
+              "name": "激光雷达导航",
+              "what": "自主在家走动，记住房间布局",
+              "risk_note": "LiDAR 硬件和 SLAM 调参都很重，投入高",
+              "nre_desc": "SLAM高级10月+嵌入式8月+电机控制4月+QA8月+LiDAR多款评估+SLAM平台+大量路测+地图设备+样机",
+              "tag": "",
+              "dependencies": [
+                {
+                  "tier": "mid",
+                  "type": "需要",
+                  "target": "cloud_update",
+                  "tl": "标准",
+                  "cross": true,
+                  "visibility": "conditional_after_selection"
+                },
+                {
+                  "tier": "high",
+                  "type": "需要",
+                  "target": "cloud_update",
+                  "tl": "标准",
+                  "cross": true,
+                  "visibility": "conditional_after_selection"
+                }
+              ],
+              "conflicts": [],
+              "visibility": "primary",
+              "fields": [
+                {
+                  "path": "card.name",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.what",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.risk_note",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.tag",
+                  "form": "badge",
+                  "visibility": "primary",
+                  "condition": "if present"
+                },
+                {
+                  "path": "card.cap_id",
+                  "form": "machine_id_for_output",
+                  "visibility": "harness_schema"
+                }
+              ],
+              "tiers": [
+                {
+                  "tier": "low",
+                  "label": "基础",
+                  "description": "简单建图导航",
+                  "unit_cost_exact": 500,
+                  "unit_cost_text": "+¥500/台",
+                  "rd_investment_wan": 184,
+                  "rd_investment_text": "184.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "mid",
+                  "label": "标准",
+                  "description": "精准房间级导航",
+                  "unit_cost_exact": 850,
+                  "unit_cost_text": "+¥850/台",
+                  "rd_investment_wan": 184,
+                  "rd_investment_text": "184.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "high",
+                  "label": "旗舰",
+                  "description": "复杂户型与更强鲁棒性",
+                  "unit_cost_exact": 1200,
+                  "unit_cost_text": "+¥1,200/台",
+                  "rd_investment_wan": 184,
+                  "rd_investment_text": "184.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "path": "dimensions.safety_trust",
+          "group_id": "safety_trust",
+          "label": "安全与信任",
+          "icon": "🛡",
+          "description": "隐私保护、儿童安全、数据合规",
+          "visibility": "primary",
+          "fields": [
+            {
+              "path": "dimension.label",
+              "form": "text",
+              "visibility": "primary"
+            },
+            {
+              "path": "dimension.description",
+              "form": "text",
+              "visibility": "primary"
+            },
+            {
+              "path": "dimension.selected_count",
+              "form": "dynamic_count",
+              "visibility": "primary"
+            }
+          ],
+          "cards": [
+            {
+              "path": "cards.privacy_trust",
+              "cap_id": "privacy_trust",
+              "front_id": "privacy_trust",
+              "name": "隐私与信任保障",
+              "what": "数据加密，用户可控制自己的数据",
+              "risk_note": "合规要求明确，但不能只做表面开关",
+              "nre_desc": "安全高级8月+嵌入式4月+认证4月+渗透测试+安全认证+SE芯片+样机",
+              "tag": "",
+              "dependencies": [],
+              "conflicts": [],
+              "visibility": "primary",
+              "fields": [
+                {
+                  "path": "card.name",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.what",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.risk_note",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.tag",
+                  "form": "badge",
+                  "visibility": "primary",
+                  "condition": "if present"
+                },
+                {
+                  "path": "card.cap_id",
+                  "form": "machine_id_for_output",
+                  "visibility": "harness_schema"
+                }
+              ],
+              "tiers": [
+                {
+                  "tier": "low",
+                  "label": "基础",
+                  "description": "本地加密存储",
+                  "unit_cost_exact": 180,
+                  "unit_cost_text": "+¥180/台",
+                  "rd_investment_wan": 107,
+                  "rd_investment_text": "107.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "mid",
+                  "label": "标准",
+                  "description": "端到端加密+权限面板",
+                  "unit_cost_exact": 350,
+                  "unit_cost_text": "+¥350/台",
+                  "rd_investment_wan": 107,
+                  "rd_investment_text": "107.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "high",
+                  "label": "旗舰",
+                  "description": "更严格可信架构",
+                  "unit_cost_exact": 520,
+                  "unit_cost_text": "+¥520/台",
+                  "rd_investment_wan": 107,
+                  "rd_investment_text": "107.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "path": "cards.child_safety",
+              "cap_id": "child_safety",
+              "front_id": "child_safety",
+              "name": "儿童安全",
+              "what": "更关注碰撞、防夹、材料与儿童使用风险",
+              "risk_note": "认证和可靠性测试周期长",
+              "nre_desc": "硬件6月+结构4月+QA专项6月+认证6月+GB认证15万+跌落测试+材料检测+样机",
+              "tag": "",
+              "dependencies": [],
+              "conflicts": [],
+              "visibility": "primary",
+              "fields": [
+                {
+                  "path": "card.name",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.what",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.risk_note",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.tag",
+                  "form": "badge",
+                  "visibility": "primary",
+                  "condition": "if present"
+                },
+                {
+                  "path": "card.cap_id",
+                  "form": "machine_id_for_output",
+                  "visibility": "harness_schema"
+                }
+              ],
+              "tiers": [
+                {
+                  "tier": "low",
+                  "label": "基础",
+                  "description": "基础儿童防护",
+                  "unit_cost_exact": 250,
+                  "unit_cost_text": "+¥250/台",
+                  "rd_investment_wan": 113,
+                  "rd_investment_text": "113.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "mid",
+                  "label": "标准",
+                  "description": "更完整的儿童安全设计",
+                  "unit_cost_exact": 450,
+                  "unit_cost_text": "+¥450/台",
+                  "rd_investment_wan": 113,
+                  "rd_investment_text": "113.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "high",
+                  "label": "旗舰",
+                  "description": "强化防护与更高认证标准",
+                  "unit_cost_exact": 650,
+                  "unit_cost_text": "+¥650/台",
+                  "rd_investment_wan": 113,
+                  "rd_investment_text": "113.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "path": "cards.family_guardian",
+              "cap_id": "family_guardian",
+              "front_id": "family_guardian",
+              "name": "家庭监护",
+              "what": "家长远程查看孩子/老人状态，设置使用边界",
+              "risk_note": "隐私与监护的平衡很难，过度监控会惹人反感",
+              "nre_desc": "架构师8月+硬件8月+嵌入式6月+后端4月+QA8月+紧急通信认证+可靠性测试+融合套件+样机",
+              "tag": "",
+              "dependencies": [
+                {
+                  "tier": "low",
+                  "type": "需要",
+                  "target": "privacy_trust",
+                  "tl": "基础",
+                  "cross": true,
+                  "visibility": "conditional_after_selection"
+                },
+                {
+                  "tier": "mid",
+                  "type": "需要",
+                  "target": "privacy_trust",
+                  "tl": "标准",
+                  "cross": true,
+                  "visibility": "conditional_after_selection"
+                },
+                {
+                  "tier": "high",
+                  "type": "需要",
+                  "target": "privacy_trust",
+                  "tl": "旗舰",
+                  "cross": true,
+                  "visibility": "conditional_after_selection"
+                }
+              ],
+              "conflicts": [],
+              "visibility": "primary",
+              "fields": [
+                {
+                  "path": "card.name",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.what",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.risk_note",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.tag",
+                  "form": "badge",
+                  "visibility": "primary",
+                  "condition": "if present"
+                },
+                {
+                  "path": "card.cap_id",
+                  "form": "machine_id_for_output",
+                  "visibility": "harness_schema"
+                }
+              ],
+              "tiers": [
+                {
+                  "tier": "low",
+                  "label": "基础",
+                  "description": "基础远程提醒与边界",
+                  "unit_cost_exact": 420,
+                  "unit_cost_text": "+¥420/台",
+                  "rd_investment_wan": 201,
+                  "rd_investment_text": "201.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "mid",
+                  "label": "标准",
+                  "description": "远程查看+行为边界",
+                  "unit_cost_exact": 750,
+                  "unit_cost_text": "+¥750/台",
+                  "rd_investment_wan": 201,
+                  "rd_investment_text": "201.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "high",
+                  "label": "旗舰",
+                  "description": "多角色权限+异常报警",
+                  "unit_cost_exact": 1050,
+                  "unit_cost_text": "+¥1,050/台",
+                  "rd_investment_wan": 201,
+                  "rd_investment_text": "201.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "path": "dimensions.expand_connect",
+          "group_id": "expand_connect",
+          "label": "可扩展与连接",
+          "icon": "🔌",
+          "description": "云端更新、IoT 联动、内容生态",
+          "visibility": "primary",
+          "fields": [
+            {
+              "path": "dimension.label",
+              "form": "text",
+              "visibility": "primary"
+            },
+            {
+              "path": "dimension.description",
+              "form": "text",
+              "visibility": "primary"
+            },
+            {
+              "path": "dimension.selected_count",
+              "form": "dynamic_count",
+              "visibility": "primary"
+            }
+          ],
+          "cards": [
+            {
+              "path": "cards.cloud_update",
+              "cap_id": "cloud_update",
+              "front_id": "cloud_update",
+              "name": "云端智能更新（OTA）",
+              "what": "自动接收新功能和修复",
+              "risk_note": "灰度和回滚机制能明显降低线上事故",
+              "nre_desc": "后端6月+嵌入式6月+安全3月+QA4月+云服务器+灰度平台+安全芯片+样机",
+              "tag": "",
+              "dependencies": [],
+              "conflicts": [],
+              "visibility": "primary",
+              "fields": [
+                {
+                  "path": "card.name",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.what",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.risk_note",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.tag",
+                  "form": "badge",
+                  "visibility": "primary",
+                  "condition": "if present"
+                },
+                {
+                  "path": "card.cap_id",
+                  "form": "machine_id_for_output",
+                  "visibility": "harness_schema"
+                }
+              ],
+              "tiers": [
+                {
+                  "tier": "low",
+                  "label": "基础",
+                  "description": "手动更新",
+                  "unit_cost_exact": 150,
+                  "unit_cost_text": "+¥150/台",
+                  "rd_investment_wan": 94,
+                  "rd_investment_text": "94.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "mid",
+                  "label": "标准",
+                  "description": "自动静默+回滚",
+                  "unit_cost_exact": 300,
+                  "unit_cost_text": "+¥300/台",
+                  "rd_investment_wan": 94,
+                  "rd_investment_text": "94.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "high",
+                  "label": "旗舰",
+                  "description": "灰度发布+更强遥测",
+                  "unit_cost_exact": 480,
+                  "unit_cost_text": "+¥480/台",
+                  "rd_investment_wan": 94,
+                  "rd_investment_text": "94.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "path": "cards.api_iot",
+              "cap_id": "api_iot",
+              "front_id": "api_iot",
+              "name": "API / IoT 联动",
+              "what": "连接手机和家里其他设备，做更多场景联动",
+              "risk_note": "协议兼容和认证测试工作量大",
+              "nre_desc": "IoT8月+后端6月+硬件RF4月+认证4月+协议认证18万+天线外包+网关开发板+样机",
+              "tag": "",
+              "dependencies": [
+                {
+                  "tier": "high",
+                  "type": "需要",
+                  "target": "privacy_trust",
+                  "tl": "标准",
+                  "cross": true,
+                  "visibility": "conditional_after_selection"
+                }
+              ],
+              "conflicts": [],
+              "visibility": "primary",
+              "fields": [
+                {
+                  "path": "card.name",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.what",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.risk_note",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.tag",
+                  "form": "badge",
+                  "visibility": "primary",
+                  "condition": "if present"
+                },
+                {
+                  "path": "card.cap_id",
+                  "form": "machine_id_for_output",
+                  "visibility": "harness_schema"
+                }
+              ],
+              "tiers": [
+                {
+                  "tier": "low",
+                  "label": "基础",
+                  "description": "少量设备接入",
+                  "unit_cost_exact": 250,
+                  "unit_cost_text": "+¥250/台",
+                  "rd_investment_wan": 114,
+                  "rd_investment_text": "114.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "mid",
+                  "label": "标准",
+                  "description": "主流平台兼容",
+                  "unit_cost_exact": 450,
+                  "unit_cost_text": "+¥450/台",
+                  "rd_investment_wan": 114,
+                  "rd_investment_text": "114.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "high",
+                  "label": "旗舰",
+                  "description": "开放 API + 深度联动",
+                  "unit_cost_exact": 680,
+                  "unit_cost_text": "+¥680/台",
+                  "rd_investment_wan": 114,
+                  "rd_investment_text": "114.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "path": "cards.edu_content",
+              "cap_id": "edu_content",
+              "front_id": "edu_content",
+              "name": "教育内容",
+              "what": "提供更丰富的学习内容、课程和陪练素材",
+              "risk_note": "内容持续供给和版权都需要长期投入",
+              "nre_desc": "前端6月+后端6月+内容运营8月+QA3月+内容授权12万+CMS平台+合规审查+用户测试",
+              "tag": "",
+              "dependencies": [],
+              "conflicts": [],
+              "visibility": "primary",
+              "fields": [
+                {
+                  "path": "card.name",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.what",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.risk_note",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.tag",
+                  "form": "badge",
+                  "visibility": "primary",
+                  "condition": "if present"
+                },
+                {
+                  "path": "card.cap_id",
+                  "form": "machine_id_for_output",
+                  "visibility": "harness_schema"
+                }
+              ],
+              "tiers": [
+                {
+                  "tier": "low",
+                  "label": "基础",
+                  "description": "少量固定内容",
+                  "unit_cost_exact": 200,
+                  "unit_cost_text": "+¥200/台",
+                  "rd_investment_wan": 102,
+                  "rd_investment_text": "102.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "mid",
+                  "label": "标准",
+                  "description": "更系统的内容库",
+                  "unit_cost_exact": 380,
+                  "unit_cost_text": "+¥380/台",
+                  "rd_investment_wan": 102,
+                  "rd_investment_text": "102.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "high",
+                  "label": "旗舰",
+                  "description": "可持续运营的内容平台",
+                  "unit_cost_exact": 580,
+                  "unit_cost_text": "+¥580/台",
+                  "rd_investment_wan": 102,
+                  "rd_investment_text": "102.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "path": "dimensions.ops_maintenance",
+          "group_id": "ops_maintenance",
+          "label": "可运营与可维护",
+          "icon": "🔧",
+          "description": "远程监控、故障诊断、日常维护",
+          "visibility": "primary",
+          "fields": [
+            {
+              "path": "dimension.label",
+              "form": "text",
+              "visibility": "primary"
+            },
+            {
+              "path": "dimension.description",
+              "form": "text",
+              "visibility": "primary"
+            },
+            {
+              "path": "dimension.selected_count",
+              "form": "dynamic_count",
+              "visibility": "primary"
+            }
+          ],
+          "cards": [
+            {
+              "path": "cards.self_diag",
+              "cap_id": "self_diag",
+              "front_id": "self_diag",
+              "name": "自诊断",
+              "what": "机器人能自己发现故障并提示处理",
+              "risk_note": "投入不大，但对长期可维护性很重要",
+              "nre_desc": "嵌入式6月+QA4月+诊断传感器+故障注入设备+样机",
+              "tag": "",
+              "dependencies": [],
+              "conflicts": [],
+              "visibility": "primary",
+              "fields": [
+                {
+                  "path": "card.name",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.what",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.risk_note",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.tag",
+                  "form": "badge",
+                  "visibility": "primary",
+                  "condition": "if present"
+                },
+                {
+                  "path": "card.cap_id",
+                  "form": "machine_id_for_output",
+                  "visibility": "harness_schema"
+                }
+              ],
+              "tiers": [
+                {
+                  "tier": "low",
+                  "label": "基础",
+                  "description": "基础错误自检",
+                  "unit_cost_exact": 130,
+                  "unit_cost_text": "+¥130/台",
+                  "rd_investment_wan": 42,
+                  "rd_investment_text": "42.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "mid",
+                  "label": "标准",
+                  "description": "更系统的故障定位",
+                  "unit_cost_exact": 260,
+                  "unit_cost_text": "+¥260/台",
+                  "rd_investment_wan": 42,
+                  "rd_investment_text": "42.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "high",
+                  "label": "旗舰",
+                  "description": "硬件+软件联合诊断",
+                  "unit_cost_exact": 400,
+                  "unit_cost_text": "+¥400/台",
+                  "rd_investment_wan": 42,
+                  "rd_investment_text": "42.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "path": "cards.remote_monitor",
+              "cap_id": "remote_monitor",
+              "front_id": "remote_monitor",
+              "name": "远程监控",
+              "what": "远程查看设备状态、异常和运行日志",
+              "risk_note": "云端监控能省售后，但也要做好权限边界",
+              "nre_desc": "后端8月+嵌入式4月+QA3月+认证2月+云平台+通信认证+样机",
+              "tag": "",
+              "dependencies": [],
+              "conflicts": [],
+              "visibility": "primary",
+              "fields": [
+                {
+                  "path": "card.name",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.what",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.risk_note",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.tag",
+                  "form": "badge",
+                  "visibility": "primary",
+                  "condition": "if present"
+                },
+                {
+                  "path": "card.cap_id",
+                  "form": "machine_id_for_output",
+                  "visibility": "harness_schema"
+                }
+              ],
+              "tiers": [
+                {
+                  "tier": "low",
+                  "label": "基础",
+                  "description": "基础状态上报",
+                  "unit_cost_exact": 200,
+                  "unit_cost_text": "+¥200/台",
+                  "rd_investment_wan": 78,
+                  "rd_investment_text": "78.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "mid",
+                  "label": "标准",
+                  "description": "实时监控+日志分析",
+                  "unit_cost_exact": 380,
+                  "unit_cost_text": "+¥380/台",
+                  "rd_investment_wan": 78,
+                  "rd_investment_text": "78.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "high",
+                  "label": "旗舰",
+                  "description": "更强告警与远程处置",
+                  "unit_cost_exact": 580,
+                  "unit_cost_text": "+¥580/台",
+                  "rd_investment_wan": 78,
+                  "rd_investment_text": "78.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "path": "cards.predictive_maint",
+              "cap_id": "predictive_maint",
+              "front_id": "predictive_maint",
+              "name": "预测性维护",
+              "what": "在坏掉前就预警，减少突然故障",
+              "risk_note": "需要长期数据和更多传感器支持，开发周期长",
+              "nre_desc": "ML高级10月+嵌入式6月+数据工程6月+QA6月+GPU算力+长期测试15万+传感器+样机",
+              "tag": "",
+              "dependencies": [],
+              "conflicts": [],
+              "visibility": "primary",
+              "fields": [
+                {
+                  "path": "card.name",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.what",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.risk_note",
+                  "form": "text",
+                  "visibility": "primary"
+                },
+                {
+                  "path": "card.tag",
+                  "form": "badge",
+                  "visibility": "primary",
+                  "condition": "if present"
+                },
+                {
+                  "path": "card.cap_id",
+                  "form": "machine_id_for_output",
+                  "visibility": "harness_schema"
+                }
+              ],
+              "tiers": [
+                {
+                  "tier": "low",
+                  "label": "基础",
+                  "description": "简单预警规则",
+                  "unit_cost_exact": 350,
+                  "unit_cost_text": "+¥350/台",
+                  "rd_investment_wan": 172,
+                  "rd_investment_text": "172.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "mid",
+                  "label": "标准",
+                  "description": "基于数据的预警模型",
+                  "unit_cost_exact": 650,
+                  "unit_cost_text": "+¥650/台",
+                  "rd_investment_wan": 172,
+                  "rd_investment_text": "172.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                },
+                {
+                  "tier": "high",
+                  "label": "旗舰",
+                  "description": "更完整的预测维护体系",
+                  "unit_cost_exact": 950,
+                  "unit_cost_text": "+¥950/台",
+                  "rd_investment_wan": 172,
+                  "rd_investment_text": "172.0万",
+                  "visibility": "primary",
+                  "fields": [
+                    {
+                      "path": "tier.label",
+                      "form": "enum:基础/标准/旗舰",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.description",
+                      "form": "text",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.unit_cost_exact",
+                      "form": "currency_per_unit",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "tier.rd_investment_wan",
+                      "form": "wan_number",
+                      "visibility": "primary"
+                    },
+                    {
+                      "path": "card.nre_desc",
+                      "form": "text_with_numbers",
+                      "visibility": "primary"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "allowed_numbers": [
+        "-600",
+        "-450",
+        "-250",
+        "1",
+        "2",
+        "3",
+        "4",
+        "6",
+        "8",
+        "10",
+        "12",
+        "15",
+        "18",
+        "30",
+        "42",
+        "42.0",
+        "050",
+        "55",
+        "55.0",
+        "61",
+        "61.0",
+        "64",
+        "64.0",
+        "76",
+        "76.0",
+        "78",
+        "78.0",
+        "94",
+        "94.0",
+        "98",
+        "98.0",
+        "99",
+        "99.0",
+        "100",
+        "102",
+        "102.0",
+        "105",
+        "105.0",
+        "107",
+        "107.0",
+        "113",
+        "113.0",
+        "114",
+        "114.0",
+        "120",
+        "122",
+        "122.0",
+        "130",
+        "150",
+        "151",
+        "151.0",
+        "172",
+        "172.0",
+        "180",
+        "184",
+        "184.0",
+        "186",
+        "186.0",
+        "191",
+        "191.0",
+        "197",
+        "197.0",
+        "200",
+        "201",
+        "201.0",
+        "211",
+        "211.0",
+        "250",
+        "260",
+        "280",
+        "300",
+        "320",
+        "350",
+        "380",
+        "400",
+        "420",
+        "450",
+        "480",
+        "500",
+        "520",
+        "550",
+        "580",
+        "600",
+        "620",
+        "650",
+        "680",
+        "750",
+        "800",
+        "850",
+        "880",
+        "900",
+        "950",
+        "1050",
+        "1200"
+      ]
+    },
+    "R2_pricing": {
+      "source_component": "client/src/pages/Round2Flow.jsx",
+      "mode": "team",
+      "fields": [
+        {
+          "path": "pricing.price_min",
+          "form": "currency",
+          "visibility": "primary"
+        },
+        {
+          "path": "pricing.price_max",
+          "form": "currency",
+          "visibility": "primary"
+        },
+        {
+          "path": "pricing.price_step",
+          "form": "currency",
+          "visibility": "primary"
+        },
+        {
+          "path": "team.unit_cost",
+          "form": "currency",
+          "visibility": "primary",
+          "mode": "team"
+        },
+        {
+          "path": "team.fixed_cost",
+          "form": "currency",
+          "visibility": "primary",
+          "mode": "team"
+        },
+        {
+          "path": "team.channel_fee",
+          "form": "percentage",
+          "visibility": "primary",
+          "mode": "team"
+        }
+      ],
+      "individual_experiment_policy": "D5 persona prompt keeps only price range and step; team-only cost accounting fields are not injected in solo experiments.",
+      "price_defaults_for_experiment": {
+        "price_min": 1000,
+        "price_max": 6000,
+        "price_step": 100
+      },
+      "allowed_numbers": [
+        "1000",
+        "6000",
+        "100"
+      ]
+    }
+  },
+  "notes": [
+    "This manifest is generated from current frontend source without adding or changing npm scripts.",
+    "Manifest is the info-set allowlist for experiment prompts; engine internals not represented here remain non-visible.",
+    "Current frontend branch renders exact unit cost and R&D investment numbers in individual card selection; older qualitative IMP/cost-label whitelist is therefore not assumed."
+  ]
+}

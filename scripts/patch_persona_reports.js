@@ -103,53 +103,29 @@ function normalizeReportFormatting(text) {
     .replace(/客户调研报告\s*([^\n]+)\s*━━━━━━━━━━━━━━━━━━━━/, "客户调研报告\n$1\n━━━━━━━━━━━━━━━━━━━━")
     .replace(/\s*(▎受访者概况|▎核心发现|▎行为与态度|▎调研员备注)/g, "\n\n$1")
     .replace(/\s*(\*\*发现[一二三四]：)/g, "\n\n$1")
-    .replace(/([。！？”」])\s*→/g, "$1\n→")
     .replace(/\s*(\n1\.\s)/g, "$1")
     .replace(/\s*(\n2\.\s)/g, "$1")
     .trim();
 }
 
-function fallbackArrowLine(grid) {
-  if (grid.market === "ToB") {
-    if (grid.strategy === "Differentiation") return "→ 这说明机构不仅看重问题被解决，还看重体验差异是否能转化为服务口碑与运营优势。";
-    return "→ 这说明机构更在意可验证的效率改善、稳定落地和投入产出比。";
-  }
-  if (grid.strategy === "Differentiation") {
-    return "→ 这说明用户期待的不是勉强能用，而是更贴合自己生活节奏与感受的体验。";
-  }
-  return "→ 这说明用户真正看重的是省心、稳定和花出去的钱值不值。";
-}
-
 function fallbackRemarkLine(grid) {
   if (grid.market === "ToB") {
-    if (grid.strategy === "Differentiation") return "这是一位会把体验差异转化为服务口碑、组织认可和采购正当性的机构决策者。";
-    return "这是一位高度务实、以审批门槛和投入产出比为核心判断标准的机构决策者。";
+    if (grid.strategy === "Differentiation") return "性格标签：机构视角、品质敏感、谨慎、重视展示感。";
+    return "性格标签：机构视角、务实、价格敏感、重视可量化。";
   }
   if (grid.strategy === "Differentiation") {
-    return "这是一个愿意为更贴合自己生活体验的差异化价值付费、但前提是不能破坏边界感的个人用户。";
+    return "性格标签：体验敏感、边界感强、谨慎、重视独特性。";
   }
-  return "这是一个价格敏感、强调稳定省心、会反复衡量花出去的钱是否值得的个人用户。";
+  return "性格标签：务实、价格敏感、低维护偏好、重视确定性。";
 }
 
-function ensureFindingArrows(text, grid) {
-  const raw = String(text || "");
-  const matches = Array.from(raw.matchAll(/\*\*发现[一二三四]：[^\n]*[\s\S]*?(?=\n\*\*发现[一二三四]：|\n▎行为与态度|$)/g));
-  if (!matches.length) return text;
-  let cursor = 0;
-  let output = "";
-  for (const match of matches) {
-    const section = match[0];
-    const start = match.index || 0;
-    output += raw.slice(cursor, start);
-    if (section.includes("→")) {
-      output += section;
-    } else {
-      output += `${section.trimEnd()}\n${fallbackArrowLine(grid)}\n`;
-    }
-    cursor = start + section.length;
-  }
-  output += raw.slice(cursor);
-  return cleanReportText(output);
+function stripFindingArrows(text) {
+  return cleanReportText(
+    String(text || "")
+      .split("\n")
+      .filter((line) => !/^\s*→/.test(line))
+      .join("\n")
+  );
 }
 
 function ensureBehaviorNumbering(text) {
@@ -174,7 +150,7 @@ function applyLocalFormatFallbacks(text, grid) {
   return normalizeReportFormatting(
     ensureRemarkSection(
       ensureBehaviorNumbering(
-        ensureFindingArrows(text, grid)
+        stripFindingArrows(text)
       ),
       grid
     )
@@ -259,7 +235,6 @@ function buildPatchPrompt({ baseReport, grid, marketUnitZh, personaIdentity, for
     "**发现一：标题**",
     "“保留或微调后的原话引述”",
     "1-2 句观察。",
-    "→ 1 句结构性总结。",
     "",
     "继续写 **发现二 / 发现三 / 发现四**，格式完全一致。",
     "",
@@ -273,7 +248,6 @@ function buildPatchPrompt({ baseReport, grid, marketUnitZh, personaIdentity, for
     "硬约束：",
     "- 全文目标 800-1200 字，绝对不要超过 1500 字。",
     "- 核心发现标题统一加粗，且必须是“发现一/二/三/四”。",
-    "- 箭头总结统一用“→”开头。",
     "- 只输出最终报告纯文本，不要解释，不要附注。",
     "- 不出现产品名、能力名、功能名、技术术语。",
     issueLines.join("\n"),
@@ -300,8 +274,6 @@ function validateFormatting(reportText, marketUnitZh, personaIdentity) {
   ["一", "二", "三", "四"].forEach((num) => {
     if (!text.includes(`**发现${num}：`)) issues.push(`缺少“发现${num}”标题格式`);
   });
-  const arrowCount = (text.match(/→/g) || []).length;
-  if (arrowCount < 4) issues.push("箭头总结少于 4 条");
   if (!/\n1\.\s/.test(text) || !/\n2\.\s/.test(text)) issues.push("行为与态度未统一成 1./2. 编号");
   return issues;
 }
@@ -394,7 +366,7 @@ async function repairFormatting(personaId, reportText, marketUnitZh, personaIden
   const repaired = normalizeReportFormatting(await runChat([
     {
       role: "system",
-      content: "你是严格的中文排版编辑。只修格式与结构缺口，不重写情节。若某条发现缺少箭头总结，可补一条简洁的结构性总结；若缺少调研员备注，可补一段简洁备注。输出纯文本。"
+      content: "你是严格的中文排版编辑。只修格式与结构缺口，不重写情节。若某条发现缺少事实观察，只修补事实表达；若缺少调研员备注，可补一段性格标签级备注。输出纯文本。"
     },
     {
       role: "user",
@@ -410,7 +382,6 @@ async function repairFormatting(personaId, reportText, marketUnitZh, personaIden
         "▎受访者概况",
         "▎核心发现",
         "**发现一/二/三/四：标题**",
-        "每条发现都要有一条以“→”开头的总结。",
         "▎行为与态度",
         "1. ...",
         "2. ...",

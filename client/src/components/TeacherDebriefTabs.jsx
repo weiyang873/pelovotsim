@@ -2,13 +2,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   downloadTeacherCsv,
   generateTeacherDebrief,
-  getTeacherLovotImage,
+  getTeacherProductImage,
   generateTeacherTeamReview,
   getTeacherDebriefData,
   getTeacherVpIterations
 } from "../api/teacherApi";
 import DiagnosticTab from "./DiagnosticTab";
 import CardEcosystemTab from "./CardEcosystemTab";
+import { formatYuan as formatMoney, formatWanFromYuan as formatWan } from "../utils/formatMoney";
 
 const CARD_STYLE = {
   background: "#fff",
@@ -70,20 +71,6 @@ function gridCellKeyFromGridId(value) {
   const strategy = /cost/i.test(parts[1]) ? "成本领先" : "差异化";
   const segment = /elder/i.test(parts[2]) ? "老人" : /child/i.test(parts[2]) ? "儿童" : "成人";
   return `${market}·${strategy}|${segment}`;
-}
-
-function formatMoney(value) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return "-";
-  return `¥${Math.round(n).toLocaleString()}`;
-}
-
-function formatWan(value) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return "—";
-  const wan = n / 10000;
-  const sign = wan >= 0 ? "" : "-";
-  return `${sign}${Math.abs(wan).toFixed(0)}万`;
 }
 
 function formatPercent(value, digits = 0) {
@@ -878,7 +865,7 @@ function VPIterationTimeline({ iterations, loading }) {
   );
 }
 
-function Round1DetailAccordion({ teams, teacherCode, sessionId, lovotImages, lovotLoading, onLoadLovotImage }) {
+function Round1DetailAccordion({ teams, teacherCode, sessionId, productImages, productImageLoading, onLoadProductImage }) {
   const [expandedTeamId, setExpandedTeamId] = useState("");
   const [iterationsByTeam, setIterationsByTeam] = useState({});
   const [loadingByTeam, setLoadingByTeam] = useState({});
@@ -888,8 +875,8 @@ function Round1DetailAccordion({ teams, teacherCode, sessionId, lovotImages, lov
     setExpandedTeamId(next);
     if (!next) return;
     const targetTeam = teams.find((item) => item.id === teamId);
-    if (targetTeam?.hasLovotImage && !lovotImages[teamId] && !lovotLoading[teamId]) {
-      onLoadLovotImage(teamId);
+    if (targetTeam?.hasProductImage && !productImages[teamId] && !productImageLoading[teamId]) {
+      onLoadProductImage(teamId);
     }
     if (iterationsByTeam[teamId] || loadingByTeam[teamId]) return;
     setLoadingByTeam((prev) => ({ ...prev, [teamId]: true }));
@@ -973,23 +960,23 @@ function Round1DetailAccordion({ teams, teacherCode, sessionId, lovotImages, lov
                         <div><strong>PAIN：</strong>{team?.r1?.pain || "-"}</div>
                         <div><strong>HOW：</strong>{team?.r1?.how || "-"}</div>
                       </div>
-                      {team?.hasLovotImage ? (
+                      {team?.hasProductImage ? (
                         <div style={{ marginTop: 16, padding: 16, background: "#f8fafc", borderRadius: 14, border: "1px solid #e2e8f0", textAlign: "center" }}>
                           <div style={{ fontSize: 15, fontWeight: 700, color: "#334155", marginBottom: 12, textAlign: "center" }}>
-                            团队专属 LOVOT
+                            团队专属 AI 宠物机器人
                           </div>
-                          {lovotImages[team.id] ? (
+                          {productImages[team.id] ? (
                             <div style={{ display: "flex", justifyContent: "center" }}>
                               <img
-                                src={lovotImages[team.id]}
-                                alt={`${team.displayName} LOVOT`}
+                                src={productImages[team.id]}
+                                alt={`${team.displayName} AI 宠物机器人`}
                                 style={{ maxWidth: 480, width: "100%", objectFit: "contain", borderRadius: 16, boxShadow: "0 4px 12px rgba(15,23,42,0.12)" }}
                               />
                             </div>
                           ) : (
                             <div style={{ display: "flex", justifyContent: "center" }}>
                               <div style={{ width: "100%", maxWidth: 480, minHeight: 120, borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", background: "#fff", border: "1px solid #e2e8f0", fontSize: 12, color: "#64748b", textAlign: "center", padding: 12 }}>
-                                {lovotLoading[team.id] ? "加载中..." : "LOVOT"}
+                                {productImageLoading[team.id] ? "加载中..." : "AI 宠物机器人"}
                               </div>
                             </div>
                           )}
@@ -2238,7 +2225,9 @@ function RdRoiRankingCard({ teams }) {
               </div>
               <div style={{ marginTop: 4, fontSize: 11, color: "#64748b" }}>
                 {Number.isFinite(Number(roi))
-                  ? (positive ? `每投¥1研发费赚¥${perYuan.toFixed(2)}` : `每投¥1亏¥${perYuan.toFixed(2)}`)
+                  ? (positive
+                    ? `每投 1 元研发费赚 ${perYuan.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} 元`
+                    : `每投 1 元亏 ${perYuan.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} 元`)
                   : "研发投入口径不足"}
               </div>
             </div>
@@ -2249,7 +2238,7 @@ function RdRoiRankingCard({ teams }) {
   );
 }
 
-function Round1Tab({ teams, teacherCode, sessionId, lovotImages, lovotLoading, onLoadLovotImage }) {
+function Round1Tab({ teams, teacherCode, sessionId, productImages, productImageLoading, onLoadProductImage }) {
   if (!teams.length) {
     return emptyState("Round 1 暂无数据", "等团队完成第一轮后，这里会显示个人分布、团队共识和 VP 迭代。");
   }
@@ -2274,9 +2263,9 @@ function Round1Tab({ teams, teacherCode, sessionId, lovotImages, lovotLoading, o
         teams={teams}
         teacherCode={teacherCode}
         sessionId={sessionId}
-        lovotImages={lovotImages}
-        lovotLoading={lovotLoading}
-        onLoadLovotImage={onLoadLovotImage}
+        productImages={productImages}
+        productImageLoading={productImageLoading}
+        onLoadProductImage={onLoadProductImage}
       />
       <Round1DivergenceCard teams={teams} />
     </div>
@@ -2496,8 +2485,8 @@ export default function TeacherDebriefTabs({ activeTab, teacherCode, onExportJso
   const [debriefRound, setDebriefRound] = useState(2);
   const [scripts, setScripts] = useState({});
   const [scriptLoading, setScriptLoading] = useState(false);
-  const [lovotImages, setLovotImages] = useState({});
-  const [lovotLoading, setLovotLoading] = useState({});
+  const [productImages, setProductImages] = useState({});
+  const [productImageLoading, setProductImageLoading] = useState({});
   const mountedRef = useRef(true);
 
   const sessionId = "default";
@@ -2607,18 +2596,18 @@ export default function TeacherDebriefTabs({ activeTab, teacherCode, onExportJso
     }
   };
 
-  const loadLovotImage = async (teamId) => {
-    if (!teacherCode || !teamId || lovotImages[teamId] || lovotLoading[teamId]) return;
-    setLovotLoading((prev) => ({ ...prev, [teamId]: true }));
+  const loadProductImage = async (teamId) => {
+    if (!teacherCode || !teamId || productImages[teamId] || productImageLoading[teamId]) return;
+    setProductImageLoading((prev) => ({ ...prev, [teamId]: true }));
     try {
-      const out = await getTeacherLovotImage(teacherCode, teamId);
+      const out = await getTeacherProductImage(teacherCode, teamId);
       if (!mountedRef.current) return;
-      setLovotImages((prev) => ({ ...prev, [teamId]: out.image }));
+      setProductImages((prev) => ({ ...prev, [teamId]: out.image }));
     } catch (_) {
-      // Ignore missing or failed LOVOT fetches in the debrief panel.
+      // Ignore missing or failed AI pet robot image fetches in the debrief panel.
     } finally {
       if (mountedRef.current) {
-        setLovotLoading((prev) => ({ ...prev, [teamId]: false }));
+        setProductImageLoading((prev) => ({ ...prev, [teamId]: false }));
       }
     }
   };
@@ -2654,9 +2643,9 @@ export default function TeacherDebriefTabs({ activeTab, teacherCode, onExportJso
           teams={round1Teams}
           teacherCode={teacherCode}
           sessionId={sessionId}
-          lovotImages={lovotImages}
-          lovotLoading={lovotLoading}
-          onLoadLovotImage={loadLovotImage}
+          productImages={productImages}
+          productImageLoading={productImageLoading}
+          onLoadProductImage={loadProductImage}
         />
       )}
       {activeTab === "Round 2 复盘" && (

@@ -148,7 +148,7 @@ async function listTeams() {
 
       result.push({
         ...addStoredRound1MoneyViews(team),
-        hasLovotImage: Boolean(team.has_lovot_image),
+        hasProductImage: Boolean(team.has_lovot_image),
         members,
         submitted_count: Number(submittedCount[0]?.c || 0)
       });

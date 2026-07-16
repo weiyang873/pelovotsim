@@ -5,7 +5,6 @@ import EntryPage from "./pages/EntryPage";
 import AdminPanel from "./pages/AdminPanel";
 import TestRound2Entry from "./pages/TestRound2Entry";
 import LegalPage from "./pages/LegalPage";
-import ReferenceDrawer from "./components/ReferenceDrawer";
 import { hasStoredStudentSession, markRound1ReviewIntent, readStudentSession } from "./utils/studentSession";
 
 const BASE_PREFIX = "/multiplayer";
@@ -119,12 +118,9 @@ export default function App() {
     );
   }
 
-  const shouldShowReferenceDrawer = !shouldShowEntryPage;
-
   return (
     <>
       {content}
-      {shouldShowReferenceDrawer ? <ReferenceDrawer /> : null}
     </>
   );
 }
