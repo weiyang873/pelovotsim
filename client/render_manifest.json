@@ -1,18 +1,23 @@
 {
-  "manifest_version": "d29aeded3689963095c210da7209b5d1eb650e7882707aa6b7ea5880b4fcea89",
-  "generated_from": "1a14f7ded15c9582bf888d0d77446c73b67528ea",
-  "generated_from_worktree_dirty": false,
+  "manifest_version": "684ccba867b4621327d91b2c16d7182517011bb490053a54df8b9f345f0c3e9e",
+  "generated_from": "bc5ce07527eb4a0673538e3ccf375f4eda41ae15",
+  "generated_from_worktree_dirty": true,
   "generator": "scripts/export_render_manifest.js",
   "source_files": [
     {
       "path": "client/src/pages/Round2Flow.jsx",
-      "sha256": "f1e0bc65d6f09cdf393b3d05c634282bb411a0e41e099d6dfefeac2cbf4b5cb8",
-      "git_status_dirty": false
+      "sha256": "5fb92123df98b3005061401cc96aaba0add641e531120e00fcd6eb60583e9050",
+      "git_status_dirty": true
     },
     {
       "path": "client/src/pages/MultiplayerFlow.jsx",
       "sha256": "5d7586bdd2ff1e303a4abe81898490fe14ab8626cda1518ee94eb03fa297c0de",
       "git_status_dirty": false
+    },
+    {
+      "path": "client/src/utils/formatMoney.js",
+      "sha256": "7fb655d66299caa3257ced9b861653e9c0e65202e5ef43a82be2fe59a728bb3c",
+      "git_status_dirty": true
     },
     {
       "path": "data/capability_groups_v2.json",
@@ -302,7 +307,7 @@
                   "unit_cost_exact": 150,
                   "unit_cost_text": "+¥150/台",
                   "rd_investment_wan": 98,
-                  "rd_investment_text": "98万",
+                  "rd_investment_text": "98.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -339,7 +344,7 @@
                   "unit_cost_exact": 280,
                   "unit_cost_text": "+¥280/台",
                   "rd_investment_wan": 98,
-                  "rd_investment_text": "98万",
+                  "rd_investment_text": "98.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -376,7 +381,7 @@
                   "unit_cost_exact": 420,
                   "unit_cost_text": "+¥420/台",
                   "rd_investment_wan": 98,
-                  "rd_investment_text": "98万",
+                  "rd_investment_text": "98.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -465,7 +470,7 @@
                   "unit_cost_exact": 400,
                   "unit_cost_text": "+¥400/台",
                   "rd_investment_wan": 211,
-                  "rd_investment_text": "211万",
+                  "rd_investment_text": "211.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -502,7 +507,7 @@
                   "unit_cost_exact": 650,
                   "unit_cost_text": "+¥650/台",
                   "rd_investment_wan": 211,
-                  "rd_investment_text": "211万",
+                  "rd_investment_text": "211.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -539,7 +544,7 @@
                   "unit_cost_exact": 950,
                   "unit_cost_text": "+¥950/台",
                   "rd_investment_wan": 211,
-                  "rd_investment_text": "211万",
+                  "rd_investment_text": "211.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -619,7 +624,7 @@
                   "unit_cost_exact": 180,
                   "unit_cost_text": "+¥180/台",
                   "rd_investment_wan": 99,
-                  "rd_investment_text": "99万",
+                  "rd_investment_text": "99.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -656,7 +661,7 @@
                   "unit_cost_exact": 350,
                   "unit_cost_text": "+¥350/台",
                   "rd_investment_wan": 99,
-                  "rd_investment_text": "99万",
+                  "rd_investment_text": "99.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -693,7 +698,7 @@
                   "unit_cost_exact": 520,
                   "unit_cost_text": "+¥520/台",
                   "rd_investment_wan": 99,
-                  "rd_investment_text": "99万",
+                  "rd_investment_text": "99.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -773,7 +778,7 @@
                   "unit_cost_exact": 100,
                   "unit_cost_text": "+¥100/台",
                   "rd_investment_wan": 64,
-                  "rd_investment_text": "64万",
+                  "rd_investment_text": "64.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -810,7 +815,7 @@
                   "unit_cost_exact": 200,
                   "unit_cost_text": "+¥200/台",
                   "rd_investment_wan": 64,
-                  "rd_investment_text": "64万",
+                  "rd_investment_text": "64.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -847,7 +852,7 @@
                   "unit_cost_exact": 320,
                   "unit_cost_text": "+¥320/台",
                   "rd_investment_wan": 64,
-                  "rd_investment_text": "64万",
+                  "rd_investment_text": "64.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -932,7 +937,7 @@
                   "unit_cost_exact": 300,
                   "unit_cost_text": "+¥300/台",
                   "rd_investment_wan": 191,
-                  "rd_investment_text": "191万",
+                  "rd_investment_text": "191.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -969,7 +974,7 @@
                   "unit_cost_exact": 600,
                   "unit_cost_text": "+¥600/台",
                   "rd_investment_wan": 191,
-                  "rd_investment_text": "191万",
+                  "rd_investment_text": "191.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -1006,7 +1011,7 @@
                   "unit_cost_exact": 850,
                   "unit_cost_text": "+¥850/台",
                   "rd_investment_wan": 191,
-                  "rd_investment_text": "191万",
+                  "rd_investment_text": "191.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -1086,7 +1091,7 @@
                   "unit_cost_exact": 120,
                   "unit_cost_text": "+¥120/台",
                   "rd_investment_wan": 151,
-                  "rd_investment_text": "151万",
+                  "rd_investment_text": "151.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -1123,7 +1128,7 @@
                   "unit_cost_exact": 250,
                   "unit_cost_text": "+¥250/台",
                   "rd_investment_wan": 151,
-                  "rd_investment_text": "151万",
+                  "rd_investment_text": "151.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -1160,7 +1165,7 @@
                   "unit_cost_exact": 400,
                   "unit_cost_text": "+¥400/台",
                   "rd_investment_wan": 151,
-                  "rd_investment_text": "151万",
+                  "rd_investment_text": "151.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -1243,9 +1248,9 @@
                   "label": "基础",
                   "description": "去屏保留LED",
                   "unit_cost_exact": -250,
-                  "unit_cost_text": "¥-250/台",
+                  "unit_cost_text": "-¥250/台",
                   "rd_investment_wan": 61,
-                  "rd_investment_text": "61万",
+                  "rd_investment_text": "61.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -1280,9 +1285,9 @@
                   "label": "标准",
                   "description": "去屏+简化外壳",
                   "unit_cost_exact": -450,
-                  "unit_cost_text": "¥-450/台",
+                  "unit_cost_text": "-¥450/台",
                   "rd_investment_wan": 61,
-                  "rd_investment_text": "61万",
+                  "rd_investment_text": "61.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -1317,9 +1322,9 @@
                   "label": "旗舰",
                   "description": "极简纯语音方案",
                   "unit_cost_exact": -600,
-                  "unit_cost_text": "¥-600/台",
+                  "unit_cost_text": "-¥600/台",
                   "rd_investment_wan": 61,
-                  "rd_investment_text": "61万",
+                  "rd_investment_text": "61.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -1426,7 +1431,7 @@
                   "unit_cost_exact": 200,
                   "unit_cost_text": "+¥200/台",
                   "rd_investment_wan": 76,
-                  "rd_investment_text": "76万",
+                  "rd_investment_text": "76.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -1463,7 +1468,7 @@
                   "unit_cost_exact": 380,
                   "unit_cost_text": "+¥380/台",
                   "rd_investment_wan": 76,
-                  "rd_investment_text": "76万",
+                  "rd_investment_text": "76.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -1500,7 +1505,7 @@
                   "unit_cost_exact": 550,
                   "unit_cost_text": "+¥550/台",
                   "rd_investment_wan": 76,
-                  "rd_investment_text": "76万",
+                  "rd_investment_text": "76.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -1602,7 +1607,7 @@
                   "unit_cost_exact": 350,
                   "unit_cost_text": "+¥350/台",
                   "rd_investment_wan": 186,
-                  "rd_investment_text": "186万",
+                  "rd_investment_text": "186.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -1639,7 +1644,7 @@
                   "unit_cost_exact": 600,
                   "unit_cost_text": "+¥600/台",
                   "rd_investment_wan": 186,
-                  "rd_investment_text": "186万",
+                  "rd_investment_text": "186.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -1676,7 +1681,7 @@
                   "unit_cost_exact": 880,
                   "unit_cost_text": "+¥880/台",
                   "rd_investment_wan": 186,
-                  "rd_investment_text": "186万",
+                  "rd_investment_text": "186.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -1773,7 +1778,7 @@
                   "unit_cost_exact": 350,
                   "unit_cost_text": "+¥350/台",
                   "rd_investment_wan": 197,
-                  "rd_investment_text": "197万",
+                  "rd_investment_text": "197.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -1810,7 +1815,7 @@
                   "unit_cost_exact": 620,
                   "unit_cost_text": "+¥620/台",
                   "rd_investment_wan": 197,
-                  "rd_investment_text": "197万",
+                  "rd_investment_text": "197.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -1847,7 +1852,7 @@
                   "unit_cost_exact": 900,
                   "unit_cost_text": "+¥900/台",
                   "rd_investment_wan": 197,
-                  "rd_investment_text": "197万",
+                  "rd_investment_text": "197.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -1936,7 +1941,7 @@
                   "unit_cost_exact": 250,
                   "unit_cost_text": "+¥250/台",
                   "rd_investment_wan": 105,
-                  "rd_investment_text": "105万",
+                  "rd_investment_text": "105.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -1973,7 +1978,7 @@
                   "unit_cost_exact": 450,
                   "unit_cost_text": "+¥450/台",
                   "rd_investment_wan": 105,
-                  "rd_investment_text": "105万",
+                  "rd_investment_text": "105.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -2010,7 +2015,7 @@
                   "unit_cost_exact": 680,
                   "unit_cost_text": "+¥680/台",
                   "rd_investment_wan": 105,
-                  "rd_investment_text": "105万",
+                  "rd_investment_text": "105.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -2117,7 +2122,7 @@
                   "unit_cost_exact": 150,
                   "unit_cost_text": "+¥150/台",
                   "rd_investment_wan": 55,
-                  "rd_investment_text": "55万",
+                  "rd_investment_text": "55.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -2154,7 +2159,7 @@
                   "unit_cost_exact": 300,
                   "unit_cost_text": "+¥300/台",
                   "rd_investment_wan": 55,
-                  "rd_investment_text": "55万",
+                  "rd_investment_text": "55.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -2191,7 +2196,7 @@
                   "unit_cost_exact": 450,
                   "unit_cost_text": "+¥450/台",
                   "rd_investment_wan": 55,
-                  "rd_investment_text": "55万",
+                  "rd_investment_text": "55.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -2271,7 +2276,7 @@
                   "unit_cost_exact": 320,
                   "unit_cost_text": "+¥320/台",
                   "rd_investment_wan": 122,
-                  "rd_investment_text": "122万",
+                  "rd_investment_text": "122.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -2308,7 +2313,7 @@
                   "unit_cost_exact": 550,
                   "unit_cost_text": "+¥550/台",
                   "rd_investment_wan": 122,
-                  "rd_investment_text": "122万",
+                  "rd_investment_text": "122.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -2345,7 +2350,7 @@
                   "unit_cost_exact": 800,
                   "unit_cost_text": "+¥800/台",
                   "rd_investment_wan": 122,
-                  "rd_investment_text": "122万",
+                  "rd_investment_text": "122.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -2442,7 +2447,7 @@
                   "unit_cost_exact": 500,
                   "unit_cost_text": "+¥500/台",
                   "rd_investment_wan": 184,
-                  "rd_investment_text": "184万",
+                  "rd_investment_text": "184.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -2479,7 +2484,7 @@
                   "unit_cost_exact": 850,
                   "unit_cost_text": "+¥850/台",
                   "rd_investment_wan": 184,
-                  "rd_investment_text": "184万",
+                  "rd_investment_text": "184.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -2516,7 +2521,7 @@
                   "unit_cost_exact": 1200,
                   "unit_cost_text": "+¥1,200/台",
                   "rd_investment_wan": 184,
-                  "rd_investment_text": "184万",
+                  "rd_investment_text": "184.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -2623,7 +2628,7 @@
                   "unit_cost_exact": 180,
                   "unit_cost_text": "+¥180/台",
                   "rd_investment_wan": 107,
-                  "rd_investment_text": "107万",
+                  "rd_investment_text": "107.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -2660,7 +2665,7 @@
                   "unit_cost_exact": 350,
                   "unit_cost_text": "+¥350/台",
                   "rd_investment_wan": 107,
-                  "rd_investment_text": "107万",
+                  "rd_investment_text": "107.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -2697,7 +2702,7 @@
                   "unit_cost_exact": 520,
                   "unit_cost_text": "+¥520/台",
                   "rd_investment_wan": 107,
-                  "rd_investment_text": "107万",
+                  "rd_investment_text": "107.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -2777,7 +2782,7 @@
                   "unit_cost_exact": 250,
                   "unit_cost_text": "+¥250/台",
                   "rd_investment_wan": 113,
-                  "rd_investment_text": "113万",
+                  "rd_investment_text": "113.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -2814,7 +2819,7 @@
                   "unit_cost_exact": 450,
                   "unit_cost_text": "+¥450/台",
                   "rd_investment_wan": 113,
-                  "rd_investment_text": "113万",
+                  "rd_investment_text": "113.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -2851,7 +2856,7 @@
                   "unit_cost_exact": 650,
                   "unit_cost_text": "+¥650/台",
                   "rd_investment_wan": 113,
-                  "rd_investment_text": "113万",
+                  "rd_investment_text": "113.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -2956,7 +2961,7 @@
                   "unit_cost_exact": 420,
                   "unit_cost_text": "+¥420/台",
                   "rd_investment_wan": 201,
-                  "rd_investment_text": "201万",
+                  "rd_investment_text": "201.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -2993,7 +2998,7 @@
                   "unit_cost_exact": 750,
                   "unit_cost_text": "+¥750/台",
                   "rd_investment_wan": 201,
-                  "rd_investment_text": "201万",
+                  "rd_investment_text": "201.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -3030,7 +3035,7 @@
                   "unit_cost_exact": 1050,
                   "unit_cost_text": "+¥1,050/台",
                   "rd_investment_wan": 201,
-                  "rd_investment_text": "201万",
+                  "rd_investment_text": "201.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -3137,7 +3142,7 @@
                   "unit_cost_exact": 150,
                   "unit_cost_text": "+¥150/台",
                   "rd_investment_wan": 94,
-                  "rd_investment_text": "94万",
+                  "rd_investment_text": "94.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -3174,7 +3179,7 @@
                   "unit_cost_exact": 300,
                   "unit_cost_text": "+¥300/台",
                   "rd_investment_wan": 94,
-                  "rd_investment_text": "94万",
+                  "rd_investment_text": "94.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -3211,7 +3216,7 @@
                   "unit_cost_exact": 480,
                   "unit_cost_text": "+¥480/台",
                   "rd_investment_wan": 94,
-                  "rd_investment_text": "94万",
+                  "rd_investment_text": "94.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -3300,7 +3305,7 @@
                   "unit_cost_exact": 250,
                   "unit_cost_text": "+¥250/台",
                   "rd_investment_wan": 114,
-                  "rd_investment_text": "114万",
+                  "rd_investment_text": "114.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -3337,7 +3342,7 @@
                   "unit_cost_exact": 450,
                   "unit_cost_text": "+¥450/台",
                   "rd_investment_wan": 114,
-                  "rd_investment_text": "114万",
+                  "rd_investment_text": "114.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -3374,7 +3379,7 @@
                   "unit_cost_exact": 680,
                   "unit_cost_text": "+¥680/台",
                   "rd_investment_wan": 114,
-                  "rd_investment_text": "114万",
+                  "rd_investment_text": "114.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -3454,7 +3459,7 @@
                   "unit_cost_exact": 200,
                   "unit_cost_text": "+¥200/台",
                   "rd_investment_wan": 102,
-                  "rd_investment_text": "102万",
+                  "rd_investment_text": "102.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -3491,7 +3496,7 @@
                   "unit_cost_exact": 380,
                   "unit_cost_text": "+¥380/台",
                   "rd_investment_wan": 102,
-                  "rd_investment_text": "102万",
+                  "rd_investment_text": "102.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -3528,7 +3533,7 @@
                   "unit_cost_exact": 580,
                   "unit_cost_text": "+¥580/台",
                   "rd_investment_wan": 102,
-                  "rd_investment_text": "102万",
+                  "rd_investment_text": "102.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -3635,7 +3640,7 @@
                   "unit_cost_exact": 130,
                   "unit_cost_text": "+¥130/台",
                   "rd_investment_wan": 42,
-                  "rd_investment_text": "42万",
+                  "rd_investment_text": "42.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -3672,7 +3677,7 @@
                   "unit_cost_exact": 260,
                   "unit_cost_text": "+¥260/台",
                   "rd_investment_wan": 42,
-                  "rd_investment_text": "42万",
+                  "rd_investment_text": "42.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -3709,7 +3714,7 @@
                   "unit_cost_exact": 400,
                   "unit_cost_text": "+¥400/台",
                   "rd_investment_wan": 42,
-                  "rd_investment_text": "42万",
+                  "rd_investment_text": "42.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -3789,7 +3794,7 @@
                   "unit_cost_exact": 200,
                   "unit_cost_text": "+¥200/台",
                   "rd_investment_wan": 78,
-                  "rd_investment_text": "78万",
+                  "rd_investment_text": "78.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -3826,7 +3831,7 @@
                   "unit_cost_exact": 380,
                   "unit_cost_text": "+¥380/台",
                   "rd_investment_wan": 78,
-                  "rd_investment_text": "78万",
+                  "rd_investment_text": "78.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -3863,7 +3868,7 @@
                   "unit_cost_exact": 580,
                   "unit_cost_text": "+¥580/台",
                   "rd_investment_wan": 78,
-                  "rd_investment_text": "78万",
+                  "rd_investment_text": "78.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -3943,7 +3948,7 @@
                   "unit_cost_exact": 350,
                   "unit_cost_text": "+¥350/台",
                   "rd_investment_wan": 172,
-                  "rd_investment_text": "172万",
+                  "rd_investment_text": "172.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -3980,7 +3985,7 @@
                   "unit_cost_exact": 650,
                   "unit_cost_text": "+¥650/台",
                   "rd_investment_wan": 172,
-                  "rd_investment_text": "172万",
+                  "rd_investment_text": "172.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -4017,7 +4022,7 @@
                   "unit_cost_exact": 950,
                   "unit_cost_text": "+¥950/台",
                   "rd_investment_wan": 172,
-                  "rd_investment_text": "172万",
+                  "rd_investment_text": "172.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -4068,35 +4073,58 @@
         "18",
         "30",
         "42",
+        "42.0",
         "050",
         "55",
+        "55.0",
         "61",
+        "61.0",
         "64",
+        "64.0",
         "76",
+        "76.0",
         "78",
+        "78.0",
         "94",
+        "94.0",
         "98",
+        "98.0",
         "99",
+        "99.0",
         "100",
         "102",
+        "102.0",
         "105",
+        "105.0",
         "107",
+        "107.0",
         "113",
+        "113.0",
         "114",
+        "114.0",
         "120",
         "122",
+        "122.0",
         "130",
         "150",
         "151",
+        "151.0",
         "172",
+        "172.0",
         "180",
         "184",
+        "184.0",
         "186",
+        "186.0",
         "191",
+        "191.0",
         "197",
+        "197.0",
         "200",
         "201",
+        "201.0",
         "211",
+        "211.0",
         "250",
         "260",
         "280",

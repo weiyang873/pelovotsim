@@ -80,7 +80,19 @@ function invertObject(object) {
 
 function formatSignedCurrency(value) {
   const num = Number(value || 0);
-  return `${num > 0 ? "+" : ""}¥${num.toLocaleString()}`;
+  const rounded = Math.round(num);
+  if (rounded === 0) return "¥0";
+  const abs = Math.abs(rounded).toLocaleString("zh-CN");
+  return `${num > 0 ? "+" : "-"}¥${abs}`;
+}
+
+function formatWan(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return "—";
+  return `${num.toLocaleString("zh-CN", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1
+  })}万`;
 }
 
 function collectNumbers(value, out = new Set()) {
@@ -164,7 +176,7 @@ function buildRound2Stage(round2Source, capabilities) {
             unit_cost_exact: unitCost,
             unit_cost_text: `${formatSignedCurrency(unitCost)}/台`,
             rd_investment_wan: rdInvestmentWan,
-            rd_investment_text: `${rdInvestmentWan}万`,
+            rd_investment_text: formatWan(rdInvestmentWan),
             visibility: "primary",
             fields: [
               { path: "tier.label", form: "enum:基础/标准/旗舰", visibility: "primary" },
@@ -246,6 +258,7 @@ function buildManifest() {
   const sourceFiles = [
     ROUND2_FLOW_PATH,
     MULTIPLAYER_FLOW_PATH,
+    path.join(ROOT, "client", "src", "utils", "formatMoney.js"),
     CAPABILITY_PATH,
     JINANG_PATH
   ].filter((filePath) => fs.existsSync(filePath)).map((filePath) => ({
