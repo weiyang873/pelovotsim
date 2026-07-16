@@ -1655,6 +1655,36 @@ export default function App() {
   }, [results, step, teamId]);
 
   useEffect(() => {
+    if (step !== 5 || !teamId || results?.vp_feedback_pending !== true) return;
+    const controller = new AbortController();
+    let stopped = false;
+    const poll = () => {
+      getResults(teamId, { signal: controller.signal })
+        .then((data) => {
+          if (stopped) return;
+          setResults(data);
+          if (data?.vp_feedback_pending !== true) {
+            stopped = true;
+          }
+        })
+        .catch((error) => {
+          if (error?.name !== "AbortError") {
+            console.warn("[round1 results] vp feedback poll failed:", error);
+          }
+        });
+    };
+    const timer = window.setInterval(() => {
+      if (!stopped) poll();
+    }, 3000);
+    poll();
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+      controller.abort();
+    };
+  }, [results?.vp_feedback_pending, step, teamId]);
+
+  useEffect(() => {
     if (step !== 4) return;
     if (selectedCell) return;
     if (teamCell) {
@@ -2307,6 +2337,7 @@ export default function App() {
   const resultVpScore = normalizeScoreValue(results?.vp_scores?.VPscore ?? r1?.VPscore);
   const round1ScoresRevealed = results?.r1_results_revealed === true || resultVpScore != null;
   const resultFeedbackText = String(results?.vp_feedback || vpFeedbackText || "").trim();
+  const resultFeedbackPending = results?.vp_feedback_pending === true && !String(results?.vp_feedback || "").trim();
   const resultMarketJinang = results?.jinang?.market_jinang || null;
   const finalVpText = String(results?.team?.final_vp_text || "").trim();
   const finalCell = results?.team?.final_grid_id ? toUiCell(results.team.final_grid_id) : (teamCell || selectedCell);
@@ -3827,7 +3858,7 @@ export default function App() {
                 lineHeight: 1.9,
                 whiteSpace: "pre-wrap"
               }}>
-                {resultFeedbackText}
+                {resultFeedbackPending ? "生成中…" : (resultFeedbackText || "暂无评语。")}
               </div>
             </div>
 

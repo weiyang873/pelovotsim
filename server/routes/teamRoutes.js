@@ -50,6 +50,7 @@ const CONFIG_DIR = path.join(ROOT, "game_config_v0.1");
 let cachedEngineConfig = null;
 const VP_FEEDBACK_VERSION = 3;
 const VP_LLM_TIMEOUT_MS = 60000;
+const vpFeedbackJobs = new Set();
 
 function makeResponse(status, body) {
   return { status, body };
@@ -1603,7 +1604,7 @@ ${convoText}`;
       messages
     }, () => chatCompletion(
       messages,
-      { temperature: 0.2, max_tokens: 500 }
+      { temperature: 0.2, max_tokens: 500, timeoutMs: VP_LLM_TIMEOUT_MS }
     ));
     let parsed = null;
     const jsonMatch = String(raw || "").match(/\{[\s\S]*\}/);
@@ -1998,6 +1999,62 @@ async function persistVpFeedback(teamId, feedback, memberId = "") {
   }
 
   return latestSession.sessionId;
+}
+
+async function generateAndPersistPhase4VpFeedback({
+  teamId,
+  latestSession,
+  team,
+  r1,
+  confirmedFields
+}) {
+  const jobKey = String(teamId || "").trim();
+  const startedAt = Date.now();
+  let generated = false;
+  try {
+    const vpText = String(latestSession?.pmfScore?._vp_sentence || team?.final_vp_text || "").trim();
+    const feedback = await generateVpFeedback({
+      vpText,
+      confirmedFields,
+      scores: {
+        C: clipScore(r1.C, 1, 5),
+        G: clipScore(r1.G, 1, 5),
+        E: clipScore(r1.E_raw, 1, 5),
+        Eadj: clipScore(r1.Eadj, 1, 5),
+        VPscore: clipScore(r1.VPscore, 1, 5)
+      },
+      details: null,
+      gridLabel: resolvePhase3Strategy(team.final_grid_id, team.final_architecture).cell_label,
+      archLabel: toArchitecturePromptLabel(team.final_architecture),
+      teamId,
+      memberId: latestSession?.pmfScore?._member_id || null,
+      timeoutMs: VP_LLM_TIMEOUT_MS
+    });
+    if (feedback) {
+      await persistVpFeedback(teamId, feedback, latestSession?.pmfScore?._member_id || "").catch(() => {});
+      generated = true;
+    }
+  } catch (err) {
+    console.warn("[round1/vp-feedback-bg] failed:", err?.message || err);
+  } finally {
+    vpFeedbackJobs.delete(jobKey);
+    console.log("[round1/vp-feedback-bg-timing]", JSON.stringify({
+      team_id: teamId,
+      generated,
+      llm_feedback_ms: Date.now() - startedAt
+    }));
+  }
+}
+
+function schedulePhase4VpFeedbackGeneration(args) {
+  const jobKey = String(args?.teamId || "").trim();
+  if (!jobKey || !args?.confirmedFields) return false;
+  if (vpFeedbackJobs.has(jobKey)) return true;
+  vpFeedbackJobs.add(jobKey);
+  setTimeout(() => {
+    generateAndPersistPhase4VpFeedback(args);
+  }, 0);
+  return true;
 }
 
 async function synthesizePhase3Vp(teamId, body) {
@@ -2604,6 +2661,8 @@ async function chatPhase3(teamId, body) {
 }
 
 async function finalizePhase3(teamId, body) {
+  const timingStartedAt = Date.now();
+  const timing = {};
   try {
     const payload = body || {};
     const memberId = String(payload.memberId || payload.member_id || "").trim();
@@ -2626,6 +2685,7 @@ async function finalizePhase3(teamId, body) {
       memberId,
       String(team?.leader_member_id || "").trim()
     ).catch(() => null);
+    const vpSummaryStartedAt = Date.now();
     const vpSummary = await summarizeVpFromConversation({
       gridId,
       architecture: arch,
@@ -2633,6 +2693,7 @@ async function finalizePhase3(teamId, body) {
       payloadConversation: payload.conversation_history || [],
       payloadVpResult: payload.vp_result || null
     });
+    timing.vp_summary_ms = Date.now() - vpSummaryStartedAt;
     const persistedVpText = await readPersistedPhase3VpText(teamId, memberId).catch(() => "");
     const finalVpText = String(
       payload.vp_text ||
@@ -2646,6 +2707,7 @@ async function finalizePhase3(teamId, body) {
     const finalArch = confirmedArch && confirmedArch !== arch ? confirmedArch : arch;
     const archSource = confirmedArch && confirmedArch !== arch ? "coach_confirmed" : "player_selected";
 
+    const vpScoringStartedAt = Date.now();
     const persistedScores = scorerScoresToApi(persistedConfirmation?.scores || null);
     const payloadScores = normalizeVpScoresInput(payload.scores);
     const sessionScores = vpResultToApiScores(session?.pmfScore || null);
@@ -2677,7 +2739,9 @@ async function finalizePhase3(teamId, body) {
       G: vpScores.G ?? 3,
       E: vpScores.E ?? 3
     };
+    timing.vp_scoring_ms = Date.now() - vpScoringStartedAt;
 
+    const freezePersistStartedAt = Date.now();
     await runSql(`
       UPDATE teams
       SET final_grid_id = ${sqlQuote(gridId)},
@@ -2688,14 +2752,19 @@ async function finalizePhase3(teamId, body) {
           final_vp_scores = ${sqlQuote(JSON.stringify(vpScores))}
       WHERE id = ${sqlQuote(teamId)};
     `);
+    timing.freeze_persist_ms = Date.now() - freezePersistStartedAt;
 
+    const jinangStartedAt = Date.now();
     const settle = await settleAllJinang(teamId);
+    timing.jinang_settlement_ms = Date.now() - jinangStartedAt;
     const marketJinangSummary = summarizeEligibleMarketSettlements(settle?.settlements || []);
+    const engineStartedAt = Date.now();
     const r1 = buildRound1Outcome(gridId, finalArch, engineVpScores, marketJinangSummary, {
       teamId,
       sessionId,
       vpText: finalVpText
     });
+    timing.round1_engine_ms = Date.now() - engineStartedAt;
     scheduleFinalRound1Stages(
       { teamId, sessionId, source: "web" },
       r1,
@@ -2706,6 +2775,7 @@ async function finalizePhase3(teamId, body) {
       }
     );
 
+    const phase4PersistStartedAt = Date.now();
     await runSql(`
       UPDATE teams
       SET final_sam = ${Number(r1.SAM_billion)},
@@ -2748,6 +2818,7 @@ async function finalizePhase3(teamId, body) {
     }
 
     await updateTeamStatus(teamId, "phase4");
+    timing.phase4_persist_ms = Date.now() - phase4PersistStartedAt;
     await recordVpIteration({
       teamId,
       sessionId,
@@ -2764,6 +2835,11 @@ async function finalizePhase3(teamId, body) {
       vp_text: finalVpText
     }).catch(() => {});
 
+    console.log("[round1/finalize-timing]", JSON.stringify({
+      team_id: teamId,
+      ...timing,
+      total_ms: Date.now() - timingStartedAt
+    }));
     return makeResponse(200, {
       ok: true,
       team_id: teamId,
@@ -2773,6 +2849,12 @@ async function finalizePhase3(teamId, body) {
       settle: sanitizeStudentSettle(settle)
     });
   } catch (e) {
+    console.warn("[round1/finalize-timing]", JSON.stringify({
+      team_id: teamId,
+      ...timing,
+      total_ms: Date.now() - timingStartedAt,
+      error: e.message
+    }));
     return makeResponse(400, { ok: false, error: e.message });
   }
 }
@@ -2844,6 +2926,8 @@ async function submitAndFinalizeRound1Vp(body) {
 }
 
 async function buildPhase4Data(teamId) {
+  const timingStartedAt = Date.now();
+  const timing = {};
   const team = await getTeam(teamId);
   if (!team) return { ok: false, status: 404, error: "team not found" };
   if (!team.final_grid_id || !team.final_architecture) {
@@ -2880,8 +2964,11 @@ async function buildPhase4Data(teamId) {
     G: vpScores.G ?? 3,
     E: vpScores.E ?? 3
   };
+  timing.vp_scoring_ms = Date.now() - timingStartedAt;
 
+  const jinangStartedAt = Date.now();
   const settle = await settleAllJinang(teamId);
+  timing.jinang_settlement_ms = Date.now() - jinangStartedAt;
   const marketJinangSummary = summarizeEligibleMarketSettlements(settle?.settlements || []);
   const sessions = await getTeamSessions(teamId);
   const latestSession = getLatestPhase3Session(sessions);
@@ -2899,6 +2986,7 @@ async function buildPhase4Data(teamId) {
     && team.final_wtp_multiplier !== ""
     && Number.isFinite(Number(team.final_wtp_vp_effect))
     && Number.isFinite(Number(team.final_wtp_multiplier));
+  const engineStartedAt = Date.now();
   const r1Base = buildRound1Outcome(team.final_grid_id, team.final_architecture, engineVpScores, {
     topMatchStrength: 0,
     totalBonus: 0
@@ -2934,6 +3022,7 @@ async function buildPhase4Data(teamId) {
       vpText
     });
   }
+  timing.round1_engine_ms = Date.now() - engineStartedAt;
   const extractField = (text, key) => {
     const re = new RegExp(key + "\\s*[：:]\\s*([^\\n]+)");
     const match = String(text || "").match(re);
@@ -2941,6 +3030,7 @@ async function buildPhase4Data(teamId) {
   };
 
   if (!hasStoredWtp) {
+    const wtpPersistStartedAt = Date.now();
     await runSql(`
       UPDATE teams
       SET final_sam = ${Number(r1.SAM_billion)},
@@ -2956,6 +3046,9 @@ async function buildPhase4Data(teamId) {
           final_jinang_wtp_bonus = ${Number(r1.jinang_wtp_bonus)}
       WHERE id = ${sqlQuote(teamId)};
     `);
+    timing.wtp_persist_ms = Date.now() - wtpPersistStartedAt;
+  } else {
+    timing.wtp_persist_ms = 0;
   }
   console.log("[Phase4] 刷新 WTP:", {
     table: "teams",
@@ -2968,32 +3061,28 @@ async function buildPhase4Data(teamId) {
 
   let vpFeedback = String(latestSession?.pmfScore?._vp_feedback || "").trim() || null;
   const vpFeedbackVersion = Number(latestSession?.pmfScore?._vp_feedback_version || 0);
+  let vpFeedbackPending = false;
   if ((!vpFeedback || vpFeedbackVersion < VP_FEEDBACK_VERSION) && confirmedFields) {
-    try {
-      vpFeedback = await generateVpFeedback({
-        vpText: String(latestSession?.pmfScore?._vp_sentence || vpText || "").trim(),
-        confirmedFields,
-        scores: {
-          C: clipScore(r1.C, 1, 5),
-          G: clipScore(r1.G, 1, 5),
-          E: clipScore(r1.E_raw, 1, 5),
-          Eadj: clipScore(r1.Eadj, 1, 5),
-          VPscore: clipScore(r1.VPscore, 1, 5)
-        },
-        details: null,
-        gridLabel: resolvePhase3Strategy(team.final_grid_id, team.final_architecture).cell_label,
-        archLabel: toArchitecturePromptLabel(team.final_architecture),
-        teamId,
-        memberId: latestSession?.pmfScore?._member_id || null
-      });
-      if (vpFeedback) {
-        await persistVpFeedback(teamId, vpFeedback).catch(() => {});
-      }
-    } catch (_) {
-      vpFeedback = null;
-    }
+    const feedbackStartedAt = Date.now();
+    vpFeedbackPending = schedulePhase4VpFeedbackGeneration({
+      teamId,
+      latestSession,
+      team,
+      r1,
+      confirmedFields
+    });
+    timing.llm_feedback_enqueue_ms = Date.now() - feedbackStartedAt;
+  } else {
+    timing.llm_feedback_enqueue_ms = 0;
   }
   const topMarketJinang = marketJinangSummary.topItem;
+  timing.phase4_assembly_ms = Date.now() - timingStartedAt;
+  console.log("[round1/phase4-timing]", JSON.stringify({
+    team_id: teamId,
+    ...timing,
+    vp_feedback_pending: vpFeedbackPending,
+    total_ms: Date.now() - timingStartedAt
+  }));
 
   return {
     ok: true,
@@ -3043,6 +3132,7 @@ async function buildPhase4Data(teamId) {
       coachComment: vpSummary.coachComment || ""
     },
     vp_feedback: vpFeedback,
+    vp_feedback_pending: vpFeedbackPending,
     jinang: {
       market_jinang: topMarketJinang ? toStudentFacingMatch({
         id: topMarketJinang.jinang_id,
@@ -3318,6 +3408,8 @@ async function getTeamStatus(teamId, requesterMemberId = "", options = {}) {
       ok: true,
       status,
       phase: getPhaseByStatus(status),
+      final_grid_id: String(team.final_grid_id || "").trim() || null,
+      final_architecture: String(team.final_architecture || "").trim() || null,
       all_submitted: submittedCount >= memberCount && memberCount > 0,
       member_count: memberCount,
       submitted_count: submittedCount,
