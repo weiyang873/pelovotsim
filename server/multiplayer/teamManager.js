@@ -385,11 +385,46 @@ async function updateTeamStatus(teamId, newStatus) {
   return getTeamRow(tid);
 }
 
+async function advanceTeamStatusToPhase2IfAllSubmitted(teamId) {
+  await ensureSchema();
+  const tid = String(teamId || "").trim();
+  if (!tid) throw new Error("teamId required");
+
+  const rows = await runSql(`
+    WITH counts AS (
+      SELECT
+        COALESCE(t.team_size, 0)::int AS team_size,
+        COUNT(ms.id)::int AS submitted_count
+      FROM teams t
+      LEFT JOIN member_submissions ms
+        ON ms.team_id = t.id
+      WHERE t.id = ${sqlQuote(tid)}
+      GROUP BY t.id, t.team_size
+    )
+    UPDATE teams
+    SET status = 'phase2'
+    FROM counts
+    WHERE teams.id = ${sqlQuote(tid)}
+      AND teams.status IN ('forming', 'phase1', 'phase2')
+      AND counts.team_size > 0
+      AND counts.submitted_count >= counts.team_size
+      AND teams.status <> 'phase2'
+    RETURNING teams.status;
+  `);
+  clearTeamStateCache(tid);
+
+  return {
+    team_status: rows[0]?.status || (await getTeamRow(tid))?.status || null,
+    updated: rows.length > 0
+  };
+}
+
 module.exports = {
   ensureSchema,
   createTeam,
   joinTeam,
   getTeam,
   setTeamLeader,
-  updateTeamStatus
+  updateTeamStatus,
+  advanceTeamStatusToPhase2IfAllSubmitted
 };

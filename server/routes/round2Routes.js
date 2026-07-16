@@ -27,6 +27,9 @@ const {
   ensureSchema: ensureRound2StateSchema,
   updateTeamRound2Status,
   updateMemberProgress,
+  updateTeamRound2StatusFromInterviewCompletion,
+  updateTeamRound2StatusFromCardSubmissions,
+  statusIndex,
   getTeamRound2State
 } = require("../multiplayer/round2State");
 const {
@@ -3265,12 +3268,7 @@ async function syncMemberInterviewState(teamId, memberId) {
     last_activity_at: nowIso()
   });
 
-  const teamState = await getTeamRound2State(teamId);
-  const everyoneDone = (teamState?.members || []).every((item) => {
-    if (item.id === memberId) return interviewStatus === "completed";
-    return item.interviewStatus === "completed";
-  });
-  await updateTeamRound2Status(teamId, everyoneDone ? "R2_INDIVIDUAL_CARDS" : "R2_INTERVIEWING");
+  await updateTeamRound2StatusFromInterviewCompletion(teamId);
 
   return {
     progress,
@@ -3835,7 +3833,7 @@ async function syncSummaryModeChoice(teamId, sessionId = "default", selectedBy =
       last_activity_at: nowIso()
     });
   }
-  await updateTeamRound2Status(teamId, "R2_INDIVIDUAL_CARDS");
+  await updateTeamRound2StatusFromInterviewCompletion(teamId);
   const choice = await readPersonaChoice(teamId, sessionId);
   return {
     ok: true,
@@ -3961,6 +3959,7 @@ async function completeSummaryReadingApi(body) {
       current_step: "interview_done",
       last_activity_at: nowIso()
     });
+    await updateTeamRound2StatusFromInterviewCompletion(teamId);
 
     const calcGridId = toCalcGridId(team?.final_grid_id || "", team?.final_architecture || "");
     const allViewed = await getTeamViewedPersonas(teamId, sessionId);
@@ -4628,18 +4627,8 @@ async function saveMemberSelectionApi(body) {
       last_activity_at: nowIso()
     });
 
-    const teamState = await getTeamRound2State(teamId);
-    console.log("[saveMemberSelection] members card status:", (teamState?.members || []).map((m) => ({
-      id: m.id,
-      cardStatus: m.cardStatus,
-      card_status: m.card_status
-    })));
-    const everyoneSubmitted = (teamState?.members || []).every((member) => {
-      if (member.id === memberId) return true;
-      return (member.cardStatus || member.card_status) === "submitted";
-    });
-    const finalStatus = everyoneSubmitted ? "R2_TEAM_MERGE" : "R2_INDIVIDUAL_CARDS";
-    await updateTeamRound2Status(teamId, finalStatus);
+    const statusResult = await updateTeamRound2StatusFromCardSubmissions(teamId);
+    const finalStatus = statusResult.team_status || "R2_INDIVIDUAL_CARDS";
 
     return makeResponse(200, { ok: true, teamId, memberId, count: selections.length, team_status: finalStatus });
   } catch (e) {
@@ -4702,18 +4691,11 @@ async function mergeApi(body) {
       }
     }, 0);
 
-    const teamState = await getTeamRound2State(teamId);
-    console.log("[mergeApi] member card statuses:", (teamState?.members || []).map((m) => ({
-      id: m.id,
-      cardStatus: m.cardStatus,
-      card_status: m.card_status
-    })));
-    const allSubmitted = (teamState?.members || []).every((m) => (m.cardStatus || m.card_status) === "submitted");
-    if (!allSubmitted) {
+    const statusResult = await updateTeamRound2StatusFromCardSubmissions(teamId);
+    if (statusIndex(statusResult.team_status) < statusIndex("R2_TEAM_MERGE")) {
       return makeResponse(400, { ok: false, error: "not_all_members_submitted", message: "等待所有成员提交个人选卡" });
     }
 
-    await updateTeamRound2Status(teamId, "R2_TEAM_MERGE");
     for (const member of members) {
       await updateMemberProgress(teamId, member.id, {
         last_activity_at: nowIso()

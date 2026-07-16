@@ -28,6 +28,7 @@ const { appendIteration: appendVpIteration } = require("../multiplayer/vpIterati
 const {
   getTeam,
   updateTeamStatus,
+  advanceTeamStatusToPhase2IfAllSubmitted,
   createTeam: createTeamRow,
   joinTeam: joinTeamRow,
   setTeamLeader
@@ -1030,11 +1031,10 @@ async function submitPhase1(teamId, memberId, body) {
 
     const submittedCount = await countTeamSubmissions(teamId);
     const teamSize = Number(team.team_size || 0);
-    let statusUpdated = false;
-    if (submittedCount >= teamSize && team.status !== "phase2") {
-      await updateTeamStatus(teamId, "phase2");
+    const phase2Result = await advanceTeamStatusToPhase2IfAllSubmitted(teamId);
+    const statusUpdated = phase2Result.updated === true;
+    if (statusUpdated) {
       await assignRound1LeaderIfNeeded(teamId);
-      statusUpdated = true;
     }
 
     const updatedTeam = statusUpdated ? await getTeam(teamId) : team;

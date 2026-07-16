@@ -202,6 +202,106 @@ async function updateTeamRound2Status(teamId, status, enteredAt = nowIso()) {
   await refreshCachedTeamRound2State(teamId);
 }
 
+async function updateTeamRound2StatusFromInterviewCompletion(teamId, enteredAt = nowIso()) {
+  await ensureSchema();
+  const tid = String(teamId || "").trim();
+  if (!tid) throw new Error("teamId required");
+
+  const rows = await runSql(`
+    WITH counts AS (
+      SELECT
+        COUNT(*)::int AS member_count,
+        COUNT(*) FILTER (WHERE interview_status = 'completed')::int AS completed_count
+      FROM team_members
+      WHERE team_id = ${sqlQuote(tid)}
+    ),
+    target AS (
+      SELECT
+        CASE
+          WHEN member_count > 0 AND completed_count >= member_count
+            THEN 'R2_INDIVIDUAL_CARDS'
+          ELSE 'R2_INTERVIEWING'
+        END AS next_status
+      FROM counts
+    )
+    UPDATE teams
+    SET r2_status = CASE
+          WHEN teams.r2_status = 'R2_INDIVIDUAL_CARDS'
+            THEN 'R2_INDIVIDUAL_CARDS'
+          ELSE target.next_status
+        END,
+        r2_status_entered_at = CASE
+          WHEN teams.r2_status IS DISTINCT FROM CASE
+              WHEN teams.r2_status = 'R2_INDIVIDUAL_CARDS'
+                THEN 'R2_INDIVIDUAL_CARDS'
+              ELSE target.next_status
+            END
+            THEN ${sqlQuote(enteredAt)}
+          ELSE teams.r2_status_entered_at
+        END
+    FROM target
+    WHERE teams.id = ${sqlQuote(tid)}
+      AND teams.r2_status IN ('R2_REVIEW', 'R2_INTERVIEWING', 'R2_INDIVIDUAL_CARDS')
+    RETURNING teams.r2_status AS team_status;
+  `);
+
+  const refreshed = await refreshCachedTeamRound2State(tid);
+  return {
+    team_status: rows[0]?.team_status || refreshed?.r2?.status || null,
+    updated: rows.length > 0
+  };
+}
+
+async function updateTeamRound2StatusFromCardSubmissions(teamId, enteredAt = nowIso()) {
+  await ensureSchema();
+  const tid = String(teamId || "").trim();
+  if (!tid) throw new Error("teamId required");
+
+  const rows = await runSql(`
+    WITH counts AS (
+      SELECT
+        COUNT(*)::int AS member_count,
+        COUNT(*) FILTER (WHERE card_status = 'submitted')::int AS submitted_count
+      FROM team_members
+      WHERE team_id = ${sqlQuote(tid)}
+    ),
+    target AS (
+      SELECT
+        CASE
+          WHEN member_count > 0 AND submitted_count >= member_count
+            THEN 'R2_TEAM_MERGE'
+          ELSE 'R2_INDIVIDUAL_CARDS'
+        END AS next_status
+      FROM counts
+    )
+    UPDATE teams
+    SET r2_status = CASE
+          WHEN teams.r2_status = 'R2_TEAM_MERGE'
+            THEN 'R2_TEAM_MERGE'
+          ELSE target.next_status
+        END,
+        r2_status_entered_at = CASE
+          WHEN teams.r2_status IS DISTINCT FROM CASE
+              WHEN teams.r2_status = 'R2_TEAM_MERGE'
+                THEN 'R2_TEAM_MERGE'
+              ELSE target.next_status
+            END
+            THEN ${sqlQuote(enteredAt)}
+          ELSE teams.r2_status_entered_at
+        END
+    FROM target
+    WHERE teams.id = ${sqlQuote(tid)}
+      AND teams.r2_status IN ('R2_INDIVIDUAL_CARDS', 'R2_TEAM_MERGE')
+    RETURNING teams.r2_status AS team_status;
+  `);
+
+  const refreshed = await refreshCachedTeamRound2State(tid);
+  return {
+    team_status: rows[0]?.team_status || refreshed?.r2?.status || null,
+    updated: rows.length > 0
+  };
+}
+
 async function updateMemberProgress(teamId, memberId, patch = {}) {
   await ensureSchema();
   const allowed = {
@@ -829,6 +929,8 @@ module.exports = {
   formatArchitectureLabel,
   logTeacherAction,
   updateTeamRound2Status,
+  updateTeamRound2StatusFromInterviewCompletion,
+  updateTeamRound2StatusFromCardSubmissions,
   updateMemberProgress,
   resetMemberFields,
   clearTeamRound2Artifacts,

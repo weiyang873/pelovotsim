@@ -17,6 +17,8 @@ const {
   statusIndex,
   logTeacherAction,
   updateTeamRound2Status,
+  updateTeamRound2StatusFromInterviewCompletion,
+  updateTeamRound2StatusFromCardSubmissions,
   updateMemberProgress,
   resetMemberFields,
   clearTeamRound2Artifacts,
@@ -299,16 +301,9 @@ async function forceEndInterviewApi(body) {
       last_activity_at: nowIso()
     });
 
-    const teamState = await getTeamRound2State(teamId);
-    const allCompleted = (teamState?.members || []).every((member) => {
-      if (member.id === memberId) return true;
-      return member.interviewStatus === "completed";
-    });
-    if (allCompleted) {
-      await updateTeamRound2Status(teamId, "R2_INDIVIDUAL_CARDS");
+    const statusResult = await updateTeamRound2StatusFromInterviewCompletion(teamId);
+    if (statusResult.team_status === "R2_INDIVIDUAL_CARDS") {
       await syncMembersToTeamStatus(teamId, "R2_INDIVIDUAL_CARDS");
-    } else {
-      await updateTeamRound2Status(teamId, "R2_INTERVIEWING");
     }
 
     await logTeacherAction({
@@ -351,12 +346,8 @@ async function forceSubmitCardsApi(body) {
       last_activity_at: nowIso()
     });
 
-    const allSubmitted = (teamState?.members || []).every((member) => {
-      if (member.id === memberId) return true;
-      return member.cardStatus === "submitted";
-    });
-    await updateTeamRound2Status(teamId, allSubmitted ? "R2_TEAM_MERGE" : "R2_INDIVIDUAL_CARDS");
-    if (allSubmitted) {
+    const statusResult = await updateTeamRound2StatusFromCardSubmissions(teamId);
+    if (statusResult.team_status === "R2_TEAM_MERGE") {
       try {
         await forceMergeTeam(teamId, "auto");
       } catch (err) {
@@ -408,17 +399,13 @@ async function markMemberAbsentApi(body) {
       WHERE id = ${sqlQuote(memberId)} AND team_id = ${sqlQuote(teamId)};
     `);
 
-    const teamStateAfter = await getTeamRound2State(teamId);
-    const allInterviewCompleted = (teamStateAfter?.members || []).every((item) => item.interviewStatus === "completed");
-    const allCardsSubmitted = (teamStateAfter?.members || []).every((item) => item.cardStatus === "submitted");
-
-    if (allInterviewCompleted && (teamStatusBefore === "R2_REVIEW" || teamStatusBefore === "R2_INTERVIEWING")) {
-      await updateTeamRound2Status(teamId, "R2_INDIVIDUAL_CARDS");
+    const interviewStatusResult = await updateTeamRound2StatusFromInterviewCompletion(teamId);
+    if (interviewStatusResult.team_status === "R2_INDIVIDUAL_CARDS" && (teamStatusBefore === "R2_REVIEW" || teamStatusBefore === "R2_INTERVIEWING")) {
       await syncMembersToTeamStatus(teamId, "R2_INDIVIDUAL_CARDS");
     }
 
-    if (allCardsSubmitted && (teamStatusBefore === "R2_INDIVIDUAL_CARDS" || teamStatusBefore === "R2_TEAM_MERGE")) {
-      await updateTeamRound2Status(teamId, "R2_TEAM_MERGE");
+    const cardStatusResult = await updateTeamRound2StatusFromCardSubmissions(teamId);
+    if (cardStatusResult.team_status === "R2_TEAM_MERGE") {
       try {
         await forceMergeTeam(teamId, "auto");
       } catch (_) {
