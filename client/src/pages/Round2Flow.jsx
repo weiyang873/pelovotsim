@@ -302,7 +302,7 @@ function buildCardCatalog(rdCards) {
           l: copyTier.l || TIER_LABELS[tierId],
           d: copyTier.d || String(sourceTier.description || sourceTier.desc || ""),
           cost: Number(sourceTier.dCOGS || 0),
-          nre: Number(cap.nre || 0)
+          nre: Number(sourceTier.nre ?? cap.nre ?? 0)
         };
         return acc;
       }, {});

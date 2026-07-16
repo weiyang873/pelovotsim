@@ -5,7 +5,7 @@ const {
   computeSoftPenalties,
   computeAdoption,
   DEFAULT_PARAMS,
-  CAP_GROUPS
+  buildCapabilityGroupsForDisplay
 } = require("../llm/rdCalculator");
 const TeamManager = require("../multiplayer/teamManager");
 const rules = require("../../data/compatibility_rules_v2.json");
@@ -119,7 +119,7 @@ async function validateRoute(body) {
 }
 
 async function cards() {
-  return makeResponse(200, { ok: true, ...CAP_GROUPS });
+  return makeResponse(200, { ok: true, ...buildCapabilityGroupsForDisplay() });
 }
 
 async function rulesDetail() {

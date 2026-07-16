@@ -12,6 +12,7 @@ const MULTIPLAYER_FLOW_PATH = path.join(ROOT, "client", "src", "pages", "Multipl
 const CAPABILITY_PATH = path.join(ROOT, "data", "capability_groups_v2.json");
 const JINANG_PATH = path.join(ROOT, "game_config_v0.1", "jinang_cards_v2.json");
 const OUT_PATH = path.join(ROOT, "client", "render_manifest.json");
+const { resolveTierNreWan } = require("../server/llm/rdCalculator");
 
 function sha256(value) {
   return crypto.createHash("sha256").update(value).digest("hex");
@@ -168,7 +169,7 @@ function buildRound2Stage(round2Source, capabilities) {
           const sourceTier = capability.tiers?.[tier] || {};
           const copyTier = copy.tiers?.[tier] || {};
           const unitCost = Number(sourceTier.dCOGS || 0);
-          const rdInvestmentWan = Number(capability.nre || 0);
+          const rdInvestmentWan = resolveTierNreWan(capability.cap_id, tier);
           return {
             tier,
             label: copyTier.l || tier,
@@ -183,7 +184,7 @@ function buildRound2Stage(round2Source, capabilities) {
               { path: "tier.description", form: "text", visibility: "primary" },
               { path: "tier.unit_cost_exact", form: "currency_per_unit", visibility: "primary" },
               { path: "tier.rd_investment_wan", form: "wan_number", visibility: "primary" },
-              { path: "card.nre_desc", form: "text_with_numbers", visibility: "primary" }
+              { path: "card.nre_desc", form: "text", visibility: "primary" }
             ]
           };
         });

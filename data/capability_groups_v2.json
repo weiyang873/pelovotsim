@@ -126,7 +126,7 @@
           "cap_id": "expressive_style_pack",
           "name": "表达风格包（角色/语气/动作脚本）",
           "nre": 151,
-          "nre_desc": "工业设计师8月+结构6月+动作设计6月+QA3月+外壳开模30万+3D打样+样机",
+          "nre_desc": "工业设计师8月+结构6月+动作设计6月+QA3月+外壳开模+3D打样+样机",
           "covers": ["情感陪伴", "多轮对话"],
           "tiers": {
             "low": { "dCOGS": 120, "risk": 0.04, "sub_lift": 0.02, "load": 1 },
@@ -418,7 +418,7 @@
           "cap_id": "child_safety",
           "name": "儿童安全",
           "nre": 113,
-          "nre_desc": "硬件6月+结构4月+QA专项6月+认证6月+GB认证15万+跌落测试+材料检测+样机",
+          "nre_desc": "硬件6月+结构4月+QA专项6月+认证6月+GB认证+跌落测试+材料检测+样机",
           "covers": ["儿童安全"],
           "tiers": {
             "low": { "dCOGS": 250, "risk": 0.08, "sub_lift": 0.03, "load": 1 },
@@ -500,7 +500,7 @@
           "cap_id": "api_iot",
           "name": "API / IoT 联动",
           "nre": 114,
-          "nre_desc": "IoT8月+后端6月+硬件RF4月+认证4月+协议认证18万+天线外包+网关开发板+样机",
+          "nre_desc": "IoT8月+后端6月+硬件RF4月+认证4月+协议认证+天线外包+网关开发板+样机",
           "covers": ["智能家居", "家庭版"],
           "tiers": {
             "low": { "dCOGS": 250, "risk": 0.08, "sub_lift": 0.01, "load": 2 },
@@ -525,7 +525,7 @@
           "cap_id": "edu_content",
           "name": "教育内容",
           "nre": 102,
-          "nre_desc": "前端6月+后端6月+内容运营8月+QA3月+内容授权12万+CMS平台+合规审查+用户测试",
+          "nre_desc": "前端6月+后端6月+内容运营8月+QA3月+内容授权+CMS平台+合规审查+用户测试",
           "covers": ["教育内容", "家庭版"],
           "tiers": {
             "low": { "dCOGS": 200, "risk": 0.07, "sub_lift": 0.03, "load": 2 },
@@ -568,7 +568,7 @@
           "cap_id": "predictive_maint",
           "name": "预测性维护",
           "nre": 172,
-          "nre_desc": "ML高级10月+嵌入式6月+数据工程6月+QA6月+GPU算力+长期测试15万+传感器+样机",
+          "nre_desc": "ML高级10月+嵌入式6月+数据工程6月+QA6月+GPU算力+长期测试+传感器+样机",
           "covers": ["OTA更新"],
           "tiers": {
             "low": { "dCOGS": 350, "risk": 0.1, "sub_lift": 0.03, "load": 3 },

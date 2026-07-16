@@ -1,12 +1,12 @@
 {
-  "manifest_version": "684ccba867b4621327d91b2c16d7182517011bb490053a54df8b9f345f0c3e9e",
-  "generated_from": "bc5ce07527eb4a0673538e3ccf375f4eda41ae15",
+  "manifest_version": "10586745dfc4c4d192ce240f9bb9b18dad2ef5d829d51a55fc4239e26dc5047e",
+  "generated_from": "c254c4cb5bf11b036881de2b92730b1f12e3759e",
   "generated_from_worktree_dirty": true,
   "generator": "scripts/export_render_manifest.js",
   "source_files": [
     {
       "path": "client/src/pages/Round2Flow.jsx",
-      "sha256": "5fb92123df98b3005061401cc96aaba0add641e531120e00fcd6eb60583e9050",
+      "sha256": "1cb00fdf38f75499a9962e60f47f41d87580d986f4b1831fd06bc255997ba518",
       "git_status_dirty": true
     },
     {
@@ -17,12 +17,12 @@
     {
       "path": "client/src/utils/formatMoney.js",
       "sha256": "7fb655d66299caa3257ced9b861653e9c0e65202e5ef43a82be2fe59a728bb3c",
-      "git_status_dirty": true
+      "git_status_dirty": false
     },
     {
       "path": "data/capability_groups_v2.json",
-      "sha256": "89d38b8f4fba9d2ee5cd2ba398b4f4e449a27a6aedc70224375590db02fd28a3",
-      "git_status_dirty": false
+      "sha256": "38eccff0c10efb8454fd25a8a05c3b925221f1f78d58608d3a5ea6bb35829182",
+      "git_status_dirty": true
     },
     {
       "path": "game_config_v0.1/jinang_cards_v2.json",
@@ -306,8 +306,8 @@
                   "description": "固定指令，预设回复",
                   "unit_cost_exact": 150,
                   "unit_cost_text": "+¥150/台",
-                  "rd_investment_wan": 98,
-                  "rd_investment_text": "98.0万",
+                  "rd_investment_wan": 17.64,
+                  "rd_investment_text": "17.6万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -332,7 +332,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -343,8 +343,8 @@
                   "description": "日常对话，自然语调",
                   "unit_cost_exact": 280,
                   "unit_cost_text": "+¥280/台",
-                  "rd_investment_wan": 98,
-                  "rd_investment_text": "98.0万",
+                  "rd_investment_wan": 29.4,
+                  "rd_investment_text": "29.4万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -369,7 +369,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -380,8 +380,8 @@
                   "description": "多方言+情感语调",
                   "unit_cost_exact": 420,
                   "unit_cost_text": "+¥420/台",
-                  "rd_investment_wan": 98,
-                  "rd_investment_text": "98.0万",
+                  "rd_investment_wan": 47.04,
+                  "rd_investment_text": "47.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -406,7 +406,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -469,8 +469,8 @@
                   "description": "简单多轮，记住近期话题",
                   "unit_cost_exact": 400,
                   "unit_cost_text": "+¥400/台",
-                  "rd_investment_wan": 211,
-                  "rd_investment_text": "211.0万",
+                  "rd_investment_wan": 37.98,
+                  "rd_investment_text": "38.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -495,7 +495,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -506,8 +506,8 @@
                   "description": "个性化风格+长期记忆",
                   "unit_cost_exact": 650,
                   "unit_cost_text": "+¥650/台",
-                  "rd_investment_wan": 211,
-                  "rd_investment_text": "211.0万",
+                  "rd_investment_wan": 63.3,
+                  "rd_investment_text": "63.3万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -532,7 +532,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -543,8 +543,8 @@
                   "description": "深度个性化，模拟角色性格",
                   "unit_cost_exact": 950,
                   "unit_cost_text": "+¥950/台",
-                  "rd_investment_wan": 211,
-                  "rd_investment_text": "211.0万",
+                  "rd_investment_wan": 101.28,
+                  "rd_investment_text": "101.3万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -569,7 +569,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -623,8 +623,8 @@
                   "description": "基本触摸感应",
                   "unit_cost_exact": 180,
                   "unit_cost_text": "+¥180/台",
-                  "rd_investment_wan": 99,
-                  "rd_investment_text": "99.0万",
+                  "rd_investment_wan": 17.82,
+                  "rd_investment_text": "17.8万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -649,7 +649,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -660,8 +660,8 @@
                   "description": "多区域触感，不同反应",
                   "unit_cost_exact": 350,
                   "unit_cost_text": "+¥350/台",
-                  "rd_investment_wan": 99,
-                  "rd_investment_text": "99.0万",
+                  "rd_investment_wan": 29.7,
+                  "rd_investment_text": "29.7万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -686,7 +686,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -697,8 +697,8 @@
                   "description": "全身压力感应+体温变化",
                   "unit_cost_exact": 520,
                   "unit_cost_text": "+¥520/台",
-                  "rd_investment_wan": 99,
-                  "rd_investment_text": "99.0万",
+                  "rd_investment_wan": 47.52,
+                  "rd_investment_text": "47.5万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -723,7 +723,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -777,8 +777,8 @@
                   "description": "固定歌单与简单播控",
                   "unit_cost_exact": 100,
                   "unit_cost_text": "+¥100/台",
-                  "rd_investment_wan": 64,
-                  "rd_investment_text": "64.0万",
+                  "rd_investment_wan": 11.52,
+                  "rd_investment_text": "11.5万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -803,7 +803,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -814,8 +814,8 @@
                   "description": "情境音乐与互动播放",
                   "unit_cost_exact": 200,
                   "unit_cost_text": "+¥200/台",
-                  "rd_investment_wan": 64,
-                  "rd_investment_text": "64.0万",
+                  "rd_investment_wan": 19.2,
+                  "rd_investment_text": "19.2万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -840,7 +840,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -851,8 +851,8 @@
                   "description": "更丰富内容与情绪联动",
                   "unit_cost_exact": 320,
                   "unit_cost_text": "+¥320/台",
-                  "rd_investment_wan": 64,
-                  "rd_investment_text": "64.0万",
+                  "rd_investment_wan": 30.72,
+                  "rd_investment_text": "30.7万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -877,7 +877,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -936,8 +936,8 @@
                   "description": "灯效表达",
                   "unit_cost_exact": 300,
                   "unit_cost_text": "+¥300/台",
-                  "rd_investment_wan": 191,
-                  "rd_investment_text": "191.0万",
+                  "rd_investment_wan": 34.38,
+                  "rd_investment_text": "34.4万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -962,7 +962,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -973,8 +973,8 @@
                   "description": "OLED 丰富表情动画",
                   "unit_cost_exact": 600,
                   "unit_cost_text": "+¥600/台",
-                  "rd_investment_wan": 191,
-                  "rd_investment_text": "191.0万",
+                  "rd_investment_wan": 57.3,
+                  "rd_investment_text": "57.3万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -999,7 +999,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -1010,8 +1010,8 @@
                   "description": "全彩表情+氛围灯联动",
                   "unit_cost_exact": 850,
                   "unit_cost_text": "+¥850/台",
-                  "rd_investment_wan": 191,
-                  "rd_investment_text": "191.0万",
+                  "rd_investment_wan": 91.68,
+                  "rd_investment_text": "91.7万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -1036,7 +1036,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -1050,7 +1050,7 @@
               "name": "表达风格包",
               "what": "让机器人在语气、角色和动作上更有个性",
               "risk_note": "风格做得好很加分，但打磨周期长",
-              "nre_desc": "工业设计师8月+结构6月+动作设计6月+QA3月+外壳开模30万+3D打样+样机",
+              "nre_desc": "工业设计师8月+结构6月+动作设计6月+QA3月+外壳开模+3D打样+样机",
               "tag": "",
               "dependencies": [],
               "conflicts": [],
@@ -1090,8 +1090,8 @@
                   "description": "少量角色与固定语气",
                   "unit_cost_exact": 120,
                   "unit_cost_text": "+¥120/台",
-                  "rd_investment_wan": 151,
-                  "rd_investment_text": "151.0万",
+                  "rd_investment_wan": 27.18,
+                  "rd_investment_text": "27.2万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -1116,7 +1116,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -1127,8 +1127,8 @@
                   "description": "多风格切换+动作脚本",
                   "unit_cost_exact": 250,
                   "unit_cost_text": "+¥250/台",
-                  "rd_investment_wan": 151,
-                  "rd_investment_text": "151.0万",
+                  "rd_investment_wan": 45.3,
+                  "rd_investment_text": "45.3万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -1153,7 +1153,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -1164,8 +1164,8 @@
                   "description": "完整角色包+更强表现力",
                   "unit_cost_exact": 400,
                   "unit_cost_text": "+¥400/台",
-                  "rd_investment_wan": 151,
-                  "rd_investment_text": "151.0万",
+                  "rd_investment_wan": 72.48,
+                  "rd_investment_text": "72.5万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -1190,7 +1190,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -1249,8 +1249,8 @@
                   "description": "去屏保留LED",
                   "unit_cost_exact": -250,
                   "unit_cost_text": "-¥250/台",
-                  "rd_investment_wan": 61,
-                  "rd_investment_text": "61.0万",
+                  "rd_investment_wan": 10.98,
+                  "rd_investment_text": "11.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -1275,7 +1275,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -1286,8 +1286,8 @@
                   "description": "去屏+简化外壳",
                   "unit_cost_exact": -450,
                   "unit_cost_text": "-¥450/台",
-                  "rd_investment_wan": 61,
-                  "rd_investment_text": "61.0万",
+                  "rd_investment_wan": 18.3,
+                  "rd_investment_text": "18.3万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -1312,7 +1312,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -1323,8 +1323,8 @@
                   "description": "极简纯语音方案",
                   "unit_cost_exact": -600,
                   "unit_cost_text": "-¥600/台",
-                  "rd_investment_wan": 61,
-                  "rd_investment_text": "61.0万",
+                  "rd_investment_wan": 29.28,
+                  "rd_investment_text": "29.3万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -1349,7 +1349,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -1430,8 +1430,8 @@
                   "description": "单摄像头+单麦克风",
                   "unit_cost_exact": 200,
                   "unit_cost_text": "+¥200/台",
-                  "rd_investment_wan": 76,
-                  "rd_investment_text": "76.0万",
+                  "rd_investment_wan": 13.68,
+                  "rd_investment_text": "13.7万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -1456,7 +1456,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -1467,8 +1467,8 @@
                   "description": "广角+基础识别",
                   "unit_cost_exact": 380,
                   "unit_cost_text": "+¥380/台",
-                  "rd_investment_wan": 76,
-                  "rd_investment_text": "76.0万",
+                  "rd_investment_wan": 22.8,
+                  "rd_investment_text": "22.8万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -1493,7 +1493,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -1504,8 +1504,8 @@
                   "description": "双目视觉+阵列麦克风",
                   "unit_cost_exact": 550,
                   "unit_cost_text": "+¥550/台",
-                  "rd_investment_wan": 76,
-                  "rd_investment_text": "76.0万",
+                  "rd_investment_wan": 36.48,
+                  "rd_investment_text": "36.5万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -1530,7 +1530,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -1606,8 +1606,8 @@
                   "description": "基础情绪分类",
                   "unit_cost_exact": 350,
                   "unit_cost_text": "+¥350/台",
-                  "rd_investment_wan": 186,
-                  "rd_investment_text": "186.0万",
+                  "rd_investment_wan": 33.48,
+                  "rd_investment_text": "33.5万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -1632,7 +1632,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -1643,8 +1643,8 @@
                   "description": "多模态融合识别",
                   "unit_cost_exact": 600,
                   "unit_cost_text": "+¥600/台",
-                  "rd_investment_wan": 186,
-                  "rd_investment_text": "186.0万",
+                  "rd_investment_wan": 55.8,
+                  "rd_investment_text": "55.8万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -1669,7 +1669,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -1680,8 +1680,8 @@
                   "description": "细粒度识别+趋势追踪",
                   "unit_cost_exact": 880,
                   "unit_cost_text": "+¥880/台",
-                  "rd_investment_wan": 186,
-                  "rd_investment_text": "186.0万",
+                  "rd_investment_wan": 89.28,
+                  "rd_investment_text": "89.3万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -1706,7 +1706,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -1777,8 +1777,8 @@
                   "description": "记住常用设置",
                   "unit_cost_exact": 350,
                   "unit_cost_text": "+¥350/台",
-                  "rd_investment_wan": 197,
-                  "rd_investment_text": "197.0万",
+                  "rd_investment_wan": 35.46,
+                  "rd_investment_text": "35.5万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -1803,7 +1803,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -1814,8 +1814,8 @@
                   "description": "学习日常规律",
                   "unit_cost_exact": 620,
                   "unit_cost_text": "+¥620/台",
-                  "rd_investment_wan": 197,
-                  "rd_investment_text": "197.0万",
+                  "rd_investment_wan": 59.1,
+                  "rd_investment_text": "59.1万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -1840,7 +1840,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -1851,8 +1851,8 @@
                   "description": "跨场景预测需求",
                   "unit_cost_exact": 900,
                   "unit_cost_text": "+¥900/台",
-                  "rd_investment_wan": 197,
-                  "rd_investment_text": "197.0万",
+                  "rd_investment_wan": 94.56,
+                  "rd_investment_text": "94.6万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -1877,7 +1877,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -1940,8 +1940,8 @@
                   "description": "记住称呼与基本偏好",
                   "unit_cost_exact": 250,
                   "unit_cost_text": "+¥250/台",
-                  "rd_investment_wan": 105,
-                  "rd_investment_text": "105.0万",
+                  "rd_investment_wan": 18.9,
+                  "rd_investment_text": "18.9万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -1966,7 +1966,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -1977,8 +1977,8 @@
                   "description": "记住家庭关系和互动习惯",
                   "unit_cost_exact": 450,
                   "unit_cost_text": "+¥450/台",
-                  "rd_investment_wan": 105,
-                  "rd_investment_text": "105.0万",
+                  "rd_investment_wan": 31.5,
+                  "rd_investment_text": "31.5万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -2003,7 +2003,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -2014,8 +2014,8 @@
                   "description": "跨场景长期记忆",
                   "unit_cost_exact": 680,
                   "unit_cost_text": "+¥680/台",
-                  "rd_investment_wan": 105,
-                  "rd_investment_text": "105.0万",
+                  "rd_investment_wan": 50.4,
+                  "rd_investment_text": "50.4万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -2040,7 +2040,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -2121,8 +2121,8 @@
                   "description": "简单碰撞保护",
                   "unit_cost_exact": 150,
                   "unit_cost_text": "+¥150/台",
-                  "rd_investment_wan": 55,
-                  "rd_investment_text": "55.0万",
+                  "rd_investment_wan": 9.9,
+                  "rd_investment_text": "9.9万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -2147,7 +2147,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -2158,8 +2158,8 @@
                   "description": "提前减速绕开",
                   "unit_cost_exact": 300,
                   "unit_cost_text": "+¥300/台",
-                  "rd_investment_wan": 55,
-                  "rd_investment_text": "55.0万",
+                  "rd_investment_wan": 16.5,
+                  "rd_investment_text": "16.5万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -2184,7 +2184,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -2195,8 +2195,8 @@
                   "description": "更平滑避障策略",
                   "unit_cost_exact": 450,
                   "unit_cost_text": "+¥450/台",
-                  "rd_investment_wan": 55,
-                  "rd_investment_text": "55.0万",
+                  "rd_investment_wan": 26.4,
+                  "rd_investment_text": "26.4万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -2221,7 +2221,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -2275,8 +2275,8 @@
                   "description": "简单跟随",
                   "unit_cost_exact": 320,
                   "unit_cost_text": "+¥320/台",
-                  "rd_investment_wan": 122,
-                  "rd_investment_text": "122.0万",
+                  "rd_investment_wan": 21.96,
+                  "rd_investment_text": "22.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -2301,7 +2301,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -2312,8 +2312,8 @@
                   "description": "视觉跟随伴行",
                   "unit_cost_exact": 550,
                   "unit_cost_text": "+¥550/台",
-                  "rd_investment_wan": 122,
-                  "rd_investment_text": "122.0万",
+                  "rd_investment_wan": 36.6,
+                  "rd_investment_text": "36.6万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -2338,7 +2338,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -2349,8 +2349,8 @@
                   "description": "预测路径伴行",
                   "unit_cost_exact": 800,
                   "unit_cost_text": "+¥800/台",
-                  "rd_investment_wan": 122,
-                  "rd_investment_text": "122.0万",
+                  "rd_investment_wan": 58.56,
+                  "rd_investment_text": "58.6万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -2375,7 +2375,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -2446,8 +2446,8 @@
                   "description": "简单建图导航",
                   "unit_cost_exact": 500,
                   "unit_cost_text": "+¥500/台",
-                  "rd_investment_wan": 184,
-                  "rd_investment_text": "184.0万",
+                  "rd_investment_wan": 33.12,
+                  "rd_investment_text": "33.1万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -2472,7 +2472,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -2483,8 +2483,8 @@
                   "description": "精准房间级导航",
                   "unit_cost_exact": 850,
                   "unit_cost_text": "+¥850/台",
-                  "rd_investment_wan": 184,
-                  "rd_investment_text": "184.0万",
+                  "rd_investment_wan": 55.2,
+                  "rd_investment_text": "55.2万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -2509,7 +2509,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -2520,8 +2520,8 @@
                   "description": "复杂户型与更强鲁棒性",
                   "unit_cost_exact": 1200,
                   "unit_cost_text": "+¥1,200/台",
-                  "rd_investment_wan": 184,
-                  "rd_investment_text": "184.0万",
+                  "rd_investment_wan": 88.32,
+                  "rd_investment_text": "88.3万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -2546,7 +2546,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -2627,8 +2627,8 @@
                   "description": "本地加密存储",
                   "unit_cost_exact": 180,
                   "unit_cost_text": "+¥180/台",
-                  "rd_investment_wan": 107,
-                  "rd_investment_text": "107.0万",
+                  "rd_investment_wan": 19.26,
+                  "rd_investment_text": "19.3万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -2653,7 +2653,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -2664,8 +2664,8 @@
                   "description": "端到端加密+权限面板",
                   "unit_cost_exact": 350,
                   "unit_cost_text": "+¥350/台",
-                  "rd_investment_wan": 107,
-                  "rd_investment_text": "107.0万",
+                  "rd_investment_wan": 32.1,
+                  "rd_investment_text": "32.1万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -2690,7 +2690,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -2701,8 +2701,8 @@
                   "description": "更严格可信架构",
                   "unit_cost_exact": 520,
                   "unit_cost_text": "+¥520/台",
-                  "rd_investment_wan": 107,
-                  "rd_investment_text": "107.0万",
+                  "rd_investment_wan": 51.36,
+                  "rd_investment_text": "51.4万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -2727,7 +2727,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -2741,7 +2741,7 @@
               "name": "儿童安全",
               "what": "更关注碰撞、防夹、材料与儿童使用风险",
               "risk_note": "认证和可靠性测试周期长",
-              "nre_desc": "硬件6月+结构4月+QA专项6月+认证6月+GB认证15万+跌落测试+材料检测+样机",
+              "nre_desc": "硬件6月+结构4月+QA专项6月+认证6月+GB认证+跌落测试+材料检测+样机",
               "tag": "",
               "dependencies": [],
               "conflicts": [],
@@ -2781,8 +2781,8 @@
                   "description": "基础儿童防护",
                   "unit_cost_exact": 250,
                   "unit_cost_text": "+¥250/台",
-                  "rd_investment_wan": 113,
-                  "rd_investment_text": "113.0万",
+                  "rd_investment_wan": 20.34,
+                  "rd_investment_text": "20.3万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -2807,7 +2807,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -2818,8 +2818,8 @@
                   "description": "更完整的儿童安全设计",
                   "unit_cost_exact": 450,
                   "unit_cost_text": "+¥450/台",
-                  "rd_investment_wan": 113,
-                  "rd_investment_text": "113.0万",
+                  "rd_investment_wan": 33.9,
+                  "rd_investment_text": "33.9万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -2844,7 +2844,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -2855,8 +2855,8 @@
                   "description": "强化防护与更高认证标准",
                   "unit_cost_exact": 650,
                   "unit_cost_text": "+¥650/台",
-                  "rd_investment_wan": 113,
-                  "rd_investment_text": "113.0万",
+                  "rd_investment_wan": 54.24,
+                  "rd_investment_text": "54.2万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -2881,7 +2881,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -2960,8 +2960,8 @@
                   "description": "基础远程提醒与边界",
                   "unit_cost_exact": 420,
                   "unit_cost_text": "+¥420/台",
-                  "rd_investment_wan": 201,
-                  "rd_investment_text": "201.0万",
+                  "rd_investment_wan": 36.18,
+                  "rd_investment_text": "36.2万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -2986,7 +2986,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -2997,8 +2997,8 @@
                   "description": "远程查看+行为边界",
                   "unit_cost_exact": 750,
                   "unit_cost_text": "+¥750/台",
-                  "rd_investment_wan": 201,
-                  "rd_investment_text": "201.0万",
+                  "rd_investment_wan": 60.3,
+                  "rd_investment_text": "60.3万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -3023,7 +3023,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -3034,8 +3034,8 @@
                   "description": "多角色权限+异常报警",
                   "unit_cost_exact": 1050,
                   "unit_cost_text": "+¥1,050/台",
-                  "rd_investment_wan": 201,
-                  "rd_investment_text": "201.0万",
+                  "rd_investment_wan": 96.48,
+                  "rd_investment_text": "96.5万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -3060,7 +3060,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -3141,8 +3141,8 @@
                   "description": "手动更新",
                   "unit_cost_exact": 150,
                   "unit_cost_text": "+¥150/台",
-                  "rd_investment_wan": 94,
-                  "rd_investment_text": "94.0万",
+                  "rd_investment_wan": 16.92,
+                  "rd_investment_text": "16.9万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -3167,7 +3167,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -3178,8 +3178,8 @@
                   "description": "自动静默+回滚",
                   "unit_cost_exact": 300,
                   "unit_cost_text": "+¥300/台",
-                  "rd_investment_wan": 94,
-                  "rd_investment_text": "94.0万",
+                  "rd_investment_wan": 28.2,
+                  "rd_investment_text": "28.2万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -3204,7 +3204,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -3215,8 +3215,8 @@
                   "description": "灰度发布+更强遥测",
                   "unit_cost_exact": 480,
                   "unit_cost_text": "+¥480/台",
-                  "rd_investment_wan": 94,
-                  "rd_investment_text": "94.0万",
+                  "rd_investment_wan": 45.12,
+                  "rd_investment_text": "45.1万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -3241,7 +3241,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -3255,7 +3255,7 @@
               "name": "API / IoT 联动",
               "what": "连接手机和家里其他设备，做更多场景联动",
               "risk_note": "协议兼容和认证测试工作量大",
-              "nre_desc": "IoT8月+后端6月+硬件RF4月+认证4月+协议认证18万+天线外包+网关开发板+样机",
+              "nre_desc": "IoT8月+后端6月+硬件RF4月+认证4月+协议认证+天线外包+网关开发板+样机",
               "tag": "",
               "dependencies": [
                 {
@@ -3304,8 +3304,8 @@
                   "description": "少量设备接入",
                   "unit_cost_exact": 250,
                   "unit_cost_text": "+¥250/台",
-                  "rd_investment_wan": 114,
-                  "rd_investment_text": "114.0万",
+                  "rd_investment_wan": 20.52,
+                  "rd_investment_text": "20.5万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -3330,7 +3330,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -3341,8 +3341,8 @@
                   "description": "主流平台兼容",
                   "unit_cost_exact": 450,
                   "unit_cost_text": "+¥450/台",
-                  "rd_investment_wan": 114,
-                  "rd_investment_text": "114.0万",
+                  "rd_investment_wan": 34.2,
+                  "rd_investment_text": "34.2万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -3367,7 +3367,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -3378,8 +3378,8 @@
                   "description": "开放 API + 深度联动",
                   "unit_cost_exact": 680,
                   "unit_cost_text": "+¥680/台",
-                  "rd_investment_wan": 114,
-                  "rd_investment_text": "114.0万",
+                  "rd_investment_wan": 54.72,
+                  "rd_investment_text": "54.7万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -3404,7 +3404,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -3418,7 +3418,7 @@
               "name": "教育内容",
               "what": "提供更丰富的学习内容、课程和陪练素材",
               "risk_note": "内容持续供给和版权都需要长期投入",
-              "nre_desc": "前端6月+后端6月+内容运营8月+QA3月+内容授权12万+CMS平台+合规审查+用户测试",
+              "nre_desc": "前端6月+后端6月+内容运营8月+QA3月+内容授权+CMS平台+合规审查+用户测试",
               "tag": "",
               "dependencies": [],
               "conflicts": [],
@@ -3458,8 +3458,8 @@
                   "description": "少量固定内容",
                   "unit_cost_exact": 200,
                   "unit_cost_text": "+¥200/台",
-                  "rd_investment_wan": 102,
-                  "rd_investment_text": "102.0万",
+                  "rd_investment_wan": 18.36,
+                  "rd_investment_text": "18.4万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -3484,7 +3484,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -3495,8 +3495,8 @@
                   "description": "更系统的内容库",
                   "unit_cost_exact": 380,
                   "unit_cost_text": "+¥380/台",
-                  "rd_investment_wan": 102,
-                  "rd_investment_text": "102.0万",
+                  "rd_investment_wan": 30.6,
+                  "rd_investment_text": "30.6万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -3521,7 +3521,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -3532,8 +3532,8 @@
                   "description": "可持续运营的内容平台",
                   "unit_cost_exact": 580,
                   "unit_cost_text": "+¥580/台",
-                  "rd_investment_wan": 102,
-                  "rd_investment_text": "102.0万",
+                  "rd_investment_wan": 48.96,
+                  "rd_investment_text": "49.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -3558,7 +3558,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -3639,8 +3639,8 @@
                   "description": "基础错误自检",
                   "unit_cost_exact": 130,
                   "unit_cost_text": "+¥130/台",
-                  "rd_investment_wan": 42,
-                  "rd_investment_text": "42.0万",
+                  "rd_investment_wan": 7.56,
+                  "rd_investment_text": "7.6万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -3665,7 +3665,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -3676,8 +3676,8 @@
                   "description": "更系统的故障定位",
                   "unit_cost_exact": 260,
                   "unit_cost_text": "+¥260/台",
-                  "rd_investment_wan": 42,
-                  "rd_investment_text": "42.0万",
+                  "rd_investment_wan": 12.6,
+                  "rd_investment_text": "12.6万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -3702,7 +3702,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -3713,8 +3713,8 @@
                   "description": "硬件+软件联合诊断",
                   "unit_cost_exact": 400,
                   "unit_cost_text": "+¥400/台",
-                  "rd_investment_wan": 42,
-                  "rd_investment_text": "42.0万",
+                  "rd_investment_wan": 20.16,
+                  "rd_investment_text": "20.2万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -3739,7 +3739,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -3793,8 +3793,8 @@
                   "description": "基础状态上报",
                   "unit_cost_exact": 200,
                   "unit_cost_text": "+¥200/台",
-                  "rd_investment_wan": 78,
-                  "rd_investment_text": "78.0万",
+                  "rd_investment_wan": 14.04,
+                  "rd_investment_text": "14.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -3819,7 +3819,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -3830,8 +3830,8 @@
                   "description": "实时监控+日志分析",
                   "unit_cost_exact": 380,
                   "unit_cost_text": "+¥380/台",
-                  "rd_investment_wan": 78,
-                  "rd_investment_text": "78.0万",
+                  "rd_investment_wan": 23.4,
+                  "rd_investment_text": "23.4万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -3856,7 +3856,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -3867,8 +3867,8 @@
                   "description": "更强告警与远程处置",
                   "unit_cost_exact": 580,
                   "unit_cost_text": "+¥580/台",
-                  "rd_investment_wan": 78,
-                  "rd_investment_text": "78.0万",
+                  "rd_investment_wan": 37.44,
+                  "rd_investment_text": "37.4万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -3893,7 +3893,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -3907,7 +3907,7 @@
               "name": "预测性维护",
               "what": "在坏掉前就预警，减少突然故障",
               "risk_note": "需要长期数据和更多传感器支持，开发周期长",
-              "nre_desc": "ML高级10月+嵌入式6月+数据工程6月+QA6月+GPU算力+长期测试15万+传感器+样机",
+              "nre_desc": "ML高级10月+嵌入式6月+数据工程6月+QA6月+GPU算力+长期测试+传感器+样机",
               "tag": "",
               "dependencies": [],
               "conflicts": [],
@@ -3947,8 +3947,8 @@
                   "description": "简单预警规则",
                   "unit_cost_exact": 350,
                   "unit_cost_text": "+¥350/台",
-                  "rd_investment_wan": 172,
-                  "rd_investment_text": "172.0万",
+                  "rd_investment_wan": 30.96,
+                  "rd_investment_text": "31.0万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -3973,7 +3973,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -3984,8 +3984,8 @@
                   "description": "基于数据的预警模型",
                   "unit_cost_exact": 650,
                   "unit_cost_text": "+¥650/台",
-                  "rd_investment_wan": 172,
-                  "rd_investment_text": "172.0万",
+                  "rd_investment_wan": 51.6,
+                  "rd_investment_text": "51.6万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -4010,7 +4010,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -4021,8 +4021,8 @@
                   "description": "更完整的预测维护体系",
                   "unit_cost_exact": 950,
                   "unit_cost_text": "+¥950/台",
-                  "rd_investment_wan": 172,
-                  "rd_investment_text": "172.0万",
+                  "rd_investment_wan": 82.56,
+                  "rd_investment_text": "82.6万",
                   "visibility": "primary",
                   "fields": [
                     {
@@ -4047,7 +4047,7 @@
                     },
                     {
                       "path": "card.nre_desc",
-                      "form": "text_with_numbers",
+                      "form": "text",
                       "visibility": "primary"
                     }
                   ]
@@ -4066,65 +4066,127 @@
         "3",
         "4",
         "6",
+        "7.56",
+        "7.6",
         "8",
+        "9.9",
         "10",
+        "10.98",
+        "11.0",
+        "11.5",
+        "11.52",
         "12",
-        "15",
-        "18",
-        "30",
-        "42",
-        "42.0",
+        "12.6",
+        "13.68",
+        "13.7",
+        "14.0",
+        "14.04",
+        "16.5",
+        "16.9",
+        "16.92",
+        "17.6",
+        "17.64",
+        "17.8",
+        "17.82",
+        "18.3",
+        "18.36",
+        "18.4",
+        "18.9",
+        "19.2",
+        "19.26",
+        "19.3",
+        "20.16",
+        "20.2",
+        "20.3",
+        "20.34",
+        "20.5",
+        "20.52",
+        "21.96",
+        "22.0",
+        "22.8",
+        "23.4",
+        "26.4",
+        "27.18",
+        "27.2",
+        "28.2",
+        "29.28",
+        "29.3",
+        "29.4",
+        "29.7",
+        "30.6",
+        "30.7",
+        "30.72",
+        "30.96",
+        "31.0",
+        "31.5",
+        "32.1",
+        "33.1",
+        "33.12",
+        "33.48",
+        "33.5",
+        "33.9",
+        "34.2",
+        "34.38",
+        "34.4",
+        "35.46",
+        "35.5",
+        "36.18",
+        "36.2",
+        "36.48",
+        "36.5",
+        "36.6",
+        "37.4",
+        "37.44",
+        "37.98",
+        "38.0",
+        "45.1",
+        "45.12",
+        "45.3",
+        "47.0",
+        "47.04",
+        "47.5",
+        "47.52",
+        "48.96",
+        "49.0",
         "050",
-        "55",
-        "55.0",
-        "61",
-        "61.0",
-        "64",
-        "64.0",
-        "76",
-        "76.0",
-        "78",
-        "78.0",
-        "94",
-        "94.0",
-        "98",
-        "98.0",
-        "99",
-        "99.0",
+        "50.4",
+        "51.36",
+        "51.4",
+        "51.6",
+        "54.2",
+        "54.24",
+        "54.7",
+        "54.72",
+        "55.2",
+        "55.8",
+        "57.3",
+        "58.56",
+        "58.6",
+        "59.1",
+        "60.3",
+        "63.3",
+        "72.48",
+        "72.5",
+        "82.56",
+        "82.6",
+        "88.3",
+        "88.32",
+        "89.28",
+        "89.3",
+        "91.68",
+        "91.7",
+        "94.56",
+        "94.6",
+        "96.48",
+        "96.5",
         "100",
-        "102",
-        "102.0",
-        "105",
-        "105.0",
-        "107",
-        "107.0",
-        "113",
-        "113.0",
-        "114",
-        "114.0",
+        "101.28",
+        "101.3",
         "120",
-        "122",
-        "122.0",
         "130",
         "150",
-        "151",
-        "151.0",
-        "172",
-        "172.0",
         "180",
-        "184",
-        "184.0",
-        "186",
-        "186.0",
-        "191",
-        "191.0",
-        "197",
-        "197.0",
         "200",
-        "201",
-        "201.0",
-        "211",
-        "211.0",
         "250",
         "260",
         "280",

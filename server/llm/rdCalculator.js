@@ -200,7 +200,17 @@ const DEFAULT_PARAMS = scaleDefaultMoneyParams({
 });
 
 const TIER_ORDER = { low: 1, mid: 2, high: 3 };
-const NRE_TIER_MULT = { low: 0.6, mid: 1.0, high: 1.6 };
+const DEFAULT_NRE_TIER_MULT = { low: 0.6, mid: 1.0, high: 1.6 };
+function normalizeNreTierMult(input) {
+  const src = input && typeof input === "object" ? input : {};
+  return Object.freeze(Object.fromEntries(Object.keys(DEFAULT_NRE_TIER_MULT).map((tier) => {
+    const value = Number(src[tier]);
+    return [tier, Number.isFinite(value) && value > 0 ? value : DEFAULT_NRE_TIER_MULT[tier]];
+  })));
+}
+const NRE_TIER_MULT = normalizeNreTierMult(
+  ROUND2_ENGINE_PARAMS.nre_tier_mult || ROUND2_ENGINE_PARAMS.nreTierMult
+);
 const DIMS = ["感知与理解", "运动与导航", "交互与表达", "安全与信任", "可扩展与连接", "可运营与可维护"];
 const DIM_KEYS = ["perception", "mobility", "interaction", "safety_privacy", "integration", "operations"];
 const DIM_KEY_TO_CN = Object.fromEntries(DIM_KEYS.map((key, index) => [key, DIMS[index]]));
@@ -587,11 +597,25 @@ function findCapability(capId) {
   return null;
 }
 
-function resolveTierNreWan(capId, tier) {
+function resolveTierNreWan(capId, tier, tierMultipliers = NRE_TIER_MULT) {
   const cap = findCapability(capId);
   const baseNre = Number(cap?.nre || 0);
-  const tierMult = Number(NRE_TIER_MULT[tier] || 1);
+  const tierMult = Number(tierMultipliers?.[tier] || NRE_TIER_MULT[tier] || 1);
   return roundForLog(baseNre * tierMult, 6);
+}
+
+function buildCapabilityGroupsForDisplay(tierMultipliers = NRE_TIER_MULT) {
+  const cloned = JSON.parse(JSON.stringify(CAP_GROUPS || { groups: [] }));
+  (cloned.groups || []).forEach((group) => {
+    (group.capabilities || []).forEach((cap) => {
+      const capId = getCapId(cap);
+      cap.nre_base = Number(cap.nre || 0);
+      Object.keys(cap.tiers || {}).forEach((tier) => {
+        cap.tiers[tier].nre = resolveTierNreWan(capId, tier, tierMultipliers);
+      });
+    });
+  });
+  return cloned;
 }
 
 function calculateProfit(price, gridId, X, dCOGS, coverCore, coverNice, subLift, risk, wtpParams, penalty = 0, Vscore = 0, totalNREWan = 0) {
@@ -1532,6 +1556,7 @@ module.exports = {
   computeSoftPenalties,
   findCapability,
   resolveTierNreWan,
+  buildCapabilityGroupsForDisplay,
   getCapabilityParams,
   getCapTierParams: getCapabilityParams,
   CAP_GROUPS,
@@ -1542,5 +1567,6 @@ module.exports = {
   GRID_PARAMS,
   DEFAULT_PARAMS,
   TIER_ORDER,
+  DEFAULT_NRE_TIER_MULT,
   NRE_TIER_MULT
 };
