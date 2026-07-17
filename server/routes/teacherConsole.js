@@ -1,6 +1,7 @@
 const { getTeam, setTeamLeader } = require("../multiplayer/teamManager");
 const { runSql, sqlQuote } = require("../db/pgSql");
 const TeacherDebrief = require("./teacherDebrief");
+const TeamRoutes = require("./teamRoutes");
 const {
   normalizeSessionId,
   getSessionConfig,
@@ -81,6 +82,25 @@ async function assertMember(teamId, memberId) {
   const member = (team.members || []).find((item) => item.id === memberId);
   if (!member) throw new Error("member not found in team");
   return { team, member };
+}
+
+async function ensureTeacherRound1ReadyForR2(teamId, source = "teacher_console") {
+  const team = await assertTeam(teamId);
+  if (team.final_grid_id && team.final_architecture && String(team.status || "") === "frozen") {
+    return { team, autoFinalized: null };
+  }
+
+  const finalized = await TeamRoutes.finalizeRound1FromDraftForTeacher(teamId, { source });
+  if (finalized.status !== 200) {
+    const message = finalized.body?.message || finalized.body?.error || "该队 R1 未定稿，无法进入第二轮";
+    const err = new Error(message);
+    err.status = finalized.status || 400;
+    throw err;
+  }
+  return {
+    team: await assertTeam(teamId),
+    autoFinalized: finalized.body || null
+  };
 }
 
 async function syncMembersToTeamStatus(teamId, targetStatus, membersInput = null) {
@@ -249,17 +269,39 @@ async function openRound2Api(body = {}) {
     const sessionConfig = await getSessionConfig(sessionId);
     const snapshot = await getSessionStatusSummary();
     const affected = [];
+    const failed = [];
     for (const team of snapshot.teams) {
-      if (team.status !== "frozen") continue;
       if (team.r2.status !== "R2_NOT_STARTED") continue;
+      let autoFinalized = null;
+      try {
+        const ready = await ensureTeacherRound1ReadyForR2(team.id, "teacher_open_round2");
+        autoFinalized = ready.autoFinalized;
+      } catch (err) {
+        failed.push({
+          team_id: team.id,
+          team_name: team.name || team.displayName || "",
+          error: err.message || "R1 未定稿，无法进入 R2"
+        });
+        continue;
+      }
       await updateTeamRound2Status(team.id, "R2_REVIEW");
       await syncMembersToTeamStatus(team.id, "R2_REVIEW", team.members);
-      affected.push(team.id);
+      affected.push({
+        team_id: team.id,
+        auto_finalized_from_draft: Boolean(autoFinalized?.auto_finalized_from_draft),
+        used_fallback_scores: Boolean(autoFinalized?.used_fallback_scores)
+      });
     }
 
     await logTeacherAction({
       action: "open_round2",
-      details: { session_id: sessionId, affected_team_ids: affected, session_config: sessionConfig }
+      details: {
+        session_id: sessionId,
+        affected_team_ids: affected.map((item) => item.team_id),
+        auto_finalized_team_ids: affected.filter((item) => item.auto_finalized_from_draft).map((item) => item.team_id),
+        failed,
+        session_config: sessionConfig
+      }
     });
 
     return makeResponse(200, {
@@ -267,7 +309,10 @@ async function openRound2Api(body = {}) {
       session_id: sessionId,
       session_config: sessionConfig,
       affected_count: affected.length,
-      team_ids: affected
+      team_ids: affected.map((item) => item.team_id),
+      teams: affected,
+      auto_finalized_count: affected.filter((item) => item.auto_finalized_from_draft).length,
+      failed
     });
   } catch (e) {
     return makeResponse(500, { ok: false, error: e.message });
@@ -281,6 +326,7 @@ async function forceEndInterviewApi(body) {
     if (!teamId || !memberId) return makeResponse(400, { ok: false, error: "team_id and member_id required" });
 
     await assertMember(teamId, memberId);
+    const ready = await ensureTeacherRound1ReadyForR2(teamId, "teacher_force_end_interview");
     const session = await getLatestInterviewSession(teamId, memberId);
     if (!session?.sessionId) {
       const teamState = await getTeamRound2State(teamId);
@@ -317,7 +363,8 @@ async function forceEndInterviewApi(body) {
       ok: true,
       team_id: teamId,
       member_id: memberId,
-      interview_status: "completed"
+      interview_status: "completed",
+      auto_finalized_from_draft: Boolean(ready.autoFinalized?.auto_finalized_from_draft)
     });
   } catch (e) {
     return makeResponse(400, { ok: false, error: e.message });
@@ -331,6 +378,7 @@ async function forceSubmitCardsApi(body) {
     if (!teamId || !memberId) return makeResponse(400, { ok: false, error: "team_id and member_id required" });
 
     await assertMember(teamId, memberId);
+    const ready = await ensureTeacherRound1ReadyForR2(teamId, "teacher_force_submit_cards");
     const row = await getMemberSelectionRow(teamId, memberId);
     const teamState = await getTeamRound2State(teamId);
     const targetMember = (teamState?.members || []).find((member) => member.id === memberId);
@@ -367,7 +415,8 @@ async function forceSubmitCardsApi(body) {
       team_id: teamId,
       member_id: memberId,
       cards_selected: count,
-      card_status: "submitted"
+      card_status: "submitted",
+      auto_finalized_from_draft: Boolean(ready.autoFinalized?.auto_finalized_from_draft)
     });
   } catch (e) {
     return makeResponse(400, { ok: false, error: e.message });
@@ -383,6 +432,7 @@ async function markMemberAbsentApi(body) {
     }
 
     const { team, member } = await assertMember(teamId, memberId);
+    const ready = await ensureTeacherRound1ReadyForR2(teamId, "teacher_mark_absent");
     const teamStateBefore = await getTeamRound2State(teamId);
     const teamStatusBefore = teamStateBefore?.r2?.status || "R2_NOT_STARTED";
     const currentStep = getAbsentMemberStep(teamStatusBefore);
@@ -423,7 +473,10 @@ async function markMemberAbsentApi(body) {
       }
     });
 
-    return makeResponse(200, { ok: true });
+    return makeResponse(200, {
+      ok: true,
+      auto_finalized_from_draft: Boolean(ready.autoFinalized?.auto_finalized_from_draft)
+    });
   } catch (e) {
     return makeResponse(400, { ok: false, error: e.message });
   }
@@ -433,8 +486,13 @@ async function forceMergeApi(body) {
   try {
     const teamId = String(body?.team_id || body?.teamId || "").trim();
     if (!teamId) return makeResponse(400, { ok: false, error: "team_id required" });
+    const ready = await ensureTeacherRound1ReadyForR2(teamId, "teacher_force_merge");
     const result = await forceMergeTeam(teamId, "single");
-    return makeResponse(200, { ok: true, ...result });
+    return makeResponse(200, {
+      ok: true,
+      ...result,
+      auto_finalized_from_draft: Boolean(ready.autoFinalized?.auto_finalized_from_draft)
+    });
   } catch (e) {
     return makeResponse(400, { ok: false, error: e.message });
   }
@@ -449,6 +507,7 @@ async function forceMergeAllApi() {
     for (const team of snapshot.teams) {
       if (team.r2.status !== "R2_INDIVIDUAL_CARDS") continue;
       try {
+        await ensureTeacherRound1ReadyForR2(team.id, "teacher_force_merge_all");
         affected.push(await forceMergeTeam(team.id, "all"));
       } catch (err) {
         failed.push({ team_id: team.id, error: err.message });
@@ -491,6 +550,7 @@ async function forceAdvanceApi(body) {
 
     const teamState = await getTeamRound2State(teamId);
     if (!teamState) return makeResponse(404, { ok: false, error: "team not found" });
+    const ready = await ensureTeacherRound1ReadyForR2(teamId, "teacher_force_advance");
     if (statusIndex(targetStatus) < statusIndex(teamState.r2.status)) {
       return makeResponse(400, { ok: false, error: "只能向前推进，不能回退" });
     }
@@ -511,7 +571,8 @@ async function forceAdvanceApi(body) {
       ok: true,
       team_id: teamId,
       from_status: teamState.r2.status,
-      target_status: targetStatus
+      target_status: targetStatus,
+      auto_finalized_from_draft: Boolean(ready.autoFinalized?.auto_finalized_from_draft)
     });
   } catch (e) {
     return makeResponse(400, { ok: false, error: e.message });
@@ -534,6 +595,7 @@ async function resetMemberApi(body) {
     }
 
     await assertMember(teamId, memberId);
+    const ready = await ensureTeacherRound1ReadyForR2(teamId, "teacher_reset_member");
     await clearMemberRound2Artifacts(teamId, memberId, resetTo);
 
     if (resetTo === "interviewing") {
@@ -564,7 +626,8 @@ async function resetMemberApi(body) {
       ok: true,
       team_id: teamId,
       member_id: memberId,
-      reset_to: resetTo
+      reset_to: resetTo,
+      auto_finalized_from_draft: Boolean(ready.autoFinalized?.auto_finalized_from_draft)
     });
   } catch (e) {
     return makeResponse(400, { ok: false, error: e.message });
@@ -593,6 +656,7 @@ async function resetTeamApi(body) {
     }
 
     const team = await assertTeam(teamId);
+    const ready = await ensureTeacherRound1ReadyForR2(teamId, "teacher_reset_team");
     await clearTeamRound2Artifacts(teamId, resetTo);
 
     for (const member of team.members || []) {
@@ -643,7 +707,8 @@ async function resetTeamApi(body) {
     return makeResponse(200, {
       ok: true,
       team_id: teamId,
-      reset_to: resetTo
+      reset_to: resetTo,
+      auto_finalized_from_draft: Boolean(ready.autoFinalized?.auto_finalized_from_draft)
     });
   } catch (e) {
     return makeResponse(400, { ok: false, error: e.message });

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Component, useEffect, useMemo, useRef, useState } from "react";
 import {
   downloadTeacherCsv,
   generateTeacherDebrief,
@@ -17,6 +17,37 @@ const CARD_STYLE = {
   borderRadius: 18,
   padding: 18
 };
+
+class DebriefTabErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+
+  componentDidCatch(error) {
+    console.warn("[teacher-debrief-tab-error]", this.props.activeTab, error);
+  }
+
+  componentDidUpdate(prevProps) {
+    if (prevProps.activeTab !== this.props.activeTab && this.state.error) {
+      this.setState({ error: null });
+    }
+  }
+
+  render() {
+    if (this.state.error) {
+      return emptyState(
+        `${this.props.activeTab || "当前"} Tab 暂时无法渲染`,
+        "数据已读取，但该面板遇到字段缺失或渲染异常。其他 Tab 不受影响；请刷新数据或查看控制台错误。"
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const GRID_ROWS = [
   { key: "ToC·差异化", label: "ToC·差异化" },
@@ -2638,50 +2669,52 @@ export default function TeacherDebriefTabs({ activeTab, teacherCode, onExportJso
         </button>
       </div>
 
-      {activeTab === "Round 1 复盘" && (
-        <Round1Tab
-          teams={round1Teams}
-          teacherCode={teacherCode}
-          sessionId={sessionId}
-          productImages={productImages}
-          productImageLoading={productImageLoading}
-          onLoadProductImage={loadProductImage}
-        />
-      )}
-      {activeTab === "Round 2 复盘" && (
-        <Round2Tab
-          teams={round2Teams}
-          reviews={reviews}
-          reviewLoading={reviewLoading}
-          expandedTeamId={expandedTeamId}
-          onToggle={handleToggleReview}
-          radarScale={radarScale}
-        />
-      )}
-      {activeTab === "跨轮对比" && <CrossTab teams={round2Teams} radarScale={radarScale} />}
-      {activeTab === "AI 讲解稿" && (
-        <DebriefTab
-          round={debriefRound}
-          script={scripts[debriefRound] || ""}
-          loading={scriptLoading}
-          onChangeRound={setDebriefRound}
-          onGenerate={handleGenerateDebrief}
-          onCopy={handleCopyScript}
-        />
-      )}
-      {activeTab === "导出" && (
-        <ExportTab
-          onExportCsv={handleExportCsv}
-          onExportJson={onExportJson}
-          teams={debriefData?.teams || []}
-        />
-      )}
-      {activeTab === "7关卡诊断" && (
-        <DiagnosticTab teams={round2Teams} />
-      )}
-      {activeTab === "能力卡生态" && (
-        <CardEcosystemTab teams={round2Teams} />
-      )}
+      <DebriefTabErrorBoundary activeTab={activeTab}>
+        {activeTab === "Round 1 复盘" && (
+          <Round1Tab
+            teams={round1Teams}
+            teacherCode={teacherCode}
+            sessionId={sessionId}
+            productImages={productImages}
+            productImageLoading={productImageLoading}
+            onLoadProductImage={loadProductImage}
+          />
+        )}
+        {activeTab === "Round 2 复盘" && (
+          <Round2Tab
+            teams={round2Teams}
+            reviews={reviews}
+            reviewLoading={reviewLoading}
+            expandedTeamId={expandedTeamId}
+            onToggle={handleToggleReview}
+            radarScale={radarScale}
+          />
+        )}
+        {activeTab === "跨轮对比" && <CrossTab teams={round2Teams} radarScale={radarScale} />}
+        {activeTab === "AI 讲解稿" && (
+          <DebriefTab
+            round={debriefRound}
+            script={scripts[debriefRound] || ""}
+            loading={scriptLoading}
+            onChangeRound={setDebriefRound}
+            onGenerate={handleGenerateDebrief}
+            onCopy={handleCopyScript}
+          />
+        )}
+        {activeTab === "导出" && (
+          <ExportTab
+            onExportCsv={handleExportCsv}
+            onExportJson={onExportJson}
+            teams={debriefData?.teams || []}
+          />
+        )}
+        {activeTab === "7关卡诊断" && (
+          <DiagnosticTab teams={round2Teams} />
+        )}
+        {activeTab === "能力卡生态" && (
+          <CardEcosystemTab teams={round2Teams} />
+        )}
+      </DebriefTabErrorBoundary>
     </div>
   );
 }

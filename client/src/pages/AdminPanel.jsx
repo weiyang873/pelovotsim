@@ -689,6 +689,19 @@ export default function AdminPanel() {
     setTeacherCode("");
   };
 
+  const handleOpenRound2 = async () => {
+    const out = await withRefresh("openRound2", () => openTeacherRound2(teacherCode), "");
+    if (!out) return;
+    const autoCount = Number(out.auto_finalized_count || 0);
+    const failedCount = Array.isArray(out.failed) ? out.failed.length : 0;
+    const baseMessage = sessionConfig.hold_before_r2 ? "已放行等待中的队伍" : "已开放 Round 2";
+    const details = [
+      autoCount > 0 ? `${autoCount} 组 R1 未定稿，已按当前草稿定稿后进入 R2` : "",
+      failedCount > 0 ? `${failedCount} 组缺少 R1 草稿，未推进` : ""
+    ].filter(Boolean).join("；");
+    pushToast(failedCount > 0 ? "error" : "success", details ? `${baseMessage}；${details}` : baseMessage);
+  };
+
   const withRefresh = async (label, fn, successMessage) => {
     setBusyAction(label);
     try {
@@ -1201,7 +1214,7 @@ export default function AdminPanel() {
 
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 18 }}>
               <button
-                onClick={() => withRefresh("openRound2", () => openTeacherRound2(teacherCode), sessionConfig.hold_before_r2 ? "已放行等待中的队伍" : "已开放 Round 2")}
+                onClick={handleOpenRound2}
                 disabled={Boolean(busyAction)}
                 style={actionButtonStyle("#1a5c3a")}
               >

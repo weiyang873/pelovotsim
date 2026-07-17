@@ -3009,6 +3009,145 @@ async function finalizePhase3(teamId, body) {
   }
 }
 
+async function finalizeRound1FromDraftForTeacher(teamId, options = {}) {
+  try {
+    const team = await getTeam(teamId);
+    if (!team) return makeResponse(404, { ok: false, error: "team not found" });
+    if (team.final_grid_id && team.final_architecture && String(team.status || "") === "frozen") {
+      return makeResponse(200, {
+        ok: true,
+        team_id: teamId,
+        already_finalized: true,
+        auto_finalized_from_draft: false
+      });
+    }
+
+    const draft = await readRound1TeamDraft(teamId).catch(() => null);
+    const gridId = String(draft?.grid_id || team.final_grid_id || "").trim();
+    const architectureInput = String(draft?.architecture || team.final_architecture || "").trim();
+    if (!gridId || !architectureInput) {
+      return makeResponse(409, {
+        ok: false,
+        error: "round1_draft_missing",
+        message: "该队 R1 未定稿且没有可用草稿，无法强推进入第二轮"
+      });
+    }
+    const architecture = normalizeArchitecture(architectureInput);
+
+    const leaderId = String(team.leader_member_id || draft?.updated_by || team.members?.[0]?.id || "").trim();
+    if (!leaderId) {
+      return makeResponse(409, {
+        ok: false,
+        error: "leader_missing",
+        message: "该队没有成员，无法按草稿自动定稿"
+      });
+    }
+    if (!String(team.leader_member_id || "").trim()) {
+      await setTeamLeader(teamId, leaderId);
+    }
+
+    const latestSession = await getLatestPhase3SessionRecord(teamId).catch(() => null);
+    const sessionId = latestSession?.sessionId || `teacher-auto-finalize:${teamId}`;
+    const persistedConfirmation = await readPersistedPhase3Confirmation(
+      teamId,
+      leaderId,
+      String(team.leader_member_id || "").trim()
+    ).catch(() => null);
+    const persistedScores = scorerScoresToApi(persistedConfirmation?.scores || null);
+    const vpScores = buildPersistedVpScores(
+      persistedScores?.coverage ?? 3,
+      persistedScores?.generalizability ?? 3,
+      persistedScores?.effectiveness ?? 3
+    );
+    const engineVpScores = {
+      C: vpScores.C ?? 3,
+      G: vpScores.G ?? 3,
+      E: vpScores.E ?? 3
+    };
+    const finalVpText = String(
+      persistedConfirmation?.vp_text ||
+      draft?.vp_text ||
+      team.final_vp_text ||
+      "教师强推：按当前 R1 草稿定稿"
+    ).trim();
+    const confirmedFields = persistedConfirmation?.fields || vpResultToConfirmedFields(null, finalVpText);
+    const finalVpSummary = normalizeVpSummaryPayload(team.final_vp_summary, {
+      fallbackText: finalVpText,
+      confirmedFields
+    });
+
+    const settle = await settleAllJinang(teamId);
+    const marketJinangSummary = summarizeEligibleMarketSettlements(settle?.settlements || []);
+    const r1 = buildRound1Outcome(gridId, architecture, engineVpScores, marketJinangSummary, {
+      teamId,
+      sessionId,
+      vpText: finalVpText
+    });
+    scheduleFinalRound1Stages(
+      { teamId, sessionId, memberId: leaderId, source: "teacher" },
+      r1,
+      {
+        source_iteration: "teacher_auto_finalize_from_draft",
+        used_best_iteration: false,
+        vp_text: finalVpText
+      }
+    );
+
+    await runSql(`
+      UPDATE teams
+      SET status = 'frozen',
+          final_grid_id = ${sqlQuote(gridId)},
+          final_architecture = ${sqlQuote(architecture)},
+          final_architecture_source = ${sqlQuote("teacher_draft")},
+          final_vp_text = ${sqlQuote(finalVpText)},
+          final_vp_summary = ${sqlQuote(JSON.stringify(finalVpSummary))}::jsonb,
+          final_vp_scores = ${sqlQuote(JSON.stringify(vpScores))},
+          final_sam = ${Number(r1.SAM_billion)},
+          final_wtp_adj = ${Number(r1.WTPadj)},
+          final_wtp_ref = ${Number(r1.WTPref)},
+          final_wtp_vp_effect = ${Number(r1.wtp_vp_effect)},
+          final_jinang_wtp_bonus = ${Number(r1.jinang_wtp_bonus)},
+          final_vp_c = ${Number(r1.C)},
+          final_vp_g = ${Number(r1.G)},
+          final_vp_e_raw = ${Number(r1.E_raw)},
+          final_vp_e_adj = ${Number(r1.Eadj)},
+          final_rho_c = ${Number(r1.rho_C)},
+          final_wtp_multiplier = ${Number(r1.wtp_multiplier)}
+      WHERE id = ${sqlQuote(teamId)};
+    `);
+    await saveRound1TeamDraft(teamId, leaderId, {
+      grid_id: gridId,
+      architecture,
+      vp_text: finalVpText
+    }).catch(() => {});
+    await logTeacherAction({
+      action: "teacher_auto_finalize_round1_from_draft",
+      teamId,
+      memberId: leaderId,
+      details: {
+        source: String(options.source || "teacher_console"),
+        grid_id: gridId,
+        architecture,
+        used_fallback_scores: !persistedScores,
+        message: "该队 R1 未定稿，教师强推已按当前草稿定稿后进入第二轮"
+      }
+    });
+    clearTeamStateCache(teamId);
+
+    return makeResponse(200, {
+      ok: true,
+      team_id: teamId,
+      status: "frozen",
+      auto_finalized_from_draft: true,
+      used_fallback_scores: !persistedScores,
+      message: "该队 R1 未定稿，已按当前草稿定稿后强推进入第二轮",
+      r1_result: sanitizeStudentR1Result(r1)
+    });
+  } catch (e) {
+    return makeResponse(400, { ok: false, error: e.message });
+  }
+}
+
 async function submitAndFinalizeRound1Vp(body) {
   const payload = body || {};
   const teamId = String(payload.team_id || payload.teamId || "").trim();
@@ -3676,6 +3815,7 @@ module.exports = {
   submitAndFinalizeRound1Vp,
   generateVpFeedbackApi,
   finalizePhase3,
+  finalizeRound1FromDraftForTeacher,
   phase3State,
   getPhase3Scores,
   phase4Data,
