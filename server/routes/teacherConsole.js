@@ -548,9 +548,9 @@ async function forceAdvanceApi(body) {
       return makeResponse(400, { ok: false, error: "invalid target_status" });
     }
 
+    const ready = await ensureTeacherRound1ReadyForR2(teamId, "teacher_force_advance");
     const teamState = await getTeamRound2State(teamId);
     if (!teamState) return makeResponse(404, { ok: false, error: "team not found" });
-    const ready = await ensureTeacherRound1ReadyForR2(teamId, "teacher_force_advance");
     if (statusIndex(targetStatus) < statusIndex(teamState.r2.status)) {
       return makeResponse(400, { ok: false, error: "只能向前推进，不能回退" });
     }

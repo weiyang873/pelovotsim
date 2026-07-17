@@ -1,5 +1,5 @@
 const path = require("node:path");
-const { runSql, sqlQuote } = require("../db/pgSql");
+const { runSql, runTransaction, sqlQuote } = require("../db/pgSql");
 
 const Engine = require("../../engine");
 const { chat, synthesizeVP } = require("../llm/vpCoach");
@@ -3076,6 +3076,41 @@ async function finalizeRound1FromDraftForTeacher(teamId, options = {}) {
       confirmedFields
     });
 
+    await runTransaction(async (sql) => {
+      await sql(`
+        UPDATE teams
+        SET status = 'frozen',
+            final_grid_id = ${sqlQuote(gridId)},
+            final_architecture = ${sqlQuote(architecture)},
+            final_architecture_source = ${sqlQuote("teacher_draft")},
+            final_vp_text = ${sqlQuote(finalVpText)},
+            final_vp_summary = ${sqlQuote(JSON.stringify(finalVpSummary))}::jsonb,
+            final_vp_scores = ${sqlQuote(JSON.stringify(vpScores))},
+            final_vp_c = ${Number(engineVpScores.C)},
+            final_vp_g = ${Number(engineVpScores.G)},
+            final_vp_e_raw = ${Number(engineVpScores.E)}
+        WHERE id = ${sqlQuote(teamId)};
+      `);
+      await sql(`
+        INSERT INTO round1_team_drafts (
+          team_id, grid_id, architecture, vp_text, updated_by, updated_at
+        ) VALUES (
+          ${sqlQuote(teamId)},
+          ${sqlQuote(gridId)},
+          ${sqlQuote(architecture)},
+          ${sqlQuote(finalVpText)},
+          ${sqlQuote(leaderId)},
+          ${sqlQuote(new Date().toISOString())}
+        )
+        ON CONFLICT (team_id) DO UPDATE SET
+          grid_id = EXCLUDED.grid_id,
+          architecture = EXCLUDED.architecture,
+          vp_text = EXCLUDED.vp_text,
+          updated_by = EXCLUDED.updated_by,
+          updated_at = EXCLUDED.updated_at;
+      `);
+    });
+
     const settle = await settleAllJinang(teamId);
     const marketJinangSummary = summarizeEligibleMarketSettlements(settle?.settlements || []);
     const r1 = buildRound1Outcome(gridId, architecture, engineVpScores, marketJinangSummary, {
@@ -3083,43 +3118,24 @@ async function finalizeRound1FromDraftForTeacher(teamId, options = {}) {
       sessionId,
       vpText: finalVpText
     });
-    scheduleFinalRound1Stages(
-      { teamId, sessionId, memberId: leaderId, source: "teacher" },
-      r1,
-      {
-        source_iteration: "teacher_auto_finalize_from_draft",
-        used_best_iteration: false,
-        vp_text: finalVpText
-      }
-    );
 
-    await runSql(`
-      UPDATE teams
-      SET status = 'frozen',
-          final_grid_id = ${sqlQuote(gridId)},
-          final_architecture = ${sqlQuote(architecture)},
-          final_architecture_source = ${sqlQuote("teacher_draft")},
-          final_vp_text = ${sqlQuote(finalVpText)},
-          final_vp_summary = ${sqlQuote(JSON.stringify(finalVpSummary))}::jsonb,
-          final_vp_scores = ${sqlQuote(JSON.stringify(vpScores))},
-          final_sam = ${Number(r1.SAM_billion)},
-          final_wtp_adj = ${Number(r1.WTPadj)},
-          final_wtp_ref = ${Number(r1.WTPref)},
-          final_wtp_vp_effect = ${Number(r1.wtp_vp_effect)},
-          final_jinang_wtp_bonus = ${Number(r1.jinang_wtp_bonus)},
-          final_vp_c = ${Number(r1.C)},
-          final_vp_g = ${Number(r1.G)},
-          final_vp_e_raw = ${Number(r1.E_raw)},
-          final_vp_e_adj = ${Number(r1.Eadj)},
-          final_rho_c = ${Number(r1.rho_C)},
-          final_wtp_multiplier = ${Number(r1.wtp_multiplier)}
-      WHERE id = ${sqlQuote(teamId)};
-    `);
-    await saveRound1TeamDraft(teamId, leaderId, {
-      grid_id: gridId,
-      architecture,
-      vp_text: finalVpText
-    }).catch(() => {});
+    await runTransaction(async (sql) => {
+      await sql(`
+        UPDATE teams
+        SET final_sam = ${Number(r1.SAM_billion)},
+            final_wtp_adj = ${Number(r1.WTPadj)},
+            final_wtp_ref = ${Number(r1.WTPref)},
+            final_wtp_vp_effect = ${Number(r1.wtp_vp_effect)},
+            final_jinang_wtp_bonus = ${Number(r1.jinang_wtp_bonus)},
+            final_vp_c = ${Number(r1.C)},
+            final_vp_g = ${Number(r1.G)},
+            final_vp_e_raw = ${Number(r1.E_raw)},
+            final_vp_e_adj = ${Number(r1.Eadj)},
+            final_rho_c = ${Number(r1.rho_C)},
+            final_wtp_multiplier = ${Number(r1.wtp_multiplier)}
+        WHERE id = ${sqlQuote(teamId)};
+      `);
+    });
     await logTeacherAction({
       action: "teacher_auto_finalize_round1_from_draft",
       teamId,
@@ -3132,6 +3148,22 @@ async function finalizeRound1FromDraftForTeacher(teamId, options = {}) {
         message: "该队 R1 未定稿，教师强推已按当前草稿定稿后进入第二轮"
       }
     });
+    try {
+      scheduleFinalRound1Stages(
+        { teamId, sessionId, memberId: leaderId, source: "teacher" },
+        r1,
+        {
+          source_iteration: "teacher_auto_finalize_from_draft",
+          used_best_iteration: false,
+          vp_text: finalVpText
+        }
+      );
+    } catch (scheduleErr) {
+      console.warn("[teacher-auto-finalize] scheduleFinalRound1Stages failed after freeze persisted", JSON.stringify({
+        team_id: teamId,
+        error: scheduleErr?.message || String(scheduleErr)
+      }));
+    }
     clearTeamStateCache(teamId);
 
     return makeResponse(200, {
