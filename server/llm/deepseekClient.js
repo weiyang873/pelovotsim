@@ -186,11 +186,15 @@ async function _chatCompletionInner(messages, options = {}) {
     throw new Error("DEEPSEEK_API_KEY not set (and no DEEPSEEK_API_KEY_1..N found)");
   }
 
+  // v4-flash 默认开思考(返回 reasoning_content)。DEEPSEEK_DISABLE_THINKING=1 或 options.disableThinking
+  // 时注入 thinking:{type:"disabled"} 关闭思考(经 API 实测唯一生效的开关)。默认不设→server 正常运行零影响。
+  const disableThinking = process.env.DEEPSEEK_DISABLE_THINKING === "1" || options.disableThinking === true;
   const body = JSON.stringify({
     model: DEEPSEEK_MODEL,
     messages,
     temperature: options.temperature ?? 0.7,
     max_tokens: options.max_tokens ?? 800,
+    ...(disableThinking ? { thinking: { type: "disabled" } } : {}),
   });
   const url = new URL("/v1/chat/completions", DEEPSEEK_BASE_URL);
   const maxRetries = Number.isFinite(options.maxRetries) ? options.maxRetries : MAX_RETRIES;
