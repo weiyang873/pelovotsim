@@ -1,0 +1,45 @@
+{
+  "run_id": "formal_v3_rerun_flash_dimension_d4_smoke_2026-07-30",
+  "generated_at": "2026-07-30T06:11:36.130Z",
+  "git_head": "a9d10cc454a51d3a47ae48fa20ff91a430f24cd6",
+  "source_run_id": "formal_v3_rerun_flash_2026-07-29",
+  "design": {
+    "baseline_family": "formal/global",
+    "paired_unit": "persona_id × Q/S condition × rep",
+    "manipulated_factor": "D4 split into six function-dimension selection calls; one dimension card group visible per call; D5 formal JSON unchanged; global compatibility repair only if merged six-round plan fails validation",
+    "arm_label": "paired six-dimension D4 + formal D5",
+    "not_compared_to": "single_mechanism_paired fixed child-grid Arm A"
+  },
+  "llm_config": {
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash",
+    "temperature": 0.55,
+    "thinking": "disabled",
+    "timeout_ms": 120000,
+    "max_repairs": 2,
+    "env_path_loaded": ".env",
+    "key_count": 6
+  },
+  "counts": {
+    "source_rows": 42,
+    "replay_rows": 42,
+    "chat_rows": 7,
+    "chat_failures": 0
+  },
+  "config_sha256": {
+    "runner": "2a3467d516c5f7778994738c45a3cf3b21d0abb3590d6574b835893aa1b34132",
+    "source_jsonl": "297471fb59408de62c762992006d4d5b5e15fca331894a06efad44b2c39ad736",
+    "source_summary": "66d0d40e48d7ebf87fbb36f178013e883d2b5a703421014c7c930259208c5a21",
+    "deepseekClient": "0a667dc7494215a5d00b2e0402d6a017596c99712b88afc1349ca559a2dca30d",
+    "full_game_all_personas": "9f620e48131d5e40438d056195c9daaf2bb615d5fee508b44bc0663fecd6465a",
+    "rdCalculator": "1c0bd689788bedd03c8226c065ddc7306048cd483a589d92ad9f5a9926136a70"
+  },
+  "output_sha256": {
+    "scripts/analysis/formal_v3_rerun_flash_dimension_d4_smoke_2026-07-30.jsonl": "dcc991599752b4e3fd8fea90c3b4b72734e094478cfb120d1f26b3c91570f40c",
+    "scripts/analysis/formal_v3_rerun_flash_dimension_d4_smoke_2026-07-30_call_audit.jsonl": "bdde172ec098379284d35a9e7a5136df2238cabb23eb924b7a8ecb874a7e6835",
+    "scripts/analysis/formal_v3_rerun_flash_dimension_d4_smoke_2026-07-30_row_metrics.csv": "59e158bbea195f1bdca2d557518bf516127c7b5c42781a14f9fef96e071a0121",
+    "scripts/analysis/formal_v3_rerun_flash_dimension_d4_smoke_2026-07-30_formal_replay.csv": "505e2d3461e5944d4017a17f7ec86019c822d1dbea3b5a33d87d765a58cd067a",
+    "scripts/analysis/formal_v3_rerun_flash_dimension_d4_smoke_2026-07-30_summary.md": "ccd5876ee731f5e2ead798a2d4672a504d9b4d6fdbcd001f0214c0a3c6c741bc",
+    "scripts/analysis/formal_v3_rerun_flash_dimension_d4_smoke_2026-07-30_meta.json": "6f4ae24debcf649295465a90b9fa14e128861285883d2979dd10ad9b8d93b2c7"
+  }
+}

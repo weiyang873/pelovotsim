@@ -95,7 +95,7 @@ function pct(value) {
 }
 
 function parseArgs(argv) {
-  const args = { mode: "replay", runId: RUN_ID, limit: 42, chainKey: "", summarizeOnly: false, force: false };
+  const args = { mode: "replay", runId: RUN_ID, limit: 42, chainKey: "", summarizeOnly: false, force: false, onePerPersona: false };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--mode") args.mode = String(argv[++index] || "").trim();
@@ -104,9 +104,10 @@ function parseArgs(argv) {
     else if (arg === "--chain-key") args.chainKey = String(argv[++index] || "").trim();
     else if (arg === "--summarize-only") args.summarizeOnly = true;
     else if (arg === "--force") args.force = true;
+    else if (arg === "--one-per-persona") args.onePerPersona = true;
     else throw new Error(`unknown argument: ${arg}`);
   }
-  if (!new Set(["replay", "chat", "satisfice", "summarize"]).has(args.mode)) throw new Error(`invalid mode: ${args.mode}`);
+  if (!new Set(["replay", "chat", "satisfice", "dimension", "summarize"]).has(args.mode)) throw new Error(`invalid mode: ${args.mode}`);
   if (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > 42) throw new Error("limit must be 1..42");
   return args;
 }
@@ -279,6 +280,159 @@ function d4BasePrompt(prompt) {
   return (cut >= 0 ? String(prompt || "").slice(0, cut) : String(prompt || "")).trim();
 }
 
+function d4ContextWithoutFullCards(prompt) {
+  const text = String(prompt || "");
+  const dimIdx = text.indexOf("\"dimension\"");
+  if (dimIdx < 0) return d4BasePrompt(text);
+  const cardPoolStart = text.lastIndexOf("[", dimIdx);
+  if (cardPoolStart < 0) return d4BasePrompt(text);
+  return text.slice(0, cardPoolStart).trim();
+}
+
+function d4QuestionBlock(prompt) {
+  const text = String(prompt || "");
+  const questionAt = text.indexOf("【你刚刚提出的问题】");
+  if (questionAt < 0) return "";
+  const outputAt = text.indexOf("【输出契约】", questionAt);
+  return text.slice(questionAt, outputAt >= 0 ? outputAt : undefined).trim();
+}
+
+function renderDimensionGroup(group) {
+  return JSON.stringify({
+    dimension: group.name || group.group_id,
+    group_id: group.group_id,
+    dimension_description: group.description || group.dimension_description || "",
+    cards: (group.capabilities || []).map((cap) => ({
+      cap_id: cap.cap_id,
+      name: cap.name || cap.cap_id,
+      covers: cap.covers || [],
+      dependencies: cap.dependencies || [],
+      conflicts: cap.conflicts || [],
+      nre: cap.nre,
+      nre_desc: cap.nre_desc || "",
+      tiers: Object.fromEntries(Object.entries(cap.tiers || {}).map(([tier, tierInfo]) => [tier, {
+        dCOGS: tierInfo.dCOGS,
+        risk: tierInfo.risk,
+        sub_lift: tierInfo.sub_lift,
+        load: tierInfo.load
+      }]))
+    }))
+  }, null, 2);
+}
+
+function renderAlreadySelected(cards, materials) {
+  if (!cards.length) return "尚未选择其他维度。";
+  return renderCardsByGroup(cards, materials);
+}
+
+function buildDimensionD4Prompt(sourcePrompt, group, selectedSoFar, materials) {
+  return [
+    d4ContextWithoutFullCards(sourcePrompt),
+    "",
+    "【本轮只看一个功能维度】",
+    `当前功能维度：${group.name || group.group_id}`,
+    "请只判断这个维度：针对这个客户，这个维度里哪些功能是需要的？各需要什么档次？",
+    "如果这个维度不是核心需求，也必须至少选 1 张最低必要卡，以满足完整方案的维度覆盖。",
+    "不要从其他维度选卡；其他维度会在后续单独判断。",
+    "",
+    "【本维度可选能力卡】",
+    renderDimensionGroup(group),
+    "",
+    "【已经选过的其他维度】",
+    renderAlreadySelected(selectedSoFar, materials),
+    "",
+    "【兼容提示；来自 render manifest】依赖/冲突只使用本轮卡池中列出的 dependencies/conflicts 字段；最终会把六个维度合并后做全局兼容性校验。",
+    "",
+    d4QuestionBlock(sourcePrompt),
+    "",
+    "【输出契约】",
+    "只输出本维度的选择。每张卡必须同时选择真实 cap_id 和 low/mid/high tier。",
+    "输出 JSON：{\"dimension\":\"<当前功能维度>\",\"cards\":[{\"id\":\"<真实cap_id>\",\"tier\":\"low|mid|high\"}],\"reason\":\"为什么这个客户需要这些功能和档次\",\"cost_note\":\"你对本维度成本的直觉判断\"}",
+    "只输出可 JSON.parse 的 JSON，不要 Markdown，不要额外文字。"
+  ].filter(Boolean).join("\n");
+}
+
+function parseDimensionD4Plan(raw, group, materials) {
+  const parsed = parseJsonObject(raw);
+  const groupCatalog = new Map((group.capabilities || []).map((cap) => [cap.cap_id, cap]));
+  const rawCards = Array.isArray(parsed.cards) ? parsed.cards : [];
+  if (rawCards.length < 1) throw new Error(`dimension ${group.group_id} must contain at least one card`);
+  const cards = rawCards.map((item) => ({
+    id: String(item.id || item.card_id || item.cap_id || "").trim(),
+    tier: TIER_CN_TO_ENGINE[String(item.tier || "").trim().toLowerCase()] || TIER_CN_TO_ENGINE[String(item.tier || "").trim()] || String(item.tier || "").trim()
+  }));
+  const ids = new Set();
+  for (const card of cards) {
+    const cap = groupCatalog.get(card.id);
+    if (!cap) throw new Error(`card ${card.id} is not in dimension ${group.group_id}`);
+    if (!cap.tiers || !cap.tiers[card.tier]) throw new Error(`invalid tier for ${card.id}: ${card.tier}`);
+    if (ids.has(card.id)) throw new Error(`duplicate cap_id in dimension ${group.group_id}: ${card.id}`);
+    ids.add(card.id);
+  }
+  return {
+    dimension: String(parsed.dimension || group.name || group.group_id).trim(),
+    group_id: group.group_id,
+    cards,
+    reason: truncate(parsed.reason || "", 600),
+    cost_note: truncate(parsed.cost_note || "", 300)
+  };
+}
+
+function combineDimensionPlans(dimensionCalls, materials) {
+  const cards = dimensionCalls.flatMap((call) => call.parsed.cards);
+  const ids = new Set();
+  for (const card of cards) {
+    if (ids.has(card.id)) throw new Error(`duplicate cap_id across dimensions: ${card.id}`);
+    ids.add(card.id);
+  }
+  return parseD4JsonPlan(JSON.stringify({
+    cards,
+    cost_stance: {
+      text: `六个功能维度逐区选择后形成的成本立场：${dimensionCalls.map((call) => `${call.parsed.dimension || call.parsed.group_id}：${call.parsed.cost_note || call.parsed.reason}`).join("；")}`,
+      source: "承前:D3"
+    },
+    updated_constraints: dimensionCalls.map((call) => ({
+      text: `${call.parsed.dimension || call.parsed.group_id}：${call.parsed.reason || "按本维度局部需求选择"}`,
+      source: "承前:D3"
+    }))
+  }), materials);
+}
+
+function renderCompactCatalog(materials) {
+  return (materials.capabilityGroups.groups || []).map((group) => [
+    `${group.name || group.group_id} (${group.group_id})`,
+    ...(group.capabilities || []).map((cap) => `- ${cap.cap_id}: ${cap.name || cap.cap_id}; tiers=${Object.keys(cap.tiers || {}).join("/")}; dependencies=${JSON.stringify(cap.dependencies || [])}; conflicts=${JSON.stringify(cap.conflicts || [])}`)
+  ].join("\n")).join("\n\n");
+}
+
+function buildDimensionGlobalRepairPrompt(sourcePrompt, dimensionCalls, combineError, materials) {
+  const cards = dimensionCalls.flatMap((call) => call.parsed.cards);
+  return [
+    d4ContextWithoutFullCards(sourcePrompt),
+    "",
+    "【六轮局部功能判断结果】",
+    renderCardsByGroup(cards, materials),
+    "",
+    "【六轮理由】",
+    dimensionCalls.map((call) => `${call.parsed.dimension || call.parsed.group_id}：${call.parsed.reason || ""}；成本直觉=${call.parsed.cost_note || ""}`).join("\n"),
+    "",
+    "【全局兼容性校验未通过】",
+    String(combineError?.message || combineError),
+    "",
+    "【可用 cap_id 摘要】",
+    renderCompactCatalog(materials),
+    "",
+    d4QuestionBlock(sourcePrompt),
+    "",
+    "【D4 合法性修复】",
+    "六轮局部判断已经完成。现在只做最小幅度的合法性修复，不重新发明需求判断。",
+    "优先通过升级依赖卡或补充必要卡来修复；每个维度至少 1 张、总数至少 6 张；兼容性必须合法。",
+    "cost_stance.source 必须引用真实地图 id 或承前:R1/承前:D3。",
+    '输出 JSON：{"cards":[{"id":"<真实cap_id>","tier":"low|mid|high"}],"cost_stance":{"text":"<成本立场>","source":"map_xx或承前:D3"},"updated_constraints":[{"text":"<约束>","source":"map_xx或承前:D3"}]}',
+    "只输出可 JSON.parse 的 JSON，不要 Markdown，不要额外文字。"
+  ].filter(Boolean).join("\n");
+}
+
 function buildD5ChatPrompt(sourceRow, d4Parsed, d4Raw, materials) {
   let prompt = String(sourceRow.r2?.d5?.prompt || "");
   const d4Record = `D4：选卡${d4Parsed.cards.length}张[${renderCardsByGroup(d4Parsed.cards, materials)}]；成本立场=${truncate(d4Parsed.cost_stance.text, 260)}；约束=${d4Parsed.updated_constraints.map((item) => item.text).join("；")}`;
@@ -298,6 +452,12 @@ function buildD5ChatPrompt(sourceRow, d4Parsed, d4Raw, materials) {
     "【你刚才自然语言选卡的原文，供你承接】",
     truncate(d4Raw, 1200)
   ].join("\n");
+}
+
+function buildD5FormalPrompt(sourceRow, d4Parsed, materials) {
+  let prompt = String(sourceRow.r2?.d5?.prompt || "");
+  const d4Record = `D4：选卡${d4Parsed.cards.length}张[${renderCardsByGroup(d4Parsed.cards, materials)}]；成本立场=${truncate(d4Parsed.cost_stance.text, 260)}；约束=${d4Parsed.updated_constraints.map((item) => item.text).join("；")}`;
+  return prompt.replace(/D4：选卡.*?\n/, `${d4Record}\n`);
 }
 
 function parseCardsFromChat(raw, materials) {
@@ -357,6 +517,20 @@ function parsePriceFromChat(raw) {
     aligned_price: Math.max(1000, Math.min(6000, Math.round(price / 100) * 100)),
     basis: { text: truncate(text, 600), source: "承前:D4" },
     reasoning: truncate(text, 1200)
+  };
+}
+
+function parseD5Json(raw) {
+  const parsed = parseJsonObject(raw);
+  const price = Number(parsed.aligned_price ?? parsed.price);
+  if (!Number.isFinite(price)) throw new Error("D5 JSON price is not numeric");
+  if (price < 1000 || price > 6000) throw new Error(`D5 JSON price out of 1000-6000 range: ${price}`);
+  return {
+    ...parsed,
+    price,
+    aligned_price: Math.max(1000, Math.min(6000, Math.round(price / 100) * 100)),
+    basis: parsed.basis || { text: truncate(parsed.reasoning || parsed.reason || parsed.one_line || raw, 600), source: "承前:D4" },
+    reasoning: parsed.reasoning || parsed.reason || parsed.one_line || truncate(raw, 1200)
   };
 }
 
@@ -590,7 +764,7 @@ async function callWithRepair({ client, prompt, parser, paths, chain, stage, max
         messages = [
           { role: "user", content: prompt },
           { role: "assistant", content: raw || "(空输出)" },
-          { role: "user", content: `上一次输出无法用于实验：${error.message || error}。请只修正为可解析、满足硬性约束的自然语言回答，不要改变核心决策。` }
+          { role: "user", content: `上一次输出无法用于实验：${error.message || error}。请只修正为可解析、满足硬性约束的回答，不要改变核心决策。` }
         ];
       }
     }
@@ -634,6 +808,15 @@ function compactChatJsonl(paths) {
   if (!latest.length) return latest;
   fs.writeFileSync(paths.jsonl, `${latest.map((row) => JSON.stringify(row)).join("\n")}\n`, "utf8");
   return latest;
+}
+
+function writeCurrentFailures(paths, rows) {
+  const failures = rows.filter((row) => row.status !== "OK");
+  if (failures.length) {
+    fs.writeFileSync(paths.failuresJsonl, `${failures.map((row) => JSON.stringify(row)).join("\n")}\n`, "utf8");
+  } else if (fs.existsSync(paths.failuresJsonl)) {
+    fs.unlinkSync(paths.failuresJsonl);
+  }
 }
 
 async function runChatRow({ sourceRow, FullGame, materials, client, paths, force = false }) {
@@ -799,6 +982,98 @@ async function runSatisficeRow({ sourceRow, FullGame, materials, client, paths, 
   }
 }
 
+async function runDimensionRow({ sourceRow, FullGame, materials, client, paths, force = false }) {
+  const sourceChainKey = chainKey(sourceRow);
+  const existing = existingChatRows(paths).get(sourceChainKey);
+  if (!force && existing?.status === "OK") return existing;
+  const row = JSON.parse(JSON.stringify(sourceRow));
+  row.run_id = RUN_ID;
+  row.source_run_id = SOURCE_RUN_ID;
+  row.source_chain_key = sourceChainKey;
+  row.status = "RUNNING";
+  row.created_at = new Date().toISOString();
+  row.format_arm = "six_dimension_D4_formal_D5";
+  row.source_baseline = {
+    price: priceOf(sourceRow),
+    profit: profitOf(sourceRow),
+    cards: cardsOf(sourceRow).length,
+    signature: signatureOf(sourceRow)
+  };
+  try {
+    const dimensionCalls = [];
+    let selectedSoFar = [];
+    for (const group of materials.capabilityGroups.groups || []) {
+      const prompt = buildDimensionD4Prompt(sourceRow.r2.d4.prompt, group, selectedSoFar, materials);
+      const call = await callWithRepair({
+        client,
+        prompt,
+        parser: (raw) => parseDimensionD4Plan(raw, group, materials),
+        paths,
+        chain: sourceChainKey,
+        stage: `dimension_D4_${group.group_id}`,
+        maxTokens: 1800
+      });
+      dimensionCalls.push(call);
+      selectedSoFar = selectedSoFar.concat(call.parsed.cards);
+    }
+    let repairCall = null;
+    let finalParsed = null;
+    try {
+      finalParsed = combineDimensionPlans(dimensionCalls, materials);
+    } catch (combineError) {
+      repairCall = await callWithRepair({
+        client,
+        prompt: buildDimensionGlobalRepairPrompt(sourceRow.r2.d4.prompt, dimensionCalls, combineError, materials),
+        parser: (raw) => parseD4JsonPlan(raw, materials),
+        paths,
+        chain: sourceChainKey,
+        stage: "dimension_D4_global_repair",
+        maxTokens: 3500
+      });
+      finalParsed = repairCall.parsed;
+    }
+    row.r2.d4 = {
+      prompt: [...dimensionCalls.map((call) => call.prompt), repairCall?.prompt].filter(Boolean).join("\n\n===== NEXT DIMENSION / REPAIR =====\n\n"),
+      prompt_sha256: sha256([...dimensionCalls.map((call) => call.prompt_sha256), repairCall?.prompt_sha256].filter(Boolean).join("|")),
+      raw_response: [...dimensionCalls.map((call) => call.raw_response), repairCall?.raw_response].filter(Boolean).join("\n\n===== NEXT DIMENSION / REPAIR =====\n\n"),
+      parsed: finalParsed,
+      attempts: dimensionCalls.reduce((sum, call) => sum + Number(call.attempts || 0), 0) + Number(repairCall?.attempts || 0),
+      status: "OK",
+      error: ""
+    };
+    row.r2.d4_dimension_rounds = dimensionCalls;
+    if (repairCall) row.r2.d4_global_repair = repairCall;
+    const d5Prompt = buildD5FormalPrompt(sourceRow, finalParsed, materials);
+    const d5Call = await callWithRepair({
+      client,
+      prompt: d5Prompt,
+      parser: parseD5Json,
+      paths,
+      chain: sourceChainKey,
+      stage: "dimension_formal_D5",
+      maxTokens: 2500
+    });
+    row.r2.d5 = d5Call;
+    row.r2.calculate = await FullGame.calculateR2(row, materials);
+    row.status = "OK";
+    row.chat_delta = {
+      price: priceOf(row) - priceOf(sourceRow),
+      profit: Math.round(profitOf(row) - profitOf(sourceRow)),
+      cards: cardsOf(row).length - cardsOf(sourceRow).length,
+      baseline_loss: profitOf(sourceRow) < 0,
+      chat_loss: profitOf(row) < 0
+    };
+    appendJsonl(paths.jsonl, row);
+    return row;
+  } catch (error) {
+    row.status = "FAIL";
+    row.error = String(error?.stack || error?.message || error);
+    appendJsonl(paths.failuresJsonl, row);
+    appendJsonl(paths.jsonl, row);
+    return row;
+  }
+}
+
 function buildRowMetrics(rows) {
   return rows.filter((row) => row.status === "OK").map((row) => ({
     source_chain_key: row.source_chain_key || chainKey(row),
@@ -875,8 +1150,9 @@ function buildSummary({ sourceRows, replayRows, chatRows }) {
   }
   lines.push("", "## Controls", "");
   lines.push("- R1 outcome, Coach, D3 summary, D3 evidence signals, target grid, cards manifest, pricing range, compatibility validation, and settlement are inherited from the same formal source row.");
-  lines.push("- Chat D4 is natural language but must end with a parseable `cap_id@tier` line; invalid/missing/compatibility-failing outputs get the same repair budget as formal JSON (2 repairs).");
-  lines.push("- Chat D5 is natural language and parsed by the final 1000-6000 number; settlement uses the same `FullGame.calculateR2` path.");
+  lines.push(`- Manipulated factor: ${MANIPULATED_FACTOR}.`);
+  lines.push("- Invalid, missing, or compatibility-failing outputs get the same repair budget as formal JSON (2 repairs).");
+  lines.push("- Settlement uses the same `FullGame.calculateR2` path.");
   lines.push("");
   return lines.join("\n");
 }
@@ -936,23 +1212,29 @@ async function main() {
     chain_key: "", persona_id: "", persona_label: "", condition: "", rep: "", stored_price: "", replay_price: "", stored_profit: "", replay_profit: "", stored_loss: "", replay_loss: "", stored_cards: "", replay_cards: "", profit_delta: ""
   }));
 
-  if ((args.mode === "chat" || args.mode === "satisfice") && !args.summarizeOnly) {
+  if ((args.mode === "chat" || args.mode === "satisfice" || args.mode === "dimension") && !args.summarizeOnly) {
     const client = require("../../server/llm/deepseekClient");
     if (!client.hasAnyKey()) throw new Error("DeepSeek key unavailable");
     const existing = existingChatRows(paths);
-    const targets = sourceRows
+    const targetPool = args.onePerPersona
+      ? PERSONA_ORDER.map((personaId) => sourceRows.find((row) => row.persona_id === personaId && row.condition === "Q" && Number(row.rep) === 1)).filter(Boolean)
+      : sourceRows;
+    const targets = targetPool
       .filter((row) => !args.chainKey || chainKey(row) === args.chainKey)
       .slice(0, args.limit)
       .filter((row) => args.force || existing.get(chainKey(row))?.status !== "OK");
     for (const sourceRow of targets) {
       const row = args.mode === "satisfice"
         ? await runSatisficeRow({ sourceRow, FullGame, materials, client, paths, force: args.force })
-        : await runChatRow({ sourceRow, FullGame, materials, client, paths, force: args.force });
+        : args.mode === "dimension"
+          ? await runDimensionRow({ sourceRow, FullGame, materials, client, paths, force: args.force })
+          : await runChatRow({ sourceRow, FullGame, materials, client, paths, force: args.force });
       console.log(`[${args.runId}] ${row.source_chain_key} ${row.status} base_profit=${Math.round(row.source_baseline?.profit ?? profitOf(sourceRow))} chat_profit=${Number.isFinite(profitOf(row)) ? Math.round(profitOf(row)) : "NA"} error=${row.error ? String(row.error).split("\n")[0] : ""}`);
     }
   }
 
   const chatRows = compactChatJsonl(paths).filter((row) => row.run_id === args.runId);
+  writeCurrentFailures(paths, chatRows);
   const rowMetrics = buildRowMetrics(chatRows);
   writeCsv(paths.rowMetricsCsv, rowMetrics, Object.keys(rowMetrics[0] || {
     source_chain_key: "", persona_id: "", persona_label: "", condition: "", rep: "", baseline_cards: "", chat_cards: "", baseline_price: "", chat_price: "", baseline_profit: "", chat_profit: "", baseline_loss: "", chat_loss: "", price_delta: "", profit_delta: "", card_delta: "", d4_attempts: "", d5_attempts: ""
