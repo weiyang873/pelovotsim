@@ -1,0 +1,46 @@
+{
+  "run_id": "formal_v3_dimension_satisfice_min6_42_2026-07-30",
+  "generated_at": "2026-07-30T14:46:10.616Z",
+  "git_head": "7cc8ec75a9e25334b5c5f7fc1a5f3e577c1a109a",
+  "source_run_id": "formal_v3_rerun_flash_2026-07-29",
+  "design": {
+    "baseline_family": "formal/global",
+    "paired_unit": "persona_id × Q/S condition × rep",
+    "manipulated_factor": "D4 six function-dimension calls plus satisficing concern/evaluation/alternative/final; quantity prompt=min6; D5 formal JSON unchanged",
+    "arm_label": "six-dimension D4+satisfice min6 + formal D5",
+    "quantity_policy": "min6",
+    "not_compared_to": "single_mechanism_paired fixed child-grid Arm A"
+  },
+  "llm_config": {
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash",
+    "temperature": 0.55,
+    "thinking": "disabled",
+    "timeout_ms": 120000,
+    "max_repairs": 5,
+    "env_path_loaded": ".env",
+    "key_count": 6
+  },
+  "counts": {
+    "source_rows": 42,
+    "replay_rows": 42,
+    "chat_rows": 42,
+    "chat_failures": 0
+  },
+  "config_sha256": {
+    "runner": "209932313f548dd3e894ea30fd2ab61cf38f22de2f65631a16cafb96c1a16ca1",
+    "source_jsonl": "297471fb59408de62c762992006d4d5b5e15fca331894a06efad44b2c39ad736",
+    "source_summary": "66d0d40e48d7ebf87fbb36f178013e883d2b5a703421014c7c930259208c5a21",
+    "deepseekClient": "0a667dc7494215a5d00b2e0402d6a017596c99712b88afc1349ca559a2dca30d",
+    "full_game_all_personas": "9f620e48131d5e40438d056195c9daaf2bb615d5fee508b44bc0663fecd6465a",
+    "rdCalculator": "1c0bd689788bedd03c8226c065ddc7306048cd483a589d92ad9f5a9926136a70"
+  },
+  "output_sha256": {
+    "scripts/analysis/formal_v3_dimension_satisfice_min6_42_2026-07-30.jsonl": "b11e3a5006304960883ad90ec932141077493bb3fd3611942cbf46017e9cdad5",
+    "scripts/analysis/formal_v3_dimension_satisfice_min6_42_2026-07-30_call_audit.jsonl": "6db5cbd13a0a88e4f16ae331ece19489cecb483ecdf708138f3e34c66a4ee8fe",
+    "scripts/analysis/formal_v3_dimension_satisfice_min6_42_2026-07-30_row_metrics.csv": "1140c86a2698253a03fb80fe1322312594460e2c7dd1e713012825d976068542",
+    "scripts/analysis/formal_v3_dimension_satisfice_min6_42_2026-07-30_formal_replay.csv": "505e2d3461e5944d4017a17f7ec86019c822d1dbea3b5a33d87d765a58cd067a",
+    "scripts/analysis/formal_v3_dimension_satisfice_min6_42_2026-07-30_summary.md": "f806595127341fda3ac924e036914b76290ba8d7b28a49cfea847e1bb237b3e0",
+    "scripts/analysis/formal_v3_dimension_satisfice_min6_42_2026-07-30_meta.json": "98a1890dd0895cd68b7d546ec453049c4664175ddd84941cb8f2a4401ddaccd7"
+  }
+}

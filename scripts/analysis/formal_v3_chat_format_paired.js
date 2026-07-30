@@ -18,10 +18,12 @@ const TEMPERATURE = Number(process.env.FORMAL_CHAT_TEMPERATURE || "0.55");
 const MAX_REPAIRS = Math.max(0, parseInt(process.env.FORMAL_CHAT_MAX_REPAIRS || "2", 10));
 const MAX_ATTEMPTS = MAX_REPAIRS + 1;
 const TIMEOUT_MS = Math.max(1, parseInt(process.env.FORMAL_CHAT_TIMEOUT_MS || "120000", 10));
+const QUANTITY_POLICY = String(process.env.FORMAL_CHAT_QUANTITY_POLICY || "min6").trim();
 const PERSONA_ORDER = ["A", "D", "E", "B", "F", "C", "G"];
 const CONDITIONS = ["Q", "S"];
 const REPS = [1, 2, 3];
 const TIER_CN_TO_ENGINE = { "低": "low", "中": "mid", "高": "high", low: "low", mid: "mid", high: "high" };
+const QUANTITY_POLICIES = new Set(["min6", "unlimited"]);
 
 function outputPaths(runId = RUN_ID) {
   return {
@@ -107,8 +109,9 @@ function parseArgs(argv) {
     else if (arg === "--one-per-persona") args.onePerPersona = true;
     else throw new Error(`unknown argument: ${arg}`);
   }
-  if (!new Set(["replay", "chat", "satisfice", "dimension", "summarize"]).has(args.mode)) throw new Error(`invalid mode: ${args.mode}`);
+  if (!new Set(["replay", "chat", "satisfice", "dimension", "dimension_satisfice", "summarize"]).has(args.mode)) throw new Error(`invalid mode: ${args.mode}`);
   if (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > 42) throw new Error("limit must be 1..42");
+  if (!QUANTITY_POLICIES.has(QUANTITY_POLICY)) throw new Error(`invalid FORMAL_CHAT_QUANTITY_POLICY: ${QUANTITY_POLICY}`);
   return args;
 }
 
@@ -391,15 +394,53 @@ function renderAlreadySelected(cards, materials) {
   return renderCardsByGroup(cards, materials);
 }
 
-function buildDimensionD4Prompt(sourcePrompt, group, selectedSoFar, materials) {
+function quantityPolicyLines(policy = QUANTITY_POLICY, scope = "dimension") {
+  if (policy === "unlimited") {
+    return scope === "dimension"
+      ? [
+        "【数量口径：不限】完整方案每个维度至少 1 张；总数不设上限。",
+        "本轮只做当前维度：凡是这个客户明确需要、且你能说明价值的卡，都可以保留。",
+        "不要把方案压缩到 6 张或 8-10 张；也不要为了凑数量选择无关卡。"
+      ]
+      : [
+        "【数量口径：不限】最终方案每个维度至少 1 张；总数不设上限。",
+        "凡是这个客户明确需要、且能解释价值的能力都可以保留，不需要压到 6 张或 8-10 张。",
+        "仍需满足真实 cap_id、tier、依赖/冲突等兼容性硬规则。"
+      ];
+  }
+  return scope === "dimension"
+    ? [
+      "【数量口径：最少6张】完整方案每个维度至少 1 张、总数至少 6 张。",
+      "本轮只做当前维度：核心维度可以多选；非核心维度选 1 张最低必要卡即可。",
+      "请以够用和可结算为准，避免因为“可能有一点用”就继续加卡。"
+    ]
+    : [
+      "【数量口径：最少6张】最终方案每个维度至少 1 张、总数至少 6 张。",
+      "以满足底线和顾虑为目标，除非顾虑明确要求，否则优先保留较精简方案。",
+      "仍需满足真实 cap_id、tier、依赖/冲突等兼容性硬规则。"
+    ];
+}
+
+function renderConcerns(concerns) {
+  return (concerns || []).length ? concerns.map((item, index) => `${index + 1}. ${item}`).join("\n") : "";
+}
+
+function buildDimensionD4Prompt(sourcePrompt, group, selectedSoFar, materials, options = {}) {
+  const concerns = options.concerns || [];
+  const quantityPolicy = options.quantityPolicy || QUANTITY_POLICY;
   return [
     d4ContextWithoutFullCards(sourcePrompt),
     "",
+    concerns.length ? "【本轮 satisficing 顾虑】" : "",
+    renderConcerns(concerns),
+    concerns.length ? "" : "",
     "【本轮只看一个功能维度】",
     `当前功能维度：${group.name || group.group_id}`,
     "请只判断这个维度：针对这个客户，这个维度里哪些功能是需要的？各需要什么档次？",
     "如果这个维度不是核心需求，也必须至少选 1 张最低必要卡，以满足完整方案的维度覆盖。",
     "不要从其他维度选卡；其他维度会在后续单独判断。",
+    "",
+    ...quantityPolicyLines(quantityPolicy, "dimension"),
     "",
     "【本维度可选能力卡】",
     renderDimensionGroup(group),
@@ -467,11 +508,15 @@ function combineDimensionPlans(dimensionCalls, materials) {
 function renderCompactCatalog(materials) {
   return (materials.capabilityGroups.groups || []).map((group) => [
     `${group.name || group.group_id} (${group.group_id})`,
-    ...(group.capabilities || []).map((cap) => `- ${cap.cap_id}: ${cap.name || cap.cap_id}; tiers=${Object.keys(cap.tiers || {}).join("/")}; dependencies=${JSON.stringify(cap.dependencies || [])}; conflicts=${JSON.stringify(cap.conflicts || [])}`)
+    ...(group.capabilities || []).map((cap) => {
+      const tiers = Object.entries(cap.tiers || {}).map(([tier, tierInfo]) => `${tier}{dCOGS=${tierInfo.dCOGS},risk=${tierInfo.risk},load=${tierInfo.load},sub_lift=${tierInfo.sub_lift}}`).join("/");
+      return `- ${cap.cap_id}: ${cap.name || cap.cap_id}; nre=${cap.nre}; tiers=${tiers}; dependencies=${JSON.stringify(cap.dependencies || [])}; conflicts=${JSON.stringify(cap.conflicts || [])}`;
+    })
   ].join("\n")).join("\n\n");
 }
 
-function buildDimensionGlobalRepairPrompt(sourcePrompt, dimensionCalls, combineError, materials) {
+function buildDimensionGlobalRepairPrompt(sourcePrompt, dimensionCalls, combineError, materials, options = {}) {
+  const quantityPolicy = options.quantityPolicy || QUANTITY_POLICY;
   const cards = dimensionCalls.flatMap((call) => call.parsed.cards);
   return [
     d4ContextWithoutFullCards(sourcePrompt),
@@ -492,7 +537,103 @@ function buildDimensionGlobalRepairPrompt(sourcePrompt, dimensionCalls, combineE
     "",
     "【D4 合法性修复】",
     "六轮局部判断已经完成。现在只做最小幅度的合法性修复，不重新发明需求判断。",
-    "优先通过升级依赖卡或补充必要卡来修复；每个维度至少 1 张、总数至少 6 张；兼容性必须合法。",
+    "优先通过升级依赖卡或补充必要卡来修复，不重新做全盘优化。",
+    ...quantityPolicyLines(quantityPolicy, "global"),
+    "cost_stance.source 必须引用真实地图 id 或承前:R1/承前:D3。",
+    '输出 JSON：{"cards":[{"id":"<真实cap_id>","tier":"low|mid|high"}],"cost_stance":{"text":"<成本立场>","source":"map_xx或承前:D3"},"updated_constraints":[{"text":"<约束>","source":"map_xx或承前:D3"}]}',
+    "只输出可 JSON.parse 的 JSON，不要 Markdown，不要额外文字。"
+  ].filter(Boolean).join("\n");
+}
+
+function buildDimensionSatisficeConcernsPrompt(sourcePrompt, quantityPolicy = QUANTITY_POLICY) {
+  return [
+    d4ContextWithoutFullCards(sourcePrompt),
+    "",
+    "【六功能区 D4 + Satisfice Step 1】",
+    "在进入六个功能区逐项选卡之前，先列出你最在意的 2-3 条顾虑或最低可接受标准。",
+    "这些顾虑应承接你的地图、累计栈、D3 证据和当前 D4 问题，不要提前列具体卡名。",
+    "",
+    ...quantityPolicyLines(quantityPolicy, "global"),
+    "",
+    d4QuestionBlock(sourcePrompt),
+    "",
+    '只输出 JSON：{"concerns":["顾虑1","顾虑2"]}',
+    "只输出可 JSON.parse 的 JSON，不要 Markdown，不要额外文字。"
+  ].filter(Boolean).join("\n");
+}
+
+function buildDimensionSatisficeEvaluatePrompt(sourcePrompt, concerns, defaultPlan, materials, quantityPolicy = QUANTITY_POLICY) {
+  return [
+    d4ContextWithoutFullCards(sourcePrompt),
+    "",
+    "【顾虑】",
+    renderConcerns(concerns),
+    "",
+    "【六功能区默认方案】",
+    renderD4Plan(defaultPlan, materials, { includeCostStance: false }),
+    "",
+    ...quantityPolicyLines(quantityPolicy, "global"),
+    "",
+    "【六功能区 D4 + Satisfice Step 3】",
+    "逐项评估这个默认方案是否满足顾虑。只评估，不要改方案，不要搜索替代。",
+    '只输出 JSON：{"satisfaction":[{"item":"顾虑1","verdict":"满足|部分满足|不满足","reason":"..."}],"overall":"满足|部分满足|不满足"}',
+    "只输出可 JSON.parse 的 JSON，不要 Markdown，不要额外文字。"
+  ].filter(Boolean).join("\n");
+}
+
+function buildDimensionSatisficeAlternativesPrompt(sourcePrompt, concerns, defaultPlan, evaluation, materials, quantityPolicy = QUANTITY_POLICY) {
+  return [
+    d4ContextWithoutFullCards(sourcePrompt),
+    "",
+    "【顾虑】",
+    renderConcerns(concerns),
+    "",
+    "【默认方案】",
+    renderD4Plan(defaultPlan, materials, { includeCostStance: false }),
+    "",
+    "【默认方案评估】",
+    JSON.stringify(evaluation, null, 2),
+    "",
+    "【可用 cap_id 摘要】",
+    renderCompactCatalog(materials),
+    "",
+    ...quantityPolicyLines(quantityPolicy, "global"),
+    "",
+    "【六功能区 D4 + Satisfice Step 4】",
+    "如果有不满足或部分满足的地方，列出 1-3 个替代选卡方案；如果没有更好的方案，输出空数组。",
+    "替代方案只修补顾虑，不重新发明需求判断。",
+    "cost_stance.source 必须引用真实地图 id 或承前:R1/承前:D3。",
+    '只输出 JSON：{"alternatives":[{"cards":[{"id":"<真实cap_id>","tier":"low|mid|high"}],"cost_stance":{"text":"<成本立场>","source":"map_xx或承前:D3"},"updated_constraints":[{"text":"<约束>","source":"map_xx或承前:D3"}],"reason":"为什么想到这个替代"}]}',
+    "只输出可 JSON.parse 的 JSON，不要 Markdown，不要额外文字。"
+  ].filter(Boolean).join("\n");
+}
+
+function buildDimensionSatisficeFinalPrompt(sourcePrompt, concerns, defaultPlan, evaluation, alternatives, materials, quantityPolicy = QUANTITY_POLICY) {
+  return [
+    d4ContextWithoutFullCards(sourcePrompt),
+    "",
+    "【顾虑】",
+    renderConcerns(concerns),
+    "",
+    "【六功能区默认方案】",
+    renderD4Plan(defaultPlan, materials, { includeCostStance: false }),
+    "",
+    "【默认方案评估】",
+    JSON.stringify(evaluation, null, 2),
+    "",
+    "【替代方案】",
+    alternatives.length ? alternatives.map((item, index) => `方案${index + 1}\n${renderD4Plan(item.plan, materials, { includeCostStance: false })}\n理由：${item.reason || ""}`).join("\n\n") : "没有更好的替代方案。",
+    "",
+    "【可用 cap_id 摘要】",
+    renderCompactCatalog(materials),
+    "",
+    ...quantityPolicyLines(quantityPolicy, "global"),
+    "",
+    d4QuestionBlock(sourcePrompt),
+    "",
+    "【六功能区 D4 + Satisfice Step 5】",
+    "看着上述顾虑、默认方案、评估和替代方案，做最终能力卡选择。",
+    "可以坚持默认方案，也可以做最小幅度修补；不要为了显得全面而无依据堆卡。",
     "cost_stance.source 必须引用真实地图 id 或承前:R1/承前:D3。",
     '输出 JSON：{"cards":[{"id":"<真实cap_id>","tier":"low|mid|high"}],"cost_stance":{"text":"<成本立场>","source":"map_xx或承前:D3"},"updated_constraints":[{"text":"<约束>","source":"map_xx或承前:D3"}]}',
     "只输出可 JSON.parse 的 JSON，不要 Markdown，不要额外文字。"
@@ -1125,6 +1266,145 @@ async function runDimensionRow({ sourceRow, FullGame, materials, client, paths, 
   }
 }
 
+async function runDimensionSatisficeRow({ sourceRow, FullGame, materials, client, paths, force = false }) {
+  const sourceChainKey = chainKey(sourceRow);
+  const existing = existingChatRows(paths).get(sourceChainKey);
+  if (!force && existing?.status === "OK") return existing;
+  const row = JSON.parse(JSON.stringify(sourceRow));
+  row.run_id = RUN_ID;
+  row.source_run_id = SOURCE_RUN_ID;
+  row.source_chain_key = sourceChainKey;
+  row.status = "RUNNING";
+  row.created_at = new Date().toISOString();
+  row.format_arm = `six_dimension_satisfice_D4_formal_D5_${QUANTITY_POLICY}`;
+  row.quantity_policy = QUANTITY_POLICY;
+  row.source_baseline = sourceBaselineSnapshot(sourceRow);
+  try {
+    const concernsCall = await callWithRepair({
+      client,
+      prompt: buildDimensionSatisficeConcernsPrompt(sourceRow.r2.d4.prompt, QUANTITY_POLICY),
+      parser: parseConcernList,
+      paths,
+      chain: sourceChainKey,
+      stage: "dimension_satisfice_D4_concerns",
+      maxTokens: 1400
+    });
+    const dimensionCalls = [];
+    let selectedSoFar = [];
+    for (const group of materials.capabilityGroups.groups || []) {
+      const prompt = buildDimensionD4Prompt(sourceRow.r2.d4.prompt, group, selectedSoFar, materials, {
+        concerns: concernsCall.parsed.concerns,
+        quantityPolicy: QUANTITY_POLICY
+      });
+      const call = await callWithRepair({
+        client,
+        prompt,
+        parser: (raw) => parseDimensionD4Plan(raw, group, materials),
+        paths,
+        chain: sourceChainKey,
+        stage: `dimension_satisfice_D4_${group.group_id}`,
+        maxTokens: 1800
+      });
+      dimensionCalls.push(call);
+      selectedSoFar = selectedSoFar.concat(call.parsed.cards);
+    }
+    let defaultRepairCall = null;
+    let defaultParsed = null;
+    try {
+      defaultParsed = combineDimensionPlans(dimensionCalls, materials);
+    } catch (combineError) {
+      defaultRepairCall = await callWithRepair({
+        client,
+        prompt: buildDimensionGlobalRepairPrompt(sourceRow.r2.d4.prompt, dimensionCalls, combineError, materials, { quantityPolicy: QUANTITY_POLICY }),
+        parser: (raw) => parseD4JsonPlan(raw, materials),
+        paths,
+        chain: sourceChainKey,
+        stage: "dimension_satisfice_D4_default_repair",
+        maxTokens: 3800
+      });
+      defaultParsed = defaultRepairCall.parsed;
+    }
+    const evaluateCall = await callWithRepair({
+      client,
+      prompt: buildDimensionSatisficeEvaluatePrompt(sourceRow.r2.d4.prompt, concernsCall.parsed.concerns, defaultParsed, materials, QUANTITY_POLICY),
+      parser: parseSatisfaction,
+      paths,
+      chain: sourceChainKey,
+      stage: "dimension_satisfice_D4_evaluate",
+      maxTokens: 1600
+    });
+    const alternativesCall = await callWithRepair({
+      client,
+      prompt: buildDimensionSatisficeAlternativesPrompt(sourceRow.r2.d4.prompt, concernsCall.parsed.concerns, defaultParsed, evaluateCall.parsed, materials, QUANTITY_POLICY),
+      parser: (raw) => parseAlternatives(raw, materials),
+      paths,
+      chain: sourceChainKey,
+      stage: "dimension_satisfice_D4_alternatives",
+      maxTokens: 5200
+    });
+    const finalCall = await callWithRepair({
+      client,
+      prompt: buildDimensionSatisficeFinalPrompt(sourceRow.r2.d4.prompt, concernsCall.parsed.concerns, defaultParsed, evaluateCall.parsed, alternativesCall.parsed.alternatives, materials, QUANTITY_POLICY),
+      parser: (raw) => parseD4JsonPlan(raw, materials),
+      paths,
+      chain: sourceChainKey,
+      stage: "dimension_satisfice_D4_final",
+      maxTokens: 4200
+    });
+    const d4Calls = [concernsCall, ...dimensionCalls, defaultRepairCall, evaluateCall, alternativesCall, finalCall].filter(Boolean);
+    row.r2.d4 = {
+      prompt: d4Calls.map((call) => call.prompt).filter(Boolean).join("\n\n===== NEXT DIMENSION SATISFICE STEP =====\n\n"),
+      prompt_sha256: sha256(d4Calls.map((call) => call.prompt_sha256).filter(Boolean).join("|")),
+      raw_response: d4Calls.map((call) => call.raw_response).filter(Boolean).join("\n\n===== NEXT DIMENSION SATISFICE STEP =====\n\n"),
+      parsed: finalCall.parsed,
+      attempts: d4Calls.reduce((sum, call) => sum + Number(call.attempts || 0), 0),
+      status: "OK",
+      error: ""
+    };
+    row.r2.d4_dimension_satisfice = {
+      quantity_policy: QUANTITY_POLICY,
+      concerns: concernsCall,
+      dimension_rounds: dimensionCalls,
+      default_repair: defaultRepairCall,
+      default_plan: {
+        parsed: defaultParsed,
+        repaired: Boolean(defaultRepairCall)
+      },
+      evaluation: evaluateCall,
+      alternatives: alternativesCall,
+      final: finalCall
+    };
+    const d5Prompt = buildD5FormalPrompt(sourceRow, finalCall.parsed, materials);
+    const d5Call = await callWithRepair({
+      client,
+      prompt: d5Prompt,
+      parser: parseD5Json,
+      paths,
+      chain: sourceChainKey,
+      stage: "dimension_satisfice_formal_D5",
+      maxTokens: 2500
+    });
+    row.r2.d5 = d5Call;
+    row.r2.calculate = await FullGame.calculateR2(row, materials);
+    row.status = "OK";
+    row.chat_delta = {
+      price: priceOf(row) - priceOf(sourceRow),
+      profit: Math.round(profitOf(row) - profitOf(sourceRow)),
+      cards: cardsOf(row).length - cardsOf(sourceRow).length,
+      baseline_loss: profitOf(sourceRow) < 0,
+      chat_loss: profitOf(row) < 0
+    };
+    appendJsonl(paths.jsonl, row);
+    return row;
+  } catch (error) {
+    row.status = "FAIL";
+    row.error = String(error?.stack || error?.message || error);
+    appendJsonl(paths.failuresJsonl, row);
+    appendJsonl(paths.jsonl, row);
+    return row;
+  }
+}
+
 function buildRowMetrics(rows) {
   return rows.filter((row) => row.status === "OK").map((row) => {
     const baselineMech = row.source_baseline?.mechanism || {};
@@ -1235,7 +1515,8 @@ function buildSummary({ sourceRows, replayRows, chatRows }) {
   lines.push("", "## Controls", "");
   lines.push("- R1 outcome, Coach, D3 summary, D3 evidence signals, target grid, cards manifest, pricing range, compatibility validation, and settlement are inherited from the same formal source row.");
   lines.push(`- Manipulated factor: ${MANIPULATED_FACTOR}.`);
-  lines.push("- Invalid, missing, or compatibility-failing outputs get the same repair budget as formal JSON (2 repairs).");
+  if (QUANTITY_POLICY) lines.push(`- Quantity policy: ${QUANTITY_POLICY}.`);
+  lines.push(`- Invalid, missing, or compatibility-failing outputs get the configured repair budget (${MAX_REPAIRS} repairs for this run invocation).`);
   lines.push("- Settlement uses the same `FullGame.calculateR2` path.");
   lines.push("");
   return lines.join("\n");
@@ -1253,6 +1534,7 @@ function writeMeta(paths, args, envInfo, sourceRows, replayRows, chatRows) {
       paired_unit: "persona_id × Q/S condition × rep",
       manipulated_factor: MANIPULATED_FACTOR,
       arm_label: ARM_LABEL,
+      quantity_policy: QUANTITY_POLICY,
       not_compared_to: "single_mechanism_paired fixed child-grid Arm A"
     },
     llm_config: {
@@ -1296,7 +1578,7 @@ async function main() {
     chain_key: "", persona_id: "", persona_label: "", condition: "", rep: "", stored_price: "", replay_price: "", stored_profit: "", replay_profit: "", stored_loss: "", replay_loss: "", stored_cards: "", replay_cards: "", profit_delta: ""
   }));
 
-  if ((args.mode === "chat" || args.mode === "satisfice" || args.mode === "dimension") && !args.summarizeOnly) {
+  if ((args.mode === "chat" || args.mode === "satisfice" || args.mode === "dimension" || args.mode === "dimension_satisfice") && !args.summarizeOnly) {
     const client = require("../../server/llm/deepseekClient");
     if (!client.hasAnyKey()) throw new Error("DeepSeek key unavailable");
     const existing = existingChatRows(paths);
@@ -1312,7 +1594,9 @@ async function main() {
         ? await runSatisficeRow({ sourceRow, FullGame, materials, client, paths, force: args.force })
         : args.mode === "dimension"
           ? await runDimensionRow({ sourceRow, FullGame, materials, client, paths, force: args.force })
-          : await runChatRow({ sourceRow, FullGame, materials, client, paths, force: args.force });
+          : args.mode === "dimension_satisfice"
+            ? await runDimensionSatisficeRow({ sourceRow, FullGame, materials, client, paths, force: args.force })
+            : await runChatRow({ sourceRow, FullGame, materials, client, paths, force: args.force });
       console.log(`[${args.runId}] ${row.source_chain_key} ${row.status} base_profit=${Math.round(row.source_baseline?.profit ?? profitOf(sourceRow))} chat_profit=${Number.isFinite(profitOf(row)) ? Math.round(profitOf(row)) : "NA"} error=${row.error ? String(row.error).split("\n")[0] : ""}`);
     }
   }
