@@ -1,0 +1,45 @@
+{
+  "run_id": "formal_v3_rerun_flash_satisfice_formal_paired_2026-07-30",
+  "generated_at": "2026-07-30T16:05:32.327Z",
+  "git_head": "7836d90f692dfd5049617fed66bfe525ae3b2008",
+  "source_run_id": "formal_v3_rerun_flash_2026-07-29",
+  "design": {
+    "baseline_family": "formal/global",
+    "paired_unit": "persona_id × Q/S condition × rep",
+    "manipulated_factor": "D4 satisfice-v1 concerns/default/evaluate/alternatives/final only; formal D5 retained",
+    "arm_label": "paired satisfice D4 + formal D5",
+    "quantity_policy": "min6",
+    "not_compared_to": "single_mechanism_paired fixed child-grid Arm A"
+  },
+  "llm_config": {
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash",
+    "temperature": 0.55,
+    "thinking": "disabled",
+    "timeout_ms": 120000,
+    "max_repairs": 5,
+    "env_path_loaded": ".env",
+    "key_count": 6
+  },
+  "counts": {
+    "source_rows": 42,
+    "replay_rows": 42,
+    "chat_rows": 42,
+    "chat_failures": 0
+  },
+  "config_sha256": {
+    "runner": "86fc6fe02f3967a5f98e144bfa82cd3b6dbd552403226a981331d212f13b0265",
+    "source_jsonl": "297471fb59408de62c762992006d4d5b5e15fca331894a06efad44b2c39ad736",
+    "source_summary": "66d0d40e48d7ebf87fbb36f178013e883d2b5a703421014c7c930259208c5a21",
+    "deepseekClient": "0a667dc7494215a5d00b2e0402d6a017596c99712b88afc1349ca559a2dca30d",
+    "full_game_all_personas": "9f620e48131d5e40438d056195c9daaf2bb615d5fee508b44bc0663fecd6465a",
+    "rdCalculator": "1c0bd689788bedd03c8226c065ddc7306048cd483a589d92ad9f5a9926136a70"
+  },
+  "output_sha256": {
+    "scripts/analysis/formal_v3_rerun_flash_satisfice_formal_paired_2026-07-30.jsonl": "3f4102382a52bf5e2bc5aa3b05a9e1e37e532adad5bc09e317b3054282b80d31",
+    "scripts/analysis/formal_v3_rerun_flash_satisfice_formal_paired_2026-07-30_call_audit.jsonl": "d3fd0fc914fda9695c513aaa0f97a878069935f441560db70f2df7e1da1141bc",
+    "scripts/analysis/formal_v3_rerun_flash_satisfice_formal_paired_2026-07-30_row_metrics.csv": "7bafd28cf38150ebce9c948a0345d1bbe72c41fc3b3da3fc38b9209873f3752c",
+    "scripts/analysis/formal_v3_rerun_flash_satisfice_formal_paired_2026-07-30_formal_replay.csv": "505e2d3461e5944d4017a17f7ec86019c822d1dbea3b5a33d87d765a58cd067a",
+    "scripts/analysis/formal_v3_rerun_flash_satisfice_formal_paired_2026-07-30_summary.md": "ef604f761ff8810ae433ef7470ed4c01a7aaaf71d962812e1737fbf0802e0aa0"
+  }
+}

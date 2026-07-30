@@ -109,7 +109,7 @@ function parseArgs(argv) {
     else if (arg === "--one-per-persona") args.onePerPersona = true;
     else throw new Error(`unknown argument: ${arg}`);
   }
-  if (!new Set(["replay", "chat", "satisfice", "dimension", "dimension_satisfice", "summarize"]).has(args.mode)) throw new Error(`invalid mode: ${args.mode}`);
+  if (!new Set(["replay", "chat", "satisfice", "satisfice_formal", "dimension", "dimension_satisfice", "summarize"]).has(args.mode)) throw new Error(`invalid mode: ${args.mode}`);
   if (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > 42) throw new Error("limit must be 1..42");
   if (!QUANTITY_POLICIES.has(QUANTITY_POLICY)) throw new Error(`invalid FORMAL_CHAT_QUANTITY_POLICY: ${QUANTITY_POLICY}`);
   return args;
@@ -1179,6 +1179,104 @@ async function runSatisficeRow({ sourceRow, FullGame, materials, client, paths, 
   }
 }
 
+async function runSatisficeFormalRow({ sourceRow, FullGame, materials, client, paths, force = false }) {
+  const sourceChainKey = chainKey(sourceRow);
+  const existing = existingChatRows(paths).get(sourceChainKey);
+  if (!force && existing?.status === "OK") return existing;
+  const row = JSON.parse(JSON.stringify(sourceRow));
+  row.run_id = RUN_ID;
+  row.source_run_id = SOURCE_RUN_ID;
+  row.source_chain_key = sourceChainKey;
+  row.status = "RUNNING";
+  row.created_at = new Date().toISOString();
+  row.format_arm = "satisfice_D4_plus_formal_D5";
+  row.source_baseline = sourceBaselineSnapshot(sourceRow);
+  try {
+    const base = d4BasePrompt(sourceRow.r2.d4.prompt);
+    const concernsCall = await callWithRepair({
+      client,
+      prompt: buildD4ConcernsPrompt(base),
+      parser: parseConcernList,
+      paths,
+      chain: sourceChainKey,
+      stage: "satisfice_formal_D4_concerns",
+      maxTokens: 1200
+    });
+    const defaultCall = await callWithRepair({
+      client,
+      prompt: buildD4DefaultPlanPrompt(base, concernsCall.parsed.concerns),
+      parser: (raw) => parseD4JsonPlan(raw, materials),
+      paths,
+      chain: sourceChainKey,
+      stage: "satisfice_formal_D4_default",
+      maxTokens: 3500
+    });
+    const evaluateCall = await callWithRepair({
+      client,
+      prompt: buildD4EvaluatePrompt(base, concernsCall.parsed.concerns, defaultCall.parsed, materials),
+      parser: parseSatisfaction,
+      paths,
+      chain: sourceChainKey,
+      stage: "satisfice_formal_D4_evaluate",
+      maxTokens: 1600
+    });
+    const alternativesCall = await callWithRepair({
+      client,
+      prompt: buildD4AlternativesPrompt(base, concernsCall.parsed.concerns, defaultCall.parsed, evaluateCall.parsed, materials),
+      parser: (raw) => parseAlternatives(raw, materials),
+      paths,
+      chain: sourceChainKey,
+      stage: "satisfice_formal_D4_alternatives",
+      maxTokens: 5000
+    });
+    const finalCall = await callWithRepair({
+      client,
+      prompt: buildD4FinalFromSatisficePrompt(base, concernsCall.parsed.concerns, defaultCall.parsed, evaluateCall.parsed, alternativesCall.parsed.alternatives, materials),
+      parser: (raw) => parseD4JsonPlan(raw, materials),
+      paths,
+      chain: sourceChainKey,
+      stage: "satisfice_formal_D4_final",
+      maxTokens: 3500
+    });
+    row.r2.d4 = finalCall;
+    row.r2.d4_satisfice = {
+      concerns: concernsCall,
+      default_plan: defaultCall,
+      evaluation: evaluateCall,
+      alternatives: alternativesCall,
+      final: finalCall
+    };
+    const d5Prompt = buildD5FormalPrompt(sourceRow, finalCall.parsed, materials);
+    const d5Call = await callWithRepair({
+      client,
+      prompt: d5Prompt,
+      parser: parseD5Json,
+      paths,
+      chain: sourceChainKey,
+      stage: "satisfice_formal_D5",
+      maxTokens: 2500
+    });
+    row.r2.d5 = d5Call;
+    row.r2.calculate = await FullGame.calculateR2(row, materials);
+    row.status = "OK";
+    row.chat_delta = {
+      price: priceOf(row) - priceOf(sourceRow),
+      profit: Math.round(profitOf(row) - profitOf(sourceRow)),
+      cards: cardsOf(row).length - cardsOf(sourceRow).length,
+      baseline_loss: profitOf(sourceRow) < 0,
+      chat_loss: profitOf(row) < 0
+    };
+    appendJsonl(paths.jsonl, row);
+    return row;
+  } catch (error) {
+    row.status = "FAIL";
+    row.error = String(error?.stack || error?.message || error);
+    appendJsonl(paths.failuresJsonl, row);
+    appendJsonl(paths.jsonl, row);
+    return row;
+  }
+}
+
 async function runDimensionRow({ sourceRow, FullGame, materials, client, paths, force = false }) {
   const sourceChainKey = chainKey(sourceRow);
   const existing = existingChatRows(paths).get(sourceChainKey);
@@ -1578,7 +1676,7 @@ async function main() {
     chain_key: "", persona_id: "", persona_label: "", condition: "", rep: "", stored_price: "", replay_price: "", stored_profit: "", replay_profit: "", stored_loss: "", replay_loss: "", stored_cards: "", replay_cards: "", profit_delta: ""
   }));
 
-  if ((args.mode === "chat" || args.mode === "satisfice" || args.mode === "dimension" || args.mode === "dimension_satisfice") && !args.summarizeOnly) {
+  if ((args.mode === "chat" || args.mode === "satisfice" || args.mode === "satisfice_formal" || args.mode === "dimension" || args.mode === "dimension_satisfice") && !args.summarizeOnly) {
     const client = require("../../server/llm/deepseekClient");
     if (!client.hasAnyKey()) throw new Error("DeepSeek key unavailable");
     const existing = existingChatRows(paths);
@@ -1592,11 +1690,13 @@ async function main() {
     for (const sourceRow of targets) {
       const row = args.mode === "satisfice"
         ? await runSatisficeRow({ sourceRow, FullGame, materials, client, paths, force: args.force })
-        : args.mode === "dimension"
-          ? await runDimensionRow({ sourceRow, FullGame, materials, client, paths, force: args.force })
-          : args.mode === "dimension_satisfice"
-            ? await runDimensionSatisficeRow({ sourceRow, FullGame, materials, client, paths, force: args.force })
-            : await runChatRow({ sourceRow, FullGame, materials, client, paths, force: args.force });
+        : args.mode === "satisfice_formal"
+          ? await runSatisficeFormalRow({ sourceRow, FullGame, materials, client, paths, force: args.force })
+          : args.mode === "dimension"
+            ? await runDimensionRow({ sourceRow, FullGame, materials, client, paths, force: args.force })
+            : args.mode === "dimension_satisfice"
+              ? await runDimensionSatisficeRow({ sourceRow, FullGame, materials, client, paths, force: args.force })
+              : await runChatRow({ sourceRow, FullGame, materials, client, paths, force: args.force });
       console.log(`[${args.runId}] ${row.source_chain_key} ${row.status} base_profit=${Math.round(row.source_baseline?.profit ?? profitOf(sourceRow))} chat_profit=${Number.isFinite(profitOf(row)) ? Math.round(profitOf(row)) : "NA"} error=${row.error ? String(row.error).split("\n")[0] : ""}`);
     }
   }
