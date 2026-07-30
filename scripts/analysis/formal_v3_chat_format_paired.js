@@ -190,6 +190,43 @@ function cardsOf(row) {
   return row?.r2?.d4?.parsed?.cards || [];
 }
 
+function calcOutputOf(row) {
+  return row?.r2?.calculate?.output || {};
+}
+
+function numOrNull(value) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+}
+
+function mechanismSnapshot(row) {
+  const output = calcOutputOf(row);
+  const cardCount = cardsOf(row).length;
+  const coverCore = numOrNull(output.coverCore);
+  const q = numOrNull(output.units);
+  const breakeven = numOrNull(output.breakeven_q);
+  const wtp = numOrNull(output.WTP);
+  const price = priceOf(row);
+  return {
+    coverCore,
+    coverNice: numOrNull(output.coverNice),
+    coverage_efficiency: coverCore != null && cardCount ? coverCore / cardCount : null,
+    Vscore: numOrNull(output.V),
+    COGS: numOrNull(output.COGS),
+    dCOGS: numOrNull(output.dCOGS),
+    nre_total_wan: numOrNull(output.nre_total_wan),
+    fixedCost: numOrNull(output.fixedCost),
+    Q: q,
+    breakeven_q: breakeven,
+    q_to_breakeven: q != null && breakeven ? q / breakeven : null,
+    actualGm: numOrNull(output.actualGm),
+    price_wtp_ratio: Number.isFinite(price) && wtp ? price / wtp : null,
+    WTP: wtp,
+    unitMargin: numOrNull(output.unitMargin),
+    double_squeeze: profitOf(row) < 0 && coverCore != null && coverCore < 0.6 && q != null && breakeven != null && q < breakeven ? 1 : 0
+  };
+}
+
 function signatureOf(row) {
   return cardsOf(row).map((card) => `${card.id || card.card_id || card.cap_id}@${card.tier}`).sort().join("|");
 }
@@ -213,6 +250,35 @@ function stats(rows) {
     cards_min: counts.length ? Math.min(...counts) : null,
     cards_max: counts.length ? Math.max(...counts) : null,
     unique_configs: new Set(ok.map(signatureOf)).size
+  };
+}
+
+function mechanismStats(rows) {
+  const ok = rows.filter((row) => row.status === "OK");
+  const snapshots = ok.map(mechanismSnapshot);
+  const value = (key) => snapshots.map((item) => item[key]).filter(Number.isFinite);
+  return {
+    coverCore: mean(value("coverCore")),
+    coverNice: mean(value("coverNice")),
+    coverage_efficiency: mean(value("coverage_efficiency")),
+    COGS: mean(value("COGS")),
+    dCOGS: mean(value("dCOGS")),
+    nre_total_wan: mean(value("nre_total_wan")),
+    fixedCost: mean(value("fixedCost")),
+    q_to_breakeven: mean(value("q_to_breakeven")),
+    price_wtp_ratio: mean(value("price_wtp_ratio")),
+    actualGm: mean(value("actualGm")),
+    double_squeeze: ok.length ? ok.filter((row) => mechanismSnapshot(row).double_squeeze).length : 0
+  };
+}
+
+function sourceBaselineSnapshot(sourceRow) {
+  return {
+    price: priceOf(sourceRow),
+    profit: profitOf(sourceRow),
+    cards: cardsOf(sourceRow).length,
+    signature: signatureOf(sourceRow),
+    mechanism: mechanismSnapshot(sourceRow)
   };
 }
 
@@ -830,12 +896,7 @@ async function runChatRow({ sourceRow, FullGame, materials, client, paths, force
   row.status = "RUNNING";
   row.created_at = new Date().toISOString();
   row.format_arm = "chat_D4_D5_only";
-  row.source_baseline = {
-    price: priceOf(sourceRow),
-    profit: profitOf(sourceRow),
-    cards: cardsOf(sourceRow).length,
-    signature: signatureOf(sourceRow)
-  };
+  row.source_baseline = sourceBaselineSnapshot(sourceRow);
   try {
     const d4Prompt = stripD4JsonContract(sourceRow.r2.d4.prompt);
     const d4Call = await callWithRepair({
@@ -890,12 +951,7 @@ async function runSatisficeRow({ sourceRow, FullGame, materials, client, paths, 
   row.status = "RUNNING";
   row.created_at = new Date().toISOString();
   row.format_arm = "satisfice_D4_plus_chat_D5";
-  row.source_baseline = {
-    price: priceOf(sourceRow),
-    profit: profitOf(sourceRow),
-    cards: cardsOf(sourceRow).length,
-    signature: signatureOf(sourceRow)
-  };
+  row.source_baseline = sourceBaselineSnapshot(sourceRow);
   try {
     const base = d4BasePrompt(sourceRow.r2.d4.prompt);
     const concernsCall = await callWithRepair({
@@ -993,12 +1049,7 @@ async function runDimensionRow({ sourceRow, FullGame, materials, client, paths, 
   row.status = "RUNNING";
   row.created_at = new Date().toISOString();
   row.format_arm = "six_dimension_D4_formal_D5";
-  row.source_baseline = {
-    price: priceOf(sourceRow),
-    profit: profitOf(sourceRow),
-    cards: cardsOf(sourceRow).length,
-    signature: signatureOf(sourceRow)
-  };
+  row.source_baseline = sourceBaselineSnapshot(sourceRow);
   try {
     const dimensionCalls = [];
     let selectedSoFar = [];
@@ -1075,31 +1126,57 @@ async function runDimensionRow({ sourceRow, FullGame, materials, client, paths, 
 }
 
 function buildRowMetrics(rows) {
-  return rows.filter((row) => row.status === "OK").map((row) => ({
-    source_chain_key: row.source_chain_key || chainKey(row),
-    persona_id: row.persona_id,
-    persona_label: row.persona_label,
-    condition: row.condition,
-    rep: row.rep,
-    baseline_cards: row.source_baseline?.cards,
-    chat_cards: cardsOf(row).length,
-    baseline_price: row.source_baseline?.price,
-    chat_price: priceOf(row),
-    baseline_profit: row.source_baseline?.profit,
-    chat_profit: profitOf(row),
-    baseline_loss: row.source_baseline?.profit < 0 ? 1 : 0,
-    chat_loss: profitOf(row) < 0 ? 1 : 0,
-    price_delta: priceOf(row) - Number(row.source_baseline?.price),
-    profit_delta: Math.round(profitOf(row) - Number(row.source_baseline?.profit)),
-    card_delta: cardsOf(row).length - Number(row.source_baseline?.cards),
-    d4_attempts: row.r2?.d4?.attempts,
-    d5_attempts: row.r2?.d5?.attempts
-  }));
+  return rows.filter((row) => row.status === "OK").map((row) => {
+    const baselineMech = row.source_baseline?.mechanism || {};
+    const chatMech = mechanismSnapshot(row);
+    return {
+      source_chain_key: row.source_chain_key || chainKey(row),
+      persona_id: row.persona_id,
+      persona_label: row.persona_label,
+      condition: row.condition,
+      rep: row.rep,
+      baseline_cards: row.source_baseline?.cards,
+      chat_cards: cardsOf(row).length,
+      baseline_price: row.source_baseline?.price,
+      chat_price: priceOf(row),
+      baseline_profit: row.source_baseline?.profit,
+      chat_profit: profitOf(row),
+      baseline_loss: row.source_baseline?.profit < 0 ? 1 : 0,
+      chat_loss: profitOf(row) < 0 ? 1 : 0,
+      price_delta: priceOf(row) - Number(row.source_baseline?.price),
+      profit_delta: Math.round(profitOf(row) - Number(row.source_baseline?.profit)),
+      card_delta: cardsOf(row).length - Number(row.source_baseline?.cards),
+      baseline_coverCore: baselineMech.coverCore,
+      chat_coverCore: chatMech.coverCore,
+      baseline_coverNice: baselineMech.coverNice,
+      chat_coverNice: chatMech.coverNice,
+      baseline_coverage_efficiency: baselineMech.coverage_efficiency,
+      chat_coverage_efficiency: chatMech.coverage_efficiency,
+      baseline_COGS: baselineMech.COGS,
+      chat_COGS: chatMech.COGS,
+      baseline_dCOGS: baselineMech.dCOGS,
+      chat_dCOGS: chatMech.dCOGS,
+      baseline_nre_total_wan: baselineMech.nre_total_wan,
+      chat_nre_total_wan: chatMech.nre_total_wan,
+      baseline_fixedCost: baselineMech.fixedCost,
+      chat_fixedCost: chatMech.fixedCost,
+      baseline_q_to_breakeven: baselineMech.q_to_breakeven,
+      chat_q_to_breakeven: chatMech.q_to_breakeven,
+      baseline_price_wtp_ratio: baselineMech.price_wtp_ratio,
+      chat_price_wtp_ratio: chatMech.price_wtp_ratio,
+      baseline_double_squeeze: baselineMech.double_squeeze,
+      chat_double_squeeze: chatMech.double_squeeze,
+      d4_attempts: row.r2?.d4?.attempts,
+      d5_attempts: row.r2?.d5?.attempts
+    };
+  });
 }
 
 function buildSummary({ sourceRows, replayRows, chatRows }) {
   const sourceStats = stats(sourceRows);
   const chatStats = stats(chatRows);
+  const sourceMech = mechanismStats(sourceRows);
+  const chatMech = mechanismStats(chatRows);
   const replayMatches = replayRows.length ? replayRows.every((row) => row.profit_delta === 0 && row.stored_loss === row.replay_loss) : false;
   const paired = chatRows.filter((row) => row.status === "OK");
   const flips = paired.reduce((acc, row) => {
@@ -1147,6 +1224,13 @@ function buildSummary({ sourceRows, replayRows, chatRows }) {
   lines.push("|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|");
   for (const row of paired) {
     lines.push(`| ${row.source_chain_key} | ${row.persona_label} | ${row.condition} | ${row.rep} | ${row.source_baseline.cards} | ${cardsOf(row).length} | ${row.source_baseline.price} | ${priceOf(row)} | ${Math.round(row.source_baseline.profit)} | ${Math.round(profitOf(row))} | ${row.source_baseline.profit < 0 ? 1 : 0} | ${profitOf(row) < 0 ? 1 : 0} |`);
+  }
+  lines.push("", "## Failure Mechanism Audit", "");
+  lines.push("| arm | coverCore | coverNice | cover/card | COGS | dCOGS | NRE(wan) | fixedCost | Q/BEQ | P/WTP | actualGm | double_squeeze_n |");
+  lines.push("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|");
+  lines.push(`| formal grid source | ${round(sourceMech.coverCore, 3)} | ${round(sourceMech.coverNice, 3)} | ${round(sourceMech.coverage_efficiency, 4)} | ${round(sourceMech.COGS, 0)} | ${round(sourceMech.dCOGS, 0)} | ${round(sourceMech.nre_total_wan, 1)} | ${round(sourceMech.fixedCost, 0)} | ${round(sourceMech.q_to_breakeven, 3)} | ${round(sourceMech.price_wtp_ratio, 3)} | ${round(sourceMech.actualGm, 3)} | ${sourceMech.double_squeeze} |`);
+  if (paired.length) {
+    lines.push(`| ${ARM_LABEL} | ${round(chatMech.coverCore, 3)} | ${round(chatMech.coverNice, 3)} | ${round(chatMech.coverage_efficiency, 4)} | ${round(chatMech.COGS, 0)} | ${round(chatMech.dCOGS, 0)} | ${round(chatMech.nre_total_wan, 1)} | ${round(chatMech.fixedCost, 0)} | ${round(chatMech.q_to_breakeven, 3)} | ${round(chatMech.price_wtp_ratio, 3)} | ${round(chatMech.actualGm, 3)} | ${chatMech.double_squeeze} |`);
   }
   lines.push("", "## Controls", "");
   lines.push("- R1 outcome, Coach, D3 summary, D3 evidence signals, target grid, cards manifest, pricing range, compatibility validation, and settlement are inherited from the same formal source row.");
