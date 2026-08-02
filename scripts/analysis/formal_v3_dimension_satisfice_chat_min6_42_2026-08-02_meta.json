@@ -1,0 +1,45 @@
+{
+  "run_id": "formal_v3_dimension_satisfice_chat_min6_42_2026-08-02",
+  "generated_at": "2026-08-02T07:57:15.780Z",
+  "git_head": "0248192b72ac1161d7044bd035b5e03ed0c771c1",
+  "source_run_id": "formal_v3_rerun_flash_2026-07-29",
+  "design": {
+    "baseline_family": "formal/global",
+    "paired_unit": "persona_id × Q/S condition × rep",
+    "manipulated_factor": "six-function D4 + satisficing min6 with natural-language D4 and chat D5",
+    "arm_label": "six-dimension D4+satisfice min6 chat D4/D5",
+    "quantity_policy": "min6",
+    "not_compared_to": "single_mechanism_paired fixed child-grid Arm A"
+  },
+  "llm_config": {
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash",
+    "temperature": 0.55,
+    "thinking": "disabled",
+    "timeout_ms": 120000,
+    "max_repairs": 5,
+    "env_path_loaded": ".env",
+    "key_count": 6
+  },
+  "counts": {
+    "source_rows": 42,
+    "replay_rows": 42,
+    "chat_rows": 42,
+    "chat_failures": 0
+  },
+  "config_sha256": {
+    "runner": "84ded140e020aa364e44a126fe626da8dd14857e82aade79e2e4b3616f341d70",
+    "source_jsonl": "297471fb59408de62c762992006d4d5b5e15fca331894a06efad44b2c39ad736",
+    "source_summary": "66d0d40e48d7ebf87fbb36f178013e883d2b5a703421014c7c930259208c5a21",
+    "deepseekClient": "0a667dc7494215a5d00b2e0402d6a017596c99712b88afc1349ca559a2dca30d",
+    "full_game_all_personas": "9f620e48131d5e40438d056195c9daaf2bb615d5fee508b44bc0663fecd6465a",
+    "rdCalculator": "1c0bd689788bedd03c8226c065ddc7306048cd483a589d92ad9f5a9926136a70"
+  },
+  "output_sha256": {
+    "scripts/analysis/formal_v3_dimension_satisfice_chat_min6_42_2026-08-02.jsonl": "4291adb7aef48ed4ba01161a745de02d27e9ed0a656bc555d2cc65e920d4a74e",
+    "scripts/analysis/formal_v3_dimension_satisfice_chat_min6_42_2026-08-02_call_audit.jsonl": "7c20bff8fd11221002b1f115d71d3719de72f8ca460bc1c664918e3d2b9dcd1a",
+    "scripts/analysis/formal_v3_dimension_satisfice_chat_min6_42_2026-08-02_row_metrics.csv": "e60241ff86ca3001025d44fe59b659e502cc5345bb79feb0124a24a745c369e1",
+    "scripts/analysis/formal_v3_dimension_satisfice_chat_min6_42_2026-08-02_formal_replay.csv": "505e2d3461e5944d4017a17f7ec86019c822d1dbea3b5a33d87d765a58cd067a",
+    "scripts/analysis/formal_v3_dimension_satisfice_chat_min6_42_2026-08-02_summary.md": "7db404cca02ce7d222f1d3365018df836efd69caa8a8111a47428c74bd594070"
+  }
+}

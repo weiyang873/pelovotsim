@@ -109,7 +109,7 @@ function parseArgs(argv) {
     else if (arg === "--one-per-persona") args.onePerPersona = true;
     else throw new Error(`unknown argument: ${arg}`);
   }
-  if (!new Set(["replay", "chat", "satisfice", "satisfice_formal", "dimension", "dimension_satisfice", "summarize"]).has(args.mode)) throw new Error(`invalid mode: ${args.mode}`);
+  if (!new Set(["replay", "chat", "satisfice", "satisfice_formal", "dimension", "dimension_satisfice", "dimension_satisfice_chat", "summarize"]).has(args.mode)) throw new Error(`invalid mode: ${args.mode}`);
   if (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > 42) throw new Error("limit must be 1..42");
   if (!QUANTITY_POLICIES.has(QUANTITY_POLICY)) throw new Error(`invalid FORMAL_CHAT_QUANTITY_POLICY: ${QUANTITY_POLICY}`);
   return args;
@@ -485,6 +485,42 @@ function parseDimensionD4Plan(raw, group, materials) {
   };
 }
 
+function parseDimensionD4ChatPlan(raw, group, materials) {
+  const text = String(raw || "");
+  const markerMatch = text.match(/(?:本维度最终选卡|最终选卡)\s*[：:]\s*([\s\S]*)/u);
+  const parseText = markerMatch ? markerMatch[1] : text;
+  const groupCatalog = new Map((group.capabilities || []).map((cap) => [cap.cap_id, cap]));
+  const selected = new Map();
+  const missingTiers = [];
+  for (const cap of group.capabilities || []) {
+    const escaped = cap.cap_id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(`${escaped}\\s*(?:@|＠|:|：|=|＝|\\s+)?\\s*(low|mid|high|低|中|高)?`, "igu");
+    for (const match of parseText.matchAll(regex)) {
+      const tierRaw = String(match[1] || "").trim();
+      if (!tierRaw) {
+        missingTiers.push(cap.cap_id);
+        continue;
+      }
+      const tier = TIER_CN_TO_ENGINE[tierRaw.toLowerCase()] || TIER_CN_TO_ENGINE[tierRaw];
+      if (!tier || !cap.tiers?.[tier]) throw new Error(`invalid tier for ${cap.cap_id}: ${tierRaw}`);
+      if (!selected.has(cap.cap_id)) selected.set(cap.cap_id, { id: cap.cap_id, tier });
+    }
+  }
+  if (missingTiers.length) throw new Error(`missing tier for cap_id(s): ${Array.from(new Set(missingTiers)).join(",")}`);
+  const cards = [...selected.values()];
+  if (cards.length < 1) throw new Error(`dimension ${group.group_id} must contain at least one card`);
+  for (const card of cards) {
+    if (!groupCatalog.has(card.id)) throw new Error(`card ${card.id} is not in dimension ${group.group_id}`);
+  }
+  return {
+    dimension: group.name || group.group_id,
+    group_id: group.group_id,
+    cards,
+    reason: truncate(text, 600),
+    cost_note: truncate(text, 300)
+  };
+}
+
 function combineDimensionPlans(dimensionCalls, materials) {
   const cards = dimensionCalls.flatMap((call) => call.parsed.cards);
   const ids = new Set();
@@ -637,6 +673,150 @@ function buildDimensionSatisficeFinalPrompt(sourcePrompt, concerns, defaultPlan,
     "cost_stance.source 必须引用真实地图 id 或承前:R1/承前:D3。",
     '输出 JSON：{"cards":[{"id":"<真实cap_id>","tier":"low|mid|high"}],"cost_stance":{"text":"<成本立场>","source":"map_xx或承前:D3"},"updated_constraints":[{"text":"<约束>","source":"map_xx或承前:D3"}]}',
     "只输出可 JSON.parse 的 JSON，不要 Markdown，不要额外文字。"
+  ].filter(Boolean).join("\n");
+}
+
+function buildDimensionSatisficeConcernsChatPrompt(sourcePrompt, quantityPolicy = QUANTITY_POLICY) {
+  return [
+    d4ContextWithoutFullCards(sourcePrompt),
+    "",
+    "【六功能区 D4 + Satisfice Step 1：自然对话】",
+    "在进入六个功能区逐项选卡之前，先像和合伙人聊天一样，说说你最在意的 2-3 条顾虑或最低可接受标准。",
+    "这些顾虑应承接你的地图、累计栈、D3 证据和当前 D4 问题，不要提前列具体卡名。",
+    "",
+    ...quantityPolicyLines(quantityPolicy, "global"),
+    "",
+    d4QuestionBlock(sourcePrompt),
+    "",
+    "不要输出 JSON，不要 Markdown 表格。",
+    "最后单独写：",
+    "顾虑清单：",
+    "1. ...",
+    "2. ..."
+  ].filter(Boolean).join("\n");
+}
+
+function parseConcernListFromChat(raw) {
+  const text = String(raw || "");
+  const marker = text.match(/顾虑清单\s*[：:]?\s*([\s\S]*)/u);
+  const body = marker ? marker[1] : text;
+  const lines = body.split(/\r?\n|；|;/)
+    .map((line) => line.replace(/^\s*(?:[-*•]|\d+[.、)]|[一二三四五六七八九十]+[、.])\s*/u, "").trim())
+    .filter((line) => line && !/^顾虑清单/u.test(line))
+    .slice(0, 3);
+  if (lines.length < 1) throw new Error("chat concerns must contain at least one item");
+  return { concerns: lines };
+}
+
+function buildDimensionD4ChatPrompt(sourcePrompt, group, selectedSoFar, materials, options = {}) {
+  const concerns = options.concerns || [];
+  const quantityPolicy = options.quantityPolicy || QUANTITY_POLICY;
+  return [
+    d4ContextWithoutFullCards(sourcePrompt),
+    "",
+    concerns.length ? "【本轮 satisficing 顾虑】" : "",
+    renderConcerns(concerns),
+    concerns.length ? "" : "",
+    "【本轮只看一个功能维度：自然对话】",
+    `当前功能维度：${group.name || group.group_id}`,
+    "请只判断这个维度：针对这个客户，这个维度里哪些功能是需要的？各需要什么档次？",
+    "如果这个维度不是核心需求，也必须至少选 1 张最低必要卡，以满足完整方案的维度覆盖。",
+    "不要从其他维度选卡；其他维度会在后续单独判断。",
+    "",
+    ...quantityPolicyLines(quantityPolicy, "dimension"),
+    "",
+    "【本维度可选能力卡】",
+    renderDimensionGroup(group),
+    "",
+    "【已经选过的其他维度】",
+    renderAlreadySelected(selectedSoFar, materials),
+    "",
+    "【兼容提示；来自 render manifest】依赖/冲突只使用本轮卡池中列出的 dependencies/conflicts 字段；最终会把六个维度合并后做全局兼容性校验。",
+    "",
+    d4QuestionBlock(sourcePrompt),
+    "",
+    "请像真实决策者一样用自然语言说明，不要输出 JSON，不要 Markdown 表格。",
+    "最后单独写一行：",
+    "本维度最终选卡：cap_id@tier、cap_id@tier、..."
+  ].filter(Boolean).join("\n");
+}
+
+function buildDimensionSatisficeEvaluateChatPrompt(sourcePrompt, concerns, defaultPlan, materials, quantityPolicy = QUANTITY_POLICY) {
+  return [
+    d4ContextWithoutFullCards(sourcePrompt),
+    "",
+    "【顾虑】",
+    renderConcerns(concerns),
+    "",
+    "【六功能区默认方案】",
+    renderD4Plan(defaultPlan, materials, { includeCostStance: false }),
+    "",
+    ...quantityPolicyLines(quantityPolicy, "global"),
+    "",
+    "【六功能区 D4 + Satisfice Step 3：自然对话】",
+    "逐项评估这个默认方案是否满足顾虑。只评估，不要改方案，不要搜索替代。",
+    "不要输出 JSON，不要 Markdown 表格。"
+  ].filter(Boolean).join("\n");
+}
+
+function parseChatReflection(raw) {
+  return { text: truncate(raw, 1600) };
+}
+
+function buildDimensionSatisficeAlternativesChatPrompt(sourcePrompt, concerns, defaultPlan, evaluation, materials, quantityPolicy = QUANTITY_POLICY) {
+  return [
+    d4ContextWithoutFullCards(sourcePrompt),
+    "",
+    "【顾虑】",
+    renderConcerns(concerns),
+    "",
+    "【默认方案】",
+    renderD4Plan(defaultPlan, materials, { includeCostStance: false }),
+    "",
+    "【默认方案评估】",
+    evaluation.text || JSON.stringify(evaluation, null, 2),
+    "",
+    "【可用 cap_id 摘要】",
+    renderCompactCatalog(materials),
+    "",
+    ...quantityPolicyLines(quantityPolicy, "global"),
+    "",
+    "【六功能区 D4 + Satisfice Step 4：自然对话】",
+    "如果有不满足或部分满足的地方，说说 1-3 个替代选卡方案；如果没有更好的方案，就直接说没有。",
+    "替代方案只修补顾虑，不重新发明需求判断。",
+    "不要输出 JSON，不要 Markdown 表格。"
+  ].filter(Boolean).join("\n");
+}
+
+function buildDimensionSatisficeFinalChatPrompt(sourcePrompt, concerns, defaultPlan, evaluation, alternatives, materials, quantityPolicy = QUANTITY_POLICY) {
+  return [
+    d4ContextWithoutFullCards(sourcePrompt),
+    "",
+    "【顾虑】",
+    renderConcerns(concerns),
+    "",
+    "【六功能区默认方案】",
+    renderD4Plan(defaultPlan, materials, { includeCostStance: false }),
+    "",
+    "【默认方案评估】",
+    evaluation.text || JSON.stringify(evaluation, null, 2),
+    "",
+    "【替代方案讨论】",
+    alternatives.text || "没有更好的替代方案。",
+    "",
+    "【可用 cap_id 摘要】",
+    renderCompactCatalog(materials),
+    "",
+    ...quantityPolicyLines(quantityPolicy, "global"),
+    "",
+    d4QuestionBlock(sourcePrompt),
+    "",
+    "【六功能区 D4 + Satisfice Step 5：自然对话最终选卡】",
+    "看着上述顾虑、默认方案、评估和替代方案，做最终能力卡选择。",
+    "可以坚持默认方案，也可以做最小幅度修补；不要为了显得全面而无依据堆卡。",
+    "请像真实决策者一样用自然语言说明，不要输出 JSON，不要 Markdown 表格。",
+    "最后单独写一行：",
+    "最终选卡：cap_id@tier、cap_id@tier、..."
   ].filter(Boolean).join("\n");
 }
 
@@ -1503,6 +1683,145 @@ async function runDimensionSatisficeRow({ sourceRow, FullGame, materials, client
   }
 }
 
+async function runDimensionSatisficeChatRow({ sourceRow, FullGame, materials, client, paths, force = false }) {
+  const sourceChainKey = chainKey(sourceRow);
+  const existing = existingChatRows(paths).get(sourceChainKey);
+  if (!force && existing?.status === "OK") return existing;
+  const row = JSON.parse(JSON.stringify(sourceRow));
+  row.run_id = RUN_ID;
+  row.source_run_id = SOURCE_RUN_ID;
+  row.source_chain_key = sourceChainKey;
+  row.status = "RUNNING";
+  row.created_at = new Date().toISOString();
+  row.format_arm = `six_dimension_satisfice_chat_D4_chat_D5_${QUANTITY_POLICY}`;
+  row.quantity_policy = QUANTITY_POLICY;
+  row.source_baseline = sourceBaselineSnapshot(sourceRow);
+  try {
+    const concernsCall = await callWithRepair({
+      client,
+      prompt: buildDimensionSatisficeConcernsChatPrompt(sourceRow.r2.d4.prompt, QUANTITY_POLICY),
+      parser: parseConcernListFromChat,
+      paths,
+      chain: sourceChainKey,
+      stage: "dimension_satisfice_chat_D4_concerns",
+      maxTokens: 1400
+    });
+    const dimensionCalls = [];
+    let selectedSoFar = [];
+    for (const group of materials.capabilityGroups.groups || []) {
+      const prompt = buildDimensionD4ChatPrompt(sourceRow.r2.d4.prompt, group, selectedSoFar, materials, {
+        concerns: concernsCall.parsed.concerns,
+        quantityPolicy: QUANTITY_POLICY
+      });
+      const call = await callWithRepair({
+        client,
+        prompt,
+        parser: (raw) => parseDimensionD4ChatPlan(raw, group, materials),
+        paths,
+        chain: sourceChainKey,
+        stage: `dimension_satisfice_chat_D4_${group.group_id}`,
+        maxTokens: 1800
+      });
+      dimensionCalls.push(call);
+      selectedSoFar = selectedSoFar.concat(call.parsed.cards);
+    }
+    let defaultRepairCall = null;
+    let defaultParsed = null;
+    try {
+      defaultParsed = combineDimensionPlans(dimensionCalls, materials);
+    } catch (combineError) {
+      defaultRepairCall = await callWithRepair({
+        client,
+        prompt: buildDimensionGlobalRepairPrompt(sourceRow.r2.d4.prompt, dimensionCalls, combineError, materials, { quantityPolicy: QUANTITY_POLICY }),
+        parser: (raw) => parseD4JsonPlan(raw, materials),
+        paths,
+        chain: sourceChainKey,
+        stage: "dimension_satisfice_chat_D4_default_repair",
+        maxTokens: 3800
+      });
+      defaultParsed = defaultRepairCall.parsed;
+    }
+    const evaluateCall = await callWithRepair({
+      client,
+      prompt: buildDimensionSatisficeEvaluateChatPrompt(sourceRow.r2.d4.prompt, concernsCall.parsed.concerns, defaultParsed, materials, QUANTITY_POLICY),
+      parser: parseChatReflection,
+      paths,
+      chain: sourceChainKey,
+      stage: "dimension_satisfice_chat_D4_evaluate",
+      maxTokens: 1800
+    });
+    const alternativesCall = await callWithRepair({
+      client,
+      prompt: buildDimensionSatisficeAlternativesChatPrompt(sourceRow.r2.d4.prompt, concernsCall.parsed.concerns, defaultParsed, evaluateCall.parsed, materials, QUANTITY_POLICY),
+      parser: parseChatReflection,
+      paths,
+      chain: sourceChainKey,
+      stage: "dimension_satisfice_chat_D4_alternatives",
+      maxTokens: 5200
+    });
+    const finalCall = await callWithRepair({
+      client,
+      prompt: buildDimensionSatisficeFinalChatPrompt(sourceRow.r2.d4.prompt, concernsCall.parsed.concerns, defaultParsed, evaluateCall.parsed, alternativesCall.parsed, materials, QUANTITY_POLICY),
+      parser: (raw) => parseCardsFromChat(raw, materials),
+      paths,
+      chain: sourceChainKey,
+      stage: "dimension_satisfice_chat_D4_final",
+      maxTokens: 4200
+    });
+    const d4Calls = [concernsCall, ...dimensionCalls, defaultRepairCall, evaluateCall, alternativesCall, finalCall].filter(Boolean);
+    row.r2.d4 = {
+      prompt: d4Calls.map((call) => call.prompt).filter(Boolean).join("\n\n===== NEXT DIMENSION SATISFICE CHAT STEP =====\n\n"),
+      prompt_sha256: sha256(d4Calls.map((call) => call.prompt_sha256).filter(Boolean).join("|")),
+      raw_response: d4Calls.map((call) => call.raw_response).filter(Boolean).join("\n\n===== NEXT DIMENSION SATISFICE CHAT STEP =====\n\n"),
+      parsed: finalCall.parsed,
+      attempts: d4Calls.reduce((sum, call) => sum + Number(call.attempts || 0), 0),
+      status: "OK",
+      error: ""
+    };
+    row.r2.d4_dimension_satisfice_chat = {
+      quantity_policy: QUANTITY_POLICY,
+      concerns: concernsCall,
+      dimension_rounds: dimensionCalls,
+      default_repair: defaultRepairCall,
+      default_plan: {
+        parsed: defaultParsed,
+        repaired: Boolean(defaultRepairCall)
+      },
+      evaluation: evaluateCall,
+      alternatives: alternativesCall,
+      final: finalCall
+    };
+    const d5Prompt = buildD5ChatPrompt(sourceRow, finalCall.parsed, finalCall.raw_response, materials);
+    const d5Call = await callWithRepair({
+      client,
+      prompt: d5Prompt,
+      parser: parsePriceFromChat,
+      paths,
+      chain: sourceChainKey,
+      stage: "dimension_satisfice_chat_D5",
+      maxTokens: 2500
+    });
+    row.r2.d5 = d5Call;
+    row.r2.calculate = await FullGame.calculateR2(row, materials);
+    row.status = "OK";
+    row.chat_delta = {
+      price: priceOf(row) - priceOf(sourceRow),
+      profit: Math.round(profitOf(row) - profitOf(sourceRow)),
+      cards: cardsOf(row).length - cardsOf(sourceRow).length,
+      baseline_loss: profitOf(sourceRow) < 0,
+      chat_loss: profitOf(row) < 0
+    };
+    appendJsonl(paths.jsonl, row);
+    return row;
+  } catch (error) {
+    row.status = "FAIL";
+    row.error = String(error?.stack || error?.message || error);
+    appendJsonl(paths.failuresJsonl, row);
+    appendJsonl(paths.jsonl, row);
+    return row;
+  }
+}
+
 function buildRowMetrics(rows) {
   return rows.filter((row) => row.status === "OK").map((row) => {
     const baselineMech = row.source_baseline?.mechanism || {};
@@ -1676,7 +1995,7 @@ async function main() {
     chain_key: "", persona_id: "", persona_label: "", condition: "", rep: "", stored_price: "", replay_price: "", stored_profit: "", replay_profit: "", stored_loss: "", replay_loss: "", stored_cards: "", replay_cards: "", profit_delta: ""
   }));
 
-  if ((args.mode === "chat" || args.mode === "satisfice" || args.mode === "satisfice_formal" || args.mode === "dimension" || args.mode === "dimension_satisfice") && !args.summarizeOnly) {
+  if ((args.mode === "chat" || args.mode === "satisfice" || args.mode === "satisfice_formal" || args.mode === "dimension" || args.mode === "dimension_satisfice" || args.mode === "dimension_satisfice_chat") && !args.summarizeOnly) {
     const client = require("../../server/llm/deepseekClient");
     if (!client.hasAnyKey()) throw new Error("DeepSeek key unavailable");
     const existing = existingChatRows(paths);
@@ -1696,7 +2015,9 @@ async function main() {
             ? await runDimensionRow({ sourceRow, FullGame, materials, client, paths, force: args.force })
             : args.mode === "dimension_satisfice"
               ? await runDimensionSatisficeRow({ sourceRow, FullGame, materials, client, paths, force: args.force })
-              : await runChatRow({ sourceRow, FullGame, materials, client, paths, force: args.force });
+              : args.mode === "dimension_satisfice_chat"
+                ? await runDimensionSatisficeChatRow({ sourceRow, FullGame, materials, client, paths, force: args.force })
+                : await runChatRow({ sourceRow, FullGame, materials, client, paths, force: args.force });
       console.log(`[${args.runId}] ${row.source_chain_key} ${row.status} base_profit=${Math.round(row.source_baseline?.profit ?? profitOf(sourceRow))} chat_profit=${Number.isFinite(profitOf(row)) ? Math.round(profitOf(row)) : "NA"} error=${row.error ? String(row.error).split("\n")[0] : ""}`);
     }
   }
