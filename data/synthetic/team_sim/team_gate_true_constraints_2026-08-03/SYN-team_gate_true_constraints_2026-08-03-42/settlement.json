@@ -1,0 +1,278 @@
+{
+  "synthetic": true,
+  "r1": {
+    "grid_id": "ToC_DIFF_ELDER",
+    "channel": "ToC",
+    "strategy": "DIFF",
+    "age": "ELDER",
+    "arch_tag": "Hybrid",
+    "SAM_billion": 347,
+    "WTPmean": 18091,
+    "WTPmedian": 18091,
+    "WTPref": 18091,
+    "WTPadj": 12664,
+    "C": 3.6,
+    "G": 2.8,
+    "E_raw": 1,
+    "Eadj": 1,
+    "rho_C": 0.7,
+    "lambda_G": 0.88,
+    "lambda_E": 0.7,
+    "wtp_multiplier": 0.4368,
+    "jinang_match_strength": 0.6467,
+    "jinang_E_boost": 0,
+    "grid_label": "ToC / 老人 / 差异化",
+    "VPscore": 2.6,
+    "WTPref_scaled": 5427,
+    "WTPadj_scaled": 3799,
+    "wtp_vp_effect": 0.4312,
+    "jinang_wtp_bonus": 0.0129,
+    "wtp_mult_compressed": 0.7,
+    "jinang_settlement": {
+      "market": {
+        "match_strength": 0.6467,
+        "matched": true,
+        "bonus": 0.0129,
+        "member_strengths": [
+          0.7,
+          0.6667,
+          0.7,
+          0.6333,
+          0.5333
+        ]
+      },
+      "tech": {
+        "match_strength": 0.7067,
+        "matched": true,
+        "member_strengths": [
+          0.7667,
+          0.7333,
+          0.8,
+          0.6,
+          0.6333
+        ]
+      }
+    },
+    "target_gm": 0.595,
+    "target_gm_rule": "min(GM_cap, rho_C * target_gm_suggest_multiplier)"
+  },
+  "r1_frozen": {
+    "grid_id": "ToC_DIFF_ELDER",
+    "grid_label": "ToC / 老人 / 差异化",
+    "architecture": "Hybrid",
+    "vp_summary": {
+      "who": "老人（ToC老人市场）",
+      "pain": "孤独和健康焦虑",
+      "how": "硬件敲门砖，云端内容运营，心率异常提醒、睡眠报告等数据让子女看得见安心感，先试用后付费"
+    },
+    "target_gm": 0.595,
+    "jinang_fit": {
+      "market": {
+        "match_strength": 0.6467,
+        "matched": true,
+        "bonus": 0.0129,
+        "member_strengths": [
+          0.7,
+          0.6667,
+          0.7,
+          0.6333,
+          0.5333
+        ]
+      },
+      "tech": {
+        "match_strength": 0.7067,
+        "matched": true,
+        "member_strengths": [
+          0.7667,
+          0.7333,
+          0.8,
+          0.6,
+          0.6333
+        ]
+      }
+    },
+    "WTPref_scaled": 5427,
+    "WTPadj_scaled": 3799,
+    "wtp_multiplier": 0.4368,
+    "VPscore": 2.6
+  },
+  "r2": {
+    "roi": -1977.1763496620156,
+    "profit": -5528185,
+    "units": 2,
+    "adoption": 0.0000013725211867681697,
+    "S_competitive": 1,
+    "R": 1,
+    "share": 0.0000013725211867681697,
+    "P": 5499,
+    "WTP": 3799,
+    "e": 1.2,
+    "wtpPrime": 3798.8999999999996,
+    "WTPref": 3798.8999999999996,
+    "rawWtpMult": 0.4368,
+    "compressedWtpMult": 0.7,
+    "WTPref_adjusted": 3798.8999999999996,
+    "gamma": 4.559340347444945,
+    "gammaRaw": 4.559340347444945,
+    "gammaEff": 4.559340347444945,
+    "z": -13.49885985453448,
+    "Meff": 1344000,
+    "X": 0.600896014427525,
+    "I": 0.274240002671764,
+    "fit": 0.2466666666666667,
+    "actualGm": 0.38666121112929625,
+    "V": 0,
+    "dCOGS": 1398,
+    "nre_total_wan": 403.0799999999999,
+    "f_total": 5530800,
+    "f_total_wan": 553.0799999999999,
+    "breakeven_q": 2602,
+    "unitMargin": 2126,
+    "revenueNet": 7608,
+    "variableCost": 3686,
+    "fixedCost": 5530800,
+    "fBase": 1500000,
+    "positiveDCOGS": 1398,
+    "risk": 1.4100000000000006,
+    "subLift": 0.43000000000000005,
+    "load": 31,
+    "complexity": 2.33,
+    "coverCore": 0.2666666666666667,
+    "coverNice": 0.2,
+    "penalty": 1307,
+    "overBudget": 638.1999999999999,
+    "overCap": 7,
+    "budgetBenchmark": 759.8000000000001,
+    "unitProfitHW": 2126.25,
+    "profitHW": 3922,
+    "profitSub": 0,
+    "attach": 0,
+    "ltvSub": 0,
+    "rdInvestment": 2796,
+    "violations": [],
+    "hardViolationCount": 0,
+    "evi": 0.7,
+    "w_star": {
+      "perception": 0.2205180421776521,
+      "mobility": 0.11086547815374201,
+      "interaction": 0.2909664230218797,
+      "safety_privacy": 0.13558310627027234,
+      "integration": 0.07985598356605862,
+      "operations": 0.16221096681039537
+    },
+    "sev": 0.5568761981098018,
+    "tagBreakdown": [
+      {
+        "tag": "安全与信任",
+        "dimCN": "安全与信任",
+        "dimKey": "safety_privacy",
+        "w": 0.13558310627027234,
+        "tier": "nice",
+        "imp": 1
+      },
+      {
+        "tag": "情感陪伴",
+        "dimCN": "交互与表达",
+        "dimKey": "interaction",
+        "w": 0.2909664230218797,
+        "tier": "core",
+        "imp": 3
+      },
+      {
+        "tag": "远程关怀",
+        "dimCN": "安全与信任",
+        "dimKey": "safety_privacy",
+        "w": 0.13558310627027234,
+        "tier": "nice",
+        "imp": 1
+      },
+      {
+        "tag": "省心可靠",
+        "dimCN": "可运营与可维护",
+        "dimKey": "operations",
+        "w": 0.16221096681039537,
+        "tier": "nice",
+        "imp": 2
+      },
+      {
+        "tag": "情绪识别",
+        "dimCN": "感知与理解",
+        "dimKey": "perception",
+        "w": 0.2205180421776521,
+        "tier": "core",
+        "imp": 3
+      },
+      {
+        "tag": "场景感知",
+        "dimCN": "感知与理解",
+        "dimKey": "perception",
+        "w": 0.2205180421776521,
+        "tier": "core",
+        "imp": 3
+      }
+    ],
+    "COGSbase": 600,
+    "COGS": 1998
+  },
+  "r2_price": 5499,
+  "r2_cards": [
+    {
+      "cap_id": "adaptive_learning",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "lidar_nav",
+      "tier": "low"
+    },
+    {
+      "cap_id": "voice_basic",
+      "tier": "low"
+    },
+    {
+      "cap_id": "persona_dialog",
+      "tier": "low"
+    },
+    {
+      "cap_id": "visual_expression",
+      "tier": "low"
+    },
+    {
+      "cap_id": "touch_hug",
+      "tier": "low"
+    },
+    {
+      "cap_id": "family_guardian",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "privacy_trust",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "cloud_update",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "api_iot",
+      "tier": "low"
+    },
+    {
+      "cap_id": "remote_monitor",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "self_diag",
+      "tier": "low"
+    },
+    {
+      "cap_id": "predictive_maint",
+      "tier": "low"
+    }
+  ],
+  "r2_prototype": {
+    "prototype": "elder_care",
+    "rationale": "全队讨论后选定老人照护向，理由是硬件出身需解决实际痛点，老人场景痛点明确、决策链短、复购稳，且运动控制和空间感知技术能形成壁垒；成人陪伴场景情感付费波动大，退货风险高，触觉交互研发投入高。"
+  },
+  "profit": -5528185,
+  "profitable": false
+}

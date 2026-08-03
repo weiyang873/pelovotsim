@@ -1,0 +1,262 @@
+{
+  "synthetic": true,
+  "r1": {
+    "grid_id": "ToC_DIFF_ADULT",
+    "channel": "ToC",
+    "strategy": "DIFF",
+    "age": "ADULT",
+    "arch_tag": "Hybrid",
+    "SAM_billion": 354,
+    "WTPmean": 17120,
+    "WTPmedian": 17120,
+    "WTPref": 17120,
+    "WTPadj": 13822,
+    "C": 3.6,
+    "G": 3.2,
+    "E_raw": 4.5,
+    "Eadj": 4.5,
+    "rho_C": 0.7,
+    "lambda_G": 0.92,
+    "lambda_E": 1.05,
+    "wtp_multiplier": 0.686,
+    "jinang_match_strength": 0.7267,
+    "jinang_E_boost": 0,
+    "grid_label": "ToC / 成人 / 差异化",
+    "VPscore": 3.7,
+    "WTPref_scaled": 5136,
+    "WTPadj_scaled": 4147,
+    "wtp_vp_effect": 0.6762,
+    "jinang_wtp_bonus": 0.0145,
+    "wtp_mult_compressed": 0.8073333333333333,
+    "jinang_settlement": {
+      "market": {
+        "match_strength": 0.7267,
+        "matched": true,
+        "bonus": 0.0145,
+        "member_strengths": [
+          0.8667,
+          0.7667,
+          0.6333,
+          0.8,
+          0.5667
+        ]
+      },
+      "tech": {
+        "match_strength": 0.7333,
+        "matched": true,
+        "member_strengths": [
+          0.8333,
+          0.8,
+          0.6333,
+          0.6,
+          0.8
+        ]
+      }
+    },
+    "target_gm": 0.595,
+    "target_gm_rule": "min(GM_cap, rho_C * target_gm_suggest_multiplier)"
+  },
+  "r1_frozen": {
+    "grid_id": "ToC_DIFF_ADULT",
+    "grid_label": "ToC / 成人 / 差异化",
+    "architecture": "Hybrid",
+    "vp_summary": {
+      "who": "成人独居群体",
+      "pain": "需要情绪价值与不被打扰的陪伴",
+      "how": "在Hybrid架构下，将差异化资源集中在触感、声音等细节体验上，确保用户‘摸一下就知道值这个价’，以此支撑价格溢价"
+    },
+    "target_gm": 0.595,
+    "jinang_fit": {
+      "market": {
+        "match_strength": 0.7267,
+        "matched": true,
+        "bonus": 0.0145,
+        "member_strengths": [
+          0.8667,
+          0.7667,
+          0.6333,
+          0.8,
+          0.5667
+        ]
+      },
+      "tech": {
+        "match_strength": 0.7333,
+        "matched": true,
+        "member_strengths": [
+          0.8333,
+          0.8,
+          0.6333,
+          0.6,
+          0.8
+        ]
+      }
+    },
+    "WTPref_scaled": 5136,
+    "WTPadj_scaled": 4147,
+    "wtp_multiplier": 0.686,
+    "VPscore": 3.7
+  },
+  "r2": {
+    "roi": -45.116784241118054,
+    "profit": -4002851,
+    "units": 93,
+    "adoption": 0.00006402270435543551,
+    "S_competitive": 1,
+    "R": 1,
+    "share": 0.00006402270435543551,
+    "P": 4200,
+    "WTP": 4147,
+    "e": 1.2,
+    "wtpPrime": 4184.611468800001,
+    "WTPref": 4146.464,
+    "rawWtpMult": 0.686,
+    "compressedWtpMult": 0.8073333333333333,
+    "WTPref_adjusted": 4146.464,
+    "gamma": 3.770983791322502,
+    "gammaRaw": 3.989422804014327,
+    "gammaEff": 3.770983791322502,
+    "z": -9.6562087572079,
+    "Meff": 1449000,
+    "X": 1.6634631182875852,
+    "I": 0.2950857626458491,
+    "fit": 0.2666666666666667,
+    "actualGm": 0.38,
+    "V": 0.030666666666666703,
+    "dCOGS": 954,
+    "nre_total_wan": 265.32,
+    "f_total": 4153200,
+    "f_total_wan": 415.32,
+    "breakeven_q": 2603,
+    "unitMargin": 1596,
+    "revenueNet": 292222,
+    "variableCost": 144163,
+    "fixedCost": 4153200,
+    "fBase": 1500000,
+    "positiveDCOGS": 954,
+    "risk": 0.8699999999999999,
+    "subLift": 0.27,
+    "load": 19,
+    "complexity": 1.59,
+    "coverCore": 0.2666666666666667,
+    "coverNice": 0.26666666666666666,
+    "penalty": 187,
+    "overBudget": 124.59999999999991,
+    "overCap": 0,
+    "budgetBenchmark": 829.4000000000001,
+    "unitProfitHW": 1596,
+    "profitHW": 148059,
+    "profitSub": 2476,
+    "attach": 0.05350000000000005,
+    "ltvSub": 27,
+    "rdInvestment": 88722,
+    "violations": [],
+    "hardViolationCount": 0,
+    "evi": 0.7,
+    "w_star": {
+      "perception": 0.22896375091316712,
+      "mobility": 0.09052254761314824,
+      "interaction": 0.2883535306724982,
+      "safety_privacy": 0.08703847342317157,
+      "integration": 0.13008030330453244,
+      "operations": 0.1750413940734824
+    },
+    "sev": 0.6031021789881404,
+    "tagBreakdown": [
+      {
+        "tag": "情感陪伴",
+        "dimCN": "交互与表达",
+        "dimKey": "interaction",
+        "w": 0.2883535306724982,
+        "tier": "core",
+        "imp": 3
+      },
+      {
+        "tag": "个性化推荐",
+        "dimCN": "感知与理解",
+        "dimKey": "perception",
+        "w": 0.22896375091316712,
+        "tier": "core",
+        "imp": 3
+      },
+      {
+        "tag": "隐私保护",
+        "dimCN": "安全与信任",
+        "dimKey": "safety_privacy",
+        "w": 0.08703847342317157,
+        "tier": "nice",
+        "imp": 1
+      },
+      {
+        "tag": "内容生态",
+        "dimCN": "可扩展与连接",
+        "dimKey": "integration",
+        "w": 0.13008030330453244,
+        "tier": "nice",
+        "imp": 1
+      },
+      {
+        "tag": "智能家居",
+        "dimCN": "可扩展与连接",
+        "dimKey": "integration",
+        "w": 0.13008030330453244,
+        "tier": "nice",
+        "imp": 1
+      },
+      {
+        "tag": "语音交互",
+        "dimCN": "交互与表达",
+        "dimKey": "interaction",
+        "w": 0.2883535306724982,
+        "tier": "core",
+        "imp": 3
+      }
+    ],
+    "COGSbase": 600,
+    "COGS": 1554
+  },
+  "r2_price": 4200,
+  "r2_cards": [
+    {
+      "cap_id": "perception_base",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "emotion_recognition",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "basic_avoidance",
+      "tier": "low"
+    },
+    {
+      "cap_id": "follow_mode",
+      "tier": "low"
+    },
+    {
+      "cap_id": "visual_expression",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "touch_hug",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "privacy_trust",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "cloud_update",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "self_diag",
+      "tier": "low"
+    }
+  ],
+  "r2_prototype": {
+    "prototype": "adult_companion",
+    "rationale": "选择成人陪伴向，面向都市独居青年林小姐。理由：用户与付费人合一，决策链短；‘主动回应’是已验证的市场信号，符合Hybrid架构下运动控制和空间感知技术的差异化价值；订阅制可持续性强；技术优势可最大化发挥，避免老人照护向中‘被监控’的抵触情绪。"
+  },
+  "profit": -4002851,
+  "profitable": false
+}

@@ -1,0 +1,41 @@
+{
+  "synthetic": true,
+  "grid_id": "ToC_DIFF_ELDER",
+  "grid_label": "ToC / 老人 / 差异化",
+  "architecture": "Hybrid",
+  "vp_summary": {
+    "who": "老年用户，子女为实际付费决策者",
+    "pain": "老人缺乏情感陪伴和实用功能支持，子女购买决策快但信任渠道建立难",
+    "how": "以线下服务能力为核心壁垒，结合情感体验与实用功能，通过子女决策链和异业合作渠道快速切入市场"
+  },
+  "target_gm": 0.65,
+  "jinang_fit": {
+    "market": {
+      "match_strength": 0.7,
+      "matched": true,
+      "bonus": 0.014,
+      "member_strengths": [
+        0.8,
+        0.6333,
+        0.7,
+        0.7,
+        0.6667
+      ]
+    },
+    "tech": {
+      "match_strength": 0.72,
+      "matched": true,
+      "member_strengths": [
+        0.6,
+        0.7667,
+        0.6333,
+        0.8,
+        0.8
+      ]
+    }
+  },
+  "WTPref_scaled": 5427,
+  "WTPadj_scaled": 5609,
+  "wtp_multiplier": 1.0251,
+  "VPscore": 4.6
+}

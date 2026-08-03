@@ -1,0 +1,226 @@
+{
+  "synthetic": true,
+  "checkpoints": [
+    {
+      "decision_point": "prototype",
+      "termination": "converged",
+      "turns": 5,
+      "frozen": {
+        "prototype": "adult_companion",
+        "rationale": "选择成人陪伴向，面向都市独居青年林小姐。理由：用户与付费人合一，决策链短；‘主动回应’是已验证的市场信号，符合Hybrid架构下运动控制和空间感知技术的差异化价值；订阅制可持续性强；技术优势可最大化发挥，避免老人照护向中‘被监控’的抵触情绪。"
+      }
+    },
+    {
+      "decision_point": "cards_segment_1",
+      "termination": "converged",
+      "turns": 7,
+      "frozen": {
+        "cards": [
+          {
+            "cap_id": "perception_base",
+            "tier": "mid"
+          },
+          {
+            "cap_id": "emotion_recognition",
+            "tier": "mid"
+          },
+          {
+            "cap_id": "basic_avoidance",
+            "tier": "low"
+          },
+          {
+            "cap_id": "follow_mode",
+            "tier": "low"
+          }
+        ],
+        "rationale": "组长明确提交4张卡：perception_base和emotion_recognition均为mid档，basic_avoidance和follow_mode均为low档。adaptive_learning明确暂缓，未计入。当前段两个group均至少1张，累计4张，但全队最终累计需至少6张，当前段提交数量不足以满足全队要求，需结合其他段汇总。"
+      },
+      "cumulative_cards": [
+        {
+          "cap_id": "perception_base",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "emotion_recognition",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "basic_avoidance",
+          "tier": "low"
+        },
+        {
+          "cap_id": "follow_mode",
+          "tier": "low"
+        }
+      ],
+      "compatibility": {
+        "valid": false,
+        "violations": [
+          {
+            "type": "group_min",
+            "group": "interaction_expression",
+            "message": "交互与表达 至少选 1 张"
+          },
+          {
+            "type": "group_min",
+            "group": "safety_trust",
+            "message": "安全与信任 至少选 1 张"
+          },
+          {
+            "type": "group_min",
+            "group": "expand_connect",
+            "message": "可扩展与连接 至少选 1 张"
+          },
+          {
+            "type": "group_min",
+            "group": "ops_maintenance",
+            "message": "可运营与可维护 至少选 1 张"
+          },
+          {
+            "type": "total_min",
+            "message": "总数 4 < 6"
+          }
+        ],
+        "hardViolationCount": 5
+      }
+    },
+    {
+      "decision_point": "cards_segment_2",
+      "termination": "leader_decision",
+      "turns": 7,
+      "frozen": {
+        "cards": [
+          {
+            "cap_id": "visual_expression",
+            "tier": "mid"
+          },
+          {
+            "cap_id": "touch_hug",
+            "tier": "mid"
+          },
+          {
+            "cap_id": "privacy_trust",
+            "tier": "mid"
+          }
+        ],
+        "rationale": "根据组长发言，明确锁定三张卡：visual_expression@mid、touch_hug@mid、privacy_trust@mid；expressive_style_pack未选，不纳入。累计3张，满足每个group至少1张，但全队累计至少6张未达成。按发言内容如实抽取。"
+      },
+      "cumulative_cards": [
+        {
+          "cap_id": "perception_base",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "emotion_recognition",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "basic_avoidance",
+          "tier": "low"
+        },
+        {
+          "cap_id": "follow_mode",
+          "tier": "low"
+        },
+        {
+          "cap_id": "visual_expression",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "touch_hug",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "privacy_trust",
+          "tier": "mid"
+        }
+      ],
+      "compatibility": {
+        "valid": false,
+        "violations": [
+          {
+            "type": "group_min",
+            "group": "expand_connect",
+            "message": "可扩展与连接 至少选 1 张"
+          },
+          {
+            "type": "group_min",
+            "group": "ops_maintenance",
+            "message": "可运营与可维护 至少选 1 张"
+          }
+        ],
+        "hardViolationCount": 2
+      }
+    },
+    {
+      "decision_point": "cards_segment_3",
+      "termination": "converged",
+      "turns": 5,
+      "frozen": {
+        "cards": [
+          {
+            "cap_id": "cloud_update",
+            "tier": "mid"
+          },
+          {
+            "cap_id": "self_diag",
+            "tier": "low"
+          }
+        ],
+        "rationale": "组长明确锁定cloud_update（mid档）和self_diag（low档）两张卡，并说明remote_monitor暂缓不选。总增量成本430元，全队累计9张，满足要求。"
+      },
+      "cumulative_cards": [
+        {
+          "cap_id": "perception_base",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "emotion_recognition",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "basic_avoidance",
+          "tier": "low"
+        },
+        {
+          "cap_id": "follow_mode",
+          "tier": "low"
+        },
+        {
+          "cap_id": "visual_expression",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "touch_hug",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "privacy_trust",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "cloud_update",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "self_diag",
+          "tier": "low"
+        }
+      ],
+      "compatibility": {
+        "valid": true,
+        "violations": [],
+        "hardViolationCount": 0
+      }
+    },
+    {
+      "decision_point": "price",
+      "termination": "converged",
+      "turns": 4,
+      "frozen": {
+        "price": 4200,
+        "rationale": "组长明确最终提交价格为基准4200元，情感增强包600元，订阅29元/月；合法区间内基准定价为4200元。"
+      }
+    }
+  ]
+}
