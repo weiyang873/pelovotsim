@@ -5,6 +5,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
+const OUTPUT_ROOT = path.join(ROOT, "data", "synthetic", "team_sim");
 
 function loadEnvFile() {
   const envPath = path.join(ROOT, ".env");
@@ -36,6 +37,30 @@ function parseArgs(argv) {
   return args;
 }
 
+function writeJson(filePath, value) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, `${JSON.stringify({ synthetic: true, ...value }, null, 2)}\n`);
+}
+
+function writeFailureRecord({ batch, seed, error }) {
+  const teamId = `SYN-${batch}-${seed}`;
+  const outputDir = path.join(OUTPUT_ROOT, batch, teamId);
+  const record = {
+    failed: true,
+    batch,
+    seed,
+    team_id: teamId,
+    failed_at: new Date().toISOString(),
+    error: {
+      name: String(error?.name || "Error"),
+      message: String(error?.message || error),
+      stack: String(error?.stack || "")
+    }
+  };
+  writeJson(path.join(outputDir, "team_error.json"), record);
+  return { ...record, output_dir: outputDir };
+}
+
 async function main() {
   loadEnvFile();
   if (process.env.LLM_MODEL_OVERRIDE === undefined && process.env.DEEPSEEK_MODEL !== undefined) {
@@ -54,14 +79,25 @@ async function main() {
 
   const { runTeam } = require("../server/synthetic/teamSim/orchestrator");
   const results = [];
+  const failures = [];
   for (let i = 0; i < teams; i += 1) {
     const teamSeed = seed + i;
     console.log(`[teamSim] start seed=${teamSeed} batch=${batch} model=${process.env.LLM_MODEL_OVERRIDE}`);
-    const result = await runTeam({ seed: teamSeed, batch });
-    results.push(result);
-    console.log(`[teamSim] done ${result.team_id} profit=${result.r2_profit} price=${result.r2_price} cards=${result.r2_card_count}`);
+    try {
+      const result = await runTeam({ seed: teamSeed, batch });
+      results.push(result);
+      console.log(`[teamSim] done ${result.team_id} profit=${result.r2_profit} price=${result.r2_price} cards=${result.r2_card_count}`);
+    } catch (error) {
+      const failure = writeFailureRecord({ batch, seed: teamSeed, error });
+      failures.push(failure);
+      console.error(`[teamSim] failed seed=${teamSeed}`, error);
+    }
   }
-  console.log(JSON.stringify({ synthetic: true, batch, seed, teams, results }, null, 2));
+  const summary = { synthetic: true, batch, seed, teams, results, failures };
+  console.log(JSON.stringify(summary, null, 2));
+  if ((teams === 1 && failures.length > 0) || failures.length >= 5) {
+    process.exitCode = 1;
+  }
 }
 
 main().catch((error) => {
