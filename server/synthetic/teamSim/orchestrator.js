@@ -533,9 +533,27 @@ function groupsById(capabilityGroups) {
   return new Map(capabilityGroups.groups.map((group) => [group.group_id, group]));
 }
 
-function actionableCompatibilityViolations(validation) {
+function capGroupsById(capabilityGroups) {
+  const map = new Map();
+  for (const group of capabilityGroups.groups || []) {
+    for (const cap of group.capabilities || []) {
+      map.set(cap.cap_id, group.group_id);
+    }
+  }
+  return map;
+}
+
+function futureSegmentGroups(segments, segmentIndex) {
+  return new Set(segments.slice(segmentIndex + 1).flat());
+}
+
+function actionableCompatibilityViolations(validation, capGroupById, futureGroups) {
   const violations = Array.isArray(validation.violations) ? validation.violations : [];
-  return violations.filter((item) => !["group_min", "total_min"].includes(item.type));
+  return violations.filter((item) => {
+    if (["group_min", "total_min"].includes(item.type)) return false;
+    if (item.type === "requires" && futureGroups.has(capGroupById.get(item.target))) return false;
+    return true;
+  });
 }
 
 async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, config, materials, outputDir, seed }) {
@@ -586,9 +604,11 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
 
   const selectedCards = [];
   const groupMap = groupsById(materials.capabilityGroups);
+  const capGroupById = capGroupsById(materials.capabilityGroups);
   const segments = requireConfigArray(config, "r2_card_segments");
   for (let segmentIndex = 0; segmentIndex < segments.length; segmentIndex += 1) {
     const segment = segments[segmentIndex];
+    const futureGroups = futureSegmentGroups(segments, segmentIndex);
     const groupText = segment.map((groupId) => {
       const group = groupMap.get(groupId);
       if (!group) throw new Error(`unknown capability group in config: ${groupId}`);
@@ -632,7 +652,7 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
       });
       const candidateCards = selectedCards.concat(cardsSubmit.parsed.cards);
       validation = RD.validateSelections(candidateCards);
-      const actionable = actionableCompatibilityViolations(validation);
+      const actionable = actionableCompatibilityViolations(validation, capGroupById, futureGroups);
       if (actionable.length === 0) {
         selectedCards.push(...cardsSubmit.parsed.cards);
         break;
@@ -669,6 +689,11 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
     });
     r2Transcript.push({ decision_point: `cards_segment_${segmentIndex + 1}`, transcript: segmentTranscript, turns: segmentTurns });
     writeJson(path.join(outputDir, "r2_checkpoints.json"), { checkpoints });
+  }
+
+  const finalCardsValidation = RD.validateSelections(selectedCards);
+  if (finalCardsValidation.hardViolationCount > 0) {
+    throw new Error(`compat_violation: ${finalCardsValidation.violations.map((item) => item.message).join("; ")}`);
   }
 
   const priceConfig = materials.round2Params.pricing_ui;
