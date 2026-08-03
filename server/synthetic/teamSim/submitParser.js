@@ -89,9 +89,22 @@ function buildCapabilitySet(capabilityGroups) {
   return { ids, groupByCap };
 }
 
+function readSelectionConstraints(context) {
+  const perGroupMin = Number(context.selectionConstraints?.per_group_min);
+  const totalMin = Number(context.selectionConstraints?.total_min);
+  if (!Number.isFinite(perGroupMin) || perGroupMin < 1) {
+    throw new Error("selection_constraints.per_group_min must be >= 1");
+  }
+  if (!Number.isFinite(totalMin) || totalMin < 1) {
+    throw new Error("selection_constraints.total_min must be >= 1");
+  }
+  return { perGroupMin, totalMin };
+}
+
 function validateCards(parsed, context) {
   const cards = Array.isArray(parsed.cards) ? parsed.cards : [];
   if (!cards.length) throw new Error("cards required");
+  const { perGroupMin } = readSelectionConstraints(context);
   const { ids, groupByCap } = buildCapabilitySet(context.capabilityGroups);
   const allowedGroups = new Set(context.allowedGroups);
   const normalized = cards.map((card) => {
@@ -110,7 +123,9 @@ function validateCards(parsed, context) {
   }
   for (const groupId of allowedGroups) {
     const count = groupCounts.get(groupId) ?? 0;
-    if (count !== 1) throw new Error(`segment group must have exactly 1 card: ${groupId}, got ${count}`);
+    if (count < perGroupMin) {
+      throw new Error(`segment group must have at least ${perGroupMin} card(s): ${groupId}, got ${count}`);
+    }
   }
   return {
     cards: normalized,
@@ -138,7 +153,8 @@ function parserInstruction(decisionType, context) {
     return '抽取 R2 客户原型选择。输出 JSON：{"prototype":"elder_care|adult_companion","rationale":"..."}。';
   }
   if (decisionType === "cards") {
-    return `抽取当前选卡段的最终卡片。只允许当前段 group：${context.allowedGroups.join(", ")}；每个 group 恰好 1 张。输出 JSON：{"cards":[{"cap_id":"真实cap_id","tier":"low|mid|high"}],"rationale":"..."}。`;
+    const { perGroupMin, totalMin } = readSelectionConstraints(context);
+    return `抽取当前选卡段的最终卡片。只允许当前段 group：${context.allowedGroups.join(", ")}；当前段每个 group 至少 ${perGroupMin} 张；全队最终累计总数至少 ${totalMin} 张；无硬性总数上限。输出 JSON：{"cards":[{"cap_id":"真实cap_id","tier":"low|mid|high"}],"rationale":"..."}。`;
   }
   if (decisionType === "price") {
     return `抽取最终定价。合法区间 ${context.priceMin}-${context.priceMax}。输出 JSON：{"price":数字,"rationale":"..."}。`;

@@ -549,6 +549,42 @@ function capGroupsById(capabilityGroups) {
   return map;
 }
 
+function readSelectionConstraints(compatibilityRules) {
+  const perGroupMin = Number(compatibilityRules?.selection_constraints?.per_group_min);
+  const totalMin = Number(compatibilityRules?.selection_constraints?.total_min);
+  if (!Number.isFinite(perGroupMin) || perGroupMin < 1) {
+    throw new Error("compatibility_rules_v2.selection_constraints.per_group_min must be >= 1");
+  }
+  if (!Number.isFinite(totalMin) || totalMin < 1) {
+    throw new Error("compatibility_rules_v2.selection_constraints.total_min must be >= 1");
+  }
+  return { per_group_min: perGroupMin, total_min: totalMin };
+}
+
+function selectionRulesText(selectionConstraints) {
+  return `每个功能区至少选 ${selectionConstraints.per_group_min} 张卡；全队最终累计总数至少 ${selectionConstraints.total_min} 张；无硬性总数上限。`;
+}
+
+function formatWan(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "—";
+  return `${n.toLocaleString("zh-CN", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1
+  })}万`;
+}
+
+function selectedCardsNreWan(cards) {
+  return cards.reduce((sum, card) => {
+    return sum + Number(RD.getCapabilityParams(card.cap_id, card.tier).nre_tier || 0);
+  }, 0);
+}
+
+function overTwelveSelectionHint(cards) {
+  if (cards.length <= 12) return null;
+  return `当前共选 ${cards.length} 张卡，研发投入 ${formatWan(selectedCardsNreWan(cards))}。`;
+}
+
 function futureSegmentGroups(segments, segmentIndex) {
   return new Set(segments.slice(segmentIndex + 1).flat());
 }
@@ -614,6 +650,8 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
   const selectedCards = [];
   const groupMap = groupsById(materials.capabilityGroups);
   const capGroupById = capGroupsById(materials.capabilityGroups);
+  const selectionConstraints = readSelectionConstraints(materials.compatibilityRules);
+  const selectionRules = selectionRulesText(selectionConstraints);
   const segments = requireConfigArray(config, "r2_card_segments");
   for (let segmentIndex = 0; segmentIndex < segments.length; segmentIndex += 1) {
     const segment = segments[segmentIndex];
@@ -626,9 +664,13 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
     const transcript = [
       {
         speaker: "moderator",
-        text: `客户原型已冻结：${chosenPrototype.label}。当前只讨论这些功能区：${segment.join(", ")}。每个功能区恰好选 1 张卡。\n已选卡：${selectedCards.map((card) => `${card.cap_id}@${card.tier}`).join("、")}\n\n${groupText}`
+        text: `客户原型已冻结：${chosenPrototype.label}。当前只讨论这些功能区：${segment.join(", ")}。${selectionRules}\n已选卡：${selectedCards.map((card) => `${card.cap_id}@${card.tier}`).join("、")}\n\n${groupText}`
       }
     ];
+    const existingSelectionHint = overTwelveSelectionHint(selectedCards);
+    if (existingSelectionHint) {
+      transcript.push({ speaker: "moderator", text: existingSelectionHint });
+    }
     let discussion = await runDiscussion({
       members,
       leaderIdx,
@@ -650,11 +692,12 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
         members,
         leaderIdx,
         transcript: segmentTranscript,
-        topic: `提交当前功能段选卡：${segment.join(", ")}；每个功能区恰好 1 张`,
+        topic: `提交当前功能段选卡：${segment.join(", ")}；${selectionRules}`,
         decisionType: "cards",
         context: {
           allowedGroups: segment,
           capabilityGroups: materials.capabilityGroups,
+          selectionConstraints,
           submitParseRetries: requireConfigNumber(config, "submit_parse_retries")
         },
         temperature
@@ -664,6 +707,10 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
       const actionable = actionableCompatibilityViolations(validation, capGroupById, futureGroups);
       if (actionable.length === 0) {
         selectedCards.push(...cardsSubmit.parsed.cards);
+        const acceptedSelectionHint = overTwelveSelectionHint(selectedCards);
+        if (acceptedSelectionHint) {
+          segmentTranscript = segmentTranscript.concat([{ speaker: "moderator", text: acceptedSelectionHint }]);
+        }
         break;
       }
       if (repairRound >= 3) {
@@ -712,6 +759,10 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
       text: `客户原型：${chosenPrototype.label}。已选卡：${selectedCards.map((card) => `${card.cap_id}@${card.tier}`).join("、")}。Round 1 target_gm=${r1Frozen.target_gm}。请讨论最终定价，合法区间 ${priceConfig.price_min}-${priceConfig.price_max}。`
     }
   ];
+  const priceSelectionHint = overTwelveSelectionHint(selectedCards);
+  if (priceSelectionHint) {
+    priceTranscript.push({ speaker: "moderator", text: priceSelectionHint });
+  }
   const priceDiscussion = await runDiscussion({
     members,
     leaderIdx,
@@ -787,6 +838,7 @@ function loadMaterials() {
     round1Model: readJson(path.join(CONFIG_DIR, "round1_gm_model.json")),
     round2Params: readJson(path.join(CONFIG_DIR, "round2_engine_params.json")),
     capabilityGroups: readJson(path.join(DATA_DIR, "capability_groups_v2.json")),
+    compatibilityRules: readJson(path.join(DATA_DIR, "compatibility_rules_v2.json")),
     archetypes: readJson(path.join(CONFIG_DIR, "persona_archetypes_v1.json"))
   };
 }
@@ -808,9 +860,12 @@ async function runTeam({ seed, batch }) {
     seed,
     profile_ids: sampled.members.map((member) => member.profile_id),
     leader_id: leader.profile_id,
+    seed_reproducibility_note: "seed 仅保证 profile 抽样、组长指定、发言调度可复现；LLM 决策输出不保证跨次复现。",
     model_config: materials.llmModels,
     model_override: String(process.env.LLM_MODEL_OVERRIDE ?? ""),
     config_snapshot: config,
+    selection_constraints: readSelectionConstraints(materials.compatibilityRules),
+    selection_total_max_source: "配置无 total_max 或等价字段；真实前端无显式选卡总数硬上限，仅显示超过 12 张的研发投入提示。",
     dimension_key_mapping: dimensionMap,
     implementation_notes: [
       "profile_pool is built deterministically from scripts/sim/persona_pool.js manager archetypes, with synthetic speaking_tendency attached; no production route or DB is used.",
@@ -820,6 +875,7 @@ async function runTeam({ seed, batch }) {
     file_sha256: {
       team_sim_config: sha256(fs.readFileSync(path.join(CONFIG_DIR, "team_sim_config.json"), "utf8")),
       capability_groups_v2: sha256(fs.readFileSync(path.join(DATA_DIR, "capability_groups_v2.json"), "utf8")),
+      compatibility_rules_v2: sha256(fs.readFileSync(path.join(DATA_DIR, "compatibility_rules_v2.json"), "utf8")),
       llm_models: sha256(fs.readFileSync(path.join(CONFIG_DIR, "llm_models.json"), "utf8"))
     }
   };

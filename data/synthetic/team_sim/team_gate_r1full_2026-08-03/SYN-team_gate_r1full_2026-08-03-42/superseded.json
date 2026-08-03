@@ -1,0 +1,7 @@
+{
+  "synthetic": true,
+  "superseded": true,
+  "superseded_at": "2026-08-03",
+  "reason": "Failed under the obsolete synthetic parser rule that required exactly one card per capability group. That rule made same-group hard requires such as family_guardian -> privacy_trust impossible to repair, while the real engine/frontend rule is per group >= 1, total >= 6, no hard total max.",
+  "replacement_batch": "team_gate_true_constraints_2026-08-03"
+}
