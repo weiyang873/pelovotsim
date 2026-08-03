@@ -534,9 +534,15 @@ function groupsById(capabilityGroups) {
 }
 
 function capGroupsById(capabilityGroups) {
+  if (!Array.isArray(capabilityGroups.groups)) {
+    throw new Error("capability_groups_v2.groups must be an array");
+  }
   const map = new Map();
-  for (const group of capabilityGroups.groups || []) {
-    for (const cap of group.capabilities || []) {
+  for (const group of capabilityGroups.groups) {
+    if (!Array.isArray(group.capabilities)) {
+      throw new Error(`capability group ${group.group_id} capabilities must be an array`);
+    }
+    for (const cap of group.capabilities) {
       map.set(cap.cap_id, group.group_id);
     }
   }
@@ -548,7 +554,10 @@ function futureSegmentGroups(segments, segmentIndex) {
 }
 
 function actionableCompatibilityViolations(validation, capGroupById, futureGroups) {
-  const violations = Array.isArray(validation.violations) ? validation.violations : [];
+  if (!validation || !Array.isArray(validation.violations)) {
+    throw new Error("validateSelections result must include violations array");
+  }
+  const violations = validation.violations;
   return violations.filter((item) => {
     if (["group_min", "total_min"].includes(item.type)) return false;
     if (item.type === "requires" && futureGroups.has(capGroupById.get(item.target))) return false;
@@ -562,7 +571,7 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
   const prototypeTranscript = [
     {
       speaker: "moderator",
-      text: `我们队 Round 1 正式结论：${r1Frozen.grid_label} / ${r1Frozen.architecture} / WHO=${r1Frozen.vp_summary.who}。请选择一个 R2 客户原型。\n\n${archetypes.map(summarizePrototype).join("\n\n")}`
+      text: `我们队 Round 1 的正式结论如下：\n${JSON.stringify(r1Frozen, null, 2)}\n\n请选择一个 R2 客户原型。\n\n${archetypes.map(summarizePrototype).join("\n\n")}`
     }
   ];
   const prototypeDiscussion = await runDiscussion({
