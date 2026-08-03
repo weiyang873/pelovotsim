@@ -205,6 +205,7 @@ async function callJson(messages, options) {
 }
 
 async function independentProposal(member, draw, isLeader, temperature) {
+  const gridList = GRID_IDS.map((gridId) => `- ${gridId}: ${getGrid(gridId).label}`).join("\n");
   const messages = [
     {
       role: "system",
@@ -212,17 +213,34 @@ async function independentProposal(member, draw, isLeader, temperature) {
     },
     {
       role: "user",
-      content: `${formatJinang(draw)}\n\n你们要进入中国陪伴机器人市场。请先独立提出 Round 1 战略：12 格市场、架构标签、WHO/PAIN/HOW。自然语言说明理由，最后输出 JSON：{"grid_id":"...","architecture":"Experience|Hybrid|Function","vp_summary":{"who":"...","pain":"...","how":"..."},"rationale":"..."}。`
+      content: `${formatJinang(draw)}\n\n你们要进入中国陪伴机器人市场。请先独立提出 Round 1 战略：12 格市场、架构标签、WHO/PAIN/HOW。\n合法 grid_id 只能从以下列表选择：\n${gridList}\n\n自然语言说明理由，最后输出 JSON：{"grid_id":"...","architecture":"Experience|Hybrid|Function","vp_summary":{"who":"...","pain":"...","how":"..."},"rationale":"..."}。`
     }
   ];
-  const result = await callJson(messages, { temperature, maxTokens: 1500 });
-  const parsed = await parseSubmission({
-    text: JSON.stringify(result.parsed),
-    decisionType: "r1",
-    context: {},
-    temperature
-  });
-  return { prompt: messages, raw: result.raw, parsed: parsed.parsed };
+  let lastMessages = messages;
+  let lastRaw = "";
+  let lastError = "";
+  for (let attempt = 0; attempt <= 2; attempt += 1) {
+    try {
+      lastRaw = await callText(lastMessages, { temperature, maxTokens: 1500 });
+      const parsed = await parseSubmission({
+        text: lastRaw,
+        decisionType: "r1",
+        context: {},
+        temperature
+      });
+      return { prompt: messages, raw: lastRaw, parsed: parsed.parsed, attempts: attempt + 1 };
+    } catch (error) {
+      lastError = error.message;
+      lastMessages = [
+        { role: "system", content: `${formatProfile(member, isLeader)}\n你必须修正为合法提交，不要引入新枚举。` },
+        {
+          role: "user",
+          content: `上一次独立提案无法解析，原因：${lastError}\n合法 grid_id 只能是：${GRID_IDS.join(", ")}\n架构只能是 Experience, Hybrid, Function。\n请重新提交 Round 1 独立提案，最后输出同样 JSON。\n\n上一次输出：\n${lastRaw}`
+        }
+      ];
+    }
+  }
+  throw new Error(`independent_proposal_parse_failure: ${lastError}`);
 }
 
 function strategicDistribution(proposals) {
