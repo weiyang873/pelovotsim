@@ -1,0 +1,250 @@
+{
+  "synthetic": true,
+  "r1": {
+    "grid_id": "ToC_DIFF_ADULT",
+    "channel": "ToC",
+    "strategy": "DIFF",
+    "age": "ADULT",
+    "arch_tag": "Hybrid",
+    "SAM_billion": 354,
+    "WTPmean": 17120,
+    "WTPmedian": 17120,
+    "WTPref": 17120,
+    "WTPadj": 11984,
+    "C": 3.2,
+    "G": 3.1,
+    "E_raw": 4.4,
+    "Eadj": 4.4,
+    "rho_C": 0.5,
+    "lambda_G": 0.91,
+    "lambda_E": 1.04,
+    "wtp_multiplier": 0.4798,
+    "jinang_match_strength": 0.6933,
+    "jinang_E_boost": 0,
+    "grid_label": "ToC / 成人 / 差异化",
+    "VPscore": 3.5,
+    "WTPref_scaled": 5136,
+    "WTPadj_scaled": 3595,
+    "wtp_vp_effect": 0.4732,
+    "jinang_wtp_bonus": 0.0139,
+    "wtp_mult_compressed": 0.7,
+    "jinang_settlement": {
+      "market": {
+        "match_strength": 0.6933,
+        "matched": true,
+        "bonus": 0.0139,
+        "member_strengths": [
+          0.8667,
+          0.6333,
+          0.7667,
+          0.6333,
+          0.5667
+        ]
+      },
+      "tech": {
+        "match_strength": 0.7067,
+        "matched": true,
+        "member_strengths": [
+          0.7667,
+          0.7333,
+          0.8,
+          0.6,
+          0.6333
+        ]
+      }
+    },
+    "target_gm": 0.425,
+    "target_gm_rule": "min(GM_cap, rho_C * target_gm_suggest_multiplier)"
+  },
+  "r1_frozen": {
+    "grid_id": "ToC_DIFF_ADULT",
+    "grid_label": "ToC / 成人 / 差异化",
+    "architecture": "Hybrid",
+    "vp_summary": {
+      "who": "成人用户",
+      "pain": "情感陪伴需求",
+      "how": "通过Hybrid架构，先建立功能信任再验证情感陪伴，结合运动控制和空间感知技术，实现自然且安全的交互"
+    },
+    "target_gm": 0.425,
+    "jinang_fit": {
+      "market": {
+        "match_strength": 0.6933,
+        "matched": true,
+        "bonus": 0.0139,
+        "member_strengths": [
+          0.8667,
+          0.6333,
+          0.7667,
+          0.6333,
+          0.5667
+        ]
+      },
+      "tech": {
+        "match_strength": 0.7067,
+        "matched": true,
+        "member_strengths": [
+          0.7667,
+          0.7333,
+          0.8,
+          0.6,
+          0.6333
+        ]
+      }
+    },
+    "WTPref_scaled": 5136,
+    "WTPadj_scaled": 3595,
+    "wtp_multiplier": 0.4798,
+    "VPscore": 3.5
+  },
+  "r2": {
+    "roi": -87.88769895931223,
+    "profit": -3032653,
+    "units": 54,
+    "adoption": 0.000037203082378308665,
+    "S_competitive": 1,
+    "R": 1,
+    "share": 0.000037203082378308665,
+    "P": 4299,
+    "WTP": 3595,
+    "e": 1.2,
+    "wtpPrime": 3644.0497800000003,
+    "WTPref": 3595.2,
+    "rawWtpMult": 0.4798,
+    "compressedWtpMult": 0.7,
+    "WTPref_adjusted": 3595.2,
+    "gamma": 3.675019623047102,
+    "gammaRaw": 3.989422804014327,
+    "gammaEff": 3.675019623047102,
+    "z": -10.19908173671146,
+    "Meff": 1449000,
+    "X": 1.6953634567352178,
+    "I": 0.26580804754355875,
+    "fit": 0.21125,
+    "actualGm": 0.4617934403349616,
+    "V": 0.04529166666666668,
+    "dCOGS": 639,
+    "nre_total_wan": 164.16,
+    "f_total": 3141600,
+    "f_total_wan": 314.16,
+    "breakeven_q": 1583,
+    "unitMargin": 1985,
+    "revenueNet": 173811,
+    "variableCost": 66791,
+    "fixedCost": 3141600,
+    "fBase": 1500000,
+    "positiveDCOGS": 639,
+    "risk": 0.55,
+    "subLift": 0.15,
+    "load": 14,
+    "complexity": 1.065,
+    "coverCore": 0.1875,
+    "coverNice": 0.26666666666666666,
+    "penalty": 0,
+    "overBudget": 0,
+    "overCap": 0,
+    "budgetBenchmark": 719,
+    "unitProfitHW": 1985.25,
+    "profitHW": 107019,
+    "profitSub": 1928,
+    "attach": 0.07166666666666666,
+    "ltvSub": 36,
+    "rdInvestment": 34506,
+    "violations": [],
+    "hardViolationCount": 0,
+    "evi": 0.7,
+    "w_star": {
+      "perception": 0.1919420348516447,
+      "mobility": 0.10406511185337572,
+      "interaction": 0.23280158785704447,
+      "safety_privacy": 0.14383035901752508,
+      "integration": 0.10336788832796337,
+      "operations": 0.22399301809244665
+    },
+    "sev": 0.5748682310768346,
+    "tagBreakdown": [
+      {
+        "tag": "安全与信任",
+        "dimCN": "安全与信任",
+        "dimKey": "safety_privacy",
+        "w": 0.14383035901752508,
+        "tier": "nice",
+        "imp": 1
+      },
+      {
+        "tag": "情感陪伴",
+        "dimCN": "交互与表达",
+        "dimKey": "interaction",
+        "w": 0.23280158785704447,
+        "tier": "core",
+        "imp": 3
+      },
+      {
+        "tag": "远程关怀",
+        "dimCN": "安全与信任",
+        "dimKey": "safety_privacy",
+        "w": 0.14383035901752508,
+        "tier": "nice",
+        "imp": 1
+      },
+      {
+        "tag": "省心可靠",
+        "dimCN": "可运营与可维护",
+        "dimKey": "operations",
+        "w": 0.22399301809244665,
+        "tier": "core",
+        "imp": 3
+      },
+      {
+        "tag": "个性化推荐",
+        "dimCN": "感知与理解",
+        "dimKey": "perception",
+        "w": 0.1919420348516447,
+        "tier": "core",
+        "imp": 2
+      },
+      {
+        "tag": "智能家居",
+        "dimCN": "可扩展与连接",
+        "dimKey": "integration",
+        "w": 0.10336788832796337,
+        "tier": "nice",
+        "imp": 1
+      }
+    ],
+    "COGSbase": 600,
+    "COGS": 1239
+  },
+  "r2_price": 4299,
+  "r2_cards": [
+    {
+      "cap_id": "memory_album",
+      "tier": "low"
+    },
+    {
+      "cap_id": "lidar_nav",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "voice_basic",
+      "tier": "low"
+    },
+    {
+      "cap_id": "privacy_trust",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "cloud_update",
+      "tier": "low"
+    },
+    {
+      "cap_id": "remote_monitor",
+      "tier": "mid"
+    }
+  ],
+  "r2_prototype": {
+    "prototype": "elder_care",
+    "rationale": "周阿姨的痛点——摔跤、设备坏了没人发现、儿子远程查岗的僵局——都是具体、可量化、能直接落地的需求。我们的触觉传感和健康数据算法可以马上用在防摔和健康监测上，形成差异化壁垒；同时，远程关怀和云服务也能让“持续陪伴”真正跑起来，B端机构（社区服务、家电维修）也愿意为此买单。相比之下，成人陪伴向的情感需求太主观，不好量化，也不利于后续商业模式拓展。选老人照护，需求更刚性，客户更愿意掏钱，异业合作也好切入。"
+  },
+  "profit": -3032653,
+  "profitable": false
+}

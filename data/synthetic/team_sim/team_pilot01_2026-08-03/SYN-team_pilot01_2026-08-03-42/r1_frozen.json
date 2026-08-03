@@ -1,0 +1,41 @@
+{
+  "synthetic": true,
+  "grid_id": "ToC_DIFF_ADULT",
+  "grid_label": "ToC / 成人 / 差异化",
+  "architecture": "Hybrid",
+  "vp_summary": {
+    "who": "成人用户",
+    "pain": "情感陪伴需求",
+    "how": "通过Hybrid架构，先建立功能信任再验证情感陪伴，结合运动控制和空间感知技术，实现自然且安全的交互"
+  },
+  "target_gm": 0.425,
+  "jinang_fit": {
+    "market": {
+      "match_strength": 0.6933,
+      "matched": true,
+      "bonus": 0.0139,
+      "member_strengths": [
+        0.8667,
+        0.6333,
+        0.7667,
+        0.6333,
+        0.5667
+      ]
+    },
+    "tech": {
+      "match_strength": 0.7067,
+      "matched": true,
+      "member_strengths": [
+        0.7667,
+        0.7333,
+        0.8,
+        0.6,
+        0.6333
+      ]
+    }
+  },
+  "WTPref_scaled": 5136,
+  "WTPadj_scaled": 3595,
+  "wtp_multiplier": 0.4798,
+  "VPscore": 3.5
+}
