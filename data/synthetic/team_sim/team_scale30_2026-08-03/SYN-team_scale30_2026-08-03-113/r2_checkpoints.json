@@ -1,0 +1,230 @@
+{
+  "synthetic": true,
+  "checkpoints": [
+    {
+      "decision_point": "prototype",
+      "termination": "leader_decision",
+      "turns": 7,
+      "frozen": {
+        "prototype": "elder_care",
+        "rationale": "团队最终选择老人照护向的独居长辈（周阿姨），主攻B端养老机构夜间安全刚需，以标准化硬件+云端SaaS交付差异化智慧养老方案。"
+      }
+    },
+    {
+      "decision_point": "cards_segment_1",
+      "termination": "leader_decision",
+      "turns": 7,
+      "frozen": {
+        "cards": [
+          {
+            "cap_id": "perception_base",
+            "tier": "mid"
+          },
+          {
+            "cap_id": "emotion_recognition",
+            "tier": "low"
+          },
+          {
+            "cap_id": "basic_avoidance",
+            "tier": "low"
+          }
+        ],
+        "rationale": "组长明确提交3张卡：感知与理解组选perception_base（mid档）和emotion_recognition（low档），运动与导航组选basic_avoidance（low档），满足每组至少1张且全队累计至少6张的要求。"
+      },
+      "cumulative_cards": [
+        {
+          "cap_id": "perception_base",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "emotion_recognition",
+          "tier": "low"
+        },
+        {
+          "cap_id": "basic_avoidance",
+          "tier": "low"
+        }
+      ],
+      "compatibility": {
+        "valid": false,
+        "violations": [
+          {
+            "type": "group_min",
+            "group": "interaction_expression",
+            "message": "交互与表达 至少选 1 张"
+          },
+          {
+            "type": "group_min",
+            "group": "safety_trust",
+            "message": "安全与信任 至少选 1 张"
+          },
+          {
+            "type": "group_min",
+            "group": "expand_connect",
+            "message": "可扩展与连接 至少选 1 张"
+          },
+          {
+            "type": "group_min",
+            "group": "ops_maintenance",
+            "message": "可运营与可维护 至少选 1 张"
+          },
+          {
+            "type": "total_min",
+            "message": "总数 3 < 6"
+          }
+        ],
+        "hardViolationCount": 5
+      }
+    },
+    {
+      "decision_point": "cards_segment_2",
+      "termination": "converged",
+      "turns": 5,
+      "frozen": {
+        "cards": [
+          {
+            "cap_id": "voice_basic",
+            "tier": "mid"
+          },
+          {
+            "cap_id": "persona_dialog",
+            "tier": "low"
+          },
+          {
+            "cap_id": "privacy_trust",
+            "tier": "mid"
+          },
+          {
+            "cap_id": "family_guardian",
+            "tier": "low"
+          }
+        ],
+        "rationale": "组长明确提交了4张最终选卡：interaction_expression组包含voice_basic（mid）和persona_dialog（low），safety_trust组包含privacy_trust（mid）和family_guardian（low）。每个group均至少1张，全队累计4张，未达到6张下限，但发言中未提及额外卡片，故仅抽取明确提交内容。"
+      },
+      "cumulative_cards": [
+        {
+          "cap_id": "perception_base",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "emotion_recognition",
+          "tier": "low"
+        },
+        {
+          "cap_id": "basic_avoidance",
+          "tier": "low"
+        },
+        {
+          "cap_id": "voice_basic",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "persona_dialog",
+          "tier": "low"
+        },
+        {
+          "cap_id": "privacy_trust",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "family_guardian",
+          "tier": "low"
+        }
+      ],
+      "compatibility": {
+        "valid": false,
+        "violations": [
+          {
+            "type": "group_min",
+            "group": "expand_connect",
+            "message": "可扩展与连接 至少选 1 张"
+          },
+          {
+            "type": "group_min",
+            "group": "ops_maintenance",
+            "message": "可运营与可维护 至少选 1 张"
+          }
+        ],
+        "hardViolationCount": 2
+      }
+    },
+    {
+      "decision_point": "cards_segment_3",
+      "termination": "converged",
+      "turns": 4,
+      "frozen": {
+        "cards": [
+          {
+            "cap_id": "cloud_update",
+            "tier": "mid"
+          },
+          {
+            "cap_id": "self_diag",
+            "tier": "low"
+          },
+          {
+            "cap_id": "remote_monitor",
+            "tier": "low"
+          }
+        ],
+        "rationale": "根据组长发言，expand_connect选择cloud_update（mid档），ops_maintenance选择self_diag（low档）和remote_monitor（low档），共3张卡，满足每个group至少1张及全队累计总数要求。"
+      },
+      "cumulative_cards": [
+        {
+          "cap_id": "perception_base",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "emotion_recognition",
+          "tier": "low"
+        },
+        {
+          "cap_id": "basic_avoidance",
+          "tier": "low"
+        },
+        {
+          "cap_id": "voice_basic",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "persona_dialog",
+          "tier": "low"
+        },
+        {
+          "cap_id": "privacy_trust",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "family_guardian",
+          "tier": "low"
+        },
+        {
+          "cap_id": "cloud_update",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "self_diag",
+          "tier": "low"
+        },
+        {
+          "cap_id": "remote_monitor",
+          "tier": "low"
+        }
+      ],
+      "compatibility": {
+        "valid": true,
+        "violations": [],
+        "hardViolationCount": 0
+      }
+    },
+    {
+      "decision_point": "price",
+      "termination": "converged",
+      "turns": 7,
+      "frozen": {
+        "price": 3200,
+        "rationale": "组长明确表示最终定价为3200元基础版，并预留增值服务空间。"
+      }
+    }
+  ]
+}

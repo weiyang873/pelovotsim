@@ -1,0 +1,274 @@
+{
+  "synthetic": true,
+  "r1": {
+    "grid_id": "ToB_DIFF_ELDER",
+    "channel": "ToB",
+    "strategy": "DIFF",
+    "age": "ELDER",
+    "arch_tag": "Hybrid",
+    "SAM_billion": 339,
+    "WTPmean": 19268,
+    "WTPmedian": 18091,
+    "WTPref": 19268,
+    "WTPadj": 17864,
+    "C": 4.9,
+    "G": 3.5,
+    "E_raw": 4,
+    "Eadj": 4,
+    "rho_C": 0.9,
+    "lambda_G": 0.95,
+    "lambda_E": 1,
+    "wtp_multiplier": 0.8657,
+    "jinang_match_strength": 0.6267,
+    "jinang_E_boost": 0,
+    "grid_label": "ToB / 老人 / 差异化",
+    "VPscore": 4.3,
+    "WTPref_scaled": 5780,
+    "WTPadj_scaled": 5359,
+    "wtp_vp_effect": 0.855,
+    "jinang_wtp_bonus": 0.0125,
+    "wtp_mult_compressed": 0.9271333333333334,
+    "jinang_settlement": {
+      "market": {
+        "match_strength": 0.6267,
+        "matched": true,
+        "bonus": 0.0125,
+        "member_strengths": [
+          0.5,
+          0.5,
+          0.8,
+          0.6333,
+          0.7
+        ]
+      },
+      "tech": {
+        "match_strength": 0.7267,
+        "matched": true,
+        "member_strengths": [
+          0.6333,
+          0.8,
+          0.7333,
+          0.6333,
+          0.8333
+        ]
+      }
+    },
+    "target_gm": 0.65,
+    "target_gm_rule": "min(GM_cap, rho_C * target_gm_suggest_multiplier)"
+  },
+  "r1_frozen": {
+    "grid_id": "ToB_DIFF_ELDER",
+    "grid_label": "ToB / 老人 / 差异化",
+    "architecture": "Hybrid",
+    "vp_summary": {
+      "who": "政企客户（养老机构或社区健康管理）",
+      "pain": "需要可交付、可维护、可追溯的落地保障和信任壁垒",
+      "how": "通过模块化硬件、区域经销和本地服务网络，结合安全合规认证，提供差异化体验"
+    },
+    "target_gm": 0.65,
+    "jinang_fit": {
+      "market": {
+        "match_strength": 0.6267,
+        "matched": true,
+        "bonus": 0.0125,
+        "member_strengths": [
+          0.5,
+          0.5,
+          0.8,
+          0.6333,
+          0.7
+        ]
+      },
+      "tech": {
+        "match_strength": 0.7267,
+        "matched": true,
+        "member_strengths": [
+          0.6333,
+          0.8,
+          0.7333,
+          0.6333,
+          0.8333
+        ]
+      }
+    },
+    "WTPref_scaled": 5780,
+    "WTPadj_scaled": 5359,
+    "wtp_multiplier": 0.8657,
+    "VPscore": 4.3
+  },
+  "r2": {
+    "roi": -19.009111347564467,
+    "profit": -4665064,
+    "units": 204,
+    "adoption": 0.0001784746712830656,
+    "S_competitive": 1,
+    "R": 1,
+    "share": 0.0001784746712830656,
+    "P": 3800,
+    "WTP": 5359,
+    "e": 1.2,
+    "wtpPrime": 5408.265879566667,
+    "WTPref": 5358.830666666667,
+    "rawWtpMult": 0.8657,
+    "compressedWtpMult": 0.9271333333333334,
+    "WTPref_adjusted": 5358.830666666667,
+    "gamma": 4.3090546193758685,
+    "gammaRaw": 4.559340347444945,
+    "gammaEff": 4.3090546193758685,
+    "z": -8.630885373787073,
+    "Meff": 1144000,
+    "X": 1.9247080144275261,
+    "I": 0.32652000267176395,
+    "fit": 0.364,
+    "actualGm": 0.37552631578947365,
+    "V": 0.030750000000000055,
+    "dCOGS": 1203,
+    "nre_total_wan": 346.02,
+    "f_total": 4960200,
+    "f_total_wan": 496.02,
+    "breakeven_q": 3476,
+    "unitMargin": 1427,
+    "revenueNet": 659485,
+    "variableCost": 368128,
+    "fixedCost": 4960200,
+    "fBase": 1500000,
+    "positiveDCOGS": 1203,
+    "risk": 1.22,
+    "subLift": 0.4,
+    "load": 26,
+    "complexity": 2.005,
+    "coverCore": 0.52,
+    "coverNice": 0,
+    "penalty": 297,
+    "overBudget": 131.20000000000005,
+    "overCap": 2,
+    "budgetBenchmark": 1071.8,
+    "unitProfitHW": 1427,
+    "profitHW": 291358,
+    "profitSub": 4075,
+    "attach": 0.040000000000000036,
+    "ltvSub": 20,
+    "rdInvestment": 245412,
+    "violations": [],
+    "hardViolationCount": 0,
+    "evi": 0.7,
+    "w_star": {
+      "perception": 0.20547042313003303,
+      "mobility": 0.12591309720136107,
+      "interaction": 0.2006807087361654,
+      "safety_privacy": 0.1957735824607485,
+      "integration": 0.12499884070891575,
+      "operations": 0.14716334776277631
+    },
+    "sev": 0.568914293347897,
+    "tagBreakdown": [
+      {
+        "tag": "安全与信任",
+        "dimCN": "安全与信任",
+        "dimKey": "safety_privacy",
+        "w": 0.1957735824607485,
+        "tier": "core",
+        "imp": 2
+      },
+      {
+        "tag": "情感陪伴",
+        "dimCN": "交互与表达",
+        "dimKey": "interaction",
+        "w": 0.2006807087361654,
+        "tier": "core",
+        "imp": 2
+      },
+      {
+        "tag": "远程关怀",
+        "dimCN": "安全与信任",
+        "dimKey": "safety_privacy",
+        "w": 0.1957735824607485,
+        "tier": "core",
+        "imp": 2
+      },
+      {
+        "tag": "省心可靠",
+        "dimCN": "可运营与可维护",
+        "dimKey": "operations",
+        "w": 0.14716334776277631,
+        "tier": "nice",
+        "imp": 1
+      },
+      {
+        "tag": "情绪识别",
+        "dimCN": "感知与理解",
+        "dimKey": "perception",
+        "w": 0.20547042313003303,
+        "tier": "core",
+        "imp": 2
+      },
+      {
+        "tag": "场景感知",
+        "dimCN": "感知与理解",
+        "dimKey": "perception",
+        "w": 0.20547042313003303,
+        "tier": "core",
+        "imp": 2
+      }
+    ],
+    "COGSbase": 600,
+    "COGS": 1803
+  },
+  "r2_price": 3800,
+  "r2_cards": [
+    {
+      "cap_id": "perception_base",
+      "tier": "low"
+    },
+    {
+      "cap_id": "adaptive_learning",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "emotion_recognition",
+      "tier": "low"
+    },
+    {
+      "cap_id": "basic_avoidance",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "voice_basic",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "music_companion",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "visual_expression",
+      "tier": "low"
+    },
+    {
+      "cap_id": "privacy_trust",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "family_guardian",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "cloud_update",
+      "tier": "low"
+    },
+    {
+      "cap_id": "self_diag",
+      "tier": "low"
+    },
+    {
+      "cap_id": "remote_monitor",
+      "tier": "mid"
+    }
+  ],
+  "r2_prototype": {
+    "prototype": "elder_care",
+    "rationale": "基于全队讨论，我们最终选择周阿姨（老人照护向·独居长辈）作为R2客户原型。核心依据包括：ToB链路优势明确，预算池清晰、决策链短、POC验证周期可控，安全合规认证能转化为投标壁垒；模块化硬件与本地服务网络能形成壁垒，硬件接口标准化程度高，可插拔组合，交付整套可维护方案；‘被监控感’可通过产品定义化解，以‘社区健康服务终端’名义交付数据报告和应急响应；林小姐场景的PMF验证风险更高，冷启动路径更可控。"
+  },
+  "profit": -4665064,
+  "profitable": false
+}

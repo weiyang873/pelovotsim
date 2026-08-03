@@ -1,0 +1,41 @@
+{
+  "synthetic": true,
+  "grid_id": "ToB_DIFF_ELDER",
+  "grid_label": "ToB / 老人 / 差异化",
+  "architecture": "Hybrid",
+  "vp_summary": {
+    "who": "养老机构",
+    "pain": "夜间看护合规留痕要求及网络不稳定的痛点",
+    "how": "边缘计算跌倒检测方案，离线可用，提供合规留痕和数据增值服务"
+  },
+  "target_gm": 0.425,
+  "jinang_fit": {
+    "market": {
+      "match_strength": 0.7,
+      "matched": true,
+      "bonus": 0.014,
+      "member_strengths": [
+        0.7667,
+        0.5,
+        0.8,
+        0.6333,
+        0.8
+      ]
+    },
+    "tech": {
+      "match_strength": 0.7533,
+      "matched": true,
+      "member_strengths": [
+        0.7667,
+        0.6333,
+        0.8333,
+        0.8,
+        0.7333
+      ]
+    }
+  },
+  "WTPref_scaled": 5780,
+  "WTPadj_scaled": 4076,
+  "wtp_multiplier": 0.5326,
+  "VPscore": 3.7
+}

@@ -1,0 +1,41 @@
+{
+  "synthetic": true,
+  "grid_id": "ToC_DIFF_ELDER",
+  "grid_label": "ToC / 老人 / 差异化",
+  "architecture": "Hybrid",
+  "vp_summary": {
+    "who": "老年人及其子女",
+    "pain": "子女需要表达孝心与安心，老年人需要便捷安全的健康监护",
+    "how": "提供硬件设备加订阅服务的混合模式，以触觉交互和生物信号感知技术为核心，通过情感驱动销售，硬件高价、订阅复购"
+  },
+  "target_gm": 0.595,
+  "jinang_fit": {
+    "market": {
+      "match_strength": 0.66,
+      "matched": true,
+      "bonus": 0.0132,
+      "member_strengths": [
+        0.5667,
+        0.7333,
+        0.6667,
+        0.6333,
+        0.7
+      ]
+    },
+    "tech": {
+      "match_strength": 0.7667,
+      "matched": true,
+      "member_strengths": [
+        0.8333,
+        0.6333,
+        0.8,
+        0.8,
+        0.7667
+      ]
+    }
+  },
+  "WTPref_scaled": 5427,
+  "WTPadj_scaled": 4648,
+  "wtp_multiplier": 0.7596,
+  "VPscore": 4
+}

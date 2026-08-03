@@ -1,0 +1,258 @@
+{
+  "synthetic": true,
+  "checkpoints": [
+    {
+      "decision_point": "prototype",
+      "termination": "converged",
+      "turns": 7,
+      "frozen": {
+        "prototype": "elder_care",
+        "rationale": "基于全队讨论，我们最终选择周阿姨（老人照护向·独居长辈）作为R2客户原型。核心依据包括：ToB链路优势明确，预算池清晰、决策链短、POC验证周期可控，安全合规认证能转化为投标壁垒；模块化硬件与本地服务网络能形成壁垒，硬件接口标准化程度高，可插拔组合，交付整套可维护方案；‘被监控感’可通过产品定义化解，以‘社区健康服务终端’名义交付数据报告和应急响应；林小姐场景的PMF验证风险更高，冷启动路径更可控。"
+      }
+    },
+    {
+      "decision_point": "cards_segment_1",
+      "termination": "converged",
+      "turns": 7,
+      "frozen": {
+        "cards": [
+          {
+            "cap_id": "perception_base",
+            "tier": "low"
+          },
+          {
+            "cap_id": "adaptive_learning",
+            "tier": "mid"
+          },
+          {
+            "cap_id": "emotion_recognition",
+            "tier": "low"
+          },
+          {
+            "cap_id": "basic_avoidance",
+            "tier": "mid"
+          }
+        ],
+        "rationale": "当前段提交4张卡：感知与理解3张（perception_base low、adaptive_learning mid、emotion_recognition low），运动与导航1张（basic_avoidance mid），满足每个group至少1张。全队总数至少6张由后续段补齐。"
+      },
+      "cumulative_cards": [
+        {
+          "cap_id": "perception_base",
+          "tier": "low"
+        },
+        {
+          "cap_id": "adaptive_learning",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "emotion_recognition",
+          "tier": "low"
+        },
+        {
+          "cap_id": "basic_avoidance",
+          "tier": "mid"
+        }
+      ],
+      "compatibility": {
+        "valid": false,
+        "violations": [
+          {
+            "type": "group_min",
+            "group": "interaction_expression",
+            "message": "交互与表达 至少选 1 张"
+          },
+          {
+            "type": "group_min",
+            "group": "safety_trust",
+            "message": "安全与信任 至少选 1 张"
+          },
+          {
+            "type": "group_min",
+            "group": "expand_connect",
+            "message": "可扩展与连接 至少选 1 张"
+          },
+          {
+            "type": "group_min",
+            "group": "ops_maintenance",
+            "message": "可运营与可维护 至少选 1 张"
+          },
+          {
+            "type": "total_min",
+            "message": "总数 4 < 6"
+          }
+        ],
+        "hardViolationCount": 5
+      }
+    },
+    {
+      "decision_point": "cards_segment_2",
+      "termination": "leader_decision",
+      "turns": 7,
+      "frozen": {
+        "cards": [
+          {
+            "cap_id": "voice_basic",
+            "tier": "mid"
+          },
+          {
+            "cap_id": "music_companion",
+            "tier": "mid"
+          },
+          {
+            "cap_id": "visual_expression",
+            "tier": "low"
+          },
+          {
+            "cap_id": "privacy_trust",
+            "tier": "mid"
+          },
+          {
+            "cap_id": "family_guardian",
+            "tier": "mid"
+          }
+        ],
+        "rationale": "组长明确提交了本次新增的5张卡片，覆盖interaction_expression（voice_basic@mid、music_companion@mid、visual_expression@low）和safety_trust（privacy_trust@mid、family_guardian@mid），每组至少1张，全队累计9张满足总数要求。"
+      },
+      "cumulative_cards": [
+        {
+          "cap_id": "perception_base",
+          "tier": "low"
+        },
+        {
+          "cap_id": "adaptive_learning",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "emotion_recognition",
+          "tier": "low"
+        },
+        {
+          "cap_id": "basic_avoidance",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "voice_basic",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "music_companion",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "visual_expression",
+          "tier": "low"
+        },
+        {
+          "cap_id": "privacy_trust",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "family_guardian",
+          "tier": "mid"
+        }
+      ],
+      "compatibility": {
+        "valid": false,
+        "violations": [
+          {
+            "type": "group_min",
+            "group": "expand_connect",
+            "message": "可扩展与连接 至少选 1 张"
+          },
+          {
+            "type": "group_min",
+            "group": "ops_maintenance",
+            "message": "可运营与可维护 至少选 1 张"
+          }
+        ],
+        "hardViolationCount": 2
+      }
+    },
+    {
+      "decision_point": "cards_segment_3",
+      "termination": "converged",
+      "turns": 7,
+      "frozen": {
+        "cards": [
+          {
+            "cap_id": "cloud_update",
+            "tier": "low"
+          },
+          {
+            "cap_id": "self_diag",
+            "tier": "low"
+          },
+          {
+            "cap_id": "remote_monitor",
+            "tier": "mid"
+          }
+        ],
+        "rationale": "从发言中明确选定的卡片为 expand_connect 的 cloud_update 和 ops_maintenance 的 self_diag、remote_monitor。cloud_update 和 self_diag 的档位未明确指定，仅建议 low 或 mid，因此按最低档 low 记录；remote_monitor 明确为 mid。未提及 edu_content，故不选。累计总数满足至少6张要求。"
+      },
+      "cumulative_cards": [
+        {
+          "cap_id": "perception_base",
+          "tier": "low"
+        },
+        {
+          "cap_id": "adaptive_learning",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "emotion_recognition",
+          "tier": "low"
+        },
+        {
+          "cap_id": "basic_avoidance",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "voice_basic",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "music_companion",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "visual_expression",
+          "tier": "low"
+        },
+        {
+          "cap_id": "privacy_trust",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "family_guardian",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "cloud_update",
+          "tier": "low"
+        },
+        {
+          "cap_id": "self_diag",
+          "tier": "low"
+        },
+        {
+          "cap_id": "remote_monitor",
+          "tier": "mid"
+        }
+      ],
+      "compatibility": {
+        "valid": true,
+        "violations": [],
+        "hardViolationCount": 0
+      }
+    },
+    {
+      "decision_point": "price",
+      "termination": "converged",
+      "turns": 2,
+      "frozen": {
+        "price": 3800,
+        "rationale": "组长明确表示最终定价为3800元，并给出了理由。"
+      }
+    }
+  ]
+}

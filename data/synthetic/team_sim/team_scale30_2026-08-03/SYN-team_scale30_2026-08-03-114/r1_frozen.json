@@ -1,0 +1,41 @@
+{
+  "synthetic": true,
+  "grid_id": "ToB_COST_ADULT",
+  "grid_label": "ToB / 成人 / 成本",
+  "architecture": "Hybrid",
+  "vp_summary": {
+    "who": "养老院、社区康养中心等机构客户",
+    "pain": "机构客户需要提升照护效率、安全性和信任度，但面临预算波动和决策链长的问题",
+    "how": "提供硬件+订阅服务，包括安全预警、健康日报、夜间安全跟随和光效交互，并打包安全认证增值包"
+  },
+  "target_gm": 0.595,
+  "jinang_fit": {
+    "market": {
+      "match_strength": 0.6733,
+      "matched": true,
+      "bonus": 0.0135,
+      "member_strengths": [
+        0.7667,
+        0.6,
+        0.6333,
+        0.7667,
+        0.6
+      ]
+    },
+    "tech": {
+      "match_strength": 0.6733,
+      "matched": true,
+      "member_strengths": [
+        0.7667,
+        0.7333,
+        0.6,
+        0.6667,
+        0.6
+      ]
+    }
+  },
+  "WTPref_scaled": 4634,
+  "WTPadj_scaled": 4083,
+  "wtp_multiplier": 0.7968,
+  "VPscore": 4.4
+}

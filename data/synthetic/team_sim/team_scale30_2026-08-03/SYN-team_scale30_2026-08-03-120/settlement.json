@@ -1,0 +1,262 @@
+{
+  "synthetic": true,
+  "r1": {
+    "grid_id": "ToB_DIFF_ELDER",
+    "channel": "ToB",
+    "strategy": "DIFF",
+    "age": "ELDER",
+    "arch_tag": "Hybrid",
+    "SAM_billion": 339,
+    "WTPmean": 19268,
+    "WTPmedian": 18091,
+    "WTPref": 19268,
+    "WTPadj": 16884,
+    "C": 3.6,
+    "G": 4.3,
+    "E_raw": 4.8,
+    "Eadj": 4.8,
+    "rho_C": 0.7,
+    "lambda_G": 1.03,
+    "lambda_E": 1.08,
+    "wtp_multiplier": 0.7894,
+    "jinang_match_strength": 0.6867,
+    "jinang_E_boost": 0,
+    "grid_label": "ToB / 老人 / 差异化",
+    "VPscore": 4,
+    "WTPref_scaled": 5780,
+    "WTPadj_scaled": 5065,
+    "wtp_vp_effect": 0.7787,
+    "jinang_wtp_bonus": 0.0137,
+    "wtp_mult_compressed": 0.8762666666666667,
+    "jinang_settlement": {
+      "market": {
+        "match_strength": 0.6867,
+        "matched": true,
+        "bonus": 0.0137,
+        "member_strengths": [
+          0.8,
+          0.6333,
+          0.7,
+          0.8,
+          0.5
+        ]
+      },
+      "tech": {
+        "match_strength": 0.7067,
+        "matched": true,
+        "member_strengths": [
+          0.6,
+          0.7667,
+          0.8,
+          0.6333,
+          0.7333
+        ]
+      }
+    },
+    "target_gm": 0.595,
+    "target_gm_rule": "min(GM_cap, rho_C * target_gm_suggest_multiplier)"
+  },
+  "r1_frozen": {
+    "grid_id": "ToB_DIFF_ELDER",
+    "grid_label": "ToB / 老人 / 差异化",
+    "architecture": "Hybrid",
+    "vp_summary": {
+      "who": "养老机构（B端客户）",
+      "pain": "夜间跌倒风险高，护理风险防控体系不足，售后风险担忧",
+      "how": "提供触觉技术+边缘计算的硬件+数据服务整体解决方案，实现离线可用、隐私安全，降低夜间跌倒响应30%，并通过数据报告和异常预警实现主动预防"
+    },
+    "target_gm": 0.595,
+    "jinang_fit": {
+      "market": {
+        "match_strength": 0.6867,
+        "matched": true,
+        "bonus": 0.0137,
+        "member_strengths": [
+          0.8,
+          0.6333,
+          0.7,
+          0.8,
+          0.5
+        ]
+      },
+      "tech": {
+        "match_strength": 0.7067,
+        "matched": true,
+        "member_strengths": [
+          0.6,
+          0.7667,
+          0.8,
+          0.6333,
+          0.7333
+        ]
+      }
+    },
+    "WTPref_scaled": 5780,
+    "WTPadj_scaled": 5065,
+    "wtp_multiplier": 0.7894,
+    "VPscore": 4
+  },
+  "r2": {
+    "roi": -11.936384290277475,
+    "profit": -3892527,
+    "units": 297,
+    "adoption": 0.0002599983473773127,
+    "S_competitive": 1,
+    "R": 1,
+    "share": 0.0002599983473773127,
+    "P": 3999,
+    "WTP": 5065,
+    "e": 1.2,
+    "wtpPrime": 5165.864518933334,
+    "WTPref": 5064.821333333334,
+    "rawWtpMult": 0.7894,
+    "compressedWtpMult": 0.8762666666666667,
+    "WTPref_adjusted": 5064.821333333334,
+    "gamma": 4.050544019632474,
+    "gammaRaw": 4.559340347444945,
+    "gammaEff": 4.050544019632474,
+    "z": -8.254575251057245,
+    "Meff": 1144000,
+    "X": 2.4435880144275246,
+    "I": 0.34122000267176394,
+    "fit": 0.406,
+    "actualGm": 0.42539384846211553,
+    "V": 0.06650000000000005,
+    "dCOGS": 1098,
+    "nre_total_wan": 290.64,
+    "f_total": 4406400,
+    "f_total_wan": 440.64,
+    "breakeven_q": 2591,
+    "unitMargin": 1701,
+    "revenueNet": 1011037,
+    "variableCost": 505050,
+    "fixedCost": 4406400,
+    "fBase": 1500000,
+    "positiveDCOGS": 1098,
+    "risk": 1.06,
+    "subLift": 0.27999999999999997,
+    "load": 22,
+    "complexity": 1.83,
+    "coverCore": 0.5800000000000001,
+    "coverNice": 0,
+    "penalty": 128,
+    "overBudget": 85,
+    "overCap": 0,
+    "budgetBenchmark": 1013,
+    "unitProfitHW": 1701.15,
+    "profitHW": 505987,
+    "profitSub": 8014,
+    "attach": 0.05399999999999999,
+    "ltvSub": 27,
+    "rdInvestment": 326106,
+    "violations": [],
+    "hardViolationCount": 0,
+    "evi": 0.7,
+    "w_star": {
+      "perception": 0.20547042313003303,
+      "mobility": 0.12591309720136107,
+      "interaction": 0.2006807087361654,
+      "safety_privacy": 0.1957735824607485,
+      "integration": 0.12499884070891575,
+      "operations": 0.14716334776277631
+    },
+    "sev": 0.568914293347897,
+    "tagBreakdown": [
+      {
+        "tag": "安全与信任",
+        "dimCN": "安全与信任",
+        "dimKey": "safety_privacy",
+        "w": 0.1957735824607485,
+        "tier": "core",
+        "imp": 2
+      },
+      {
+        "tag": "情感陪伴",
+        "dimCN": "交互与表达",
+        "dimKey": "interaction",
+        "w": 0.2006807087361654,
+        "tier": "core",
+        "imp": 2
+      },
+      {
+        "tag": "远程关怀",
+        "dimCN": "安全与信任",
+        "dimKey": "safety_privacy",
+        "w": 0.1957735824607485,
+        "tier": "core",
+        "imp": 2
+      },
+      {
+        "tag": "省心可靠",
+        "dimCN": "可运营与可维护",
+        "dimKey": "operations",
+        "w": 0.14716334776277631,
+        "tier": "nice",
+        "imp": 1
+      },
+      {
+        "tag": "情绪识别",
+        "dimCN": "感知与理解",
+        "dimKey": "perception",
+        "w": 0.20547042313003303,
+        "tier": "core",
+        "imp": 2
+      },
+      {
+        "tag": "场景感知",
+        "dimCN": "感知与理解",
+        "dimKey": "perception",
+        "w": 0.20547042313003303,
+        "tier": "core",
+        "imp": 2
+      }
+    ],
+    "COGSbase": 600,
+    "COGS": 1698
+  },
+  "r2_price": 3999,
+  "r2_cards": [
+    {
+      "cap_id": "perception_base",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "emotion_recognition",
+      "tier": "low"
+    },
+    {
+      "cap_id": "basic_avoidance",
+      "tier": "low"
+    },
+    {
+      "cap_id": "follow_mode",
+      "tier": "low"
+    },
+    {
+      "cap_id": "persona_dialog",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "privacy_trust",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "family_guardian",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "api_iot",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "self_diag",
+      "tier": "mid"
+    }
+  ],
+  "r2_prototype": {
+    "prototype": "elder_care",
+    "rationale": "R2选择周阿姨（老人照护向·独居长辈），理由：复用R1机构渠道信任，冷启动成本低；痛点从安全升级为尊严+陪伴，触觉技术可差异化；先站稳一个市场再扩张，后续延伸至林小姐方向。"
+  },
+  "profit": -3892527,
+  "profitable": false
+}

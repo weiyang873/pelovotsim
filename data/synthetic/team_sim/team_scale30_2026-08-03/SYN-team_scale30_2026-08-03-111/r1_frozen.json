@@ -1,0 +1,41 @@
+{
+  "synthetic": true,
+  "grid_id": "ToC_DIFF_ELDER",
+  "grid_label": "ToC / 老人 / 差异化",
+  "architecture": "Hybrid",
+  "vp_summary": {
+    "who": "老人家庭（子女决策）",
+    "pain": "老人居家安全（跌倒、心率异常）担忧，设备易落灰、续费动力不足",
+    "how": "离线安全守护（跌倒报警、心率预警）为核心，情感交互（触觉反馈、健康趋势报告）为差异化，订阅制服务模式"
+  },
+  "target_gm": 0.595,
+  "jinang_fit": {
+    "market": {
+      "match_strength": 0.7,
+      "matched": true,
+      "bonus": 0.014,
+      "member_strengths": [
+        0.7333,
+        0.6667,
+        0.5667,
+        0.8,
+        0.7333
+      ]
+    },
+    "tech": {
+      "match_strength": 0.76,
+      "matched": true,
+      "member_strengths": [
+        0.8,
+        0.7333,
+        0.8333,
+        0.8,
+        0.6333
+      ]
+    }
+  },
+  "WTPref_scaled": 5427,
+  "WTPadj_scaled": 4811,
+  "wtp_multiplier": 0.8046,
+  "VPscore": 4.4
+}

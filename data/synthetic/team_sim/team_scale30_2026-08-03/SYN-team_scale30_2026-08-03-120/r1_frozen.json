@@ -1,0 +1,41 @@
+{
+  "synthetic": true,
+  "grid_id": "ToB_DIFF_ELDER",
+  "grid_label": "ToB / 老人 / 差异化",
+  "architecture": "Hybrid",
+  "vp_summary": {
+    "who": "养老机构（B端客户）",
+    "pain": "夜间跌倒风险高，护理风险防控体系不足，售后风险担忧",
+    "how": "提供触觉技术+边缘计算的硬件+数据服务整体解决方案，实现离线可用、隐私安全，降低夜间跌倒响应30%，并通过数据报告和异常预警实现主动预防"
+  },
+  "target_gm": 0.595,
+  "jinang_fit": {
+    "market": {
+      "match_strength": 0.6867,
+      "matched": true,
+      "bonus": 0.0137,
+      "member_strengths": [
+        0.8,
+        0.6333,
+        0.7,
+        0.8,
+        0.5
+      ]
+    },
+    "tech": {
+      "match_strength": 0.7067,
+      "matched": true,
+      "member_strengths": [
+        0.6,
+        0.7667,
+        0.8,
+        0.6333,
+        0.7333
+      ]
+    }
+  },
+  "WTPref_scaled": 5780,
+  "WTPadj_scaled": 5065,
+  "wtp_multiplier": 0.7894,
+  "VPscore": 4
+}

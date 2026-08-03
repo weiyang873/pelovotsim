@@ -1,0 +1,41 @@
+{
+  "synthetic": true,
+  "grid_id": "ToB_DIFF_ELDER",
+  "grid_label": "ToB / 老人 / 差异化",
+  "architecture": "Hybrid",
+  "vp_summary": {
+    "who": "养老机构",
+    "pain": "护工流失、监管罚款、安全事故责任",
+    "how": "通过生物信号感知+自然语言交互的Hybrid架构，直接降低机构的人力巡查成本和责任风险"
+  },
+  "target_gm": 0.425,
+  "jinang_fit": {
+    "market": {
+      "match_strength": 0.6067,
+      "matched": true,
+      "bonus": 0.0121,
+      "member_strengths": [
+        0.6333,
+        0.6333,
+        0.7667,
+        0.5,
+        0.5
+      ]
+    },
+    "tech": {
+      "match_strength": 0.7533,
+      "matched": true,
+      "member_strengths": [
+        0.8333,
+        0.7333,
+        0.7667,
+        0.8,
+        0.6333
+      ]
+    }
+  },
+  "WTPref_scaled": 5780,
+  "WTPadj_scaled": 4046,
+  "wtp_multiplier": 0.5007,
+  "VPscore": 3.6
+}

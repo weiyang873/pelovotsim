@@ -1,0 +1,41 @@
+{
+  "synthetic": true,
+  "grid_id": "ToB_DIFF_ELDER",
+  "grid_label": "ToB / 老人 / 差异化",
+  "architecture": "Hybrid",
+  "vp_summary": {
+    "who": "老年群体及其子女、养老机构",
+    "pain": "父母情感需求被忽视，子女缺乏了解渠道，机构缺乏量化管理工具",
+    "how": "通过生物信号感知和情绪日报技术，为B端提供管理报表和KPI闭环，为C端提供家属沟通报告和情感裂变素材"
+  },
+  "target_gm": 0.65,
+  "jinang_fit": {
+    "market": {
+      "match_strength": 0.6867,
+      "matched": true,
+      "bonus": 0.0137,
+      "member_strengths": [
+        0.6333,
+        0.5,
+        0.7,
+        0.8,
+        0.8
+      ]
+    },
+    "tech": {
+      "match_strength": 0.7533,
+      "matched": true,
+      "member_strengths": [
+        0.7667,
+        0.8333,
+        0.7333,
+        0.6333,
+        0.8
+      ]
+    }
+  },
+  "WTPref_scaled": 5780,
+  "WTPadj_scaled": 5898,
+  "wtp_multiplier": 1.0055,
+  "VPscore": 4.6
+}

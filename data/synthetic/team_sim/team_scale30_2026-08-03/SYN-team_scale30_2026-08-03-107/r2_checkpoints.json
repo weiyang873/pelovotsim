@@ -1,0 +1,226 @@
+{
+  "synthetic": true,
+  "checkpoints": [
+    {
+      "decision_point": "prototype",
+      "termination": "converged",
+      "turns": 7,
+      "frozen": {
+        "prototype": "adult_companion",
+        "rationale": "小组选定林小姐（成人陪伴向·都市独居青年）作为R2客户原型，理由包括：延续差异化战略，探索ToC订阅制新战场；商业化效率高，现金流健康；痛点明确，产品差异化空间大；付费意愿已验证。"
+      }
+    },
+    {
+      "decision_point": "cards_segment_1",
+      "termination": "leader_decision",
+      "turns": 7,
+      "frozen": {
+        "cards": [
+          {
+            "cap_id": "adaptive_learning",
+            "tier": "mid"
+          },
+          {
+            "cap_id": "perception_base",
+            "tier": "low"
+          },
+          {
+            "cap_id": "basic_avoidance",
+            "tier": "low"
+          },
+          {
+            "cap_id": "lidar_nav",
+            "tier": "mid"
+          }
+        ],
+        "rationale": "组长明确提交了4张最终卡片：感知组adaptive_learning(mid)和perception_base(low)，运动组basic_avoidance(low)和lidar_nav(mid)。补充说明中提及的emotion_recognition和follow_mode仅为建议，未明确提交，故不纳入。"
+      },
+      "cumulative_cards": [
+        {
+          "cap_id": "adaptive_learning",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "perception_base",
+          "tier": "low"
+        },
+        {
+          "cap_id": "basic_avoidance",
+          "tier": "low"
+        },
+        {
+          "cap_id": "lidar_nav",
+          "tier": "mid"
+        }
+      ],
+      "compatibility": {
+        "valid": false,
+        "violations": [
+          {
+            "type": "group_min",
+            "group": "interaction_expression",
+            "message": "交互与表达 至少选 1 张"
+          },
+          {
+            "type": "group_min",
+            "group": "safety_trust",
+            "message": "安全与信任 至少选 1 张"
+          },
+          {
+            "type": "group_min",
+            "group": "expand_connect",
+            "message": "可扩展与连接 至少选 1 张"
+          },
+          {
+            "type": "group_min",
+            "group": "ops_maintenance",
+            "message": "可运营与可维护 至少选 1 张"
+          },
+          {
+            "type": "total_min",
+            "message": "总数 4 < 6"
+          }
+        ],
+        "hardViolationCount": 5
+      }
+    },
+    {
+      "decision_point": "cards_segment_2",
+      "termination": "leader_decision",
+      "turns": 7,
+      "frozen": {
+        "cards": [
+          {
+            "cap_id": "persona_dialog",
+            "tier": "mid"
+          },
+          {
+            "cap_id": "touch_hug",
+            "tier": "low"
+          },
+          {
+            "cap_id": "privacy_trust",
+            "tier": "mid"
+          }
+        ],
+        "rationale": "抽取组长明确提交的3张卡：interaction_expression组含persona_dialog（mid）和touch_hug（low），safety_trust组含privacy_trust（mid）。未包含其他未明确提及的卡片。"
+      },
+      "cumulative_cards": [
+        {
+          "cap_id": "adaptive_learning",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "perception_base",
+          "tier": "low"
+        },
+        {
+          "cap_id": "basic_avoidance",
+          "tier": "low"
+        },
+        {
+          "cap_id": "lidar_nav",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "persona_dialog",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "touch_hug",
+          "tier": "low"
+        },
+        {
+          "cap_id": "privacy_trust",
+          "tier": "mid"
+        }
+      ],
+      "compatibility": {
+        "valid": false,
+        "violations": [
+          {
+            "type": "group_min",
+            "group": "expand_connect",
+            "message": "可扩展与连接 至少选 1 张"
+          },
+          {
+            "type": "group_min",
+            "group": "ops_maintenance",
+            "message": "可运营与可维护 至少选 1 张"
+          }
+        ],
+        "hardViolationCount": 2
+      }
+    },
+    {
+      "decision_point": "cards_segment_3",
+      "termination": "leader_decision",
+      "turns": 7,
+      "frozen": {
+        "cards": [
+          {
+            "cap_id": "api_iot",
+            "tier": "mid"
+          },
+          {
+            "cap_id": "remote_monitor",
+            "tier": "mid"
+          }
+        ],
+        "rationale": "组长明确提交两张卡：expand_connect 的 api_iot 和 ops_maintenance 的 remote_monitor，均为 mid 档，满足各功能区至少1张及总数要求。"
+      },
+      "cumulative_cards": [
+        {
+          "cap_id": "adaptive_learning",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "perception_base",
+          "tier": "low"
+        },
+        {
+          "cap_id": "basic_avoidance",
+          "tier": "low"
+        },
+        {
+          "cap_id": "lidar_nav",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "persona_dialog",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "touch_hug",
+          "tier": "low"
+        },
+        {
+          "cap_id": "privacy_trust",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "api_iot",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "remote_monitor",
+          "tier": "mid"
+        }
+      ],
+      "compatibility": {
+        "valid": true,
+        "violations": [],
+        "hardViolationCount": 0
+      }
+    },
+    {
+      "decision_point": "price",
+      "termination": "converged",
+      "turns": 7,
+      "frozen": {
+        "price": 3999,
+        "rationale": "组长明确将最终定价锚定为3999元。"
+      }
+    }
+  ]
+}

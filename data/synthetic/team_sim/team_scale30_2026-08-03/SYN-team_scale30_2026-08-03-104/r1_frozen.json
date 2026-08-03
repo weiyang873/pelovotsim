@@ -1,0 +1,41 @@
+{
+  "synthetic": true,
+  "grid_id": "ToC_DIFF_ELDER",
+  "grid_label": "ToC / 老人 / 差异化",
+  "architecture": "Hybrid",
+  "vp_summary": {
+    "who": "老年人慢性病患者",
+    "pain": "慢性病管理中的无助感，直接关联生命安全",
+    "how": "软硬件结合的慢性病管理服务，子女付费订阅制，MVP验证真实场景洞察与核心功能"
+  },
+  "target_gm": 0.425,
+  "jinang_fit": {
+    "market": {
+      "match_strength": 0.7333,
+      "matched": true,
+      "bonus": 0.0147,
+      "member_strengths": [
+        0.8,
+        0.7333,
+        0.7333,
+        0.7,
+        0.7
+      ]
+    },
+    "tech": {
+      "match_strength": 0.72,
+      "matched": true,
+      "member_strengths": [
+        0.8,
+        0.6,
+        0.8,
+        0.6333,
+        0.7667
+      ]
+    }
+  },
+  "WTPref_scaled": 5427,
+  "WTPadj_scaled": 3799,
+  "wtp_multiplier": 0.486,
+  "VPscore": 3.5
+}

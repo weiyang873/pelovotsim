@@ -1,0 +1,242 @@
+{
+  "synthetic": true,
+  "checkpoints": [
+    {
+      "decision_point": "prototype",
+      "termination": "converged",
+      "turns": 1,
+      "frozen": {
+        "prototype": "elder_care",
+        "rationale": "基于共享 transcript 中的讨论，我们全队一致选择 R2 客户原型：老人照护向 · 独居长辈（周阿姨）。理由如下：第一，痛点明确且可量化。周阿姨半年内夜间跌倒、躺地近一小时的事件，直接对应我们 ToB 方案中“跌倒率下降、响应时间缩短”的核心指标。这个真实场景让我们的技术能力有明确的落地抓手，也便于向付费决策人——她儿子——呈现清晰的 ROI 数据。第二，付费决策链路清晰。周阿姨本人消费谨慎，但儿子作为远程关怀的主要推动者，是实际的采购决策人。他已有“安全”的刚需（定时电话查岗、提出装摄像头），我们提供的非侵入式解决方案正好能替代摄像头，既满足安全需求又尊重周阿姨的尊严，这解决了两代人僵持的核心矛盾，采购逻辑顺畅。第三，场景延伸性强。周阿姨案例中“净水器坏了三个月才发现”的细节，说明远程监测和异常提醒不仅限于跌倒场景，还能覆盖居家设备状态、生活规律异常等，这为我们后续增值服务（如设备维护提醒、健康趋势报告）提供了扩展空间，符合���们三层收费模型的设计。综上，我们选定周阿姨作为 R2 客户原型，继续深耕老人照护差异化方向。"
+      }
+    },
+    {
+      "decision_point": "cards_segment_1",
+      "termination": "leader_decision",
+      "turns": 10,
+      "frozen": {
+        "cards": [
+          {
+            "cap_id": "perception_base",
+            "tier": "low"
+          },
+          {
+            "cap_id": "emotion_recognition",
+            "tier": "low"
+          },
+          {
+            "cap_id": "basic_avoidance",
+            "tier": "mid"
+          }
+        ],
+        "rationale": "组长明确提交3张卡片：perception_base（low）、emotion_recognition（low）、basic_avoidance（mid），分别属于perception_understanding和mobility_navigation两个group，每个group至少1张，满足当前段要求。"
+      },
+      "cumulative_cards": [
+        {
+          "cap_id": "perception_base",
+          "tier": "low"
+        },
+        {
+          "cap_id": "emotion_recognition",
+          "tier": "low"
+        },
+        {
+          "cap_id": "basic_avoidance",
+          "tier": "mid"
+        }
+      ],
+      "compatibility": {
+        "valid": false,
+        "violations": [
+          {
+            "type": "group_min",
+            "group": "interaction_expression",
+            "message": "交互与表达 至少选 1 张"
+          },
+          {
+            "type": "group_min",
+            "group": "safety_trust",
+            "message": "安全与信任 至少选 1 张"
+          },
+          {
+            "type": "group_min",
+            "group": "expand_connect",
+            "message": "可扩展与连接 至少选 1 张"
+          },
+          {
+            "type": "group_min",
+            "group": "ops_maintenance",
+            "message": "可运营与可维护 至少选 1 张"
+          },
+          {
+            "type": "total_min",
+            "message": "总数 3 < 6"
+          }
+        ],
+        "hardViolationCount": 5
+      }
+    },
+    {
+      "decision_point": "cards_segment_2",
+      "termination": "converged",
+      "turns": 6,
+      "frozen": {
+        "cards": [
+          {
+            "cap_id": "voice_basic",
+            "tier": "mid"
+          },
+          {
+            "cap_id": "expressive_style_pack",
+            "tier": "low"
+          },
+          {
+            "cap_id": "touch_hug",
+            "tier": "low"
+          },
+          {
+            "cap_id": "privacy_trust",
+            "tier": "mid"
+          },
+          {
+            "cap_id": "family_guardian",
+            "tier": "mid"
+          }
+        ],
+        "rationale": "基于团队讨论，提交最终选卡方案：交互与表达组选voice_basic(mid)、expressive_style_pack(low)、touch_hug(low)；安全与信任组选privacy_trust(mid)、family_guardian(mid)。两组均满足至少1张，累计5张卡，负载10个，总增量1680元。"
+      },
+      "cumulative_cards": [
+        {
+          "cap_id": "perception_base",
+          "tier": "low"
+        },
+        {
+          "cap_id": "emotion_recognition",
+          "tier": "low"
+        },
+        {
+          "cap_id": "basic_avoidance",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "voice_basic",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "expressive_style_pack",
+          "tier": "low"
+        },
+        {
+          "cap_id": "touch_hug",
+          "tier": "low"
+        },
+        {
+          "cap_id": "privacy_trust",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "family_guardian",
+          "tier": "mid"
+        }
+      ],
+      "compatibility": {
+        "valid": false,
+        "violations": [
+          {
+            "type": "group_min",
+            "group": "expand_connect",
+            "message": "可扩展与连接 至少选 1 张"
+          },
+          {
+            "type": "group_min",
+            "group": "ops_maintenance",
+            "message": "可运营与可维护 至少选 1 张"
+          }
+        ],
+        "hardViolationCount": 2
+      }
+    },
+    {
+      "decision_point": "cards_segment_3",
+      "termination": "leader_decision",
+      "turns": 7,
+      "frozen": {
+        "cards": [
+          {
+            "cap_id": "cloud_update",
+            "tier": "low"
+          },
+          {
+            "cap_id": "remote_monitor",
+            "tier": "low"
+          },
+          {
+            "cap_id": "predictive_maint",
+            "tier": "low"
+          }
+        ],
+        "rationale": "组长明确提交最终选卡方案：expand_connect组选cloud_update@low，ops_maintenance组选remote_monitor@low和predictive_maint@low，总成本700元，累计卡片8张满足最低要求。"
+      },
+      "cumulative_cards": [
+        {
+          "cap_id": "perception_base",
+          "tier": "low"
+        },
+        {
+          "cap_id": "emotion_recognition",
+          "tier": "low"
+        },
+        {
+          "cap_id": "basic_avoidance",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "voice_basic",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "expressive_style_pack",
+          "tier": "low"
+        },
+        {
+          "cap_id": "touch_hug",
+          "tier": "low"
+        },
+        {
+          "cap_id": "privacy_trust",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "family_guardian",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "cloud_update",
+          "tier": "low"
+        },
+        {
+          "cap_id": "remote_monitor",
+          "tier": "low"
+        },
+        {
+          "cap_id": "predictive_maint",
+          "tier": "low"
+        }
+      ],
+      "compatibility": {
+        "valid": true,
+        "violations": [],
+        "hardViolationCount": 0
+      }
+    },
+    {
+      "decision_point": "price",
+      "termination": "converged",
+      "turns": 3,
+      "frozen": {
+        "price": 4200,
+        "rationale": "组长明确最终定价为4200元/月，并给出了成本、客户价值、市场策略三方面理由。"
+      }
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "synthetic": true,
+  "grid_id": "ToC_DIFF_ELDER",
+  "grid_label": "ToC / 老人 / 差异化",
+  "architecture": "Hybrid",
+  "vp_summary": {
+    "who": "子女",
+    "pain": "老人不愿主动佩戴设备，子女无法及时了解父母健康数据",
+    "how": "以消费级传感器提供基础健康监测，让子女通过数据查看获得安心感，分阶段升级功能"
+  },
+  "target_gm": 0.255,
+  "jinang_fit": {
+    "market": {
+      "match_strength": 0.72,
+      "matched": true,
+      "bonus": 0.0144,
+      "member_strengths": [
+        0.7333,
+        0.7,
+        0.8,
+        0.6333,
+        0.7333
+      ]
+    },
+    "tech": {
+      "match_strength": 0.74,
+      "matched": true,
+      "member_strengths": [
+        0.7333,
+        0.8,
+        0.7333,
+        0.6333,
+        0.8
+      ]
+    }
+  },
+  "WTPref_scaled": 5427,
+  "WTPadj_scaled": 3799,
+  "wtp_multiplier": 0.3292,
+  "VPscore": 3.2
+}

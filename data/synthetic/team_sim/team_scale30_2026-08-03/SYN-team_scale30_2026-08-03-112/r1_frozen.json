@@ -1,0 +1,41 @@
+{
+  "synthetic": true,
+  "grid_id": "ToB_DIFF_ELDER",
+  "grid_label": "ToB / 老人 / 差异化",
+  "architecture": "Hybrid",
+  "vp_summary": {
+    "who": "养老机构",
+    "pain": "机构采购时难以向上级交代，担心新东西不好用、出了事担责",
+    "how": "提供防跌倒和主动跟随的差异化功能，绑定数据验收包（如跌倒预警响应时间、主动跟随成功率），并通过光效交互降低老人抵触感，给机构可视化验收标准"
+  },
+  "target_gm": 0.425,
+  "jinang_fit": {
+    "market": {
+      "match_strength": 0.6867,
+      "matched": true,
+      "bonus": 0.0137,
+      "member_strengths": [
+        0.6667,
+        0.7,
+        0.8,
+        0.6333,
+        0.6333
+      ]
+    },
+    "tech": {
+      "match_strength": 0.7067,
+      "matched": true,
+      "member_strengths": [
+        0.6333,
+        0.7333,
+        0.6,
+        0.7667,
+        0.8
+      ]
+    }
+  },
+  "WTPref_scaled": 5780,
+  "WTPadj_scaled": 4193,
+  "wtp_multiplier": 0.5631,
+  "VPscore": 3.8
+}

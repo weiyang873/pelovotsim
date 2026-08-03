@@ -1,0 +1,282 @@
+{
+  "synthetic": true,
+  "r1": {
+    "grid_id": "ToB_DIFF_ELDER",
+    "channel": "ToB",
+    "strategy": "DIFF",
+    "age": "ELDER",
+    "arch_tag": "Hybrid",
+    "SAM_billion": 339,
+    "WTPmean": 19268,
+    "WTPmedian": 18091,
+    "WTPref": 19268,
+    "WTPadj": 19652,
+    "C": 4.6,
+    "G": 4.3,
+    "E_raw": 4.7,
+    "Eadj": 4.7,
+    "rho_C": 0.9,
+    "lambda_G": 1.03,
+    "lambda_E": 1.07,
+    "wtp_multiplier": 1.0049,
+    "jinang_match_strength": 0.6533,
+    "jinang_E_boost": 0,
+    "grid_label": "ToB / 老人 / 差异化",
+    "VPscore": 4.5,
+    "WTPref_scaled": 5780,
+    "WTPadj_scaled": 5896,
+    "wtp_vp_effect": 0.9919,
+    "jinang_wtp_bonus": 0.0131,
+    "wtp_mult_compressed": 1.0199333333333334,
+    "jinang_settlement": {
+      "market": {
+        "match_strength": 0.6533,
+        "matched": true,
+        "bonus": 0.0131,
+        "member_strengths": [
+          0.8,
+          0.5,
+          0.7667,
+          0.7,
+          0.5
+        ]
+      },
+      "tech": {
+        "match_strength": 0.76,
+        "matched": true,
+        "member_strengths": [
+          0.8,
+          0.7333,
+          0.6333,
+          0.8,
+          0.8333
+        ]
+      }
+    },
+    "target_gm": 0.65,
+    "target_gm_rule": "min(GM_cap, rho_C * target_gm_suggest_multiplier)"
+  },
+  "r1_frozen": {
+    "grid_id": "ToB_DIFF_ELDER",
+    "grid_label": "ToB / 老人 / 差异化",
+    "architecture": "Hybrid",
+    "vp_summary": {
+      "who": "机构客户（保险公司、高端养老社区）",
+      "pain": "老人健康数据分散、缺乏可信的差异化陪伴与健康管理方案",
+      "how": "提供硬件+算法+订阅服务的混合架构，以机构灯塔案例背书，并通过子女端数据透明订阅制建立信任闭环"
+    },
+    "target_gm": 0.65,
+    "jinang_fit": {
+      "market": {
+        "match_strength": 0.6533,
+        "matched": true,
+        "bonus": 0.0131,
+        "member_strengths": [
+          0.8,
+          0.5,
+          0.7667,
+          0.7,
+          0.5
+        ]
+      },
+      "tech": {
+        "match_strength": 0.76,
+        "matched": true,
+        "member_strengths": [
+          0.8,
+          0.7333,
+          0.6333,
+          0.8,
+          0.8333
+        ]
+      }
+    },
+    "WTPref_scaled": 5780,
+    "WTPadj_scaled": 5896,
+    "wtp_multiplier": 1.0049,
+    "VPscore": 4.5
+  },
+  "r2": {
+    "roi": -25.51263335600418,
+    "profit": -5274380,
+    "units": 146,
+    "adoption": 0.00012791560647348307,
+    "S_competitive": 1,
+    "R": 1,
+    "share": 0.00012791560647348307,
+    "P": 4599,
+    "WTP": 5896,
+    "e": 1.2,
+    "wtpPrime": 5937.660212266667,
+    "WTPref": 5895.214666666667,
+    "rawWtpMult": 1.0049,
+    "compressedWtpMult": 1.0199333333333334,
+    "WTPref_adjusted": 5895.214666666667,
+    "gamma": 4.361612740129031,
+    "gammaRaw": 4.559340347444945,
+    "gammaEff": 4.361612740129031,
+    "z": -8.964011912132133,
+    "Meff": 1144000,
+    "X": 1.9385880144275245,
+    "I": 0.34122000267176394,
+    "fit": 0.406,
+    "actualGm": 0.41164383561643836,
+    "V": 0.02400000000000005,
+    "dCOGS": 1416,
+    "nre_total_wan": 405.29999999999995,
+    "f_total": 5553000,
+    "f_total_wan": 555.3,
+    "breakeven_q": 2934,
+    "unitMargin": 1893,
+    "revenueNet": 572047,
+    "variableCost": 295012,
+    "fixedCost": 5553000,
+    "fBase": 1500000,
+    "positiveDCOGS": 1416,
+    "risk": 1.3800000000000003,
+    "subLift": 0.44000000000000017,
+    "load": 29,
+    "complexity": 2.36,
+    "coverCore": 0.5800000000000001,
+    "coverNice": 0,
+    "penalty": 605,
+    "overBudget": 236.79999999999995,
+    "overCap": 5,
+    "budgetBenchmark": 1179.2,
+    "unitProfitHW": 1893.15,
+    "profitHW": 277035,
+    "profitSub": 2190,
+    "attach": 0.02999999999999997,
+    "ltvSub": 15,
+    "rdInvestment": 206736,
+    "violations": [],
+    "hardViolationCount": 0,
+    "evi": 0.7,
+    "w_star": {
+      "perception": 0.20547042313003303,
+      "mobility": 0.12591309720136107,
+      "interaction": 0.2006807087361654,
+      "safety_privacy": 0.1957735824607485,
+      "integration": 0.12499884070891575,
+      "operations": 0.14716334776277631
+    },
+    "sev": 0.568914293347897,
+    "tagBreakdown": [
+      {
+        "tag": "安全与信任",
+        "dimCN": "安全与信任",
+        "dimKey": "safety_privacy",
+        "w": 0.1957735824607485,
+        "tier": "core",
+        "imp": 2
+      },
+      {
+        "tag": "情感陪伴",
+        "dimCN": "交互与表达",
+        "dimKey": "interaction",
+        "w": 0.2006807087361654,
+        "tier": "core",
+        "imp": 2
+      },
+      {
+        "tag": "远程关怀",
+        "dimCN": "安全与信任",
+        "dimKey": "safety_privacy",
+        "w": 0.1957735824607485,
+        "tier": "core",
+        "imp": 2
+      },
+      {
+        "tag": "省心可靠",
+        "dimCN": "可运营与可维护",
+        "dimKey": "operations",
+        "w": 0.14716334776277631,
+        "tier": "nice",
+        "imp": 1
+      },
+      {
+        "tag": "情绪识别",
+        "dimCN": "感知与理解",
+        "dimKey": "perception",
+        "w": 0.20547042313003303,
+        "tier": "core",
+        "imp": 2
+      },
+      {
+        "tag": "场景感知",
+        "dimCN": "感知与理解",
+        "dimKey": "perception",
+        "w": 0.20547042313003303,
+        "tier": "core",
+        "imp": 2
+      }
+    ],
+    "COGSbase": 600,
+    "COGS": 2016
+  },
+  "r2_price": 4599,
+  "r2_cards": [
+    {
+      "cap_id": "perception_base",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "emotion_recognition",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "adaptive_learning",
+      "tier": "low"
+    },
+    {
+      "cap_id": "basic_avoidance",
+      "tier": "low"
+    },
+    {
+      "cap_id": "persona_dialog",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "visual_expression",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "music_companion",
+      "tier": "low"
+    },
+    {
+      "cap_id": "privacy_trust",
+      "tier": "low"
+    },
+    {
+      "cap_id": "family_guardian",
+      "tier": "low"
+    },
+    {
+      "cap_id": "child_safety",
+      "tier": "low"
+    },
+    {
+      "cap_id": "cloud_update",
+      "tier": "low"
+    },
+    {
+      "cap_id": "api_iot",
+      "tier": "low"
+    },
+    {
+      "cap_id": "remote_monitor",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "self_diag",
+      "tier": "mid"
+    }
+  ],
+  "r2_prototype": {
+    "prototype": "elder_care",
+    "rationale": "付费决策人清晰（儿子买单、客单价高、续费意愿强），技术壁垒能发挥（传感器+算法+异常检测适用于夜摔、净水器故障等场景），信任闭环可建立（机构灯塔案例背书，形成有温度的陪伴而非冷冰冰的监控）。"
+  },
+  "profit": -5274380,
+  "profitable": false
+}

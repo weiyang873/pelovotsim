@@ -1,0 +1,41 @@
+{
+  "synthetic": true,
+  "grid_id": "ToC_DIFF_ELDER",
+  "grid_label": "ToC / 老人 / 差异化",
+  "architecture": "Hybrid",
+  "vp_summary": {
+    "who": "老人及其子女",
+    "pain": "老人陪伴场景中缺乏自然交互和安全感",
+    "how": "以安全+自然交互为核心卖点，通过内容种草触达子女决策者，用模块化硬件快速迭代打磨C端口碑"
+  },
+  "target_gm": 0.595,
+  "jinang_fit": {
+    "market": {
+      "match_strength": 0.6533,
+      "matched": true,
+      "bonus": 0.0131,
+      "member_strengths": [
+        0.8,
+        0.5667,
+        0.7333,
+        0.6333,
+        0.5333
+      ]
+    },
+    "tech": {
+      "match_strength": 0.6867,
+      "matched": true,
+      "member_strengths": [
+        0.7667,
+        0.6333,
+        0.6,
+        0.6333,
+        0.8
+      ]
+    }
+  },
+  "WTPref_scaled": 5427,
+  "WTPadj_scaled": 4567,
+  "wtp_multiplier": 0.7372,
+  "VPscore": 3.9
+}

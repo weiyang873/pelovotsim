@@ -1,0 +1,101 @@
+{
+  "synthetic": true,
+  "batch": "team_scale30_2026-08-03",
+  "team_id": "SYN-team_scale30_2026-08-03-110",
+  "seed": 110,
+  "profile_ids": [
+    "B-05",
+    "B-01",
+    "C-04",
+    "A-01",
+    "B-03"
+  ],
+  "leader_id": "B-05",
+  "seed_reproducibility_note": "seed 仅保证 profile 抽样、组长指定、发言调度可复现；LLM 决策输出不保证跨次复现。",
+  "model_config": {
+    "provider": "deepseek",
+    "base_url": "https://api.deepseek.com",
+    "default_model": "deepseek-chat",
+    "roles": {
+      "vp_coach": null,
+      "interview_coach": null,
+      "persona_generator": null,
+      "tag_extractor": null,
+      "requirement_builder": null,
+      "vp_scorer": null,
+      "vp_embedding_scorer": null,
+      "vp_word_scorer": null,
+      "chat_service": null,
+      "embedding": "Xenova/paraphrase-multilingual-MiniLM-L12-v2"
+    }
+  },
+  "model_override": "deepseek-v4-flash",
+  "config_snapshot": {
+    "team_size": 5,
+    "max_turns_r1_discussion": 12,
+    "max_turns_r2_per_segment": 7,
+    "submit_parse_retries": 2,
+    "leader_willingness_boost": 1.5,
+    "speakers_per_turn": {
+      "min": 1,
+      "max": 2
+    },
+    "r2_card_segments": [
+      [
+        "perception_understanding",
+        "mobility_navigation"
+      ],
+      [
+        "interaction_expression",
+        "safety_trust"
+      ],
+      [
+        "expand_connect",
+        "ops_maintenance"
+      ]
+    ],
+    "temperature": 0.55
+  },
+  "selection_constraints": {
+    "per_group_min": 1,
+    "total_min": 6
+  },
+  "selection_total_max_source": "配置无 total_max 或等价字段；真实前端无显式选卡总数硬上限，仅显示超过 12 张的研发投入提示。",
+  "dimension_key_mapping": [
+    {
+      "group_id": "interaction_expression",
+      "name": "交互与表达"
+    },
+    {
+      "group_id": "perception_understanding",
+      "name": "感知与理解"
+    },
+    {
+      "group_id": "mobility_navigation",
+      "name": "运动与导航"
+    },
+    {
+      "group_id": "safety_trust",
+      "name": "安全与信任"
+    },
+    {
+      "group_id": "expand_connect",
+      "name": "可扩展与连接"
+    },
+    {
+      "group_id": "ops_maintenance",
+      "name": "可运营与可维护"
+    }
+  ],
+  "implementation_notes": [
+    "profile_pool is built deterministically from scripts/sim/persona_pool.js manager archetypes, with synthetic speaking_tendency attached; no production route or DB is used.",
+    "R1 discussion uses the shared transcript protocol and existing vpWordScorer for VP scoring; vpCoach is not used as a live moderator API because its exported chat loop is session/UI-shaped.",
+    "R2 customer summaries use frozen game_config_v0.1/persona_archetypes_v1.json elder_care/adult_companion narrative seeds."
+  ],
+  "file_sha256": {
+    "team_sim_config": "0105095744acb918544f706ff3336da71a9b23b6ab8398183f1acf2e6ef43c17",
+    "capability_groups_v2": "38eccff0c10efb8454fd25a8a05c3b925221f1f78d58608d3a5ea6bb35829182",
+    "compatibility_rules_v2": "0c6cf08d59c2ae5d5d08cc5d625b059b495215a877d11718dc3aa027a1e26930",
+    "llm_models": "3a8a701e47d973332ec8449e5bf3a7cb16c8002160abf18ab06241f7418431a6"
+  }
+}

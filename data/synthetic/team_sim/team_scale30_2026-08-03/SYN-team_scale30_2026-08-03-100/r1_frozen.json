@@ -1,0 +1,41 @@
+{
+  "synthetic": true,
+  "grid_id": "ToB_DIFF_ELDER",
+  "grid_label": "ToB / 老人 / 差异化",
+  "architecture": "Hybrid",
+  "vp_summary": {
+    "who": "机构客户（保险公司、高端养老社区）",
+    "pain": "老人健康数据分散、缺乏可信的差异化陪伴与健康管理方案",
+    "how": "提供硬件+算法+订阅服务的混合架构，以机构灯塔案例背书，并通过子女端数据透明订阅制建立信任闭环"
+  },
+  "target_gm": 0.65,
+  "jinang_fit": {
+    "market": {
+      "match_strength": 0.6533,
+      "matched": true,
+      "bonus": 0.0131,
+      "member_strengths": [
+        0.8,
+        0.5,
+        0.7667,
+        0.7,
+        0.5
+      ]
+    },
+    "tech": {
+      "match_strength": 0.76,
+      "matched": true,
+      "member_strengths": [
+        0.8,
+        0.7333,
+        0.6333,
+        0.8,
+        0.8333
+      ]
+    }
+  },
+  "WTPref_scaled": 5780,
+  "WTPadj_scaled": 5896,
+  "wtp_multiplier": 1.0049,
+  "VPscore": 4.5
+}

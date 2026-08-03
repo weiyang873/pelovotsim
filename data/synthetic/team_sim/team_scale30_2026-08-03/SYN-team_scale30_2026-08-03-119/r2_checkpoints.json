@@ -1,0 +1,254 @@
+{
+  "synthetic": true,
+  "checkpoints": [
+    {
+      "decision_point": "prototype",
+      "termination": "converged",
+      "turns": 1,
+      "frozen": {
+        "prototype": "elder_care",
+        "rationale": "周阿姨的安全需求是刚需，付费意愿强，技术优势能最大化，付费结构清晰，且差异化空间大。"
+      }
+    },
+    {
+      "decision_point": "cards_segment_1",
+      "termination": "leader_decision",
+      "turns": 9,
+      "frozen": {
+        "cards": [
+          {
+            "cap_id": "perception_base",
+            "tier": "mid"
+          },
+          {
+            "cap_id": "emotion_recognition",
+            "tier": "low"
+          },
+          {
+            "cap_id": "adaptive_learning",
+            "tier": "low"
+          },
+          {
+            "cap_id": "basic_avoidance",
+            "tier": "low"
+          }
+        ],
+        "rationale": "组长明确提交4张卡片：perception_base为mid档，emotion_recognition为low档，adaptive_learning为low档，basic_avoidance为low档。覆盖perception_understanding和mobility_navigation两个group，但全队累计仅4张，未达到至少6张的硬性要求。"
+      },
+      "cumulative_cards": [
+        {
+          "cap_id": "perception_base",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "emotion_recognition",
+          "tier": "low"
+        },
+        {
+          "cap_id": "adaptive_learning",
+          "tier": "low"
+        },
+        {
+          "cap_id": "basic_avoidance",
+          "tier": "low"
+        }
+      ],
+      "compatibility": {
+        "valid": false,
+        "violations": [
+          {
+            "type": "group_min",
+            "group": "interaction_expression",
+            "message": "交互与表达 至少选 1 张"
+          },
+          {
+            "type": "group_min",
+            "group": "safety_trust",
+            "message": "安全与信任 至少选 1 张"
+          },
+          {
+            "type": "group_min",
+            "group": "expand_connect",
+            "message": "可扩展与连接 至少选 1 张"
+          },
+          {
+            "type": "group_min",
+            "group": "ops_maintenance",
+            "message": "可运营与可维护 至少选 1 张"
+          },
+          {
+            "type": "total_min",
+            "message": "总数 4 < 6"
+          }
+        ],
+        "hardViolationCount": 5
+      }
+    },
+    {
+      "decision_point": "cards_segment_2",
+      "termination": "leader_decision",
+      "turns": 7,
+      "frozen": {
+        "cards": [
+          {
+            "cap_id": "voice_basic",
+            "tier": "mid"
+          },
+          {
+            "cap_id": "touch_hug",
+            "tier": "low"
+          },
+          {
+            "cap_id": "privacy_trust",
+            "tier": "mid"
+          },
+          {
+            "cap_id": "family_guardian",
+            "tier": "mid"
+          }
+        ],
+        "rationale": "根据组长发言，最终提交4张卡：interaction_expression组包含voice_basic（mid档）和touch_hug（low档），safety_trust组包含privacy_trust（mid档）和family_guardian（mid档）。每个组至少1张，全队累计6张满足要求。"
+      },
+      "cumulative_cards": [
+        {
+          "cap_id": "perception_base",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "emotion_recognition",
+          "tier": "low"
+        },
+        {
+          "cap_id": "adaptive_learning",
+          "tier": "low"
+        },
+        {
+          "cap_id": "basic_avoidance",
+          "tier": "low"
+        },
+        {
+          "cap_id": "voice_basic",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "touch_hug",
+          "tier": "low"
+        },
+        {
+          "cap_id": "privacy_trust",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "family_guardian",
+          "tier": "mid"
+        }
+      ],
+      "compatibility": {
+        "valid": false,
+        "violations": [
+          {
+            "type": "group_min",
+            "group": "expand_connect",
+            "message": "可扩展与连接 至少选 1 张"
+          },
+          {
+            "type": "group_min",
+            "group": "ops_maintenance",
+            "message": "可运营与可维护 至少选 1 张"
+          }
+        ],
+        "hardViolationCount": 2
+      }
+    },
+    {
+      "decision_point": "cards_segment_3",
+      "termination": "converged",
+      "turns": 3,
+      "frozen": {
+        "cards": [
+          {
+            "cap_id": "cloud_update",
+            "tier": "mid"
+          },
+          {
+            "cap_id": "api_iot",
+            "tier": "low"
+          },
+          {
+            "cap_id": "remote_monitor",
+            "tier": "mid"
+          },
+          {
+            "cap_id": "self_diag",
+            "tier": "low"
+          }
+        ],
+        "rationale": "组长明确提交了4张卡片：expand_connect组选择cloud_update（mid档）和api_iot（low档），ops_maintenance组选择remote_monitor（mid档）和self_diag（low档）。每个组至少1张，累计4张，加上此前冻结的8张总计12张，满足全队至少6张的要求。"
+      },
+      "cumulative_cards": [
+        {
+          "cap_id": "perception_base",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "emotion_recognition",
+          "tier": "low"
+        },
+        {
+          "cap_id": "adaptive_learning",
+          "tier": "low"
+        },
+        {
+          "cap_id": "basic_avoidance",
+          "tier": "low"
+        },
+        {
+          "cap_id": "voice_basic",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "touch_hug",
+          "tier": "low"
+        },
+        {
+          "cap_id": "privacy_trust",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "family_guardian",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "cloud_update",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "api_iot",
+          "tier": "low"
+        },
+        {
+          "cap_id": "remote_monitor",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "self_diag",
+          "tier": "low"
+        }
+      ],
+      "compatibility": {
+        "valid": true,
+        "violations": [],
+        "hardViolationCount": 0
+      }
+    },
+    {
+      "decision_point": "price",
+      "termination": "converged",
+      "turns": 1,
+      "frozen": {
+        "price": 3499,
+        "rationale": "组长发言明确主推3499元‘安心版’套餐，并锚定3999元，但最终定价抽取主推价格3499元。"
+      }
+    }
+  ]
+}

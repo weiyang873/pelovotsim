@@ -1,0 +1,250 @@
+{
+  "synthetic": true,
+  "checkpoints": [
+    {
+      "decision_point": "prototype",
+      "termination": "leader_decision",
+      "turns": 7,
+      "frozen": {
+        "prototype": "adult_companion",
+        "rationale": "我们队经过讨论，最终选择成人陪伴向·都市独居青年（林小姐）作为R2客户原型。核心理由包括：PMF验证速度优先，林小姐决策链短、试错成本低，能在8-12周内获得清晰数据；情感陪伴场景具备高溢价空间，痛点更贴近高溢价需求；技术能力可复用并形成差异化，支持主动关怀体验；避免红海竞争，差异化在于主动响应。"
+      }
+    },
+    {
+      "decision_point": "cards_segment_1",
+      "termination": "converged",
+      "turns": 10,
+      "frozen": {
+        "cards": [
+          {
+            "cap_id": "perception_base",
+            "tier": "mid"
+          },
+          {
+            "cap_id": "emotion_recognition",
+            "tier": "mid"
+          },
+          {
+            "cap_id": "adaptive_learning",
+            "tier": "low"
+          },
+          {
+            "cap_id": "memory_album",
+            "tier": "low"
+          },
+          {
+            "cap_id": "basic_avoidance",
+            "tier": "mid"
+          }
+        ],
+        "rationale": "根据组长发言，明确提交当前段的5张卡片：感知与理解组包含perception_base(mid)、emotion_recognition(mid)、adaptive_learning(low)、memory_album(low)；运动与导航组包含basic_avoidance(mid)。follow_mode被明确暂缓，不提交。全队累计6张，满足最低要求。"
+      },
+      "cumulative_cards": [
+        {
+          "cap_id": "perception_base",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "emotion_recognition",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "adaptive_learning",
+          "tier": "low"
+        },
+        {
+          "cap_id": "memory_album",
+          "tier": "low"
+        },
+        {
+          "cap_id": "basic_avoidance",
+          "tier": "mid"
+        }
+      ],
+      "compatibility": {
+        "valid": false,
+        "violations": [
+          {
+            "type": "group_min",
+            "group": "interaction_expression",
+            "message": "交互与表达 至少选 1 张"
+          },
+          {
+            "type": "group_min",
+            "group": "safety_trust",
+            "message": "安全与信任 至少选 1 张"
+          },
+          {
+            "type": "group_min",
+            "group": "expand_connect",
+            "message": "可扩展与连接 至少选 1 张"
+          },
+          {
+            "type": "group_min",
+            "group": "ops_maintenance",
+            "message": "可运营与可维护 至少选 1 张"
+          },
+          {
+            "type": "total_min",
+            "message": "总数 5 < 6"
+          }
+        ],
+        "hardViolationCount": 5
+      }
+    },
+    {
+      "decision_point": "cards_segment_2",
+      "termination": "leader_decision",
+      "turns": 7,
+      "frozen": {
+        "cards": [
+          {
+            "cap_id": "persona_dialog",
+            "tier": "mid"
+          },
+          {
+            "cap_id": "touch_hug",
+            "tier": "low"
+          },
+          {
+            "cap_id": "privacy_trust",
+            "tier": "mid"
+          }
+        ],
+        "rationale": "根据组长发言，明确提交了交互与表达组的persona_dialog（mid）和touch_hug（low），以及安全与信任组的privacy_trust（mid），共3张卡，满足当前段每个group至少1张的要求；加上此前已选的5张，全队累计8张，符合至少6张的约束。"
+      },
+      "cumulative_cards": [
+        {
+          "cap_id": "perception_base",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "emotion_recognition",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "adaptive_learning",
+          "tier": "low"
+        },
+        {
+          "cap_id": "memory_album",
+          "tier": "low"
+        },
+        {
+          "cap_id": "basic_avoidance",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "persona_dialog",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "touch_hug",
+          "tier": "low"
+        },
+        {
+          "cap_id": "privacy_trust",
+          "tier": "mid"
+        }
+      ],
+      "compatibility": {
+        "valid": false,
+        "violations": [
+          {
+            "type": "group_min",
+            "group": "expand_connect",
+            "message": "可扩展与连接 至少选 1 张"
+          },
+          {
+            "type": "group_min",
+            "group": "ops_maintenance",
+            "message": "可运营与可维护 至少选 1 张"
+          }
+        ],
+        "hardViolationCount": 2
+      }
+    },
+    {
+      "decision_point": "cards_segment_3",
+      "termination": "converged",
+      "turns": 7,
+      "frozen": {
+        "cards": [
+          {
+            "cap_id": "cloud_update",
+            "tier": "mid"
+          },
+          {
+            "cap_id": "self_diag",
+            "tier": "mid"
+          },
+          {
+            "cap_id": "remote_monitor",
+            "tier": "mid"
+          }
+        ],
+        "rationale": "组长明确提交3张卡：expand_connect功能区选cloud_update@mid，ops_maintenance功能区选self_diag@mid和remote_monitor@mid，均明确指定档位。总计3张，满足当前段每功能区至少1张；全队累计11张，满足至少6张要求。"
+      },
+      "cumulative_cards": [
+        {
+          "cap_id": "perception_base",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "emotion_recognition",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "adaptive_learning",
+          "tier": "low"
+        },
+        {
+          "cap_id": "memory_album",
+          "tier": "low"
+        },
+        {
+          "cap_id": "basic_avoidance",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "persona_dialog",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "touch_hug",
+          "tier": "low"
+        },
+        {
+          "cap_id": "privacy_trust",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "cloud_update",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "self_diag",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "remote_monitor",
+          "tier": "mid"
+        }
+      ],
+      "compatibility": {
+        "valid": true,
+        "violations": [],
+        "hardViolationCount": 0
+      }
+    },
+    {
+      "decision_point": "price",
+      "termination": "leader_decision",
+      "turns": 7,
+      "frozen": {
+        "price": 4500,
+        "rationale": "组长明确表示最终将R2定价锚定在4500元，并提供了成本、GMV和调价空间等论据。"
+      }
+    }
+  ]
+}

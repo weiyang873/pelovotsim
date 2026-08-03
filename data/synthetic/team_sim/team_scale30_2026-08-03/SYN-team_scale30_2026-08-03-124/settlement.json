@@ -1,0 +1,262 @@
+{
+  "synthetic": true,
+  "r1": {
+    "grid_id": "ToC_DIFF_ELDER",
+    "channel": "ToC",
+    "strategy": "DIFF",
+    "age": "ELDER",
+    "arch_tag": "Hybrid",
+    "SAM_billion": 347,
+    "WTPmean": 18091,
+    "WTPmedian": 18091,
+    "WTPref": 18091,
+    "WTPadj": 14550,
+    "C": 3.9,
+    "G": 3.6,
+    "E_raw": 4,
+    "Eadj": 4,
+    "rho_C": 0.7,
+    "lambda_G": 0.96,
+    "lambda_E": 1,
+    "wtp_multiplier": 0.6814,
+    "jinang_match_strength": 0.7,
+    "jinang_E_boost": 0,
+    "grid_label": "ToC / 老人 / 差异化",
+    "VPscore": 3.8,
+    "WTPref_scaled": 5427,
+    "WTPadj_scaled": 4365,
+    "wtp_vp_effect": 0.672,
+    "jinang_wtp_bonus": 0.014,
+    "wtp_mult_compressed": 0.8042666666666667,
+    "jinang_settlement": {
+      "market": {
+        "match_strength": 0.7,
+        "matched": true,
+        "bonus": 0.014,
+        "member_strengths": [
+          0.6333,
+          0.8,
+          0.6667,
+          0.7,
+          0.7
+        ]
+      },
+      "tech": {
+        "match_strength": 0.74,
+        "matched": true,
+        "member_strengths": [
+          0.7667,
+          0.6333,
+          0.7333,
+          0.8333,
+          0.7333
+        ]
+      }
+    },
+    "target_gm": 0.595,
+    "target_gm_rule": "min(GM_cap, rho_C * target_gm_suggest_multiplier)"
+  },
+  "r1_frozen": {
+    "grid_id": "ToC_DIFF_ELDER",
+    "grid_label": "ToC / 老人 / 差异化",
+    "architecture": "Hybrid",
+    "vp_summary": {
+      "who": "银发群体及其子女",
+      "pain": "银发群体的安全健康需求是刚性痛点",
+      "how": "通过生物信号感知技术，硬件+数据订阅服务的混合模式，以子女作为付费入口和传播节点"
+    },
+    "target_gm": 0.595,
+    "jinang_fit": {
+      "market": {
+        "match_strength": 0.7,
+        "matched": true,
+        "bonus": 0.014,
+        "member_strengths": [
+          0.6333,
+          0.8,
+          0.6667,
+          0.7,
+          0.7
+        ]
+      },
+      "tech": {
+        "match_strength": 0.74,
+        "matched": true,
+        "member_strengths": [
+          0.7667,
+          0.6333,
+          0.7333,
+          0.8333,
+          0.7333
+        ]
+      }
+    },
+    "WTPref_scaled": 5427,
+    "WTPadj_scaled": 4365,
+    "wtp_multiplier": 0.6814,
+    "VPscore": 3.8
+  },
+  "r2": {
+    "roi": -17.05088497517022,
+    "profit": -3999268,
+    "units": 219,
+    "adoption": 0.00016274560498116326,
+    "S_competitive": 1,
+    "R": 1,
+    "share": 0.00016274560498116326,
+    "P": 4500,
+    "WTP": 4365,
+    "e": 1.2,
+    "wtpPrime": 4510.4289048,
+    "WTPref": 4364.7552000000005,
+    "rawWtpMult": 0.6814,
+    "compressedWtpMult": 0.8042666666666667,
+    "WTPref_adjusted": 4364.7552000000005,
+    "gamma": 3.767613562474796,
+    "gammaRaw": 4.559340347444945,
+    "gammaEff": 3.767613562474796,
+    "z": -8.72315952311478,
+    "Meff": 1344000,
+    "X": 2.661196014427526,
+    "I": 0.3395733360050973,
+    "fit": 0.4333333333333334,
+    "actualGm": 0.37866666666666665,
+    "V": 0.11125000000000004,
+    "dCOGS": 1071,
+    "nre_total_wan": 288.06,
+    "f_total": 4380600,
+    "f_total_wan": 438.06,
+    "breakeven_q": 2571,
+    "unitMargin": 1704,
+    "revenueNet": 738214,
+    "variableCost": 365498,
+    "fixedCost": 4380600,
+    "fBase": 1500000,
+    "positiveDCOGS": 1071,
+    "risk": 1.05,
+    "subLift": 0.34,
+    "load": 23,
+    "complexity": 1.785,
+    "coverCore": 0.5333333333333334,
+    "coverNice": 0.2,
+    "penalty": 297,
+    "overBudget": 198,
+    "overCap": 0,
+    "budgetBenchmark": 873,
+    "unitProfitHW": 1704,
+    "profitHW": 372716,
+    "profitSub": 8913,
+    "attach": 0.08166666666666672,
+    "ltvSub": 41,
+    "rdInvestment": 234549,
+    "violations": [],
+    "hardViolationCount": 0,
+    "evi": 0.7,
+    "w_star": {
+      "perception": 0.2205180421776521,
+      "mobility": 0.11086547815374201,
+      "interaction": 0.2909664230218797,
+      "safety_privacy": 0.13558310627027234,
+      "integration": 0.07985598356605862,
+      "operations": 0.16221096681039537
+    },
+    "sev": 0.5568761981098018,
+    "tagBreakdown": [
+      {
+        "tag": "安全与信任",
+        "dimCN": "安全与信任",
+        "dimKey": "safety_privacy",
+        "w": 0.13558310627027234,
+        "tier": "nice",
+        "imp": 1
+      },
+      {
+        "tag": "情感陪伴",
+        "dimCN": "交互与表达",
+        "dimKey": "interaction",
+        "w": 0.2909664230218797,
+        "tier": "core",
+        "imp": 3
+      },
+      {
+        "tag": "远程关怀",
+        "dimCN": "安全与信任",
+        "dimKey": "safety_privacy",
+        "w": 0.13558310627027234,
+        "tier": "nice",
+        "imp": 1
+      },
+      {
+        "tag": "省心可靠",
+        "dimCN": "可运营与可维护",
+        "dimKey": "operations",
+        "w": 0.16221096681039537,
+        "tier": "nice",
+        "imp": 2
+      },
+      {
+        "tag": "情绪识别",
+        "dimCN": "感知与理解",
+        "dimKey": "perception",
+        "w": 0.2205180421776521,
+        "tier": "core",
+        "imp": 3
+      },
+      {
+        "tag": "场景感知",
+        "dimCN": "感知与理解",
+        "dimKey": "perception",
+        "w": 0.2205180421776521,
+        "tier": "core",
+        "imp": 3
+      }
+    ],
+    "COGSbase": 600,
+    "COGS": 1671
+  },
+  "r2_price": 4500,
+  "r2_cards": [
+    {
+      "cap_id": "perception_base",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "adaptive_learning",
+      "tier": "low"
+    },
+    {
+      "cap_id": "basic_avoidance",
+      "tier": "low"
+    },
+    {
+      "cap_id": "persona_dialog",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "family_guardian",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "privacy_trust",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "cloud_update",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "remote_monitor",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "self_diag",
+      "tier": "mid"
+    }
+  ],
+  "r2_prototype": {
+    "prototype": "elder_care",
+    "rationale": "我们队选择 elder_care（老人照护向 · 独居长辈）作为 R2 客户原型。理由如下：1. 痛点与差异化高度契合：周阿姨的案例中，独居摔跤、夜间起夜、子女远程担忧都是非常具体且高频的安全健康痛点，这直接对应我们提出的'生物信号感知技术+硬件+数据订阅'混合架构，能最大化发挥我们在健康数据算法上的差异化壁垒。2. 付费入口与传播节点清晰：周阿姨的独子在深圳工作、一年仅回两三次，是天然的付费方和决策入口。他既有强烈的安全需求（摔跤事件的心理阴影），又面临'安全vs尊严'的代际矛盾，这恰恰是我们产品可以解决的——通过数据感知而非摄像头监控，既满足子女的远程关怀需求，又保护老人的隐私和尊严。3. 市场锦囊匹配度高：子女作为付费入口和传播节点，天然具备社交裂变动力——他们会在同龄人圈层中分享'给爸妈装了什么好东西'，这正好是我们市场策略能发力的方向。对比成人陪伴向的林小姐案例，虽然情感陪伴需求真实存在，但其痛点更多是情绪层面的软性需求，付费意愿和传播动力都不如老人照护向中子女对父母安全的刚性诉求来得强烈。而且智能音箱'永远等我下指令'的痛点，恰恰说明这个市场对'主动关怀'的期待还不够成熟，不如老人照护场景中'安全刚需'来得直接。综上，elder_care 是更优选择。"
+  },
+  "profit": -3999268,
+  "profitable": false
+}

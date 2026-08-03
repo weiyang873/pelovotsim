@@ -1,0 +1,262 @@
+{
+  "synthetic": true,
+  "r1": {
+    "grid_id": "ToB_DIFF_ELDER",
+    "channel": "ToB",
+    "strategy": "DIFF",
+    "age": "ELDER",
+    "arch_tag": "Hybrid",
+    "SAM_billion": 339,
+    "WTPmean": 19268,
+    "WTPmedian": 18091,
+    "WTPref": 19268,
+    "WTPadj": 13977,
+    "C": 3.2,
+    "G": 4.1,
+    "E_raw": 5,
+    "Eadj": 5,
+    "rho_C": 0.5,
+    "lambda_G": 1.01,
+    "lambda_E": 1.1,
+    "wtp_multiplier": 0.5631,
+    "jinang_match_strength": 0.6867,
+    "jinang_E_boost": 0,
+    "grid_label": "ToB / 老人 / 差异化",
+    "VPscore": 3.8,
+    "WTPref_scaled": 5780,
+    "WTPadj_scaled": 4193,
+    "wtp_vp_effect": 0.5555,
+    "jinang_wtp_bonus": 0.0137,
+    "wtp_mult_compressed": 0.7254,
+    "jinang_settlement": {
+      "market": {
+        "match_strength": 0.6867,
+        "matched": true,
+        "bonus": 0.0137,
+        "member_strengths": [
+          0.6667,
+          0.7,
+          0.8,
+          0.6333,
+          0.6333
+        ]
+      },
+      "tech": {
+        "match_strength": 0.7067,
+        "matched": true,
+        "member_strengths": [
+          0.6333,
+          0.7333,
+          0.6,
+          0.7667,
+          0.8
+        ]
+      }
+    },
+    "target_gm": 0.425,
+    "target_gm_rule": "min(GM_cap, rho_C * target_gm_suggest_multiplier)"
+  },
+  "r1_frozen": {
+    "grid_id": "ToB_DIFF_ELDER",
+    "grid_label": "ToB / 老人 / 差异化",
+    "architecture": "Hybrid",
+    "vp_summary": {
+      "who": "养老机构",
+      "pain": "机构采购时难以向上级交代，担心新东西不好用、出了事担责",
+      "how": "提供防跌倒和主动跟随的差异化功能，绑定数据验收包（如跌倒预警响应时间、主动跟随成功率），并通过光效交互降低老人抵触感，给机构可视化验收标准"
+    },
+    "target_gm": 0.425,
+    "jinang_fit": {
+      "market": {
+        "match_strength": 0.6867,
+        "matched": true,
+        "bonus": 0.0137,
+        "member_strengths": [
+          0.6667,
+          0.7,
+          0.8,
+          0.6333,
+          0.6333
+        ]
+      },
+      "tech": {
+        "match_strength": 0.7067,
+        "matched": true,
+        "member_strengths": [
+          0.6333,
+          0.7333,
+          0.6,
+          0.7667,
+          0.8
+        ]
+      }
+    },
+    "WTPref_scaled": 5780,
+    "WTPadj_scaled": 4193,
+    "wtp_multiplier": 0.5631,
+    "VPscore": 3.8
+  },
+  "r2": {
+    "roi": -133.21878388555925,
+    "profit": -4522112,
+    "units": 31,
+    "adoption": 0.000027341394241773163,
+    "S_competitive": 1,
+    "R": 1,
+    "share": 0.000027341394241773163,
+    "P": 3800,
+    "WTP": 4193,
+    "e": 1.2,
+    "wtpPrime": 4192.812,
+    "WTPref": 4192.812,
+    "rawWtpMult": 0.5631,
+    "compressedWtpMult": 0.7254,
+    "WTPref_adjusted": 4192.812,
+    "gamma": 4.559340347444945,
+    "gammaRaw": 4.559340347444945,
+    "gammaEff": 4.559340347444945,
+    "z": -10.507081389793507,
+    "Meff": 1144000,
+    "X": 1.1251080144275254,
+    "I": 0.2775200026717639,
+    "fit": 0.22399999999999998,
+    "actualGm": 0.4039473684210526,
+    "V": 0,
+    "dCOGS": 1095,
+    "nre_total_wan": 307.02,
+    "f_total": 4570200,
+    "f_total_wan": 457.02,
+    "breakeven_q": 2978,
+    "unitMargin": 1535,
+    "revenueNet": 101030,
+    "variableCost": 53017,
+    "fixedCost": 4570200,
+    "fBase": 1500000,
+    "positiveDCOGS": 1095,
+    "risk": 0.96,
+    "subLift": 0.31000000000000005,
+    "load": 22,
+    "complexity": 1.825,
+    "coverCore": 0.32,
+    "coverNice": 0,
+    "penalty": 385,
+    "overBudget": 256.4,
+    "overCap": 0,
+    "budgetBenchmark": 838.6,
+    "unitProfitHW": 1535,
+    "profitHW": 48013,
+    "profitSub": 460,
+    "attach": 0.029500000000000026,
+    "ltvSub": 15,
+    "rdInvestment": 33945,
+    "violations": [],
+    "hardViolationCount": 0,
+    "evi": 0.7,
+    "w_star": {
+      "perception": 0.20547042313003303,
+      "mobility": 0.12591309720136107,
+      "interaction": 0.2006807087361654,
+      "safety_privacy": 0.1957735824607485,
+      "integration": 0.12499884070891575,
+      "operations": 0.14716334776277631
+    },
+    "sev": 0.568914293347897,
+    "tagBreakdown": [
+      {
+        "tag": "安全与信任",
+        "dimCN": "安全与信任",
+        "dimKey": "safety_privacy",
+        "w": 0.1957735824607485,
+        "tier": "core",
+        "imp": 2
+      },
+      {
+        "tag": "情感陪伴",
+        "dimCN": "交互与表达",
+        "dimKey": "interaction",
+        "w": 0.2006807087361654,
+        "tier": "core",
+        "imp": 2
+      },
+      {
+        "tag": "远程关怀",
+        "dimCN": "安全与信任",
+        "dimKey": "safety_privacy",
+        "w": 0.1957735824607485,
+        "tier": "core",
+        "imp": 2
+      },
+      {
+        "tag": "省心可靠",
+        "dimCN": "可运营与可维护",
+        "dimKey": "operations",
+        "w": 0.14716334776277631,
+        "tier": "nice",
+        "imp": 1
+      },
+      {
+        "tag": "情绪识别",
+        "dimCN": "感知与理解",
+        "dimKey": "perception",
+        "w": 0.20547042313003303,
+        "tier": "core",
+        "imp": 2
+      },
+      {
+        "tag": "场景感知",
+        "dimCN": "感知与理解",
+        "dimKey": "perception",
+        "w": 0.20547042313003303,
+        "tier": "core",
+        "imp": 2
+      }
+    ],
+    "COGSbase": 600,
+    "COGS": 1695
+  },
+  "r2_price": 3800,
+  "r2_cards": [
+    {
+      "cap_id": "memory_album",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "adaptive_learning",
+      "tier": "low"
+    },
+    {
+      "cap_id": "basic_avoidance",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "persona_dialog",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "visual_expression",
+      "tier": "low"
+    },
+    {
+      "cap_id": "privacy_trust",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "family_guardian",
+      "tier": "low"
+    },
+    {
+      "cap_id": "api_iot",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "remote_monitor",
+      "tier": "mid"
+    }
+  ],
+  "r2_prototype": {
+    "prototype": "elder_care",
+    "rationale": "团队一致决定R2继续聚焦老人照护向，选择“独居长辈”周阿姨作为客户原型。理由包括：R1已验证ToB老人市场的预算路径和差异化壁垒，运动控制与空间感知技术在老人场景能直接变现（如防跌倒、主动跟随）；周阿姨场景痛点具体（夜里摔跤、儿子查岗），产品可对儿子卖“安心”、对周阿姨卖“尊严”，价值主张更硬。成人陪伴向的林小姐需求虽存在，但团队缺乏内容运营基因，订阅制留存和续费风险大，硬件后内容跟不上易退订，成本难回收，因此不选择成人陪伴。"
+  },
+  "profit": -4522112,
+  "profitable": false
+}

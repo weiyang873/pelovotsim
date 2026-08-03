@@ -1,0 +1,226 @@
+{
+  "synthetic": true,
+  "checkpoints": [
+    {
+      "decision_point": "prototype",
+      "termination": "leader_decision",
+      "turns": 7,
+      "frozen": {
+        "prototype": "elder_care",
+        "rationale": "R2选择周阿姨（老人照护向·独居长辈），理由：复用R1机构渠道信任，冷启动成本低；痛点从安全升级为尊严+陪伴，触觉技术可差异化；先站稳一个市场再扩张，后续延伸至林小姐方向。"
+      }
+    },
+    {
+      "decision_point": "cards_segment_1",
+      "termination": "converged",
+      "turns": 4,
+      "frozen": {
+        "cards": [
+          {
+            "cap_id": "perception_base",
+            "tier": "mid"
+          },
+          {
+            "cap_id": "emotion_recognition",
+            "tier": "low"
+          },
+          {
+            "cap_id": "basic_avoidance",
+            "tier": "low"
+          },
+          {
+            "cap_id": "follow_mode",
+            "tier": "low"
+          }
+        ],
+        "rationale": "组长明确提交了4张卡：感知与理解组2张（perception_base mid档、emotion_recognition low档），运动与导航组2张（basic_avoidance low档、follow_mode low档）。每个group均至少1张，满足分组要求；但总卡数4张低于全队下限6张，未满足硬性要求。"
+      },
+      "cumulative_cards": [
+        {
+          "cap_id": "perception_base",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "emotion_recognition",
+          "tier": "low"
+        },
+        {
+          "cap_id": "basic_avoidance",
+          "tier": "low"
+        },
+        {
+          "cap_id": "follow_mode",
+          "tier": "low"
+        }
+      ],
+      "compatibility": {
+        "valid": false,
+        "violations": [
+          {
+            "type": "group_min",
+            "group": "interaction_expression",
+            "message": "交互与表达 至少选 1 张"
+          },
+          {
+            "type": "group_min",
+            "group": "safety_trust",
+            "message": "安全与信任 至少选 1 张"
+          },
+          {
+            "type": "group_min",
+            "group": "expand_connect",
+            "message": "可扩展与连接 至少选 1 张"
+          },
+          {
+            "type": "group_min",
+            "group": "ops_maintenance",
+            "message": "可运营与可维护 至少选 1 张"
+          },
+          {
+            "type": "total_min",
+            "message": "总数 4 < 6"
+          }
+        ],
+        "hardViolationCount": 5
+      }
+    },
+    {
+      "decision_point": "cards_segment_2",
+      "termination": "converged",
+      "turns": 5,
+      "frozen": {
+        "cards": [
+          {
+            "cap_id": "persona_dialog",
+            "tier": "mid"
+          },
+          {
+            "cap_id": "privacy_trust",
+            "tier": "mid"
+          },
+          {
+            "cap_id": "family_guardian",
+            "tier": "mid"
+          }
+        ],
+        "rationale": "组长明确提交了最终选卡方案：交互与表达组选择persona_dialog（mid档），安全与信任组选择privacy_trust（mid档）和family_guardian（mid档），共3张卡，满足每个组至少1张的要求，但全队累计总数未达到至少6张。"
+      },
+      "cumulative_cards": [
+        {
+          "cap_id": "perception_base",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "emotion_recognition",
+          "tier": "low"
+        },
+        {
+          "cap_id": "basic_avoidance",
+          "tier": "low"
+        },
+        {
+          "cap_id": "follow_mode",
+          "tier": "low"
+        },
+        {
+          "cap_id": "persona_dialog",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "privacy_trust",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "family_guardian",
+          "tier": "mid"
+        }
+      ],
+      "compatibility": {
+        "valid": false,
+        "violations": [
+          {
+            "type": "group_min",
+            "group": "expand_connect",
+            "message": "可扩展与连接 至少选 1 张"
+          },
+          {
+            "type": "group_min",
+            "group": "ops_maintenance",
+            "message": "可运营与可维护 至少选 1 张"
+          }
+        ],
+        "hardViolationCount": 2
+      }
+    },
+    {
+      "decision_point": "cards_segment_3",
+      "termination": "converged",
+      "turns": 6,
+      "frozen": {
+        "cards": [
+          {
+            "cap_id": "api_iot",
+            "tier": "mid"
+          },
+          {
+            "cap_id": "self_diag",
+            "tier": "mid"
+          }
+        ],
+        "rationale": "组长明确提交两张卡：expand_connect 功能区的 api_iot 为 mid 档，ops_maintenance 功能区的 self_diag 为 mid 档；全队累计 8 张，满足至少 6 张要求。"
+      },
+      "cumulative_cards": [
+        {
+          "cap_id": "perception_base",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "emotion_recognition",
+          "tier": "low"
+        },
+        {
+          "cap_id": "basic_avoidance",
+          "tier": "low"
+        },
+        {
+          "cap_id": "follow_mode",
+          "tier": "low"
+        },
+        {
+          "cap_id": "persona_dialog",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "privacy_trust",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "family_guardian",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "api_iot",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "self_diag",
+          "tier": "mid"
+        }
+      ],
+      "compatibility": {
+        "valid": true,
+        "violations": [],
+        "hardViolationCount": 0
+      }
+    },
+    {
+      "decision_point": "price",
+      "termination": "converged",
+      "turns": 2,
+      "frozen": {
+        "price": 3999,
+        "rationale": "组长明确最终定价为3999元，并说明基础款含12个月内容订阅，另设4999元企业高配包作为渠道差异化选项。"
+      }
+    }
+  ]
+}

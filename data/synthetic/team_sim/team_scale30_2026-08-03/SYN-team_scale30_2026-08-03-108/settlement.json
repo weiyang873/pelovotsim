@@ -1,0 +1,270 @@
+{
+  "synthetic": true,
+  "r1": {
+    "grid_id": "ToB_DIFF_ELDER",
+    "channel": "ToB",
+    "strategy": "DIFF",
+    "age": "ELDER",
+    "arch_tag": "Hybrid",
+    "SAM_billion": 339,
+    "WTPmean": 19268,
+    "WTPmedian": 18091,
+    "WTPref": 19268,
+    "WTPadj": 13585,
+    "C": 3.2,
+    "G": 4.1,
+    "E_raw": 4.4,
+    "Eadj": 4.4,
+    "rho_C": 0.5,
+    "lambda_G": 1.01,
+    "lambda_E": 1.04,
+    "wtp_multiplier": 0.5326,
+    "jinang_match_strength": 0.7,
+    "jinang_E_boost": 0,
+    "grid_label": "ToB / 老人 / 差异化",
+    "VPscore": 3.7,
+    "WTPref_scaled": 5780,
+    "WTPadj_scaled": 4076,
+    "wtp_vp_effect": 0.5252,
+    "jinang_wtp_bonus": 0.014,
+    "wtp_mult_compressed": 0.7050666666666666,
+    "jinang_settlement": {
+      "market": {
+        "match_strength": 0.7,
+        "matched": true,
+        "bonus": 0.014,
+        "member_strengths": [
+          0.7667,
+          0.5,
+          0.8,
+          0.6333,
+          0.8
+        ]
+      },
+      "tech": {
+        "match_strength": 0.7533,
+        "matched": true,
+        "member_strengths": [
+          0.7667,
+          0.6333,
+          0.8333,
+          0.8,
+          0.7333
+        ]
+      }
+    },
+    "target_gm": 0.425,
+    "target_gm_rule": "min(GM_cap, rho_C * target_gm_suggest_multiplier)"
+  },
+  "r1_frozen": {
+    "grid_id": "ToB_DIFF_ELDER",
+    "grid_label": "ToB / 老人 / 差异化",
+    "architecture": "Hybrid",
+    "vp_summary": {
+      "who": "养老机构",
+      "pain": "夜间看护合规留痕要求及网络不稳定的痛点",
+      "how": "边缘计算跌倒检测方案，离线可用，提供合规留痕和数据增值服务"
+    },
+    "target_gm": 0.425,
+    "jinang_fit": {
+      "market": {
+        "match_strength": 0.7,
+        "matched": true,
+        "bonus": 0.014,
+        "member_strengths": [
+          0.7667,
+          0.5,
+          0.8,
+          0.6333,
+          0.8
+        ]
+      },
+      "tech": {
+        "match_strength": 0.7533,
+        "matched": true,
+        "member_strengths": [
+          0.7667,
+          0.6333,
+          0.8333,
+          0.8,
+          0.7333
+        ]
+      }
+    },
+    "WTPref_scaled": 5780,
+    "WTPadj_scaled": 4076,
+    "wtp_multiplier": 0.5326,
+    "VPscore": 3.7
+  },
+  "r2": {
+    "roi": 0.48540386597639607,
+    "profit": 1819100,
+    "units": 3123,
+    "adoption": 0.00272985722829552,
+    "S_competitive": 1,
+    "R": 1,
+    "share": 0.00272985722829552,
+    "P": 4500,
+    "WTP": 4076,
+    "e": 1.2,
+    "wtpPrime": 4449.192762666667,
+    "WTPref": 4075.2853333333333,
+    "rawWtpMult": 0.5326,
+    "compressedWtpMult": 0.7050666666666666,
+    "WTPref_adjusted": 4075.2853333333333,
+    "gamma": 2.889886125569845,
+    "gammaRaw": 4.559340347444945,
+    "gammaEff": 2.889886125569845,
+    "z": -5.900772378396942,
+    "Meff": 1144000,
+    "X": 4.790289474056817,
+    "I": 0.44357212482533637,
+    "fit": 0.7200000000000001,
+    "actualGm": 0.44999999999999996,
+    "V": 0.3058333333333335,
+    "dCOGS": 1200,
+    "nre_total_wan": 326.88,
+    "f_total": 4768800,
+    "f_total_wan": 476.88,
+    "breakeven_q": 2355,
+    "unitMargin": 2025,
+    "revenueNet": 11945309,
+    "variableCost": 5621322,
+    "fixedCost": 4768800,
+    "fBase": 1500000,
+    "positiveDCOGS": 1200,
+    "risk": 1.1300000000000001,
+    "subLift": 0.4100000000000001,
+    "load": 27,
+    "complexity": 2,
+    "coverCore": 0.8000000000000002,
+    "coverNice": 0.5333333333333333,
+    "penalty": 727,
+    "overBudget": 384.79999999999995,
+    "overCap": 3,
+    "budgetBenchmark": 815.2,
+    "unitProfitHW": 2025,
+    "profitHW": 6323987,
+    "profitSub": 264639,
+    "attach": 0.1698333333333334,
+    "ltvSub": 85,
+    "rdInvestment": 3747600,
+    "violations": [],
+    "hardViolationCount": 0,
+    "evi": 0.7,
+    "w_star": {
+      "perception": 0.24249213919155543,
+      "mobility": 0.11237053296113358,
+      "interaction": 0.2562326515516191,
+      "safety_privacy": 0.138981696866395,
+      "integration": 0.15171125568548482,
+      "operations": 0.0982117237438121
+    },
+    "sev": 0.600682261405723,
+    "tagBreakdown": [
+      {
+        "tag": "情感陪伴",
+        "dimCN": "交互与表达",
+        "dimKey": "interaction",
+        "w": 0.2562326515516191,
+        "tier": "core",
+        "imp": 3
+      },
+      {
+        "tag": "个性化推荐",
+        "dimCN": "感知与理解",
+        "dimKey": "perception",
+        "w": 0.24249213919155543,
+        "tier": "core",
+        "imp": 3
+      },
+      {
+        "tag": "隐私保护",
+        "dimCN": "安全与信任",
+        "dimKey": "safety_privacy",
+        "w": 0.138981696866395,
+        "tier": "nice",
+        "imp": 1
+      },
+      {
+        "tag": "内容生态",
+        "dimCN": "可扩展与连接",
+        "dimKey": "integration",
+        "w": 0.15171125568548482,
+        "tier": "nice",
+        "imp": 1
+      },
+      {
+        "tag": "情绪识别",
+        "dimCN": "感知与理解",
+        "dimKey": "perception",
+        "w": 0.24249213919155543,
+        "tier": "core",
+        "imp": 3
+      },
+      {
+        "tag": "安全与信任",
+        "dimCN": "安全与信任",
+        "dimKey": "safety_privacy",
+        "w": 0.138981696866395,
+        "tier": "nice",
+        "imp": 1
+      }
+    ],
+    "COGSbase": 600,
+    "COGS": 1800
+  },
+  "r2_price": 4500,
+  "r2_cards": [
+    {
+      "cap_id": "perception_base",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "emotion_recognition",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "adaptive_learning",
+      "tier": "low"
+    },
+    {
+      "cap_id": "memory_album",
+      "tier": "low"
+    },
+    {
+      "cap_id": "basic_avoidance",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "persona_dialog",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "touch_hug",
+      "tier": "low"
+    },
+    {
+      "cap_id": "privacy_trust",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "cloud_update",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "self_diag",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "remote_monitor",
+      "tier": "mid"
+    }
+  ],
+  "r2_prototype": {
+    "prototype": "adult_companion",
+    "rationale": "我们队经过讨论，最终选择成人陪伴向·都市独居青年（林小姐）作为R2客户原型。核心理由包括：PMF验证速度优先，林小姐决策链短、试错成本低，能在8-12周内获得清晰数据；情感陪伴场景具备高溢价空间，痛点更贴近高溢价需求；技术能力可复用并形成差异化，支持主动关怀体验；避免红海竞争，差异化在于主动响应。"
+  },
+  "profit": 1819100,
+  "profitable": true
+}

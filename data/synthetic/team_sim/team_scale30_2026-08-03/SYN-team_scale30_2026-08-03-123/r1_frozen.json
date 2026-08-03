@@ -1,0 +1,41 @@
+{
+  "synthetic": true,
+  "grid_id": "ToC_DIFF_ELDER",
+  "grid_label": "ToC / 老人 / 差异化",
+  "architecture": "Hybrid",
+  "vp_summary": {
+    "who": "老年用户",
+    "pain": "情感陪伴缺失",
+    "how": "触觉体感差异化体验结合硬件与服务订阅"
+  },
+  "target_gm": 0.425,
+  "jinang_fit": {
+    "market": {
+      "match_strength": 0.6867,
+      "matched": true,
+      "bonus": 0.0137,
+      "member_strengths": [
+        0.7333,
+        0.5333,
+        0.6667,
+        0.8,
+        0.7
+      ]
+    },
+    "tech": {
+      "match_strength": 0.74,
+      "matched": true,
+      "member_strengths": [
+        0.6333,
+        0.7333,
+        0.7333,
+        0.8,
+        0.8
+      ]
+    }
+  },
+  "WTPref_scaled": 5427,
+  "WTPadj_scaled": 3799,
+  "wtp_multiplier": 0.424,
+  "VPscore": 3.1
+}

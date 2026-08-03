@@ -1,0 +1,210 @@
+{
+  "synthetic": true,
+  "checkpoints": [
+    {
+      "decision_point": "prototype",
+      "termination": "converged",
+      "turns": 1,
+      "frozen": {
+        "prototype": "elder_care",
+        "rationale": "老人照护向的独居长辈（周阿姨）痛点刚性更强，付费方与决策链清晰，订阅模式契合度高，且产品留存和用户粘性更高。"
+      }
+    },
+    {
+      "decision_point": "cards_segment_1",
+      "termination": "converged",
+      "turns": 6,
+      "frozen": {
+        "cards": [
+          {
+            "cap_id": "adaptive_learning",
+            "tier": "mid"
+          },
+          {
+            "cap_id": "lidar_nav",
+            "tier": "mid"
+          },
+          {
+            "cap_id": "perception_base",
+            "tier": "low"
+          }
+        ],
+        "rationale": "基于团队讨论，最终确定选卡：感知与理解组选adaptive_learning（mid档），运动与导航组选lidar_nav（mid档）和perception_base（low档）。方案以安全优先、情感陪伴次之、基础感知补充，总成本1670元增量/11负载，符合当前段每组至少1张且全队累计至少6张的要求。"
+      },
+      "cumulative_cards": [
+        {
+          "cap_id": "adaptive_learning",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "lidar_nav",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "perception_base",
+          "tier": "low"
+        }
+      ],
+      "compatibility": {
+        "valid": false,
+        "violations": [
+          {
+            "type": "group_min",
+            "group": "interaction_expression",
+            "message": "交互与表达 至少选 1 张"
+          },
+          {
+            "type": "group_min",
+            "group": "safety_trust",
+            "message": "安全与信任 至少选 1 张"
+          },
+          {
+            "type": "group_min",
+            "group": "expand_connect",
+            "message": "可扩展与连接 至少选 1 张"
+          },
+          {
+            "type": "group_min",
+            "group": "ops_maintenance",
+            "message": "可运营与可维护 至少选 1 张"
+          },
+          {
+            "type": "total_min",
+            "message": "总数 3 < 6"
+          }
+        ],
+        "hardViolationCount": 5
+      }
+    },
+    {
+      "decision_point": "cards_segment_2",
+      "termination": "converged",
+      "turns": 5,
+      "frozen": {
+        "cards": [
+          {
+            "cap_id": "visual_expression",
+            "tier": "mid"
+          },
+          {
+            "cap_id": "privacy_trust",
+            "tier": "low"
+          },
+          {
+            "cap_id": "family_guardian",
+            "tier": "low"
+          }
+        ],
+        "rationale": "组长明确提交了当前段的3张卡片：visual_expression为mid档，privacy_trust和family_guardian均为low档，覆盖interaction_expression和safety_trust两个group，每group至少1张，且全队累计卡片数已满足至少6张要求。"
+      },
+      "cumulative_cards": [
+        {
+          "cap_id": "adaptive_learning",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "lidar_nav",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "perception_base",
+          "tier": "low"
+        },
+        {
+          "cap_id": "visual_expression",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "privacy_trust",
+          "tier": "low"
+        },
+        {
+          "cap_id": "family_guardian",
+          "tier": "low"
+        }
+      ],
+      "compatibility": {
+        "valid": false,
+        "violations": [
+          {
+            "type": "group_min",
+            "group": "expand_connect",
+            "message": "可扩展与连接 至少选 1 张"
+          },
+          {
+            "type": "group_min",
+            "group": "ops_maintenance",
+            "message": "可运营与可维护 至少选 1 张"
+          }
+        ],
+        "hardViolationCount": 2
+      }
+    },
+    {
+      "decision_point": "cards_segment_3",
+      "termination": "converged",
+      "turns": 2,
+      "frozen": {
+        "cards": [
+          {
+            "cap_id": "cloud_update",
+            "tier": "mid"
+          },
+          {
+            "cap_id": "remote_monitor",
+            "tier": "mid"
+          }
+        ],
+        "rationale": "组长明确提交了当前段两张卡片：expand_connect功能区的cloud_update选mid档，ops_maintenance功能区的remote_monitor选mid档。当前段两个group均至少1张，累计总数达到8张，满足要求。"
+      },
+      "cumulative_cards": [
+        {
+          "cap_id": "adaptive_learning",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "lidar_nav",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "perception_base",
+          "tier": "low"
+        },
+        {
+          "cap_id": "visual_expression",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "privacy_trust",
+          "tier": "low"
+        },
+        {
+          "cap_id": "family_guardian",
+          "tier": "low"
+        },
+        {
+          "cap_id": "cloud_update",
+          "tier": "mid"
+        },
+        {
+          "cap_id": "remote_monitor",
+          "tier": "mid"
+        }
+      ],
+      "compatibility": {
+        "valid": true,
+        "violations": [],
+        "hardViolationCount": 0
+      }
+    },
+    {
+      "decision_point": "price",
+      "termination": "converged",
+      "turns": 4,
+      "frozen": {
+        "price": 4800,
+        "rationale": "组长明确建议最终定价为4800元，并在区间4500-5000元中选定4800元。"
+      }
+    }
+  ]
+}

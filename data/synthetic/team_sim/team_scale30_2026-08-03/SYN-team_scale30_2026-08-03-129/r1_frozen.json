@@ -1,0 +1,41 @@
+{
+  "synthetic": true,
+  "grid_id": "ToC_DIFF_ELDER",
+  "grid_label": "ToC / 老人 / 差异化",
+  "architecture": "Hybrid",
+  "vp_summary": {
+    "who": "老年人",
+    "pain": "渠道信任不足，安全监测与情感陪伴痛点待验证",
+    "how": "通过线下体验、口碑复购、社区摆摊试用建立信任，结合云服务能力与社区服务站、保险公司等合作触达用户"
+  },
+  "target_gm": 0.255,
+  "jinang_fit": {
+    "market": {
+      "match_strength": 0.7267,
+      "matched": true,
+      "bonus": 0.0145,
+      "member_strengths": [
+        0.7333,
+        0.6667,
+        0.7333,
+        0.7,
+        0.8
+      ]
+    },
+    "tech": {
+      "match_strength": 0.7133,
+      "matched": true,
+      "member_strengths": [
+        0.8333,
+        0.6333,
+        0.6,
+        0.7667,
+        0.7333
+      ]
+    }
+  },
+  "WTPref_scaled": 5427,
+  "WTPadj_scaled": 3799,
+  "wtp_multiplier": 0.3196,
+  "VPscore": 3.2
+}

@@ -1,0 +1,13 @@
+{
+  "synthetic": true,
+  "failed": true,
+  "batch": "team_scale30_2026-08-03",
+  "seed": 101,
+  "team_id": "SYN-team_scale30_2026-08-03-101",
+  "failed_at": "2026-08-03T14:34:26.667Z",
+  "error": {
+    "name": "Error",
+    "message": "parse_failure: cap_id not in current segment: adaptive_learning",
+    "stack": "Error: parse_failure: cap_id not in current segment: adaptive_learning\n    at leaderSubmit (/Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/server/synthetic/teamSim/orchestrator.js:389:9)\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\n    at async runR2Decision (/Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/server/synthetic/teamSim/orchestrator.js:691:21)\n    at async runTeam (/Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/server/synthetic/teamSim/orchestrator.js:936:14)\n    at async main (/Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/scripts/run_team_sim.js:87:22)"
+  }
+}

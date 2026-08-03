@@ -1,0 +1,41 @@
+{
+  "synthetic": true,
+  "grid_id": "ToB_DIFF_ELDER",
+  "grid_label": "ToB / 老人 / 差异化",
+  "architecture": "Hybrid",
+  "vp_summary": {
+    "who": "政企客户（养老机构或社区健康管理）",
+    "pain": "需要可交付、可维护、可追溯的落地保障和信任壁垒",
+    "how": "通过模块化硬件、区域经销和本地服务网络，结合安全合规认证，提供差异化体验"
+  },
+  "target_gm": 0.65,
+  "jinang_fit": {
+    "market": {
+      "match_strength": 0.6267,
+      "matched": true,
+      "bonus": 0.0125,
+      "member_strengths": [
+        0.5,
+        0.5,
+        0.8,
+        0.6333,
+        0.7
+      ]
+    },
+    "tech": {
+      "match_strength": 0.7267,
+      "matched": true,
+      "member_strengths": [
+        0.6333,
+        0.8,
+        0.7333,
+        0.6333,
+        0.8333
+      ]
+    }
+  },
+  "WTPref_scaled": 5780,
+  "WTPadj_scaled": 5359,
+  "wtp_multiplier": 0.8657,
+  "VPscore": 4.3
+}

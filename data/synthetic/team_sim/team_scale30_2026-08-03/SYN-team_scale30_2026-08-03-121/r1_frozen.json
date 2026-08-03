@@ -1,0 +1,41 @@
+{
+  "synthetic": true,
+  "grid_id": "ToB_COST_ADULT",
+  "grid_label": "ToB / 成人 / 成本",
+  "architecture": "Hybrid",
+  "vp_summary": {
+    "who": "机构客户（基建、能源、环保、医疗、教育等领域）",
+    "pain": "机构采购决策链中敏感数据外泄顾虑、内部立项责任风险",
+    "how": "以安全监护为差异化价值，提供可量化效果、合规认证与售后响应机制"
+  },
+  "target_gm": 0.65,
+  "jinang_fit": {
+    "market": {
+      "match_strength": 0.6467,
+      "matched": true,
+      "bonus": 0.0129,
+      "member_strengths": [
+        0.7667,
+        0.6,
+        0.7667,
+        0.4333,
+        0.6667
+      ]
+    },
+    "tech": {
+      "match_strength": 0.7067,
+      "matched": true,
+      "member_strengths": [
+        0.7667,
+        0.6667,
+        0.6667,
+        0.7,
+        0.7333
+      ]
+    }
+  },
+  "WTPref_scaled": 4634,
+  "WTPadj_scaled": 4523,
+  "wtp_multiplier": 0.9392,
+  "VPscore": 4.4
+}

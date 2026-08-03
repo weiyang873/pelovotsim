@@ -1,0 +1,41 @@
+{
+  "synthetic": true,
+  "grid_id": "ToB_DIFF_ELDER",
+  "grid_label": "ToB / 老人 / 差异化",
+  "architecture": "Hybrid",
+  "vp_summary": {
+    "who": "养老机构",
+    "pain": "护工留存和人力成本高，设备采购决策链路长",
+    "how": "提供模块化硬件+Hybrid服务订阅的解决方案，并配套家属端App作为透明化服务触点"
+  },
+  "target_gm": 0.425,
+  "jinang_fit": {
+    "market": {
+      "match_strength": 0.7467,
+      "matched": true,
+      "bonus": 0.0149,
+      "member_strengths": [
+        0.6667,
+        0.8,
+        0.7667,
+        0.8,
+        0.7
+      ]
+    },
+    "tech": {
+      "match_strength": 0.68,
+      "matched": true,
+      "member_strengths": [
+        0.6,
+        0.6333,
+        0.7333,
+        0.8,
+        0.6333
+      ]
+    }
+  },
+  "WTPref_scaled": 5780,
+  "WTPadj_scaled": 4046,
+  "wtp_multiplier": 0.4973,
+  "VPscore": 3.5
+}

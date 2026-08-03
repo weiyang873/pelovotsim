@@ -1,0 +1,262 @@
+{
+  "synthetic": true,
+  "r1": {
+    "grid_id": "ToC_DIFF_ELDER",
+    "channel": "ToC",
+    "strategy": "DIFF",
+    "age": "ELDER",
+    "arch_tag": "Hybrid",
+    "SAM_billion": 347,
+    "WTPmean": 18091,
+    "WTPmedian": 18091,
+    "WTPref": 18091,
+    "WTPadj": 15223,
+    "C": 3.7,
+    "G": 3.9,
+    "E_raw": 4.5,
+    "Eadj": 4.5,
+    "rho_C": 0.7,
+    "lambda_G": 0.99,
+    "lambda_E": 1.05,
+    "wtp_multiplier": 0.7372,
+    "jinang_match_strength": 0.6533,
+    "jinang_E_boost": 0,
+    "grid_label": "ToC / 老人 / 差异化",
+    "VPscore": 3.9,
+    "WTPref_scaled": 5427,
+    "WTPadj_scaled": 4567,
+    "wtp_vp_effect": 0.7277,
+    "jinang_wtp_bonus": 0.0131,
+    "wtp_mult_compressed": 0.8414666666666667,
+    "jinang_settlement": {
+      "market": {
+        "match_strength": 0.6533,
+        "matched": true,
+        "bonus": 0.0131,
+        "member_strengths": [
+          0.8,
+          0.5667,
+          0.7333,
+          0.6333,
+          0.5333
+        ]
+      },
+      "tech": {
+        "match_strength": 0.6867,
+        "matched": true,
+        "member_strengths": [
+          0.7667,
+          0.6333,
+          0.6,
+          0.6333,
+          0.8
+        ]
+      }
+    },
+    "target_gm": 0.595,
+    "target_gm_rule": "min(GM_cap, rho_C * target_gm_suggest_multiplier)"
+  },
+  "r1_frozen": {
+    "grid_id": "ToC_DIFF_ELDER",
+    "grid_label": "ToC / 老人 / 差异化",
+    "architecture": "Hybrid",
+    "vp_summary": {
+      "who": "老人及其子女",
+      "pain": "老人陪伴场景中缺乏自然交互和安全感",
+      "how": "以安全+自然交互为核心卖点，通过内容种草触达子女决策者，用模块化硬件快速迭代打磨C端口碑"
+    },
+    "target_gm": 0.595,
+    "jinang_fit": {
+      "market": {
+        "match_strength": 0.6533,
+        "matched": true,
+        "bonus": 0.0131,
+        "member_strengths": [
+          0.8,
+          0.5667,
+          0.7333,
+          0.6333,
+          0.5333
+        ]
+      },
+      "tech": {
+        "match_strength": 0.6867,
+        "matched": true,
+        "member_strengths": [
+          0.7667,
+          0.6333,
+          0.6,
+          0.6333,
+          0.8
+        ]
+      }
+    },
+    "WTPref_scaled": 5427,
+    "WTPadj_scaled": 4567,
+    "wtp_multiplier": 0.7372,
+    "VPscore": 3.9
+  },
+  "r2": {
+    "roi": -48.42886005730491,
+    "profit": -4623019,
+    "units": 86,
+    "adoption": 0.00006386026283047056,
+    "S_competitive": 1,
+    "R": 1,
+    "share": 0.00006386026283047056,
+    "P": 3350,
+    "WTP": 4567,
+    "e": 1.2,
+    "wtpPrime": 4566.6396,
+    "WTPref": 4566.6396,
+    "rawWtpMult": 0.7372,
+    "compressedWtpMult": 0.8414666666666667,
+    "WTPref_adjusted": 4566.6396,
+    "gamma": 4.559340347444945,
+    "gammaRaw": 4.559340347444945,
+    "gammaEff": 4.559340347444945,
+    "z": -9.658749392654864,
+    "Meff": 1344000,
+    "X": 1.1858960144275261,
+    "I": 0.274240002671764,
+    "fit": 0.2466666666666667,
+    "actualGm": 0.2395522388059701,
+    "V": 0,
+    "dCOGS": 1110,
+    "nre_total_wan": 319.32,
+    "f_total": 4693200,
+    "f_total_wan": 469.32,
+    "breakeven_q": 5849,
+    "unitMargin": 803,
+    "revenueNet": 215643,
+    "variableCost": 146766,
+    "fixedCost": 4693200,
+    "fBase": 1500000,
+    "positiveDCOGS": 1110,
+    "risk": 1.03,
+    "subLift": 0.36000000000000004,
+    "load": 23,
+    "complexity": 1.85,
+    "coverCore": 0.2666666666666667,
+    "coverNice": 0.2,
+    "penalty": 295,
+    "overBudget": 196.5999999999999,
+    "overCap": 0,
+    "budgetBenchmark": 913.4000000000001,
+    "unitProfitHW": 802.5,
+    "profitHW": 68877,
+    "profitSub": 1599,
+    "attach": 0.037333333333333385,
+    "ltvSub": 19,
+    "rdInvestment": 95460,
+    "violations": [],
+    "hardViolationCount": 0,
+    "evi": 0.7,
+    "w_star": {
+      "perception": 0.2205180421776521,
+      "mobility": 0.11086547815374201,
+      "interaction": 0.2909664230218797,
+      "safety_privacy": 0.13558310627027234,
+      "integration": 0.07985598356605862,
+      "operations": 0.16221096681039537
+    },
+    "sev": 0.5568761981098018,
+    "tagBreakdown": [
+      {
+        "tag": "安全与信任",
+        "dimCN": "安全与信任",
+        "dimKey": "safety_privacy",
+        "w": 0.13558310627027234,
+        "tier": "nice",
+        "imp": 1
+      },
+      {
+        "tag": "情感陪伴",
+        "dimCN": "交互与表达",
+        "dimKey": "interaction",
+        "w": 0.2909664230218797,
+        "tier": "core",
+        "imp": 3
+      },
+      {
+        "tag": "远程关怀",
+        "dimCN": "安全与信任",
+        "dimKey": "safety_privacy",
+        "w": 0.13558310627027234,
+        "tier": "nice",
+        "imp": 1
+      },
+      {
+        "tag": "省心可靠",
+        "dimCN": "可运营与可维护",
+        "dimKey": "operations",
+        "w": 0.16221096681039537,
+        "tier": "nice",
+        "imp": 2
+      },
+      {
+        "tag": "情绪识别",
+        "dimCN": "感知与理解",
+        "dimKey": "perception",
+        "w": 0.2205180421776521,
+        "tier": "core",
+        "imp": 3
+      },
+      {
+        "tag": "场景感知",
+        "dimCN": "感知与理解",
+        "dimKey": "perception",
+        "w": 0.2205180421776521,
+        "tier": "core",
+        "imp": 3
+      }
+    ],
+    "COGSbase": 600,
+    "COGS": 1710
+  },
+  "r2_price": 3350,
+  "r2_cards": [
+    {
+      "cap_id": "adaptive_learning",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "basic_avoidance",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "visual_expression",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "persona_dialog",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "privacy_trust",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "family_guardian",
+      "tier": "low"
+    },
+    {
+      "cap_id": "cloud_update",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "self_diag",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "remote_monitor",
+      "tier": "low"
+    }
+  ],
+  "r2_prototype": {
+    "prototype": "elder_care",
+    "rationale": "选择老人照护向的独居长辈周阿姨作为R2客户原型，因为其安全痛点最具体可量化，决策链清晰（体验者与付费方分离），且与R1差异化定位高度匹配，同时存在对'被当病人'敏感的风险需在产品形态上处理。"
+  },
+  "profit": -4623019,
+  "profitable": false
+}

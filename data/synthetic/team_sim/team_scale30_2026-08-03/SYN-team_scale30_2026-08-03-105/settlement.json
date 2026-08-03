@@ -1,0 +1,266 @@
+{
+  "synthetic": true,
+  "r1": {
+    "grid_id": "ToB_DIFF_ELDER",
+    "channel": "ToB",
+    "strategy": "DIFF",
+    "age": "ELDER",
+    "arch_tag": "Hybrid",
+    "SAM_billion": 339,
+    "WTPmean": 19268,
+    "WTPmedian": 18091,
+    "WTPref": 19268,
+    "WTPadj": 19660,
+    "C": 4.7,
+    "G": 4.3,
+    "E_raw": 4.7,
+    "Eadj": 4.7,
+    "rho_C": 0.9,
+    "lambda_G": 1.03,
+    "lambda_E": 1.07,
+    "wtp_multiplier": 1.0055,
+    "jinang_match_strength": 0.6867,
+    "jinang_E_boost": 0,
+    "grid_label": "ToB / 老人 / 差异化",
+    "VPscore": 4.6,
+    "WTPref_scaled": 5780,
+    "WTPadj_scaled": 5898,
+    "wtp_vp_effect": 0.9919,
+    "jinang_wtp_bonus": 0.0137,
+    "wtp_mult_compressed": 1.0203333333333333,
+    "jinang_settlement": {
+      "market": {
+        "match_strength": 0.6867,
+        "matched": true,
+        "bonus": 0.0137,
+        "member_strengths": [
+          0.6333,
+          0.5,
+          0.7,
+          0.8,
+          0.8
+        ]
+      },
+      "tech": {
+        "match_strength": 0.7533,
+        "matched": true,
+        "member_strengths": [
+          0.7667,
+          0.8333,
+          0.7333,
+          0.6333,
+          0.8
+        ]
+      }
+    },
+    "target_gm": 0.65,
+    "target_gm_rule": "min(GM_cap, rho_C * target_gm_suggest_multiplier)"
+  },
+  "r1_frozen": {
+    "grid_id": "ToB_DIFF_ELDER",
+    "grid_label": "ToB / 老人 / 差异化",
+    "architecture": "Hybrid",
+    "vp_summary": {
+      "who": "老年群体及其子女、养老机构",
+      "pain": "父母情感需求被忽视，子女缺乏了解渠道，机构缺乏量化管理工具",
+      "how": "通过生物信号感知和情绪日报技术，为B端提供管理报表和KPI闭环，为C端提供家属沟通报告和情感裂变素材"
+    },
+    "target_gm": 0.65,
+    "jinang_fit": {
+      "market": {
+        "match_strength": 0.6867,
+        "matched": true,
+        "bonus": 0.0137,
+        "member_strengths": [
+          0.6333,
+          0.5,
+          0.7,
+          0.8,
+          0.8
+        ]
+      },
+      "tech": {
+        "match_strength": 0.7533,
+        "matched": true,
+        "member_strengths": [
+          0.7667,
+          0.8333,
+          0.7333,
+          0.6333,
+          0.8
+        ]
+      }
+    },
+    "WTPref_scaled": 5780,
+    "WTPadj_scaled": 5898,
+    "wtp_multiplier": 1.0055,
+    "VPscore": 4.6
+  },
+  "r2": {
+    "roi": -25.040418541645135,
+    "profit": -4175540,
+    "units": 144,
+    "adoption": 0.00012553686751919787,
+    "S_competitive": 1,
+    "R": 1,
+    "share": 0.00012553686751919787,
+    "P": 4500,
+    "WTP": 5898,
+    "e": 1.2,
+    "wtpPrime": 5938.219600666666,
+    "WTPref": 5897.526666666667,
+    "rawWtpMult": 1.0055,
+    "compressedWtpMult": 1.0203333333333333,
+    "WTPref_adjusted": 5897.526666666667,
+    "gamma": 4.369508367280935,
+    "gammaRaw": 4.559340347444945,
+    "gammaEff": 4.369508367280935,
+    "z": -8.98278553269181,
+    "Meff": 1144000,
+    "X": 1.851288014427526,
+    "I": 0.316720002671764,
+    "fit": 0.336,
+    "actualGm": 0.4593333333333333,
+    "V": 0.02300000000000002,
+    "dCOGS": 1158,
+    "nre_total_wan": 297.54,
+    "f_total": 4475400,
+    "f_total_wan": 447.54,
+    "breakeven_q": 2166,
+    "unitMargin": 2067,
+    "revenueNet": 549324,
+    "variableCost": 252474,
+    "fixedCost": 4475400,
+    "fBase": 1500000,
+    "positiveDCOGS": 1158,
+    "risk": 1.07,
+    "subLift": 0.32,
+    "load": 24,
+    "complexity": 1.93,
+    "coverCore": 0.4800000000000001,
+    "coverNice": 0,
+    "penalty": 0,
+    "overBudget": 0,
+    "overCap": 0,
+    "budgetBenchmark": 1179.6000000000001,
+    "unitProfitHW": 2067,
+    "profitHW": 296851,
+    "profitSub": 3010,
+    "attach": 0.04200000000000004,
+    "ltvSub": 21,
+    "rdInvestment": 166752,
+    "violations": [],
+    "hardViolationCount": 0,
+    "evi": 0.7,
+    "w_star": {
+      "perception": 0.20547042313003303,
+      "mobility": 0.12591309720136107,
+      "interaction": 0.2006807087361654,
+      "safety_privacy": 0.1957735824607485,
+      "integration": 0.12499884070891575,
+      "operations": 0.14716334776277631
+    },
+    "sev": 0.568914293347897,
+    "tagBreakdown": [
+      {
+        "tag": "安全与信任",
+        "dimCN": "安全与信任",
+        "dimKey": "safety_privacy",
+        "w": 0.1957735824607485,
+        "tier": "core",
+        "imp": 2
+      },
+      {
+        "tag": "情感陪伴",
+        "dimCN": "交互与表达",
+        "dimKey": "interaction",
+        "w": 0.2006807087361654,
+        "tier": "core",
+        "imp": 2
+      },
+      {
+        "tag": "远程关怀",
+        "dimCN": "安全与信任",
+        "dimKey": "safety_privacy",
+        "w": 0.1957735824607485,
+        "tier": "core",
+        "imp": 2
+      },
+      {
+        "tag": "省心可靠",
+        "dimCN": "可运营与可维护",
+        "dimKey": "operations",
+        "w": 0.14716334776277631,
+        "tier": "nice",
+        "imp": 1
+      },
+      {
+        "tag": "情绪识别",
+        "dimCN": "感知与理解",
+        "dimKey": "perception",
+        "w": 0.20547042313003303,
+        "tier": "core",
+        "imp": 2
+      },
+      {
+        "tag": "场景感知",
+        "dimCN": "感知与理解",
+        "dimKey": "perception",
+        "w": 0.20547042313003303,
+        "tier": "core",
+        "imp": 2
+      }
+    ],
+    "COGSbase": 600,
+    "COGS": 1758
+  },
+  "r2_price": 4500,
+  "r2_cards": [
+    {
+      "cap_id": "perception_base",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "memory_album",
+      "tier": "low"
+    },
+    {
+      "cap_id": "lidar_nav",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "basic_avoidance",
+      "tier": "low"
+    },
+    {
+      "cap_id": "persona_dialog",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "privacy_trust",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "family_guardian",
+      "tier": "low"
+    },
+    {
+      "cap_id": "cloud_update",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "remote_monitor",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "self_diag",
+      "tier": "low"
+    }
+  ],
+  "r2_prototype": {
+    "prototype": "elder_care",
+    "rationale": "周阿姨的场景踩在‘安全’与‘尊严’冲突的核心价值点上，边缘计算方案能端侧识别跌倒、离线报警，既给儿子安全感又保住她的体面；同时她串联起养老机构B端付费方和子女C端买单方，形成商业闭环；情感陪伴和家属沟通报告模块也能对应她的情感需求，形成传播素材。"
+  },
+  "profit": -4175540,
+  "profitable": false
+}

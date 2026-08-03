@@ -1,0 +1,262 @@
+{
+  "synthetic": true,
+  "r1": {
+    "grid_id": "ToB_DIFF_ELDER",
+    "channel": "ToB",
+    "strategy": "DIFF",
+    "age": "ELDER",
+    "arch_tag": "Hybrid",
+    "SAM_billion": 339,
+    "WTPmean": 19268,
+    "WTPmedian": 18091,
+    "WTPref": 19268,
+    "WTPadj": 13851,
+    "C": 3.2,
+    "G": 4.3,
+    "E_raw": 4.6,
+    "Eadj": 4.6,
+    "rho_C": 0.5,
+    "lambda_G": 1.03,
+    "lambda_E": 1.06,
+    "wtp_multiplier": 0.5533,
+    "jinang_match_strength": 0.68,
+    "jinang_E_boost": 0,
+    "grid_label": "ToB / 老人 / 差异化",
+    "VPscore": 3.8,
+    "WTPref_scaled": 5780,
+    "WTPadj_scaled": 4155,
+    "wtp_vp_effect": 0.5459,
+    "jinang_wtp_bonus": 0.0136,
+    "wtp_mult_compressed": 0.7188666666666667,
+    "jinang_settlement": {
+      "market": {
+        "match_strength": 0.68,
+        "matched": true,
+        "bonus": 0.0136,
+        "member_strengths": [
+          0.6333,
+          0.6667,
+          0.8,
+          0.5,
+          0.8
+        ]
+      },
+      "tech": {
+        "match_strength": 0.7667,
+        "matched": true,
+        "member_strengths": [
+          0.8333,
+          0.8,
+          0.7667,
+          0.6333,
+          0.8
+        ]
+      }
+    },
+    "target_gm": 0.425,
+    "target_gm_rule": "min(GM_cap, rho_C * target_gm_suggest_multiplier)"
+  },
+  "r1_frozen": {
+    "grid_id": "ToB_DIFF_ELDER",
+    "grid_label": "ToB / 老人 / 差异化",
+    "architecture": "Hybrid",
+    "vp_summary": {
+      "who": "养老机构",
+      "pain": "预算审批和持续运营需求刚性，但回款周期存在风险",
+      "how": "通过系统整合+运营服务，将情感交互模块拆解为可验收交付包，以POC验证和分期合同条款对冲风险"
+    },
+    "target_gm": 0.425,
+    "jinang_fit": {
+      "market": {
+        "match_strength": 0.68,
+        "matched": true,
+        "bonus": 0.0136,
+        "member_strengths": [
+          0.6333,
+          0.6667,
+          0.8,
+          0.5,
+          0.8
+        ]
+      },
+      "tech": {
+        "match_strength": 0.7667,
+        "matched": true,
+        "member_strengths": [
+          0.8333,
+          0.8,
+          0.7667,
+          0.6333,
+          0.8
+        ]
+      }
+    },
+    "WTPref_scaled": 5780,
+    "WTPadj_scaled": 4155,
+    "wtp_multiplier": 0.5533,
+    "VPscore": 3.8
+  },
+  "r2": {
+    "roi": -3.9938576002177886,
+    "profit": -3345339,
+    "units": 729,
+    "adoption": 0.0006369039229972611,
+    "S_competitive": 1,
+    "R": 1,
+    "share": 0.0006369039229972611,
+    "P": 3999,
+    "WTP": 4155,
+    "e": 1.2,
+    "wtpPrime": 4383.888675366667,
+    "WTPref": 4155.049333333333,
+    "rawWtpMult": 0.5533,
+    "compressedWtpMult": 0.7188666666666667,
+    "WTPref_adjusted": 4155.049333333333,
+    "gamma": 3.3853875994195013,
+    "gammaRaw": 4.559340347444945,
+    "gammaEff": 3.3853875994195013,
+    "z": -7.358254634255075,
+    "Meff": 1144000,
+    "X": 3.399989474056817,
+    "I": 0.378238791492003,
+    "fit": 0.5333333333333334,
+    "actualGm": 0.41264066016504125,
+    "V": 0.18358333333333343,
+    "dCOGS": 1149,
+    "nre_total_wan": 308.7,
+    "f_total": 4587000,
+    "f_total_wan": 458.7,
+    "breakeven_q": 2780,
+    "unitMargin": 1650,
+    "revenueNet": 2476682,
+    "variableCost": 1274353,
+    "fixedCost": 4587000,
+    "fBase": 1500000,
+    "positiveDCOGS": 1149,
+    "risk": 1.04,
+    "subLift": 0.31,
+    "load": 24,
+    "complexity": 1.915,
+    "coverCore": 0.5333333333333334,
+    "coverNice": 0.5333333333333333,
+    "penalty": 477,
+    "overBudget": 318,
+    "overCap": 0,
+    "budgetBenchmark": 831,
+    "unitProfitHW": 1650.15,
+    "profitHW": 1202329,
+    "profitSub": 39809,
+    "attach": 0.10950000000000004,
+    "ltvSub": 55,
+    "rdInvestment": 837621,
+    "violations": [],
+    "hardViolationCount": 0,
+    "evi": 0.7,
+    "w_star": {
+      "perception": 0.24249213919155543,
+      "mobility": 0.11237053296113358,
+      "interaction": 0.2562326515516191,
+      "safety_privacy": 0.138981696866395,
+      "integration": 0.15171125568548482,
+      "operations": 0.0982117237438121
+    },
+    "sev": 0.600682261405723,
+    "tagBreakdown": [
+      {
+        "tag": "情感陪伴",
+        "dimCN": "交互与表达",
+        "dimKey": "interaction",
+        "w": 0.2562326515516191,
+        "tier": "core",
+        "imp": 3
+      },
+      {
+        "tag": "个性化推荐",
+        "dimCN": "感知与理解",
+        "dimKey": "perception",
+        "w": 0.24249213919155543,
+        "tier": "core",
+        "imp": 3
+      },
+      {
+        "tag": "隐私保护",
+        "dimCN": "安全与信任",
+        "dimKey": "safety_privacy",
+        "w": 0.138981696866395,
+        "tier": "nice",
+        "imp": 1
+      },
+      {
+        "tag": "内容生态",
+        "dimCN": "可扩展与连接",
+        "dimKey": "integration",
+        "w": 0.15171125568548482,
+        "tier": "nice",
+        "imp": 1
+      },
+      {
+        "tag": "情绪识别",
+        "dimCN": "感知与理解",
+        "dimKey": "perception",
+        "w": 0.24249213919155543,
+        "tier": "core",
+        "imp": 3
+      },
+      {
+        "tag": "安全与信任",
+        "dimCN": "安全与信任",
+        "dimKey": "safety_privacy",
+        "w": 0.138981696866395,
+        "tier": "nice",
+        "imp": 1
+      }
+    ],
+    "COGSbase": 600,
+    "COGS": 1749
+  },
+  "r2_price": 3999,
+  "r2_cards": [
+    {
+      "cap_id": "adaptive_learning",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "perception_base",
+      "tier": "low"
+    },
+    {
+      "cap_id": "basic_avoidance",
+      "tier": "low"
+    },
+    {
+      "cap_id": "lidar_nav",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "persona_dialog",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "touch_hug",
+      "tier": "low"
+    },
+    {
+      "cap_id": "privacy_trust",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "api_iot",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "remote_monitor",
+      "tier": "mid"
+    }
+  ],
+  "r2_prototype": {
+    "prototype": "adult_companion",
+    "rationale": "小组选定林小姐（成人陪伴向·都市独居青年）作为R2客户原型，理由包括：延续差异化战略，探索ToC订阅制新战场；商业化效率高，现金流健康；痛点明确，产品差异化空间大；付费意愿已验证。"
+  },
+  "profit": -3345339,
+  "profitable": false
+}

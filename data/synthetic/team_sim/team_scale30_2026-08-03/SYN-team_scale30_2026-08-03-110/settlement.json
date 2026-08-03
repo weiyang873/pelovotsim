@@ -1,0 +1,266 @@
+{
+  "synthetic": true,
+  "r1": {
+    "grid_id": "ToB_DIFF_ELDER",
+    "channel": "ToB",
+    "strategy": "DIFF",
+    "age": "ELDER",
+    "arch_tag": "Hybrid",
+    "SAM_billion": 339,
+    "WTPmean": 19268,
+    "WTPmedian": 18091,
+    "WTPref": 19268,
+    "WTPadj": 14406,
+    "C": 3.2,
+    "G": 4.7,
+    "E_raw": 5,
+    "Eadj": 5,
+    "rho_C": 0.5,
+    "lambda_G": 1.07,
+    "lambda_E": 1.1,
+    "wtp_multiplier": 0.5965,
+    "jinang_match_strength": 0.68,
+    "jinang_E_boost": 0,
+    "grid_label": "ToB / 老人 / 差异化",
+    "VPscore": 3.9,
+    "WTPref_scaled": 5780,
+    "WTPadj_scaled": 4322,
+    "wtp_vp_effect": 0.5885,
+    "jinang_wtp_bonus": 0.0136,
+    "wtp_mult_compressed": 0.7476666666666667,
+    "jinang_settlement": {
+      "market": {
+        "match_strength": 0.68,
+        "matched": true,
+        "bonus": 0.0136,
+        "member_strengths": [
+          0.8,
+          0.6333,
+          0.6667,
+          0.8,
+          0.5
+        ]
+      },
+      "tech": {
+        "match_strength": 0.74,
+        "matched": true,
+        "member_strengths": [
+          0.8,
+          0.7333,
+          0.8,
+          0.7333,
+          0.6333
+        ]
+      }
+    },
+    "target_gm": 0.425,
+    "target_gm_rule": "min(GM_cap, rho_C * target_gm_suggest_multiplier)"
+  },
+  "r1_frozen": {
+    "grid_id": "ToB_DIFF_ELDER",
+    "grid_label": "ToB / 老人 / 差异化",
+    "architecture": "Hybrid",
+    "vp_summary": {
+      "who": "养老机构",
+      "pain": "缺乏情感交互与健康数据结合的差异化解决方案，且机构对安全、可落地的效果有真实付费意愿",
+      "how": "将情感交互与健康数据结合，嵌入养老机构日常运营体系，形成机构客户认可的差异化价值"
+    },
+    "target_gm": 0.425,
+    "jinang_fit": {
+      "market": {
+        "match_strength": 0.68,
+        "matched": true,
+        "bonus": 0.0136,
+        "member_strengths": [
+          0.8,
+          0.6333,
+          0.6667,
+          0.8,
+          0.5
+        ]
+      },
+      "tech": {
+        "match_strength": 0.74,
+        "matched": true,
+        "member_strengths": [
+          0.8,
+          0.7333,
+          0.8,
+          0.7333,
+          0.6333
+        ]
+      }
+    },
+    "WTPref_scaled": 5780,
+    "WTPadj_scaled": 4322,
+    "wtp_multiplier": 0.5965,
+    "VPscore": 3.9
+  },
+  "r2": {
+    "roi": -46.494040720993745,
+    "profit": -4235096,
+    "units": 87,
+    "adoption": 0.00007594005410467901,
+    "S_competitive": 1,
+    "R": 1,
+    "share": 0.00007594005410467901,
+    "P": 4000,
+    "WTP": 4322,
+    "e": 1.2,
+    "wtpPrime": 4363.972201833333,
+    "WTPref": 4321.513333333333,
+    "rawWtpMult": 0.5965,
+    "compressedWtpMult": 0.7476666666666667,
+    "WTPref_adjusted": 4321.513333333333,
+    "gamma": 4.29372423313968,
+    "gammaRaw": 4.559340347444945,
+    "gammaEff": 4.29372423313968,
+    "z": -9.48549034775703,
+    "Meff": 1144000,
+    "X": 1.9887880144275258,
+    "I": 0.316720002671764,
+    "fit": 0.336,
+    "actualGm": 0.43825,
+    "V": 0.03275000000000007,
+    "dCOGS": 1047,
+    "nre_total_wan": 288.9,
+    "f_total": 4389000,
+    "f_total_wan": 438.9,
+    "breakeven_q": 2504,
+    "unitMargin": 1753,
+    "revenueNet": 295376,
+    "variableCost": 143084,
+    "fixedCost": 4389000,
+    "fBase": 1500000,
+    "positiveDCOGS": 1047,
+    "risk": 1,
+    "subLift": 0.27,
+    "load": 22,
+    "complexity": 1.745,
+    "coverCore": 0.4800000000000001,
+    "coverNice": 0,
+    "penalty": 274,
+    "overBudget": 182.5999999999999,
+    "overCap": 0,
+    "budgetBenchmark": 864.4000000000001,
+    "unitProfitHW": 1753,
+    "profitHW": 152293,
+    "profitSub": 1886,
+    "attach": 0.04350000000000004,
+    "ltvSub": 22,
+    "rdInvestment": 91089,
+    "violations": [],
+    "hardViolationCount": 0,
+    "evi": 0.7,
+    "w_star": {
+      "perception": 0.20547042313003303,
+      "mobility": 0.12591309720136107,
+      "interaction": 0.2006807087361654,
+      "safety_privacy": 0.1957735824607485,
+      "integration": 0.12499884070891575,
+      "operations": 0.14716334776277631
+    },
+    "sev": 0.568914293347897,
+    "tagBreakdown": [
+      {
+        "tag": "安全与信任",
+        "dimCN": "安全与信任",
+        "dimKey": "safety_privacy",
+        "w": 0.1957735824607485,
+        "tier": "core",
+        "imp": 2
+      },
+      {
+        "tag": "情感陪伴",
+        "dimCN": "交互与表达",
+        "dimKey": "interaction",
+        "w": 0.2006807087361654,
+        "tier": "core",
+        "imp": 2
+      },
+      {
+        "tag": "远程关怀",
+        "dimCN": "安全与信任",
+        "dimKey": "safety_privacy",
+        "w": 0.1957735824607485,
+        "tier": "core",
+        "imp": 2
+      },
+      {
+        "tag": "省心可靠",
+        "dimCN": "可运营与可维护",
+        "dimKey": "operations",
+        "w": 0.14716334776277631,
+        "tier": "nice",
+        "imp": 1
+      },
+      {
+        "tag": "情绪识别",
+        "dimCN": "感知与理解",
+        "dimKey": "perception",
+        "w": 0.20547042313003303,
+        "tier": "core",
+        "imp": 2
+      },
+      {
+        "tag": "场景感知",
+        "dimCN": "感知与理解",
+        "dimKey": "perception",
+        "w": 0.20547042313003303,
+        "tier": "core",
+        "imp": 2
+      }
+    ],
+    "COGSbase": 600,
+    "COGS": 1647
+  },
+  "r2_price": 4000,
+  "r2_cards": [
+    {
+      "cap_id": "perception_base",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "adaptive_learning",
+      "tier": "low"
+    },
+    {
+      "cap_id": "basic_avoidance",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "voice_basic",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "expressive_style_pack",
+      "tier": "low"
+    },
+    {
+      "cap_id": "privacy_trust",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "family_guardian",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "api_iot",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "remote_monitor",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "self_diag",
+      "tier": "low"
+    }
+  ],
+  "r2_prototype": {
+    "prototype": "elder_care",
+    "rationale": "机构采购路径清晰、付费意愿刚性；安全合规是既有壁垒，落地风险低；差异化价值可量化验证，形成口碑复购闭环。"
+  },
+  "profit": -4235096,
+  "profitable": false
+}

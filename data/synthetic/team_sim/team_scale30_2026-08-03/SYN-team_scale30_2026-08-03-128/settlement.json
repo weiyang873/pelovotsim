@@ -1,0 +1,258 @@
+{
+  "synthetic": true,
+  "r1": {
+    "grid_id": "ToB_DIFF_ELDER",
+    "channel": "ToB",
+    "strategy": "DIFF",
+    "age": "ELDER",
+    "arch_tag": "Hybrid",
+    "SAM_billion": 339,
+    "WTPmean": 19268,
+    "WTPmedian": 18091,
+    "WTPref": 19268,
+    "WTPadj": 13488,
+    "C": 3.2,
+    "G": 3.8,
+    "E_raw": 3.5,
+    "Eadj": 3.5,
+    "rho_C": 0.5,
+    "lambda_G": 0.98,
+    "lambda_E": 0.95,
+    "wtp_multiplier": 0.472,
+    "jinang_match_strength": 0.7,
+    "jinang_E_boost": 0,
+    "grid_label": "ToB / 老人 / 差异化",
+    "VPscore": 3.4,
+    "WTPref_scaled": 5780,
+    "WTPadj_scaled": 4046,
+    "wtp_vp_effect": 0.4655,
+    "jinang_wtp_bonus": 0.014,
+    "wtp_mult_compressed": 0.7,
+    "jinang_settlement": {
+      "market": {
+        "match_strength": 0.7,
+        "matched": true,
+        "bonus": 0.014,
+        "member_strengths": [
+          0.8,
+          0.5,
+          0.7667,
+          0.6333,
+          0.8
+        ]
+      },
+      "tech": {
+        "match_strength": 0.7,
+        "matched": true,
+        "member_strengths": [
+          0.7333,
+          0.8,
+          0.7333,
+          0.6333,
+          0.6
+        ]
+      }
+    },
+    "target_gm": 0.425,
+    "target_gm_rule": "min(GM_cap, rho_C * target_gm_suggest_multiplier)"
+  },
+  "r1_frozen": {
+    "grid_id": "ToB_DIFF_ELDER",
+    "grid_label": "ToB / 老人 / 差异化",
+    "architecture": "Hybrid",
+    "vp_summary": {
+      "who": "养老机构",
+      "pain": "安全刚需，如跌倒检测、夜间异常报警，且决策链短",
+      "how": "Hybrid架构边缘计算低功耗，离线守护，触觉体感技术实现情感陪伴"
+    },
+    "target_gm": 0.425,
+    "jinang_fit": {
+      "market": {
+        "match_strength": 0.7,
+        "matched": true,
+        "bonus": 0.014,
+        "member_strengths": [
+          0.8,
+          0.5,
+          0.7667,
+          0.6333,
+          0.8
+        ]
+      },
+      "tech": {
+        "match_strength": 0.7,
+        "matched": true,
+        "member_strengths": [
+          0.7333,
+          0.8,
+          0.7333,
+          0.6333,
+          0.6
+        ]
+      }
+    },
+    "WTPref_scaled": 5780,
+    "WTPadj_scaled": 4046,
+    "wtp_multiplier": 0.472,
+    "VPscore": 3.4
+  },
+  "r2": {
+    "roi": -106.34443177581323,
+    "profit": -3163853,
+    "units": 47,
+    "adoption": 0.00004112450486026609,
+    "S_competitive": 1,
+    "R": 1,
+    "share": 0.00004112450486026609,
+    "P": 4000,
+    "WTP": 4046,
+    "e": 1.2,
+    "wtpPrime": 4074.82775,
+    "WTPref": 4045.9999999999995,
+    "rawWtpMult": 0.472,
+    "compressedWtpMult": 0.7,
+    "WTPref_adjusted": 4045.9999999999995,
+    "gamma": 4.363583970596047,
+    "gammaRaw": 4.559340347444945,
+    "gammaEff": 4.363583970596047,
+    "z": -10.098865263472671,
+    "Meff": 1144000,
+    "X": 1.7151080144275248,
+    "I": 0.2775200026717639,
+    "fit": 0.22399999999999998,
+    "actualGm": 0.54175,
+    "V": 0.02375,
+    "dCOGS": 633,
+    "nre_total_wan": 176.70000000000002,
+    "f_total": 3267000,
+    "f_total_wan": 326.7,
+    "breakeven_q": 1508,
+    "unitMargin": 2167,
+    "revenueNet": 159958,
+    "variableCost": 58008,
+    "fixedCost": 3267000,
+    "fBase": 1500000,
+    "positiveDCOGS": 633,
+    "risk": 0.6900000000000002,
+    "subLift": 0.18000000000000002,
+    "load": 15,
+    "complexity": 1.055,
+    "coverCore": 0.32,
+    "coverNice": 0,
+    "penalty": 0,
+    "overBudget": 0,
+    "overCap": 0,
+    "budgetBenchmark": 809.2,
+    "unitProfitHW": 2167,
+    "profitHW": 101950,
+    "profitSub": 1197,
+    "attach": 0.05099999999999999,
+    "ltvSub": 25,
+    "rdInvestment": 29751,
+    "violations": [],
+    "hardViolationCount": 0,
+    "evi": 0.7,
+    "w_star": {
+      "perception": 0.20547042313003303,
+      "mobility": 0.12591309720136107,
+      "interaction": 0.2006807087361654,
+      "safety_privacy": 0.1957735824607485,
+      "integration": 0.12499884070891575,
+      "operations": 0.14716334776277631
+    },
+    "sev": 0.568914293347897,
+    "tagBreakdown": [
+      {
+        "tag": "安全与信任",
+        "dimCN": "安全与信任",
+        "dimKey": "safety_privacy",
+        "w": 0.1957735824607485,
+        "tier": "core",
+        "imp": 2
+      },
+      {
+        "tag": "情感陪伴",
+        "dimCN": "交互与表达",
+        "dimKey": "interaction",
+        "w": 0.2006807087361654,
+        "tier": "core",
+        "imp": 2
+      },
+      {
+        "tag": "远程关怀",
+        "dimCN": "安全与信任",
+        "dimKey": "safety_privacy",
+        "w": 0.1957735824607485,
+        "tier": "core",
+        "imp": 2
+      },
+      {
+        "tag": "省心可靠",
+        "dimCN": "可运营与可维护",
+        "dimKey": "operations",
+        "w": 0.14716334776277631,
+        "tier": "nice",
+        "imp": 1
+      },
+      {
+        "tag": "情绪识别",
+        "dimCN": "感知与理解",
+        "dimKey": "perception",
+        "w": 0.20547042313003303,
+        "tier": "core",
+        "imp": 2
+      },
+      {
+        "tag": "场景感知",
+        "dimCN": "感知与理解",
+        "dimKey": "perception",
+        "w": 0.20547042313003303,
+        "tier": "core",
+        "imp": 2
+      }
+    ],
+    "COGSbase": 600,
+    "COGS": 1233
+  },
+  "r2_price": 4000,
+  "r2_cards": [
+    {
+      "cap_id": "adaptive_learning",
+      "tier": "low"
+    },
+    {
+      "cap_id": "basic_avoidance",
+      "tier": "low"
+    },
+    {
+      "cap_id": "follow_mode",
+      "tier": "low"
+    },
+    {
+      "cap_id": "voice_basic",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "privacy_trust",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "cloud_update",
+      "tier": "low"
+    },
+    {
+      "cap_id": "remote_monitor",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "self_diag",
+      "tier": "low"
+    }
+  ],
+  "r2_prototype": {
+    "prototype": "elder_care",
+    "rationale": "R1 已验证 ToB 老人赛道的合规红利和差异化优势，周阿姨场景能延续优势；核心痛点'安全'与'尊严'的冲突可由 Hybrid 架构和安全认证解决（边缘计算离线守护、不依赖摄像头）；购买决策者为儿子，愿意为'妈妈安全+不伤自尊'付高价，付费意愿强、决策链短。"
+  },
+  "profit": -3163853,
+  "profitable": false
+}

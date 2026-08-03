@@ -1,0 +1,270 @@
+{
+  "synthetic": true,
+  "r1": {
+    "grid_id": "ToB_DIFF_ELDER",
+    "channel": "ToB",
+    "strategy": "DIFF",
+    "age": "ELDER",
+    "arch_tag": "Hybrid",
+    "SAM_billion": 339,
+    "WTPmean": 19268,
+    "WTPmedian": 18091,
+    "WTPref": 19268,
+    "WTPadj": 13488,
+    "C": 3.2,
+    "G": 3.7,
+    "E_raw": 4.2,
+    "Eadj": 4.2,
+    "rho_C": 0.5,
+    "lambda_G": 0.97,
+    "lambda_E": 1.02,
+    "wtp_multiplier": 0.5007,
+    "jinang_match_strength": 0.6067,
+    "jinang_E_boost": 0,
+    "grid_label": "ToB / 老人 / 差异化",
+    "VPscore": 3.6,
+    "WTPref_scaled": 5780,
+    "WTPadj_scaled": 4046,
+    "wtp_vp_effect": 0.4947,
+    "jinang_wtp_bonus": 0.0121,
+    "wtp_mult_compressed": 0.7,
+    "jinang_settlement": {
+      "market": {
+        "match_strength": 0.6067,
+        "matched": true,
+        "bonus": 0.0121,
+        "member_strengths": [
+          0.6333,
+          0.6333,
+          0.7667,
+          0.5,
+          0.5
+        ]
+      },
+      "tech": {
+        "match_strength": 0.7533,
+        "matched": true,
+        "member_strengths": [
+          0.8333,
+          0.7333,
+          0.7667,
+          0.8,
+          0.6333
+        ]
+      }
+    },
+    "target_gm": 0.425,
+    "target_gm_rule": "min(GM_cap, rho_C * target_gm_suggest_multiplier)"
+  },
+  "r1_frozen": {
+    "grid_id": "ToB_DIFF_ELDER",
+    "grid_label": "ToB / 老人 / 差异化",
+    "architecture": "Hybrid",
+    "vp_summary": {
+      "who": "养老机构",
+      "pain": "护工流失、监管罚款、安全事故责任",
+      "how": "通过生物信号感知+自然语言交互的Hybrid架构，直接降低机构的人力巡查成本和责任风险"
+    },
+    "target_gm": 0.425,
+    "jinang_fit": {
+      "market": {
+        "match_strength": 0.6067,
+        "matched": true,
+        "bonus": 0.0121,
+        "member_strengths": [
+          0.6333,
+          0.6333,
+          0.7667,
+          0.5,
+          0.5
+        ]
+      },
+      "tech": {
+        "match_strength": 0.7533,
+        "matched": true,
+        "member_strengths": [
+          0.8333,
+          0.7333,
+          0.7667,
+          0.8,
+          0.6333
+        ]
+      }
+    },
+    "WTPref_scaled": 5780,
+    "WTPadj_scaled": 4046,
+    "wtp_multiplier": 0.5007,
+    "VPscore": 3.6
+  },
+  "r2": {
+    "roi": -234.53721106660345,
+    "profit": -4999864,
+    "units": 17,
+    "adoption": 0.000014638017543335563,
+    "S_competitive": 1,
+    "R": 1,
+    "share": 0.000014638017543335563,
+    "P": 5000,
+    "WTP": 4046,
+    "e": 1.2,
+    "wtpPrime": 4066.6346,
+    "WTPref": 4045.9999999999995,
+    "rawWtpMult": 0.5007,
+    "compressedWtpMult": 0.7,
+    "WTPref_adjusted": 4045.9999999999995,
+    "gamma": 4.417489031895054,
+    "gammaRaw": 4.559340347444945,
+    "gammaEff": 4.417489031895054,
+    "z": -11.13187383418228,
+    "Meff": 1144000,
+    "X": 1.8272080144275256,
+    "I": 0.32652000267176395,
+    "fit": 0.364,
+    "actualGm": 0.47919999999999996,
+    "V": 0.01700000000000003,
+    "dCOGS": 1254,
+    "nre_total_wan": 353.93999999999994,
+    "f_total": 5039400,
+    "f_total_wan": 503.94,
+    "breakeven_q": 2104,
+    "unitMargin": 2396,
+    "revenueNet": 71170,
+    "variableCost": 31047,
+    "fixedCost": 5039400,
+    "fBase": 1500000,
+    "positiveDCOGS": 1254,
+    "risk": 1.2700000000000002,
+    "subLift": 0.39,
+    "load": 27,
+    "complexity": 2.09,
+    "coverCore": 0.52,
+    "coverNice": 0,
+    "penalty": 817,
+    "overBudget": 444.79999999999995,
+    "overCap": 3,
+    "budgetBenchmark": 809.2,
+    "unitProfitHW": 2396,
+    "profitHW": 40123,
+    "profitSub": 230,
+    "attach": 0.027499999999999913,
+    "ltvSub": 14,
+    "rdInvestment": 21318,
+    "violations": [],
+    "hardViolationCount": 0,
+    "evi": 0.7,
+    "w_star": {
+      "perception": 0.20547042313003303,
+      "mobility": 0.12591309720136107,
+      "interaction": 0.2006807087361654,
+      "safety_privacy": 0.1957735824607485,
+      "integration": 0.12499884070891575,
+      "operations": 0.14716334776277631
+    },
+    "sev": 0.568914293347897,
+    "tagBreakdown": [
+      {
+        "tag": "安全与信任",
+        "dimCN": "安全与信任",
+        "dimKey": "safety_privacy",
+        "w": 0.1957735824607485,
+        "tier": "core",
+        "imp": 2
+      },
+      {
+        "tag": "情感陪伴",
+        "dimCN": "交互与表达",
+        "dimKey": "interaction",
+        "w": 0.2006807087361654,
+        "tier": "core",
+        "imp": 2
+      },
+      {
+        "tag": "远程关怀",
+        "dimCN": "安全与信任",
+        "dimKey": "safety_privacy",
+        "w": 0.1957735824607485,
+        "tier": "core",
+        "imp": 2
+      },
+      {
+        "tag": "省心可靠",
+        "dimCN": "可运营与可维护",
+        "dimKey": "operations",
+        "w": 0.14716334776277631,
+        "tier": "nice",
+        "imp": 1
+      },
+      {
+        "tag": "情绪识别",
+        "dimCN": "感知与理解",
+        "dimKey": "perception",
+        "w": 0.20547042313003303,
+        "tier": "core",
+        "imp": 2
+      },
+      {
+        "tag": "场景感知",
+        "dimCN": "感知与理解",
+        "dimKey": "perception",
+        "w": 0.20547042313003303,
+        "tier": "core",
+        "imp": 2
+      }
+    ],
+    "COGSbase": 600,
+    "COGS": 1854
+  },
+  "r2_price": 5000,
+  "r2_cards": [
+    {
+      "cap_id": "perception_base",
+      "tier": "low"
+    },
+    {
+      "cap_id": "adaptive_learning",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "emotion_recognition",
+      "tier": "low"
+    },
+    {
+      "cap_id": "basic_avoidance",
+      "tier": "low"
+    },
+    {
+      "cap_id": "persona_dialog",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "privacy_trust",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "family_guardian",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "api_iot",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "cloud_update",
+      "tier": "low"
+    },
+    {
+      "cap_id": "remote_monitor",
+      "tier": "mid"
+    },
+    {
+      "cap_id": "self_diag",
+      "tier": "low"
+    }
+  ],
+  "r2_prototype": {
+    "prototype": "elder_care",
+    "rationale": "我们队经讨论后，R2 客户原型选择为：老人照护向 · 独居长辈（周阿姨）。理由如下：1. 刚需锚点明确：周阿姨的痛点（跌倒风险、安全事故、远程照护责任）是刚性且可量化的，付费决策链清晰——真正买单的是儿子，他愿意为“安全”支付溢价。相比之下，林小姐的“情绪陪伴”更偏冲动型消费，留存和复购风险高，智能音箱的三周新鲜感衰减已是前车之鉴。2. 技术栈可复用：我们的生物信号感知和异常检测能力在ToB养老场景已经跑通过，跌倒检测、心率异常、长时间不动等信号可以直接迁移到周阿姨的居家场景，形成技术壁垒。而林小姐的情感识别在隐私和误判上落地难度大，且难以建立差异化护城河。3. 成本结构更优：老人场景可以聚焦传感器和报警闭环，砍掉花哨交互，符合我们成本优化的原则；成人陪伴需要持续的内容生态和个性化运营，边际成本更高。4. 渠道协同：我们已有ToB养老机构基础，周阿姨场景可以形成“机构+居家”的数据闭环和渠道延伸，增强整体商业模式的协同性。综上，我们选择老人照护向作为 R2 客户原型。"
+  },
+  "profit": -4999864,
+  "profitable": false
+}

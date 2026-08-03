@@ -1,0 +1,41 @@
+{
+  "synthetic": true,
+  "grid_id": "ToB_DIFF_ELDER",
+  "grid_label": "ToB / 老人 / 差异化",
+  "architecture": "Hybrid",
+  "vp_summary": {
+    "who": "连锁型养老社区（300床以上）",
+    "pain": "运营风险量化管理——护理人员短缺导致的跌倒事故、夜间异常事件响应等",
+    "how": "输出跌倒率下降X%、响应时间缩短Y分钟等可量化指标，按基础订阅+增值服务+政策合规包三层收费"
+  },
+  "target_gm": 0.595,
+  "jinang_fit": {
+    "market": {
+      "match_strength": 0.7067,
+      "matched": true,
+      "bonus": 0.0141,
+      "member_strengths": [
+        0.8,
+        0.8,
+        0.5,
+        0.8,
+        0.6333
+      ]
+    },
+    "tech": {
+      "match_strength": 0.7333,
+      "matched": true,
+      "member_strengths": [
+        0.7333,
+        0.7667,
+        0.7333,
+        0.8,
+        0.6333
+      ]
+    }
+  },
+  "WTPref_scaled": 5780,
+  "WTPadj_scaled": 5184,
+  "wtp_multiplier": 0.8203,
+  "VPscore": 4.5
+}
