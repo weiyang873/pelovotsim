@@ -533,6 +533,11 @@ function groupsById(capabilityGroups) {
   return new Map(capabilityGroups.groups.map((group) => [group.group_id, group]));
 }
 
+function actionableCompatibilityViolations(validation) {
+  const violations = Array.isArray(validation.violations) ? validation.violations : [];
+  return violations.filter((item) => !["group_min", "total_min"].includes(item.type));
+}
+
 async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, config, materials, outputDir, seed }) {
   const temperature = requireConfigNumber(config, "temperature");
   const archetypes = materials.archetypes.archetypes;
@@ -595,7 +600,7 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
         text: `客户原型已冻结：${chosenPrototype.label}。当前只讨论这些功能区：${segment.join(", ")}。每个功能区恰好选 1 张卡。\n已选卡：${selectedCards.map((card) => `${card.cap_id}@${card.tier}`).join("、")}\n\n${groupText}`
       }
     ];
-    const discussion = await runDiscussion({
+    let discussion = await runDiscussion({
       members,
       leaderIdx,
       draws,
@@ -607,33 +612,62 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
       temperature,
       seed: `${seed}:cards:${segmentIndex}`
     });
-    const cardsSubmit = await leaderSubmit({
-      members,
-      leaderIdx,
-      transcript: discussion.transcript,
-      topic: `提交当前功能段选卡：${segment.join(", ")}；每个功能区恰好 1 张`,
-      decisionType: "cards",
-      context: {
-        allowedGroups: segment,
-        capabilityGroups: materials.capabilityGroups,
-        submitParseRetries: requireConfigNumber(config, "submit_parse_retries")
-      },
-      temperature
-    });
-    selectedCards.push(...cardsSubmit.parsed.cards);
-    const validation = RD.validateSelections(selectedCards);
-    if (validation.hardViolationCount > 0 && segmentIndex === segments.length - 1) {
-      throw new Error(`compat_violation: ${validation.violations.map((item) => item.message).join("; ")}`);
+    let cardsSubmit = null;
+    let validation = null;
+    let segmentTranscript = discussion.transcript;
+    let segmentTurns = discussion.turns.slice();
+    for (let repairRound = 0; repairRound <= 3; repairRound += 1) {
+      cardsSubmit = await leaderSubmit({
+        members,
+        leaderIdx,
+        transcript: segmentTranscript,
+        topic: `提交当前功能段选卡：${segment.join(", ")}；每个功能区恰好 1 张`,
+        decisionType: "cards",
+        context: {
+          allowedGroups: segment,
+          capabilityGroups: materials.capabilityGroups,
+          submitParseRetries: requireConfigNumber(config, "submit_parse_retries")
+        },
+        temperature
+      });
+      const candidateCards = selectedCards.concat(cardsSubmit.parsed.cards);
+      validation = RD.validateSelections(candidateCards);
+      const actionable = actionableCompatibilityViolations(validation);
+      if (actionable.length === 0) {
+        selectedCards.push(...cardsSubmit.parsed.cards);
+        break;
+      }
+      if (repairRound >= 3) {
+        throw new Error(`compat_violation: ${actionable.map((item) => item.message).join("; ")}`);
+      }
+      segmentTranscript = segmentTranscript.concat([{
+        speaker: "moderator",
+        text: `兼容性校验未通过：${actionable.map((item) => item.message).join("；")}。请只重议当前功能段，修正卡或档位，不能改变已冻结的前序段。`
+      }]);
+      const rediscussion = await runDiscussion({
+        members,
+        leaderIdx,
+        draws,
+        proposals,
+        initialTranscript: segmentTranscript,
+        topic: `R2 选卡段 ${segmentIndex + 1} 兼容性重议: ${segment.join(", ")}`,
+        maxTurns: 3,
+        config,
+        temperature,
+        seed: `${seed}:cards:${segmentIndex}:repair:${repairRound}`
+      });
+      segmentTranscript = rediscussion.transcript;
+      segmentTurns = segmentTurns.concat(rediscussion.turns);
     }
     checkpoints.push({
       decision_point: `cards_segment_${segmentIndex + 1}`,
       termination: discussion.termination,
-      turns: discussion.turns.length,
+      turns: segmentTurns.length,
       frozen: cardsSubmit.parsed,
       cumulative_cards: selectedCards.slice(),
       compatibility: validation
     });
-    r2Transcript.push({ decision_point: `cards_segment_${segmentIndex + 1}`, transcript: discussion.transcript, turns: discussion.turns });
+    r2Transcript.push({ decision_point: `cards_segment_${segmentIndex + 1}`, transcript: segmentTranscript, turns: segmentTurns });
     writeJson(path.join(outputDir, "r2_checkpoints.json"), { checkpoints });
   }
 
