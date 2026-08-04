@@ -697,15 +697,29 @@ class PersonaStudent {
   async generateVPDraft(gridChoice) {
     const choice = gridChoice || { grid_id: "ToC_Differentiation_Adult", architecture: "Experience" };
     const fallbackBase = getFallbackVP(this.personaId);
-    const fallbackText = `${fallbackBase.who}。${fallbackBase.pain}。${fallbackBase.how}`;
-    const messages = [
-      {
-        role: "system",
-        content: this.buildLayeredSystemPrompt()
-      },
-      {
-        role: "user",
-        content: `你们小组刚完成了战略定位的选择。你选了：${gridDescription(choice)}（${choice.grid_id}），架构：${choice.architecture}。
+    const structuredVpDraft = String(process.env.SIM_STRUCTURED_VP_DRAFT || "").trim() === "1";
+    const fallbackText = structuredVpDraft
+      ? `WHO：${fallbackBase.who}\nPAIN：${fallbackBase.pain}\nHOW：${fallbackBase.how}`
+      : `${fallbackBase.who}。${fallbackBase.pain}。${fallbackBase.how}`;
+    const userPrompt = structuredVpDraft
+      ? `你们小组刚完成了战略定位的选择。你选了：${gridDescription(choice)}（${choice.grid_id}），架构：${choice.architecture}。
+
+你刚看完 AI 宠物机器人的产品介绍视频：一个有温度、会撒娇、能认人、能主动靠近人的陪伴机器人，日本研发，现在要进中国市场。
+
+现在进入小组讨论环节。界面上有一个空白文本框，让每个人先写下自己对这个方向的初步想法，作为讨论的起点。AI 策略顾问会在你们写完后加入讨论，帮你们完善。
+
+这是课堂上的第一反应，不是写方案书，但当前系统需要按三行存档，方便后续打分。
+- 保留你的判断口吻
+- 可以有偏见和不完整
+- 不要编数据
+- 不要写系统架构
+- 不要把产品改成别的东西，你写的必须还是 AI 宠物机器人这个陪伴机器人
+
+只输出三行：
+WHO：你第一个想到的客户
+PAIN：你觉得他们最大的问题
+HOW：你觉得这款 AI 宠物机器人怎么帮他们`
+      : `你们小组刚完成了战略定位的选择。你选了：${gridDescription(choice)}（${choice.grid_id}），架构：${choice.architecture}。
 
 你刚看完 AI 宠物机器人的产品介绍视频：一个有温度、会撒娇、能认人、能主动靠近人的陪伴机器人，日本研发，现在要进中国市场。
 
@@ -718,7 +732,15 @@ class PersonaStudent {
 - 不要写系统架构
 - 不要把产品改成别的东西，你写的必须还是 AI 宠物机器人这个陪伴机器人
 
-把你的想法直接打进去，1-4 句话。`
+把你的想法直接打进去，1-4 句话。`;
+    const messages = [
+      {
+        role: "system",
+        content: this.buildLayeredSystemPrompt()
+      },
+      {
+        role: "user",
+        content: userPrompt
       }
     ];
     const startedAt = Date.now();

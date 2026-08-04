@@ -219,6 +219,13 @@ async function main() {
 
   const baseUrl = process.env.BASE_URL || "http://127.0.0.1:8787";
   process.env.STRICT_DEEPSEEK = "1";
+  process.env.SIM_STRUCTURED_VP_DRAFT = "1";
+  if (process.env.DEEPSEEK_DISABLE_THINKING === undefined) {
+    process.env.DEEPSEEK_DISABLE_THINKING = "1";
+  }
+  if (process.env.LLM_MODEL_OVERRIDE === undefined) {
+    process.env.LLM_MODEL_OVERRIDE = process.env.DEEPSEEK_MODEL || "deepseek-v4-flash";
+  }
   const teamSize = 6;
   const logger = new SimLogger();
   const api = new ApiClient(baseUrl, { logger, timeoutMs: 120000 });
