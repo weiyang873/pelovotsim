@@ -1258,7 +1258,7 @@ async function runRound2Summary(result, api, teamId, members, memberActors, team
   });
 
   async function saveSummarySelections(validationIssues = null) {
-    await Promise.all(selectionContexts.map(async (selectionContext) => {
+    for (const selectionContext of selectionContexts) {
       const currentMember = tracker.getMember(selectionContext.assignment.memberId);
       const generatedSelections = await generateSummaryCardSelection(selectionContext.actor, {
         cards: cardsData,
@@ -1279,7 +1279,7 @@ async function runRound2Summary(result, api, teamId, members, memberActors, team
       assert(data.ok === true, `saveMemberSelection failed for ${selectionContext.assignment.memberName}`);
       assert(Number(data.count) === apiSelections.length, `selection count mismatch for ${selectionContext.assignment.memberName}`);
       tracker.recordPersonalSelections(selectionContext.assignment.memberId, generatedSelections);
-    }));
+    }
   }
 
   async function mergeTeamSelectionsSummary() {
@@ -1964,7 +1964,7 @@ async function runRound2(result, api, teamId, members, memberActors, teamIndex, 
 
   async function saveSelectionsForContexts(validationIssues = null, forceFallback = false) {
     const issues = normalizeViolationsList(validationIssues);
-    await Promise.all(selectionContexts.map(async (context) => {
+    for (const context of selectionContexts) {
       const currentMember = tracker.getMember(context.assignment.memberId);
       const generatedSelections = forceFallback
         ? context.fallbackSelections
@@ -1994,7 +1994,7 @@ async function runRound2(result, api, teamId, members, memberActors, teamIndex, 
       assert(data.ok === true, `saveMemberSelection failed for ${context.assignment.memberName}`);
       assert(Number(data.count) === apiSelections.length, `selection count mismatch for ${context.assignment.memberName}`);
       tracker.recordPersonalSelections(context.assignment.memberId, storedSelections);
-    }));
+    }
   }
 
   async function mergeTeamSelections() {
