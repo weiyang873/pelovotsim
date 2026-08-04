@@ -2686,7 +2686,12 @@ async function ensureAssignmentPersonaPool({ assignments, assignmentIndex, team,
     const nextId = String(nextPersona.id || "").trim();
     const nextName = String(nextPersona.name || "").trim();
     if (nextId && personaPool.some((item) => String(item?.id || "").trim() === nextId)) {
-      throw new Error(`Persona 生成重复：${nextId}`);
+      if (skipCount < 5) {
+        console.warn(`[ensureAssignmentPersonaPool] 跳过与本成员重复的 persona: ${nextId}`);
+        skipCount += 1;
+        continue;
+      }
+      nextPersona.id = `${nextId}_v${personaPool.length + 1}`;
     }
     if (skipCount < 5 && nextName && otherMemberPersonas.some((item) => String(item?.name || "").trim() === nextName)) {
       console.warn(`[ensureAssignmentPersonaPool] 跳过与其他成员重复的 persona: ${nextName}`);
