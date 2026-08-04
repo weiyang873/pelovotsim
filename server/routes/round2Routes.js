@@ -1457,6 +1457,7 @@ function sanitizeStudentTeamResult(result) {
 function sanitizeStudentInterviewResult(result) {
   if (!result || typeof result !== "object") return result || null;
   return withDefinedEntries([
+    ["radar", result.radar && typeof result.radar === "object" ? normalizeRadarPayload(result.radar) : undefined],
     ["summary", String(result.summary || "").trim()],
     ["tags", Array.isArray(result.tags) ? result.tags : undefined],
     ["evi", Number.isFinite(Number(result.evi)) ? Number(result.evi) : undefined],
@@ -1467,7 +1468,9 @@ function sanitizeStudentInterviewResult(result) {
 function sanitizeStudentStoredRadar(radar) {
   if (!radar || typeof radar !== "object") return radar;
   return withDefinedEntries([
+    ["radar", radar.radar && typeof radar.radar === "object" ? normalizeRadarPayload(radar.radar) : undefined],
     ["tags", Array.isArray(radar.tags) ? radar.tags : undefined],
+    ["evi", Number.isFinite(Number(radar.evi)) ? Number(radar.evi) : undefined],
     ["updated_at", radar.updated_at || null]
   ]);
 }
