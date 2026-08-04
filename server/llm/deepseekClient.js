@@ -199,6 +199,7 @@ async function _chatCompletionInner(messages, options = {}) {
     temperature: options.temperature ?? 0.7,
     max_tokens: options.max_tokens ?? 800,
     ...(disableThinking ? { thinking: { type: "disabled" } } : {}),
+    ...(options.response_format ? { response_format: options.response_format } : {}),
   });
   const url = new URL("/v1/chat/completions", baseUrl);
   const maxRetries = Number.isFinite(options.maxRetries) ? options.maxRetries : MAX_RETRIES;

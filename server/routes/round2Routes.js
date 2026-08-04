@@ -2155,8 +2155,9 @@ async function extractInterviewResult({ gridId, architecture, memberDims, histor
       messages
     }, () => chatCompletion(messages, {
       temperature: 0.2,
-      max_tokens: 2500,
-      maxRetries: 3,
+      max_tokens: 6000,
+      maxRetries: 5,
+      response_format: { type: "json_object" },
       timeoutMs: ROUND2_LLM_TIMEOUT_MS
     }));
     const txt = String(raw || "").replace(/```json|```/g, "").trim();
