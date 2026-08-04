@@ -4,7 +4,7 @@ const https = require("https");
 const { getModel, getBaseUrl, logResolvedModel } = require("./modelRegistry");
 
 const REQUEST_TIMEOUT_MS = parseInt(process.env.DEEPSEEK_TIMEOUT_MS || "60000", 10);
-const MAX_RETRIES = Math.max(0, parseInt(process.env.LLM_MAX_RETRIES || "1", 10));
+const MAX_RETRIES = Math.max(0, parseInt(process.env.LLM_MAX_RETRIES || "5", 10));
 const RETRY_DELAY_MS = 2000;
 const LLM_CONCURRENCY = Math.max(1, parseInt(process.env.LLM_CONCURRENCY || "10", 10));
 const RETRYABLE_NETWORK_CODES = new Set(["ECONNRESET", "ETIMEDOUT", "ECONNREFUSED", "EPIPE"]);
@@ -84,7 +84,7 @@ function isRetryableError(error) {
   const statusCode = Number(error?.statusCode || error?.status || 0);
   if (statusCode === 429 || statusCode >= 500) return true;
   if (RETRYABLE_NETWORK_CODES.has(String(error?.code || "").toUpperCase())) return true;
-  return /timeout/i.test(String(error?.message || ""));
+  return /timeout|empty response/i.test(String(error?.message || ""));
 }
 
 /**
