@@ -1894,50 +1894,71 @@ async function runRound2(result, api, teamId, members, memberActors, teamIndex, 
       const actor = getStudentProfile(options, memberIndex)
         ? memberActors[memberIndex]
         : student;
-      const startData = await stepApi(api, "R2.1_start_interview", assignment.memberId).startInterview(teamId, assignment.memberId, {
-        memberDims: assignment.dims
-      });
-      assert(startData.ok === true, `startInterview failed for ${assignment.memberName}`);
-      assert(String(startData.sessionId || "").trim(), `startInterview missing sessionId for ${assignment.memberName}`);
-      sessionIds.add(startData.sessionId);
+      const memberResults = [];
+      for (let interviewIndex = 0; interviewIndex < 3; interviewIndex += 1) {
+        const startData = await stepApi(api, "R2.1_start_interview", assignment.memberId).startInterview(teamId, assignment.memberId, {
+          memberDims: assignment.dims
+        });
+        assert(startData.ok === true, `startInterview failed for ${assignment.memberName}`);
+        if (!String(startData.sessionId || "").trim()) {
+          const progress = startData.progress || {};
+          const completedCount = Number(progress.completedCount || memberResults.length || 0);
+          const minRequired = Number(progress.minInterviewsRequired || 2);
+          assert(
+            progress.canProceed === true || completedCount >= minRequired,
+            `startInterview missing sessionId for ${assignment.memberName}`
+          );
+          break;
+        }
+        sessionIds.add(startData.sessionId);
 
-      const history = [];
-      let lastPersonaReply = String(startData.persona?.desc || startData.persona?.name || "我们可以开始聊。");
-      let replyData = null;
-      for (let turn = 0; turn < 5; turn += 1) {
-        const message = await actor.generateInterviewReply(lastPersonaReply, history, assignment.dims);
-        history.push({ role: "user", content: message });
-        replyData = await stepApi(api, "R2.1_reply_interview", assignment.memberId).replyInterview(startData.sessionId, message);
-        assert(replyData.ok === true, `interview reply failed for ${assignment.memberName} turn ${turn + 1}`);
-        assert(String(replyData.reply || "").trim(), `interview reply empty for ${assignment.memberName} turn ${turn + 1}`);
-        lastPersonaReply = replyData.reply;
-        history.push({ role: "assistant", content: lastPersonaReply });
-        if (replyData.isComplete === true) break;
-      }
+        const history = [];
+        let lastPersonaReply = String(startData.persona?.desc || startData.persona?.name || "我们可以开始聊。");
+        let replyData = null;
+        for (let turn = 0; turn < 5; turn += 1) {
+          const message = await actor.generateInterviewReply(lastPersonaReply, history, assignment.dims);
+          history.push({ role: "user", content: message });
+          replyData = await stepApi(api, "R2.1_reply_interview", assignment.memberId).replyInterview(startData.sessionId, message);
+          assert(replyData.ok === true, `interview reply failed for ${assignment.memberName} interview ${interviewIndex + 1} turn ${turn + 1}`);
+          assert(String(replyData.reply || "").trim(), `interview reply empty for ${assignment.memberName} interview ${interviewIndex + 1} turn ${turn + 1}`);
+          lastPersonaReply = replyData.reply;
+          history.push({ role: "assistant", content: lastPersonaReply });
+          if (replyData.isComplete === true) break;
+        }
 
         const endData = replyData?.isComplete === true
-        ? replyData
-        : await stepApi(api, "R2.1_end_interview", assignment.memberId).endInterview(startData.sessionId);
-      assert(endData.ok === true, `endInterview failed for ${assignment.memberName}`);
-      assert(endData.isComplete === true, `interview did not complete for ${assignment.memberName}`);
-      assert(endData.round <= 10, `interview round exceeded limit for ${assignment.memberName}`);
-      assert(endData.radar && typeof endData.radar === "object", `interview radar missing for ${assignment.memberName}`);
-      tracker.recordInterview(assignment.memberId, history, endData, {
-        interview_persona_id: startData.persona?.id || null,
-        interview_persona_name: startData.persona?.name || null
-      });
-      return {
-        memberId: assignment.memberId,
-        dims: assignment.dims,
-        sessionId: startData.sessionId,
-        radar: endData.radar,
-        tags: endData.tags || [],
-        evi: endData.evi
-      };
+          ? replyData
+          : await stepApi(api, "R2.1_end_interview", assignment.memberId).endInterview(startData.sessionId);
+        assert(endData.ok === true, `endInterview failed for ${assignment.memberName} interview ${interviewIndex + 1}`);
+        assert(endData.isComplete === true, `interview did not complete for ${assignment.memberName} interview ${interviewIndex + 1}`);
+        assert(endData.round <= 10, `interview round exceeded limit for ${assignment.memberName} interview ${interviewIndex + 1}`);
+        assert(endData.radar && typeof endData.radar === "object", `interview radar missing for ${assignment.memberName} interview ${interviewIndex + 1}`);
+        tracker.recordInterview(assignment.memberId, history, endData, {
+          interview_persona_id: startData.persona?.id || null,
+          interview_persona_name: startData.persona?.name || null
+        });
+        memberResults.push({
+          memberId: assignment.memberId,
+          dims: assignment.dims,
+          sessionId: startData.sessionId,
+          radar: endData.radar,
+          tags: endData.tags || [],
+          evi: endData.evi
+        });
+
+        const progress = endData.progress || {};
+        const completedCount = Number(progress.completedCount || memberResults.length);
+        const minRequired = Number(progress.minInterviewsRequired || 2);
+        if (progress.canProceed === true || completedCount >= minRequired) break;
+        assert(progress.canStartAnother !== false, `cannot start another interview for ${assignment.memberName}`);
+      }
+      assert(memberResults.length > 0, `no completed interviews for ${assignment.memberName}`);
+      return memberResults;
     }));
 
-    assert(sessionIds.size === interviewMembers.length, "interview session ids are not unique");
-    return out;
+    const flat = out.flat();
+    assert(sessionIds.size === flat.length, "interview session ids are not unique");
+    return flat;
   });
 
   const cardsData = await runStep(result, "r2_get_cards", async () => {
