@@ -2,15 +2,18 @@
 const { pipeline, env } = require("@xenova/transformers");
 const path = require("path");
 const fs = require("fs");
+const { getModel } = require("./modelRegistry");
 
 const ANCHOR_PATH = path.join(__dirname, "..", "..", "data", "round2_dim_anchors_v1.json");
+const EMBEDDING_MODEL = getModel("embedding");
+const EMBEDDING_CACHE_DIR_NAME = `models--${EMBEDDING_MODEL.replace(/[\\/]/g, "--")}`;
 const CACHE_DIR = process.env.HF_CACHE_DIR || path.join(process.env.HOME || "", ".cache", "huggingface");
 const LOCAL_MODEL_ROOT = process.env.HF_LOCAL_MODEL_PATH || path.join(
   process.env.HOME || "",
   ".cache",
   "huggingface",
   "hub",
-  "models--Xenova--paraphrase-multilingual-MiniLM-L12-v2",
+  EMBEDDING_CACHE_DIR_NAME,
   "snapshots",
   "main"
 );
@@ -33,8 +36,9 @@ function configureTransformersEnv() {
 
 function hasLocalModelFiles(rootDir) {
   if (!rootDir) return false;
+  const modelPathParts = EMBEDDING_MODEL.split(/[\\/]/).filter(Boolean);
   const candidates = [
-    path.join(rootDir, "Xenova", "paraphrase-multilingual-MiniLM-L12-v2"),
+    path.join(rootDir, ...modelPathParts),
     rootDir
   ];
   return candidates.some((dir) => (
@@ -53,10 +57,10 @@ async function init() {
 
   initPromise = (async () => {
     configureTransformersEnv();
-    console.log("[EmbeddingService] 加载模型 Xenova/paraphrase-multilingual-MiniLM-L12-v2...");
+    console.log(`[EmbeddingService] 加载模型 ${EMBEDDING_MODEL}...`);
     if (hasLocalModelFiles(LOCAL_MODEL_ROOT)) {
       try {
-        embedder = await pipeline("feature-extraction", "Xenova/paraphrase-multilingual-MiniLM-L12-v2", {
+        embedder = await pipeline("feature-extraction", EMBEDDING_MODEL, {
           local_files_only: true
         });
         console.log("[EmbeddingService] 本地模型加载完成（localModelPath + model id）");
@@ -67,7 +71,7 @@ async function init() {
       console.warn("[EmbeddingService] 本地模型文件不完整，回退在线加载。");
     }
     if (!embedder) {
-      embedder = await pipeline("feature-extraction", "Xenova/paraphrase-multilingual-MiniLM-L12-v2");
+      embedder = await pipeline("feature-extraction", EMBEDDING_MODEL);
       console.log("[EmbeddingService] 在线模型加载完成");
     }
 

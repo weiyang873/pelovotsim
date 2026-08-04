@@ -20,8 +20,9 @@ services:
       retries: 6
 
   app:
+    volumes:
+      - ./game_config_v0.1/llm_models.loadtest.json:/app/game_config_v0.1/llm_models.json:ro
     environment:
-      DEEPSEEK_BASE_URL: http://mock-deepseek:8088
       DEEPSEEK_API_KEY: mock-loadtest-key
       DEEPSEEK_API_KEY_1: ""
       DEEPSEEK_API_KEY_2: ""
@@ -36,4 +37,3 @@ services:
         condition: service_healthy
       mock-deepseek:
         condition: service_healthy
-

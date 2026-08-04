@@ -32,6 +32,7 @@ loadLocalEnvFile();
 
 const Engine = require("./engine");
 const { chatCompletion, hasAnyKey } = require("./server/llm/deepseekClient");
+const { getModel, getBaseUrl } = require("./server/llm/modelRegistry");
 const Sessions = require("./server/llm/sessions");
 
 const LLM_HEALTH_TIMEOUT_MS = 60000;
@@ -75,6 +76,7 @@ let vpEvaluateSchemaPromise = null;
 let shutdownHooksRegistered = false;
 
 const ROUND1_VP_FALLBACK_PROMPT_VERSION = "round1_vp_v1";
+const SERVER_LLM_ROLE = "chat_service";
 const STARTUP_SUMMARY_SCHEMA_TABLES = [
   "round2_persona_reports",
   "round2_persona_choices",
@@ -623,7 +625,7 @@ function parseStudentReply(userMessage, bottleneckBundle, decisionState = {}) {
 
 async function runCoachMode(session, mode, userMessage, stage, runtime = {}) {
   const isGenerate = mode === "generate";
-  const model = process.env.DEEPSEEK_MODEL || "deepseek-chat";
+  const model = getModel(SERVER_LLM_ROLE);
   const libs = await loadCoachLibs();
   const ds = runtime.ds || libs.normalizeDecisionState(session.decision_state || {});
   const personaBrief = runtime.personaBrief || libs.formatPersonaBrief(ds);
@@ -749,7 +751,7 @@ function stringifySafe(obj) {
 }
 
 function resolveRound1Model(payload, routeType) {
-  return process.env.DEEPSEEK_MODEL || "deepseek-chat";
+  return getModel(SERVER_LLM_ROLE);
 }
 
 async function handleRound1Llm(req, res, routeType) {
@@ -923,8 +925,8 @@ async function handleRound1Llm(req, res, routeType) {
 
 async function handleLlmHealth(req, res) {
   const hasKey = hasAnyKey();
-  const baseUrl = process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com/v1";
-  const model = process.env.DEEPSEEK_MODEL || "deepseek-chat";
+  const baseUrl = getBaseUrl();
+  const model = getModel(SERVER_LLM_ROLE);
   if (!hasKey) {
     return sendJson(res, 200, {
       ok: false,
@@ -940,7 +942,7 @@ async function handleLlmHealth(req, res) {
         { role: "system", content: "health check" },
         { role: "user", content: "ok" }
       ],
-      { temperature: 0, max_tokens: 1, timeoutMs: LLM_HEALTH_TIMEOUT_MS }
+      { role: SERVER_LLM_ROLE, temperature: 0, max_tokens: 1, timeoutMs: LLM_HEALTH_TIMEOUT_MS }
     );
     return sendJson(res, 200, {
       ok: true,
@@ -1128,7 +1130,7 @@ async function handleRound1VpHint(req, res) {
       const ds = libs.normalizeDecisionState(payload.decision_state || {});
       const choices = normalizeVpChoices(ds);
       const contextText = dim.buildContextFromChoices(choices);
-      const model = process.env.DEEPSEEK_MODEL || "deepseek-chat";
+      const model = getModel(SERVER_LLM_ROLE);
       const enableDebug = String(process.env.LLM_DEBUG || "") === "1";
       const promptVersion = prompts.PROMPT_VERSION || ROUND1_VP_FALLBACK_PROMPT_VERSION;
       const step = Number(payload.step || 1);
@@ -1206,7 +1208,7 @@ async function handleRound1VpGenerate(req, res) {
       const ds = libs.normalizeDecisionState(payload.decision_state || {});
       const choices = normalizeVpChoices(ds);
       const contextText = dim.buildContextFromChoices(choices);
-      const model = process.env.DEEPSEEK_MODEL || "deepseek-chat";
+      const model = getModel(SERVER_LLM_ROLE);
       const enableDebug = String(process.env.LLM_DEBUG || "") === "1";
       const promptVersion = prompts.PROMPT_VERSION || ROUND1_VP_FALLBACK_PROMPT_VERSION;
       const teamKey = vpTeamKey(payload);
@@ -1403,7 +1405,7 @@ async function handleRound1Chat(req, res) {
       const ds = libs.normalizeDecisionState(payload.decision_state || {});
       const choices = normalizeVpChoices(ds);
       const contextText = dim.buildContextFromChoices(choices);
-      const model = process.env.DEEPSEEK_MODEL || "deepseek-chat";
+      const model = getModel(SERVER_LLM_ROLE);
       const enableDebug = String(process.env.LLM_DEBUG || "") === "1";
       const promptVersion = prompts.PROMPT_VERSION || ROUND1_VP_FALLBACK_PROMPT_VERSION;
       const message = String(payload.message || "").trim();
@@ -1726,7 +1728,7 @@ async function handleRound1VpFeedback(req, res) {
       const ds = libs.normalizeDecisionState(payload.decision_state || {});
       const choices = normalizeVpChoices(ds);
       const contextText = dim.buildContextFromChoices(choices);
-      const model = process.env.DEEPSEEK_MODEL || "deepseek-chat";
+      const model = getModel(SERVER_LLM_ROLE);
       const enableDebug = String(process.env.LLM_DEBUG || "") === "1";
       const promptVersion = prompts.PROMPT_VERSION || ROUND1_VP_FALLBACK_PROMPT_VERSION;
       const step = Number(payload.step || 1);
@@ -1806,7 +1808,7 @@ async function handleRound1VpEvaluate(req, res) {
       const ds = libs.normalizeDecisionState(payload.decision_state || {});
       const choices = normalizeVpChoices(ds);
       const contextText = dim.buildContextFromChoices(choices);
-      const model = process.env.DEEPSEEK_MODEL || "deepseek-chat";
+      const model = getModel(SERVER_LLM_ROLE);
       const enableDebug = String(process.env.LLM_DEBUG || "") === "1";
       const promptVersion = prompts.PROMPT_VERSION || ROUND1_VP_FALLBACK_PROMPT_VERSION;
       const teamKey = vpTeamKey(payload);
@@ -1863,8 +1865,8 @@ async function handleRound1VpEvaluate(req, res) {
 }
 
 async function handleRound1VpHealth(req, res) {
-  const baseUrl = process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com/v1";
-  const model = process.env.DEEPSEEK_MODEL || "deepseek-chat";
+  const baseUrl = getBaseUrl();
+  const model = getModel(SERVER_LLM_ROLE);
   const configured = hasAnyKey();
   return sendJson(res, 200, {
     ok: true,

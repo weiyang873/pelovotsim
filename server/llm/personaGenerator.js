@@ -41,7 +41,7 @@ async function extractVpConstraints(vpCanvas, strategy) {
     teamId: strategy?.teamId || strategy?.team_id || strategy?.teamKey || null,
     memberId: null,
     messages
-  }, () => chatCompletion(messages, { temperature: 0.2, max_tokens: 400, timeoutMs: LLM_TIMEOUT_MS }));
+  }, () => chatCompletion(messages, { role: "persona_generator", temperature: 0.2, max_tokens: 400, timeoutMs: LLM_TIMEOUT_MS }));
 
   try {
     return parseJsonLoose(raw);
@@ -291,7 +291,7 @@ async function generatePersona(vpCanvas, strategy) {
       teamId: strategy?.teamId || strategy?.team_id || strategy?.teamKey || null,
       memberId: null,
       messages
-    }, () => chatCompletion(messages, { temperature: 0.7, max_tokens: 700, timeoutMs: LLM_TIMEOUT_MS }));
+    }, () => chatCompletion(messages, { role: "persona_generator", temperature: 0.7, max_tokens: 700, timeoutMs: LLM_TIMEOUT_MS }));
 
     try {
       const persona = normalizeRound1Persona(parseJsonLoose(raw), strategy);
@@ -332,7 +332,7 @@ async function generatePersona(vpCanvas, strategy) {
     teamId: strategy?.teamId || strategy?.team_id || strategy?.teamKey || null,
     memberId: null,
     messages
-  }, () => chatCompletion(messages, { temperature: 0.9, max_tokens: 600, timeoutMs: LLM_TIMEOUT_MS }));
+  }, () => chatCompletion(messages, { role: "persona_generator", temperature: 0.9, max_tokens: 600, timeoutMs: LLM_TIMEOUT_MS }));
 
   try {
     const persona = parseJsonLoose(raw);

@@ -1,12 +1,14 @@
 // deepseekClient.js - Clean slate v2
 const http = require("http");
 const https = require("https");
+const { getModel, getBaseUrl, logResolvedModel } = require("./modelRegistry");
 
 const REQUEST_TIMEOUT_MS = parseInt(process.env.DEEPSEEK_TIMEOUT_MS || "60000", 10);
 const MAX_RETRIES = Math.max(0, parseInt(process.env.LLM_MAX_RETRIES || "1", 10));
 const RETRY_DELAY_MS = 2000;
 const LLM_CONCURRENCY = Math.max(1, parseInt(process.env.LLM_CONCURRENCY || "10", 10));
 const RETRYABLE_NETWORK_CODES = new Set(["ECONNRESET", "ETIMEDOUT", "ECONNREFUSED", "EPIPE"]);
+const DEFAULT_CHAT_ROLE = "chat_service";
 // Collect all DEEPSEEK_API_KEY_N keys plus the unsuffixed DEEPSEEK_API_KEY.
 // Deduplicates by value so accidentally pasting the same key into two slots
 // doesn't double its weight in the pool.
@@ -93,7 +95,7 @@ function hasAnyKey() {
   return DEEPSEEK_KEY_POOL.length > 0;
 }
 
-function performChatCompletionRequest(url, apiKey, body, timeoutMs = REQUEST_TIMEOUT_MS) {
+function performChatCompletionRequest(url, apiKey, body, role, timeoutMs = REQUEST_TIMEOUT_MS) {
   const transport = url.protocol === "http:" ? http : https;
 
   return new Promise((resolve, reject) => {
@@ -152,6 +154,7 @@ function performChatCompletionRequest(url, apiKey, body, timeoutMs = REQUEST_TIM
 
           const text = parsed?.choices?.[0]?.message?.content;
           if (!text) return finish(reject, new Error("Empty response from DeepSeek"));
+          logResolvedModel(role, parsed?.model);
           return finish(resolve, text.trim());
         });
       }
@@ -179,8 +182,9 @@ function performChatCompletionRequest(url, apiKey, body, timeoutMs = REQUEST_TIM
  * @returns {Promise<string>} - 模型回复文本
  */
 async function _chatCompletionInner(messages, options = {}) {
-  const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || "deepseek-chat";
-  const DEEPSEEK_BASE_URL = process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com";
+  const role = String(options.role || DEFAULT_CHAT_ROLE).trim();
+  const model = getModel(role);
+  const baseUrl = getBaseUrl();
 
   if (DEEPSEEK_KEY_POOL.length === 0) {
     throw new Error("DEEPSEEK_API_KEY not set (and no DEEPSEEK_API_KEY_1..N found)");
@@ -190,13 +194,13 @@ async function _chatCompletionInner(messages, options = {}) {
   // 时注入 thinking:{type:"disabled"} 关闭思考(经 API 实测唯一生效的开关)。默认不设→server 正常运行零影响。
   const disableThinking = process.env.DEEPSEEK_DISABLE_THINKING === "1" || options.disableThinking === true;
   const body = JSON.stringify({
-    model: DEEPSEEK_MODEL,
+    model,
     messages,
     temperature: options.temperature ?? 0.7,
     max_tokens: options.max_tokens ?? 800,
     ...(disableThinking ? { thinking: { type: "disabled" } } : {}),
   });
-  const url = new URL("/v1/chat/completions", DEEPSEEK_BASE_URL);
+  const url = new URL("/v1/chat/completions", baseUrl);
   const maxRetries = Number.isFinite(options.maxRetries) ? options.maxRetries : MAX_RETRIES;
   const timeoutMs = Number.isFinite(Number(options.timeoutMs))
     ? Math.max(1, Number(options.timeoutMs))
@@ -208,7 +212,7 @@ async function _chatCompletionInner(messages, options = {}) {
     const apiKey = DEEPSEEK_KEY_POOL[keyIndex];
 
     try {
-      return await performChatCompletionRequest(url, apiKey, body, timeoutMs);
+      return await performChatCompletionRequest(url, apiKey, body, role, timeoutMs);
     } catch (error) {
       const retryable = isRetryableError(error);
       const canRetry = retryable && attempt < maxRetries;

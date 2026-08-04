@@ -302,6 +302,7 @@ ${diagnosisSummary}
       memberId,
       messages
     }, () => chatCompletion(messages, {
+      role: "vp_word_scorer",
       temperature: 0.3,
       max_tokens: 500,
       timeoutMs: Number.isFinite(Number(timeoutMs)) ? Number(timeoutMs) : LLM_TIMEOUT_MS

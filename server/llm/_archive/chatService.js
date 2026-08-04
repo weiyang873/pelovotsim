@@ -6,8 +6,11 @@
 // of stable operation if no streaming use-case emerges.
 // chatService.js - streaming chat completion
 
-const DEEPSEEK_BASE_URL = process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com";
-const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || "deepseek-chat";
+const { getModel, getBaseUrl, logResolvedModel } = require("../modelRegistry");
+
+const CHAT_SERVICE_ROLE = "chat_service";
+const DEEPSEEK_BASE_URL = getBaseUrl();
+const DEEPSEEK_MODEL = getModel(CHAT_SERVICE_ROLE);
 const DEEPSEEK_TIMEOUT_MS = parseInt(process.env.DEEPSEEK_TIMEOUT_MS || "60000", 10);
 const RETRY_DELAYS_MS = [1000, 3000, 9000];
 const RETRYABLE_STATUS_CODES = new Set([429, 500, 502, 503]);
@@ -140,6 +143,7 @@ async function streamWithKey(messages, onChunk, apiKey) {
 
         try {
           const parsed = JSON.parse(data);
+          logResolvedModel(CHAT_SERVICE_ROLE, parsed?.model);
           const text = extractChunkText(parsed);
           if (text) onChunk(text);
         } catch (_) {}

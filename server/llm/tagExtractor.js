@@ -71,7 +71,7 @@ async function extractTags(messages) {
     teamId: null,
     memberId: null,
     messages: llmMessages
-  }, () => chatCompletion(llmMessages, { temperature: 0, max_tokens: 300, timeoutMs: LLM_TIMEOUT_MS }));
+  }, () => chatCompletion(llmMessages, { role: "tag_extractor", temperature: 0, max_tokens: 300, timeoutMs: LLM_TIMEOUT_MS }));
 
   let tags;
   try {

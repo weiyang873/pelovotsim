@@ -1,0 +1,17 @@
+{
+  "provider": "deepseek",
+  "base_url": "http://mock-deepseek:8088",
+  "default_model": "deepseek-v4-flash",
+  "roles": {
+    "vp_coach": null,
+    "interview_coach": null,
+    "persona_generator": null,
+    "tag_extractor": null,
+    "requirement_builder": null,
+    "vp_scorer": null,
+    "vp_embedding_scorer": null,
+    "vp_word_scorer": null,
+    "chat_service": null,
+    "embedding": "Xenova/paraphrase-multilingual-MiniLM-L12-v2"
+  }
+}
