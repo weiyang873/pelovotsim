@@ -228,7 +228,8 @@ async function main() {
   }
   const teamSize = 6;
   const logger = new SimLogger();
-  const api = new ApiClient(baseUrl, { logger, timeoutMs: 120000 });
+  const apiTimeoutMs = 600000;
+  const api = new ApiClient(baseUrl, { logger, timeoutMs: apiTimeoutMs });
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
   const runId = `sim_replay_april_${timestamp}`;
   const logDir = path.join(ROOT, "data", "persona_sim_logs", runId);
@@ -248,7 +249,7 @@ async function main() {
     console.log(`[april_replay] ${teamIndex + 1}/${REPLAY_STRATEGIES.length} ${strategy.grid_id} / ${strategy.architecture}`);
     const studentPool = allStudents[teamIndex % allStudents.length] || [];
     const teamStudents = studentPool.slice(0, teamSize);
-    const teamApi = new ApiClient(baseUrl, { logger, timeoutMs: 120000 });
+    const teamApi = new ApiClient(baseUrl, { logger, timeoutMs: apiTimeoutMs });
     const result = await runTeam(teamIndex, teamSize, teamApi, logger, console, {
       logLevel: "normal",
       strictDeepSeek: true,

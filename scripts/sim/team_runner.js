@@ -225,7 +225,7 @@ async function rateLimitedSummaryChat(messages, options = {}) {
     } catch (err) {
       lastErr = err;
       const message = String(err?.message || err || "");
-      const transient = /ENOTFOUND|ECONNRESET|ETIMEDOUT|EAI_AGAIN|429|5\d\d/i.test(message);
+      const transient = /ENOTFOUND|ECONNRESET|ETIMEDOUT|EAI_AGAIN|429|5\d\d|Empty response|timeout/i.test(message);
       if (!transient || attempt === maxAttempts - 1) {
         throw err;
       }
@@ -918,7 +918,7 @@ async function confirmVPDraft(api, teamId, majority, vpDraft, jinangContext, opt
 async function chatWithVpCoach(api, teamId, payload, options = {}) {
   const retries = Math.max(0, Number(options.retries || 0));
   const retryDelayMs = Math.max(0, Number(options.retryDelayMs || 800));
-  const timeoutMs = Math.max(1000, Number(options.timeoutMs || 30000));
+  const timeoutMs = Math.max(1000, Number(options.timeoutMs || 600000));
   const fallbackReply = String(options.fallbackReply || "").trim();
   let lastError = null;
 
@@ -1580,7 +1580,7 @@ async function runRound1(result, api, teamSize, teamIndex, options, tracker) {
         jinang: jinangContext
       }, {
         retries: 2,
-        timeoutMs: 30000,
+        timeoutMs: 600000,
         retryDelayMs: 800,
         fallbackReply: buildFallbackCoachReply(majority.grid_id, majority.architecture),
         onWarn: (message, details) => warn(result, message, details)

@@ -291,14 +291,21 @@ async function generatePersona(vpCanvas, strategy) {
       teamId: strategy?.teamId || strategy?.team_id || strategy?.teamKey || null,
       memberId: null,
       messages
-    }, () => chatCompletion(messages, { role: "persona_generator", temperature: 0.7, max_tokens: 700, timeoutMs: LLM_TIMEOUT_MS }));
+    }, () => chatCompletion(messages, {
+      role: "persona_generator",
+      temperature: 0.7,
+      max_tokens: 1200,
+      maxRetries: 5,
+      response_format: { type: "json_object" },
+      timeoutMs: LLM_TIMEOUT_MS
+    }));
 
     try {
       const persona = normalizeRound1Persona(parseJsonLoose(raw), strategy);
       persona.constraints = { who_raw: round1Who, gridLabel: round1GridLabel };
       return persona;
-    } catch (_) {
-      throw new Error("Persona 生成失败，请重试");
+    } catch (parseErr) {
+      throw new Error(`Persona 生成失败，请重试: ${parseErr.message || parseErr}`);
     }
   }
 
@@ -332,14 +339,21 @@ async function generatePersona(vpCanvas, strategy) {
     teamId: strategy?.teamId || strategy?.team_id || strategy?.teamKey || null,
     memberId: null,
     messages
-  }, () => chatCompletion(messages, { role: "persona_generator", temperature: 0.9, max_tokens: 600, timeoutMs: LLM_TIMEOUT_MS }));
+  }, () => chatCompletion(messages, {
+    role: "persona_generator",
+    temperature: 0.9,
+    max_tokens: 1200,
+    maxRetries: 5,
+    response_format: { type: "json_object" },
+    timeoutMs: LLM_TIMEOUT_MS
+  }));
 
   try {
     const persona = parseJsonLoose(raw);
     persona.constraints = constraints;
     return persona;
-  } catch (_) {
-    throw new Error("Persona 生成失败，请重试");
+  } catch (parseErr) {
+    throw new Error(`Persona 生成失败，请重试: ${parseErr.message || parseErr}`);
   }
 }
 

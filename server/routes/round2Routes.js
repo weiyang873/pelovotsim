@@ -4433,7 +4433,7 @@ async function interviewReply(body) {
         teamId: session?.team_id || session?.teamId || null,
         memberId: session?.member_id || session?.memberId || null,
         messages: llmMessages
-      }, () => chatCompletion(llmMessages, { temperature: 0.7, max_tokens: 300, timeoutMs: ROUND2_LLM_TIMEOUT_MS }));
+      }, () => chatCompletion(llmMessages, { temperature: 0.7, max_tokens: 600, timeoutMs: ROUND2_LLM_TIMEOUT_MS }));
       reply = String(out || "").trim();
       if (!reply) {
         throw new Error("llm returned empty reply");
@@ -4465,7 +4465,7 @@ async function interviewReply(body) {
           teamId: session?.team_id || session?.teamId || null,
           memberId: session?.member_id || session?.memberId || null,
           messages: retryMessages
-        }, () => chatCompletion(retryMessages, { temperature: 0.9, max_tokens: 300, timeoutMs: ROUND2_LLM_TIMEOUT_MS }));
+        }, () => chatCompletion(retryMessages, { temperature: 0.9, max_tokens: 600, timeoutMs: ROUND2_LLM_TIMEOUT_MS }));
         if (String(out || "").trim()) reply = String(out).trim();
       } catch (_) {}
     }
