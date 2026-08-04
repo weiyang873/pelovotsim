@@ -4235,6 +4235,7 @@ async function interviewAuto(body) {
       isComplete: true,
       canEnd: true,
       reachedLimit: false,
+      radar: studentResult?.radar,
       tags: studentResult?.tags,
       evi: studentResult?.evi,
       summary: studentResult?.summary,
@@ -4386,6 +4387,7 @@ async function interviewReply(body) {
         reply: "访谈已完成，可以进入选卡。",
         round: session.round_no,
         isComplete: true,
+        radar: studentResult?.radar,
         tags: studentResult?.tags,
         evi: studentResult?.evi,
         summary: studentResult?.summary
@@ -4525,6 +4527,7 @@ async function interviewReply(body) {
       reachedLimit,
       needsRescore: reachedLimit && !isComplete,
       scoringError: scoringError || undefined,
+      radar: studentResult?.radar,
       tags: studentResult?.tags,
       evi: studentResult?.evi,
       summary: studentResult?.summary,
@@ -4552,6 +4555,7 @@ async function rescoreInterview(body) {
         ok: true,
         idempotent: true,
         isComplete: true,
+        radar: studentResult?.radar,
         tags: studentResult?.tags,
         evi: studentResult?.evi,
         summary: studentResult?.summary
@@ -4602,6 +4606,7 @@ async function rescoreInterview(body) {
     return makeResponse(200, {
       ok: true,
       isComplete: true,
+      radar: studentResult?.radar,
       tags: studentResult?.tags,
       evi: studentResult?.evi,
       summary: studentResult?.summary
@@ -4633,6 +4638,7 @@ async function interviewEnd(body) {
         alreadyComplete: true,
         round: Number(session.round_no || 0),
         isComplete: true,
+        radar: studentResult?.radar,
         tags: studentResult?.tags,
         evi: studentResult?.evi,
         summary: studentResult?.summary,
@@ -4704,6 +4710,7 @@ async function interviewEnd(body) {
       round,
       isComplete: true,
       endedBy: "manual",
+      radar: studentResult?.radar,
       tags: studentResult?.tags,
       evi: studentResult?.evi,
       summary: studentResult?.summary,
