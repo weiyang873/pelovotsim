@@ -168,7 +168,7 @@ async function extractVpFields(vpText, options = {}) {
     teamId: null,
     memberId: null,
     messages
-  }, () => chatCompletion(messages, { role: "vp_embedding_scorer", temperature: 0, max_tokens: 300, timeoutMs: LLM_TIMEOUT_MS }));
+  }, () => chatCompletion(messages, { role: "vp_embedding_scorer", temperature: 0, max_tokens: 1200, timeoutMs: LLM_TIMEOUT_MS }));
 
   const parsed = parseJsonLoose(raw);
   return {
