@@ -215,7 +215,7 @@ class DeepSeekStudent {
     }
 
     try {
-      const completion = await rateLimitedChat(messages, { temperature: 0.8, max_tokens: 200 });
+      const completion = await rateLimitedChat(messages, { temperature: 0.8, max_tokens: 500 });
       const data = parseJsonObject(completion);
       const result = {
         grid_id: strategy.grid_id,
