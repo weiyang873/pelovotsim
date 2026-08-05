@@ -1012,8 +1012,7 @@ HOW：你觉得这款 AI 宠物机器人怎么帮他们`
     const nreTotalWan = Number(priceContext.nreTotalWan || 0);
     const upfrontInvestmentWan = Number(priceContext.upfrontInvestmentWan || (fbaseWan + nreTotalWan));
     const channelFee = Number(priceContext.channelFee || 0);
-    const channelExamplePrice = 4000;
-    const channelExampleNet = Math.round(channelExamplePrice * (1 - channelFee / 100));
+    const channelNetRate = Math.round((1 - channelFee / 100) * 100);
     const demandSummary = String(priceContext.demandSummary || "").trim() ||
       "- 未记录到明确的消费能力或价格态度原话；请只根据已获得的客户痛点、采购语境和成本信息定价。";
     const fallbackFactor = {
@@ -1039,7 +1038,7 @@ HOW：你觉得这款 AI 宠物机器人怎么帮他们`
           "成本侧：",
           `- 你的产品单台可变成本约 ¥${Math.round(totalCOGS)}（基础硬件 ¥${Math.round(baseVariableCost)} + 能力卡增量 dCOGS ¥${Math.round(dCOGSTotal)}）`,
           `- 前期投入约 ${Math.round(upfrontInvestmentWan)} 万元（基础固定投入 Fbase ${Math.round(fbaseWan)} 万元 + 研发 NRE ${Math.round(nreTotalWan)} 万元）`,
-          `- 渠道抽成：${channelFee}%（例如定价 ¥${channelExamplePrice}，实际到手 ¥${channelExampleNet}）`,
+          `- 渠道抽成：${channelFee}%（实际到手 = 定价 × ${channelNetRate}%）`,
           "",
           "需求侧：客户谈到的消费能力/价格态度线索",
           demandSummary,
@@ -1049,8 +1048,9 @@ HOW：你觉得这款 AI 宠物机器人怎么帮他们`
           "这个区间是课堂 UI 的硬边界，不是建议。低于最低值或高于最高值都会提交失败。",
           "不要输出低于区间或高于区间的价格，也不要把区间端点当作建议价。",
           "",
-          "请输出 JSON，不要输出多余文字：",
-          "{\"price\": 4000, \"reason\": \"一句话说明你的定价依据\"}"
+          "请输出 JSON，不要输出多余文字。字段要求：",
+          "- price：区间内且符合步长的整数价格",
+          "- reason：一句话说明你的定价依据"
         ].join("\n")
       }
     ];
@@ -1098,8 +1098,9 @@ HOW：你觉得这款 AI 宠物机器人怎么帮他们`
             content: [
               `你刚才输出的 price 不在课堂滑块区间 ¥${min} - ¥${max} 内，或不符合 ¥${step} 步长。`,
               `请重新输出一个 ${min} 到 ${max} 之间、符合 ¥${step} 步长的整数价格。`,
-              "仍然只输出 JSON，不要输出多余文字：",
-              "{\"price\": 4000, \"reason\": \"一句话说明你的定价依据\"}"
+              "仍然只输出 JSON，不要输出多余文字。字段要求：",
+              "- price：区间内且符合步长的整数价格",
+              "- reason：一句话说明你的定价依据"
             ].join("\n")
           }
         ];
