@@ -7,6 +7,20 @@ const CONFIG_PATH = path.resolve(__dirname, "..", "..", "game_config_v0.1", "llm
 const EMBEDDING_ROLE = "embedding";
 
 const loggedResponseModels = new Set();
+const PROVIDER_DEFAULTS = {
+  deepseek: {
+    baseUrl: "https://api.deepseek.com",
+    defaultModel: "deepseek-v4-flash"
+  },
+  qwen: {
+    baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    defaultModel: "qwen-plus"
+  },
+  openai_compatible: {
+    baseUrl: "",
+    defaultModel: ""
+  }
+};
 
 function hasOwn(obj, key) {
   return Object.prototype.hasOwnProperty.call(obj, key);
@@ -31,7 +45,7 @@ function validateConfig(rawConfig) {
     throw new Error(`[modelRegistry] Config must be a JSON object: ${CONFIG_PATH}`);
   }
 
-  const provider = requireNonEmptyString(rawConfig.provider, "provider");
+  const provider = requireNonEmptyString(rawConfig.provider, "provider").toLowerCase();
   const baseUrl = requireNonEmptyString(rawConfig.base_url, "base_url");
   const defaultModel = requireNonEmptyString(rawConfig.default_model, "default_model");
   if (!rawConfig.roles || typeof rawConfig.roles !== "object" || Array.isArray(rawConfig.roles)) {
@@ -60,37 +74,74 @@ function validateConfig(rawConfig) {
     throw new Error(`[modelRegistry] roles.${EMBEDDING_ROLE} must be set explicitly in ${CONFIG_PATH}`);
   }
 
-  const rawOverride = process.env.LLM_MODEL_OVERRIDE;
-  const modelOverride = rawOverride === undefined ? "" : String(rawOverride).trim();
-
   return {
     provider,
     baseUrl,
     defaultModel,
-    roles,
-    modelOverride
+    roles
   };
 }
 
 const registry = validateConfig(readConfigFile());
+
+function getProvider() {
+  return String(process.env.LLM_PROVIDER || registry.provider || "deepseek").trim().toLowerCase();
+}
+
+function getProviderSpecificEnv(provider, suffix) {
+  const normalized = String(provider || "").trim().toLowerCase();
+  const key = String(suffix || "").trim();
+  if (!key) return "";
+  if (normalized === "qwen") {
+    return String(process.env[`QWEN_${key}`] || process.env[`DASHSCOPE_${key}`] || "").trim();
+  }
+  if (normalized === "deepseek") {
+    return String(process.env[`DEEPSEEK_${key}`] || "").trim();
+  }
+  return "";
+}
+
+function getConfiguredDefaultModel(provider) {
+  const normalizedProvider = String(provider || getProvider()).trim().toLowerCase();
+  const genericModel = String(process.env.LLM_DEFAULT_MODEL || process.env.LLM_MODEL || "").trim();
+  if (genericModel) return genericModel;
+
+  const providerModel = getProviderSpecificEnv(normalizedProvider, "MODEL");
+  if (providerModel) return providerModel;
+
+  if (normalizedProvider === registry.provider) return registry.defaultModel;
+  const providerDefault = PROVIDER_DEFAULTS[normalizedProvider]?.defaultModel || "";
+  return providerDefault || registry.defaultModel;
+}
 
 function getModel(role) {
   const normalizedRole = requireNonEmptyString(role, "role");
   if (!hasOwn(registry.roles, normalizedRole)) {
     throw new Error(`[modelRegistry] Unknown LLM role "${normalizedRole}" in getModel(role)`);
   }
-  if (normalizedRole !== EMBEDDING_ROLE && registry.modelOverride) {
-    return registry.modelOverride;
+  const rawOverride = process.env.LLM_MODEL_OVERRIDE;
+  const modelOverride = rawOverride === undefined ? "" : String(rawOverride).trim();
+  if (normalizedRole !== EMBEDDING_ROLE && modelOverride) {
+    return modelOverride;
   }
   const roleModel = registry.roles[normalizedRole];
   if (roleModel === null) {
-    return registry.defaultModel;
+    return getConfiguredDefaultModel();
   }
   return roleModel;
 }
 
 function getBaseUrl() {
-  return registry.baseUrl;
+  const provider = getProvider();
+  const genericBaseUrl = String(process.env.LLM_BASE_URL || "").trim();
+  if (genericBaseUrl) return genericBaseUrl;
+
+  const providerBaseUrl = getProviderSpecificEnv(provider, "BASE_URL");
+  if (providerBaseUrl) return providerBaseUrl;
+
+  if (provider === registry.provider) return registry.baseUrl;
+  const providerDefault = PROVIDER_DEFAULTS[provider]?.baseUrl || "";
+  return providerDefault || registry.baseUrl;
 }
 
 function logResolvedRoles() {
@@ -113,6 +164,7 @@ function logResolvedModel(role, responseModel) {
 logResolvedRoles();
 
 module.exports = {
+  getProvider,
   getModel,
   getBaseUrl,
   logResolvedModel,

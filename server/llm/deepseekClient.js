@@ -1,7 +1,7 @@
 // deepseekClient.js - Clean slate v2
 const http = require("http");
 const https = require("https");
-const { getModel, getBaseUrl, logResolvedModel } = require("./modelRegistry");
+const { getProvider, getModel, getBaseUrl, logResolvedModel } = require("./modelRegistry");
 
 const REQUEST_TIMEOUT_MS = parseInt(process.env.DEEPSEEK_TIMEOUT_MS || "60000", 10);
 const MAX_RETRIES = Math.max(0, parseInt(process.env.LLM_MAX_RETRIES || "5", 10));
@@ -9,18 +9,58 @@ const RETRY_DELAY_MS = 2000;
 const LLM_CONCURRENCY = Math.max(1, parseInt(process.env.LLM_CONCURRENCY || "10", 10));
 const RETRYABLE_NETWORK_CODES = new Set(["ECONNRESET", "ETIMEDOUT", "ECONNREFUSED", "EPIPE"]);
 const DEFAULT_CHAT_ROLE = "chat_service";
-// Collect all DEEPSEEK_API_KEY_N keys plus the unsuffixed DEEPSEEK_API_KEY.
+
+const PROVIDER_CONFIG = {
+  deepseek: {
+    label: "DeepSeek",
+    keyNames: ["DEEPSEEK_API_KEY"],
+    suffixedPrefixes: ["DEEPSEEK_API_KEY"],
+    timeoutEnv: "DEEPSEEK_TIMEOUT_MS"
+  },
+  qwen: {
+    label: "Qwen",
+    keyNames: ["QWEN_API_KEY", "DASHSCOPE_API_KEY"],
+    suffixedPrefixes: ["QWEN_API_KEY", "DASHSCOPE_API_KEY"],
+    timeoutEnv: "QWEN_TIMEOUT_MS"
+  },
+  openai_compatible: {
+    label: "OpenAI-compatible",
+    keyNames: ["LLM_API_KEY", "OPENAI_API_KEY"],
+    suffixedPrefixes: ["LLM_API_KEY", "OPENAI_API_KEY"],
+    timeoutEnv: "LLM_TIMEOUT_MS"
+  }
+};
+
+function getProviderConfig() {
+  return PROVIDER_CONFIG[getProvider()] || {
+    label: getProvider() || "LLM",
+    keyNames: ["LLM_API_KEY"],
+    suffixedPrefixes: ["LLM_API_KEY"],
+    timeoutEnv: "LLM_TIMEOUT_MS"
+  };
+}
+
+// Collect all provider-specific API_KEY_N keys plus unsuffixed keys.
 // Deduplicates by value so accidentally pasting the same key into two slots
 // doesn't double its weight in the pool.
-const DEEPSEEK_KEY_POOL = (() => {
+function collectApiKeyPool() {
+  const config = getProviderConfig();
   const seen = new Set();
   const keys = [];
 
+  const suffixedPatterns = config.suffixedPrefixes.map((prefix) => ({
+    prefix,
+    pattern: new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}_\\d+$`)
+  }));
+
   const suffixed = Object.keys(process.env)
-    .filter((key) => /^DEEPSEEK_API_KEY_\d+$/.test(key))
+    .filter((key) => suffixedPatterns.some(({ pattern }) => pattern.test(key)))
     .sort((a, b) => {
-      const aNum = parseInt(a.replace(/^DEEPSEEK_API_KEY_/, ""), 10);
-      const bNum = parseInt(b.replace(/^DEEPSEEK_API_KEY_/, ""), 10);
+      const aPrefix = suffixedPatterns.find(({ pattern }) => pattern.test(a))?.prefix || "";
+      const bPrefix = suffixedPatterns.find(({ pattern }) => pattern.test(b))?.prefix || "";
+      const aNum = parseInt(a.replace(new RegExp(`^${aPrefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}_`), ""), 10);
+      const bNum = parseInt(b.replace(new RegExp(`^${bPrefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}_`), ""), 10);
+      if (aPrefix !== bPrefix) return aPrefix.localeCompare(bPrefix);
       return aNum - bNum;
     });
 
@@ -32,19 +72,24 @@ const DEEPSEEK_KEY_POOL = (() => {
     }
   }
 
-  const fallback = String(process.env.DEEPSEEK_API_KEY || "").trim();
-  if (fallback && !seen.has(fallback)) {
-    seen.add(fallback);
-    keys.push(fallback);
+  for (const keyName of config.keyNames) {
+    const fallback = String(process.env[keyName] || "").trim();
+    if (fallback && !seen.has(fallback)) {
+      seen.add(fallback);
+      keys.push(fallback);
+    }
   }
 
   return keys;
-})();
+}
 
-if (DEEPSEEK_KEY_POOL.length === 0) {
-  console.warn("[DeepSeek] No API keys configured. Set DEEPSEEK_API_KEY or DEEPSEEK_API_KEY_1..N in .env");
+const API_KEY_POOL = collectApiKeyPool();
+
+if (API_KEY_POOL.length === 0) {
+  const config = getProviderConfig();
+  console.warn(`[${config.label}] No API keys configured. Set ${config.keyNames.join(" or ")} in .env`);
 } else {
-  console.log(`[DeepSeek] Loaded ${DEEPSEEK_KEY_POOL.length} API key(s) into rotation pool`);
+  console.log(`[${getProviderConfig().label}] Loaded ${API_KEY_POOL.length} API key(s) into rotation pool`);
 }
 
 const llmGate = (() => {
@@ -88,11 +133,73 @@ function isRetryableError(error) {
 }
 
 /**
- * Whether any DeepSeek API key is configured. Exported so callers can
+ * Whether any provider API key is configured. Exported so callers can
  * query readiness without reading environment variables directly.
  */
 function hasAnyKey() {
-  return DEEPSEEK_KEY_POOL.length > 0;
+  return API_KEY_POOL.length > 0;
+}
+
+function getConfiguredProviderLabel() {
+  return getProviderConfig().label;
+}
+
+function getConfiguredKeyHint() {
+  return getProviderConfig().keyNames.join(" or ");
+}
+
+function getRequestTimeoutMs(options = {}) {
+  if (Number.isFinite(Number(options.timeoutMs))) {
+    return Math.max(1, Number(options.timeoutMs));
+  }
+  const providerTimeoutEnv = getProviderConfig().timeoutEnv;
+  const providerTimeout = providerTimeoutEnv ? Number(process.env[providerTimeoutEnv]) : NaN;
+  if (Number.isFinite(providerTimeout) && providerTimeout > 0) return providerTimeout;
+  const genericTimeout = Number(process.env.LLM_TIMEOUT_MS);
+  if (Number.isFinite(genericTimeout) && genericTimeout > 0) return genericTimeout;
+  return REQUEST_TIMEOUT_MS;
+}
+
+function buildChatCompletionsUrl(baseUrl) {
+  const url = new URL(baseUrl);
+  const pathname = url.pathname.replace(/\/+$/, "");
+  if (/\/chat\/completions$/.test(pathname)) {
+    url.pathname = pathname;
+    return url;
+  }
+  if (/\/v1$/.test(pathname)) {
+    url.pathname = `${pathname}/chat/completions`;
+    return url;
+  }
+  url.pathname = `${pathname}/v1/chat/completions`;
+  return url;
+}
+
+function boolEnv(name) {
+  const raw = process.env[name];
+  if (raw === undefined) return false;
+  return /^(1|true|yes|on)$/i.test(String(raw).trim());
+}
+
+function isThinkingDisabled(options = {}) {
+  if (options.disableThinking === true) return true;
+  if (boolEnv("LLM_DISABLE_THINKING")) return true;
+  const provider = getProvider();
+  if (provider === "deepseek") return boolEnv("DEEPSEEK_DISABLE_THINKING");
+  if (provider === "qwen") {
+    if (boolEnv("QWEN_DISABLE_THINKING")) return true;
+    const enableThinking = process.env.QWEN_ENABLE_THINKING;
+    if (enableThinking !== undefined && /^(0|false|no|off)$/i.test(String(enableThinking).trim())) return true;
+  }
+  return false;
+}
+
+function providerRequestExtras(options = {}) {
+  const provider = getProvider();
+  if (!isThinkingDisabled(options)) return {};
+  if (provider === "deepseek") return { thinking: { type: "disabled" } };
+  if (provider === "qwen") return { enable_thinking: false };
+  return {};
 }
 
 function performChatCompletionRequest(url, apiKey, body, role, timeoutMs = REQUEST_TIMEOUT_MS) {
@@ -132,28 +239,28 @@ function performChatCompletionRequest(url, apiKey, body, role, timeoutMs = REQUE
               if (statusCode >= 400) {
                 return finish(reject, createHttpError(
                   statusCode,
-                  `DeepSeek API error: HTTP ${statusCode}`
+                  `${getConfiguredProviderLabel()} API error: HTTP ${statusCode}`
                 ));
               }
-              return finish(reject, new Error(`Failed to parse DeepSeek response: ${data.slice(0, 200)}`));
+              return finish(reject, new Error(`Failed to parse ${getConfiguredProviderLabel()} response: ${data.slice(0, 200)}`));
             }
           }
 
           if (statusCode >= 400) {
             return finish(reject, createHttpError(
               statusCode,
-              parsed?.error?.message || `DeepSeek API error: HTTP ${statusCode}`
+              parsed?.error?.message || `${getConfiguredProviderLabel()} API error: HTTP ${statusCode}`
             ));
           }
 
           if (parsed?.error) {
-            return finish(reject, createRequestError(parsed.error.message || "DeepSeek API error", {
+            return finish(reject, createRequestError(parsed.error.message || `${getConfiguredProviderLabel()} API error`, {
               statusCode,
             }));
           }
 
           const text = parsed?.choices?.[0]?.message?.content;
-          if (!text) return finish(reject, new Error("Empty response from DeepSeek"));
+          if (!text) return finish(reject, new Error(`Empty response from ${getConfiguredProviderLabel()}`));
           logResolvedModel(role, parsed?.model);
           return finish(resolve, text.trim());
         });
@@ -161,8 +268,8 @@ function performChatCompletionRequest(url, apiKey, body, role, timeoutMs = REQUE
     );
 
     req.setTimeout(timeoutMs, () => {
-      console.error(`[DeepSeek] Request timeout after ${timeoutMs}ms`);
-      const timeoutError = createRequestError("DeepSeek API request timeout", { code: "ETIMEDOUT" });
+      console.error(`[${getConfiguredProviderLabel()}] Request timeout after ${timeoutMs}ms`);
+      const timeoutError = createRequestError(`${getConfiguredProviderLabel()} API request timeout`, { code: "ETIMEDOUT" });
       req.destroy(timeoutError);
     });
 
@@ -186,31 +293,26 @@ async function _chatCompletionInner(messages, options = {}) {
   const model = getModel(role);
   const baseUrl = getBaseUrl();
 
-  if (DEEPSEEK_KEY_POOL.length === 0) {
-    throw new Error("DEEPSEEK_API_KEY not set (and no DEEPSEEK_API_KEY_1..N found)");
+  if (API_KEY_POOL.length === 0) {
+    throw new Error(`${getConfiguredKeyHint()} not set`);
   }
 
-  // v4-flash 默认开思考(返回 reasoning_content)。DEEPSEEK_DISABLE_THINKING=1 或 options.disableThinking
-  // 时注入 thinking:{type:"disabled"} 关闭思考(经 API 实测唯一生效的开关)。默认不设→server 正常运行零影响。
-  const disableThinking = process.env.DEEPSEEK_DISABLE_THINKING === "1" || options.disableThinking === true;
   const body = JSON.stringify({
     model,
     messages,
     temperature: options.temperature ?? 0.7,
     max_tokens: options.max_tokens ?? 800,
-    ...(disableThinking ? { thinking: { type: "disabled" } } : {}),
+    ...providerRequestExtras(options),
     ...(options.response_format ? { response_format: options.response_format } : {}),
   });
-  const url = new URL("/v1/chat/completions", baseUrl);
+  const url = buildChatCompletionsUrl(baseUrl);
   const maxRetries = Number.isFinite(options.maxRetries) ? options.maxRetries : MAX_RETRIES;
-  const timeoutMs = Number.isFinite(Number(options.timeoutMs))
-    ? Math.max(1, Number(options.timeoutMs))
-    : REQUEST_TIMEOUT_MS;
-  const startKeyIndex = Math.floor(Math.random() * DEEPSEEK_KEY_POOL.length);
+  const timeoutMs = getRequestTimeoutMs(options);
+  const startKeyIndex = Math.floor(Math.random() * API_KEY_POOL.length);
 
   for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
-    const keyIndex = (startKeyIndex + attempt) % DEEPSEEK_KEY_POOL.length;
-    const apiKey = DEEPSEEK_KEY_POOL[keyIndex];
+    const keyIndex = (startKeyIndex + attempt) % API_KEY_POOL.length;
+    const apiKey = API_KEY_POOL[keyIndex];
 
     try {
       return await performChatCompletionRequest(url, apiKey, body, role, timeoutMs);
@@ -220,14 +322,14 @@ async function _chatCompletionInner(messages, options = {}) {
 
       if (!canRetry) {
         if (attempt > 0) {
-          console.error(`[DeepSeek] Request failed after retry (last key idx ${keyIndex}):`, error.message);
+          console.error(`[${getConfiguredProviderLabel()}] Request failed after retry (last key idx ${keyIndex}):`, error.message);
         }
         throw error;
       }
 
       const delay = RETRY_DELAY_MS * Math.pow(2, attempt) + Math.random() * 500;
       console.warn(
-        `[DeepSeek] Retry ${attempt + 1}/${maxRetries} (key idx ${keyIndex} → ${(keyIndex + 1) % DEEPSEEK_KEY_POOL.length}) ` +
+        `[${getConfiguredProviderLabel()}] Retry ${attempt + 1}/${maxRetries} (key idx ${keyIndex} → ${(keyIndex + 1) % API_KEY_POOL.length}) ` +
         `after ${Math.round(delay)}ms, reason:`,
         error.message
       );
@@ -235,7 +337,7 @@ async function _chatCompletionInner(messages, options = {}) {
     }
   }
 
-  throw new Error("DeepSeek request exhausted retries");
+  throw new Error(`${getConfiguredProviderLabel()} request exhausted retries`);
 }
 
 async function chatCompletion(messages, options = {}) {
@@ -245,5 +347,6 @@ async function chatCompletion(messages, options = {}) {
 module.exports = {
   chatCompletion,
   hasAnyKey,
-  __TEST_GET_POOL: () => [...DEEPSEEK_KEY_POOL],
+  __TEST_GET_POOL: () => [...API_KEY_POOL],
+  __TEST_BUILD_CHAT_URL: buildChatCompletionsUrl,
 };

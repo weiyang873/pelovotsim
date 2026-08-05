@@ -1,6 +1,6 @@
 "use strict";
 
-const { chatCompletion } = require("../../server/llm/deepseekClient");
+const { chatCompletion, hasAnyKey } = require("../../server/llm/deepseekClient");
 
 const PERSONAS = {
   A: {
@@ -421,7 +421,7 @@ function buildFallbackNames(members) {
 
 async function generateNames(members) {
   const fallback = buildFallbackNames(members);
-  if (!process.env.DEEPSEEK_API_KEY) {
+  if (!hasAnyKey()) {
     return fallback;
   }
 

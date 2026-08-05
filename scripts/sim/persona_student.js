@@ -1,6 +1,7 @@
 "use strict";
 
-const { chatCompletion } = require("../../server/llm/deepseekClient");
+const { chatCompletion, hasAnyKey } = require("../../server/llm/deepseekClient");
+const { getModel } = require("../../server/llm/modelRegistry");
 const { logLLMCall } = require("../../server/llm/llm_logger");
 const {
   getMBTIDescription
@@ -362,7 +363,7 @@ async function rateLimitedChat(messages, options) {
 
 class PersonaStudent {
   constructor(options = {}) {
-    this.apiKey = options.apiKey || process.env.DEEPSEEK_API_KEY || "";
+    this.apiKey = options.apiKey || (hasAnyKey() ? "__configured__" : "");
     this.strictMode = options.strictMode === true || String(process.env.STRICT_DEEPSEEK || "").trim() === "1";
     this.student = options.student || null;
     this.teamIndex = Number(options.teamIndex || 0);
@@ -407,7 +408,7 @@ class PersonaStudent {
       completion: entry.completion,
       durationMs: entry.durationMs,
       error: entry.error || null,
-      model: process.env.DEEPSEEK_MODEL || "deepseek-chat"
+      model: getModel("chat_service")
     });
   }
 
@@ -644,7 +645,7 @@ class PersonaStudent {
 
     if (!this.apiKey) {
       if (this.strictMode) {
-        throw new Error("STRICT_DEEPSEEK=1 but DEEPSEEK_API_KEY is missing");
+        throw new Error("STRICT_DEEPSEEK=1 but no LLM API key is configured");
       }
       this.logStudentLLM({
         caller: "persona_student.generatePhase1Choice",
@@ -747,7 +748,7 @@ HOW：你觉得这款 AI 宠物机器人怎么帮他们`
 
     if (!this.apiKey) {
       if (this.strictMode) {
-        throw new Error("STRICT_DEEPSEEK=1 but DEEPSEEK_API_KEY is missing");
+        throw new Error("STRICT_DEEPSEEK=1 but no LLM API key is configured");
       }
       this.logStudentLLM({
         caller: "persona_student.generateVPDraft",
@@ -824,7 +825,7 @@ HOW：你觉得这款 AI 宠物机器人怎么帮他们`
 
     if (!this.apiKey) {
       if (this.strictMode) {
-        throw new Error("STRICT_DEEPSEEK=1 but DEEPSEEK_API_KEY is missing");
+        throw new Error("STRICT_DEEPSEEK=1 but no LLM API key is configured");
       }
       this.logStudentLLM({
         caller: "persona_student.generateVPRevision",
@@ -890,7 +891,7 @@ HOW：你觉得这款 AI 宠物机器人怎么帮他们`
 
     if (!this.apiKey) {
       if (this.strictMode) {
-        throw new Error("STRICT_DEEPSEEK=1 but DEEPSEEK_API_KEY is missing");
+        throw new Error("STRICT_DEEPSEEK=1 but no LLM API key is configured");
       }
       this.logStudentLLM({
         caller: "persona_student.generateVPChatReply",
@@ -959,7 +960,7 @@ HOW：你觉得这款 AI 宠物机器人怎么帮他们`
 
     if (!this.apiKey) {
       if (this.strictMode) {
-        throw new Error("STRICT_DEEPSEEK=1 but DEEPSEEK_API_KEY is missing");
+        throw new Error("STRICT_DEEPSEEK=1 but no LLM API key is configured");
       }
       this.logStudentLLM({
         caller: "persona_student.generateInterviewReply",
@@ -1058,7 +1059,7 @@ HOW：你觉得这款 AI 宠物机器人怎么帮他们`
 
     if (!this.apiKey) {
       if (this.strictMode) {
-        throw new Error("STRICT_DEEPSEEK=1 but DEEPSEEK_API_KEY is missing");
+        throw new Error("STRICT_DEEPSEEK=1 but no LLM API key is configured");
       }
       this.logStudentLLM({
         caller: "persona_student.generatePriceChoice",
@@ -1202,7 +1203,7 @@ HOW：你觉得这款 AI 宠物机器人怎么帮他们`
 
     if (!this.apiKey) {
       if (this.strictMode) {
-        throw new Error("STRICT_DEEPSEEK=1 but DEEPSEEK_API_KEY is missing");
+        throw new Error("STRICT_DEEPSEEK=1 but no LLM API key is configured");
       }
       this.logStudentLLM({
         caller: "persona_student.generateCardSelection",

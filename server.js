@@ -32,7 +32,7 @@ loadLocalEnvFile();
 
 const Engine = require("./engine");
 const { chatCompletion, hasAnyKey } = require("./server/llm/deepseekClient");
-const { getModel, getBaseUrl } = require("./server/llm/modelRegistry");
+const { getProvider, getModel, getBaseUrl } = require("./server/llm/modelRegistry");
 const Sessions = require("./server/llm/sessions");
 
 const LLM_HEALTH_TIMEOUT_MS = 60000;
@@ -925,6 +925,7 @@ async function handleRound1Llm(req, res, routeType) {
 
 async function handleLlmHealth(req, res) {
   const hasKey = hasAnyKey();
+  const provider = getProvider();
   const baseUrl = getBaseUrl();
   const model = getModel(SERVER_LLM_ROLE);
   if (!hasKey) {
@@ -932,6 +933,7 @@ async function handleLlmHealth(req, res) {
       ok: false,
       configured: false,
       reachable: false,
+      provider,
       base_url: baseUrl,
       model
     });
@@ -948,6 +950,7 @@ async function handleLlmHealth(req, res) {
       ok: true,
       configured: true,
       reachable: true,
+      provider,
       base_url: baseUrl,
       model
     });
@@ -956,6 +959,7 @@ async function handleLlmHealth(req, res) {
       ok: false,
       configured: true,
       reachable: false,
+      provider,
       base_url: baseUrl,
       model
     });

@@ -4,7 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const { CAP_GROUPS, GLOBAL_PARAMS, NRE_TIER_MULT, PRICE_SCALE, validateSelections } = require("../../server/llm/rdCalculator");
 const { toCalcGridId } = require("../../server/routes/round2Routes");
-const { chatCompletion } = require("../../server/llm/deepseekClient");
+const { chatCompletion, hasAnyKey } = require("../../server/llm/deepseekClient");
 const { ApiError } = require("./api_client");
 const { DeepSeekStudent } = require("./deepseek_student");
 const { DecisionTracker, scoreProduct } = require("./decision_tracker");
@@ -241,8 +241,8 @@ function logActorLLM(actor, entry) {
 }
 
 async function requestStrictJson(actor, messages, options, meta, validate) {
-  if (!process.env.DEEPSEEK_API_KEY && !process.env.DEEPSEEK_API_KEY_1) {
-    throw new Error(`${meta.step}: DeepSeek API key missing`);
+  if (!hasAnyKey()) {
+    throw new Error(`${meta.step}: LLM API key missing`);
   }
 
   let activeMessages = messages;
@@ -974,7 +974,6 @@ function createStudentActor(options, teamIndex, memberIndex, teamId, memberId, f
   const teamStrategy = resolveTeamStrategy(options, teamIndex);
   if (studentProfile) {
     return new PersonaStudent({
-      apiKey: process.env.DEEPSEEK_API_KEY,
       strictMode: options.strictDeepSeek,
       logger: options.logger,
       teamId,
@@ -987,7 +986,6 @@ function createStudentActor(options, teamIndex, memberIndex, teamId, memberId, f
     });
   }
   return new DeepSeekStudent({
-    apiKey: process.env.DEEPSEEK_API_KEY,
     strictMode: options.strictDeepSeek,
     logger: options.logger,
     teamId,
@@ -1881,7 +1879,6 @@ async function runRound2(result, api, teamId, members, memberActors, teamIndex, 
   const interviewResults = await runStep(result, "r2_interviews", async () => {
     const out = await Promise.all(interviewMembers.map(async (assignment) => {
       const student = new DeepSeekStudent({
-        apiKey: process.env.DEEPSEEK_API_KEY,
         strictMode: options.strictDeepSeek,
         logger: options.logger,
         teamId,

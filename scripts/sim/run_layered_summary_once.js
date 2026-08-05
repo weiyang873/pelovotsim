@@ -4,6 +4,11 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const ROOT = path.join(__dirname, "..", "..");
+const {
+  configureBatchLlmDefaults,
+  getMissingKeyMessage,
+  hasConfiguredLlmKey
+} = require("./llm_env");
 const MODE = process.env.SIM_MODE || "layered_newflow_summary";
 const SOURCE_RUN = process.env.SOURCE_RUN || "sim_layered_newflow_2026-07-10T23-54-52-761Z";
 const RUN_ID_PREFIX = process.env.RUN_ID_PREFIX || "sim_layered_newflow_summary_v2";
@@ -141,13 +146,8 @@ async function configureSummarySession(baseUrl) {
 async function main() {
   loadLocalEnvFile();
   process.env.STRICT_DEEPSEEK = "1";
-  if (process.env.DEEPSEEK_DISABLE_THINKING === undefined) {
-    process.env.DEEPSEEK_DISABLE_THINKING = "1";
-  }
-  if (process.env.LLM_MODEL_OVERRIDE === undefined) {
-    process.env.LLM_MODEL_OVERRIDE = process.env.DEEPSEEK_MODEL || "deepseek-v4-flash";
-  }
-  if (!process.env.DEEPSEEK_API_KEY) throw new Error("STRICT_DEEPSEEK=1 but DEEPSEEK_API_KEY is missing");
+  configureBatchLlmDefaults();
+  if (!hasConfiguredLlmKey()) throw new Error(getMissingKeyMessage());
 
   const { ApiClient } = require("./api_client");
   const { DataExporter } = require("./data_export");

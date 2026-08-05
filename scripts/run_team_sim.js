@@ -6,6 +6,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const OUTPUT_ROOT = path.join(ROOT, "data", "synthetic", "team_sim");
+const { configureBatchLlmDefaults } = require("./sim/llm_env");
 
 function loadEnvFile() {
   const envPath = path.join(ROOT, ".env");
@@ -63,12 +64,7 @@ function writeFailureRecord({ batch, seed, error }) {
 
 async function main() {
   loadEnvFile();
-  if (process.env.LLM_MODEL_OVERRIDE === undefined && process.env.DEEPSEEK_MODEL !== undefined) {
-    process.env.LLM_MODEL_OVERRIDE = process.env.DEEPSEEK_MODEL;
-  }
-  if (process.env.DEEPSEEK_DISABLE_THINKING === undefined) {
-    process.env.DEEPSEEK_DISABLE_THINKING = "1";
-  }
+  configureBatchLlmDefaults();
   const args = parseArgs(process.argv);
   const seed = Number(args.seed);
   if (!Number.isInteger(seed)) throw new Error("--seed must be an integer");

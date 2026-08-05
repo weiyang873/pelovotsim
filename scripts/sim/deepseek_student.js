@@ -1,6 +1,6 @@
 "use strict";
 
-const { chatCompletion } = require("../../server/llm/deepseekClient");
+const { chatCompletion, hasAnyKey } = require("../../server/llm/deepseekClient");
 
 const TEAM_STRATEGIES = [
   { grid_id: "ToC_Differentiation_Adult", architecture: "Experience", desc: "ToC × 差异化 × 成人" },
@@ -137,7 +137,7 @@ function parseJsonObject(text) {
 
 class DeepSeekStudent {
   constructor(options = {}) {
-    this.apiKey = options.apiKey || process.env.DEEPSEEK_API_KEY || "";
+    this.apiKey = options.apiKey || (hasAnyKey() ? "__configured__" : "");
     this.strictMode = options.strictMode === true || String(process.env.STRICT_DEEPSEEK || "").trim() === "1";
     this.logger = options.logger || null;
     this.teamId = options.teamId || null;
@@ -201,7 +201,7 @@ class DeepSeekStudent {
     const startedAt = Date.now();
     if (!this.apiKey) {
       if (this.strictMode) {
-        throw new Error("STRICT_DEEPSEEK=1 but DEEPSEEK_API_KEY is missing");
+        throw new Error("STRICT_DEEPSEEK=1 but no LLM API key is configured");
       }
       this.logStudentLLM({
         step: "R1.3_generate_phase1",
@@ -271,7 +271,7 @@ class DeepSeekStudent {
     const startedAt = Date.now();
     if (!this.apiKey) {
       if (this.strictMode) {
-        throw new Error("STRICT_DEEPSEEK=1 but DEEPSEEK_API_KEY is missing");
+        throw new Error("STRICT_DEEPSEEK=1 but no LLM API key is configured");
       }
       const completion = FALLBACK_CHAT_REPLIES[(this.memberIndex + conversationHistory.length) % FALLBACK_CHAT_REPLIES.length];
       this.logStudentLLM({
@@ -341,7 +341,7 @@ class DeepSeekStudent {
     const startedAt = Date.now();
     if (!this.apiKey) {
       if (this.strictMode) {
-        throw new Error("STRICT_DEEPSEEK=1 but DEEPSEEK_API_KEY is missing");
+        throw new Error("STRICT_DEEPSEEK=1 but no LLM API key is configured");
       }
       this.logStudentLLM({
         step: "R1.5_generate_vp_revision",
@@ -403,7 +403,7 @@ class DeepSeekStudent {
     const startedAt = Date.now();
     if (!this.apiKey) {
       if (this.strictMode) {
-        throw new Error("STRICT_DEEPSEEK=1 but DEEPSEEK_API_KEY is missing");
+        throw new Error("STRICT_DEEPSEEK=1 but no LLM API key is configured");
       }
       const completion = buildInterviewFallback(turn, assignedDims);
       this.logStudentLLM({

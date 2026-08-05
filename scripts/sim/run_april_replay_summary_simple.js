@@ -4,6 +4,11 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const ROOT = path.join(__dirname, "..", "..");
+const {
+  configureBatchLlmDefaults,
+  getMissingKeyMessage,
+  hasConfiguredLlmKey
+} = require("./llm_env");
 const BASELINE_CSV = path.join(ROOT, "data/persona_sim_logs/2026-04-05T02-36-24-020Z/teams_summary.csv");
 
 const REPLAY_STRATEGIES = [
@@ -221,12 +226,7 @@ async function main() {
   const baseUrl = process.env.BASE_URL || "http://127.0.0.1:8787";
   process.env.STRICT_DEEPSEEK = "1";
   process.env.SIM_STRUCTURED_VP_DRAFT = "1";
-  if (process.env.DEEPSEEK_DISABLE_THINKING === undefined) {
-    process.env.DEEPSEEK_DISABLE_THINKING = "1";
-  }
-  if (process.env.LLM_MODEL_OVERRIDE === undefined) {
-    process.env.LLM_MODEL_OVERRIDE = process.env.DEEPSEEK_MODEL || "deepseek-v4-flash";
-  }
+  configureBatchLlmDefaults();
 
   const teamSize = 6;
   const logger = new SimLogger();
@@ -237,8 +237,8 @@ async function main() {
   const logDir = path.join(ROOT, "data", "persona_sim_logs", runId);
   fs.mkdirSync(logDir, { recursive: true });
 
-  if (!process.env.DEEPSEEK_API_KEY) {
-    throw new Error("STRICT_DEEPSEEK=1 but DEEPSEEK_API_KEY is missing");
+  if (!hasConfiguredLlmKey()) {
+    throw new Error(getMissingKeyMessage());
   }
 
   await api.health();

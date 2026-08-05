@@ -6,10 +6,26 @@ const { EventEmitter } = require("node:events");
 
 const CLIENT_MODULE_PATH = require.resolve("../server/llm/deepseekClient");
 const DEEPSEEK_ENV_PATTERNS = [
+  /^LLM_PROVIDER$/,
+  /^LLM_BASE_URL$/,
+  /^LLM_MODEL$/,
+  /^LLM_MODEL_OVERRIDE$/,
+  /^LLM_DEFAULT_MODEL$/,
+  /^LLM_DISABLE_THINKING$/,
   /^DEEPSEEK_API_KEY(?:_\d+)?$/,
   /^DEEPSEEK_BASE_URL$/,
   /^DEEPSEEK_MODEL$/,
   /^DEEPSEEK_TIMEOUT_MS$/,
+  /^DEEPSEEK_DISABLE_THINKING$/,
+  /^QWEN_API_KEY(?:_\d+)?$/,
+  /^QWEN_BASE_URL$/,
+  /^QWEN_MODEL$/,
+  /^QWEN_TIMEOUT_MS$/,
+  /^QWEN_DISABLE_THINKING$/,
+  /^QWEN_ENABLE_THINKING$/,
+  /^DASHSCOPE_API_KEY(?:_\d+)?$/,
+  /^DASHSCOPE_BASE_URL$/,
+  /^DASHSCOPE_MODEL$/,
 ];
 
 function matchesManagedEnvKey(key) {
@@ -180,6 +196,21 @@ function withFixedRandom(value, fn) {
     });
 }
 
+function withRandomSequence(values, fn) {
+  const originalRandom = Math.random;
+  let index = 0;
+  Math.random = () => {
+    const value = values[index % values.length];
+    index += 1;
+    return value;
+  };
+  return Promise.resolve()
+    .then(fn)
+    .finally(() => {
+      Math.random = originalRandom;
+    });
+}
+
 function authHeaderToKey(header) {
   return String(header || "").replace(/^Bearer\s+/, "");
 }
@@ -235,9 +266,11 @@ test("random selection: 4-key pool distributes usage across calls", { concurrenc
     });
 
     try {
-      for (let i = 0; i < 100; i += 1) {
-        await loaded.client.chatCompletion([{ role: "user", content: `hello-${i}` }], { maxRetries: 0 });
-      }
+      await withRandomSequence([0, 0.25, 0.5, 0.75], async () => {
+        for (let i = 0; i < 100; i += 1) {
+          await loaded.client.chatCompletion([{ role: "user", content: `hello-${i}` }], { maxRetries: 0 });
+        }
+      });
     } finally {
       loaded.restore();
     }
@@ -395,4 +428,44 @@ test("hasAnyKey: returns true with pool-only config", { concurrency: false }, as
   } finally {
     loaded.restore();
   }
+});
+
+test("qwen provider: uses Qwen key, compatible URL, and disables thinking", { concurrency: false }, async () => {
+  const seen = [];
+
+  await withMockedTransport(({ options, body }) => {
+    seen.push({ options, body: JSON.parse(body) });
+    return {
+      statusCode: 200,
+      body: {
+        model: "qwen-plus",
+        choices: [{ message: { content: "ok" } }]
+      }
+    };
+  }, async () => {
+    const loaded = loadFreshClient({
+      LLM_PROVIDER: "qwen",
+      QWEN_API_KEY: "qwen-key",
+      QWEN_BASE_URL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      QWEN_MODEL: "qwen-plus",
+      QWEN_DISABLE_THINKING: "1",
+    });
+
+    try {
+      assert.deepEqual(loaded.client.__TEST_GET_POOL(), ["qwen-key"]);
+      assert.equal(loaded.client.hasAnyKey(), true);
+      const out = await loaded.client.chatCompletion([{ role: "user", content: "hello" }], { maxRetries: 0 });
+      assert.equal(out, "ok");
+    } finally {
+      loaded.restore();
+    }
+  });
+
+  assert.equal(seen.length, 1);
+  assert.equal(authHeaderToKey(seen[0].options.headers.Authorization), "qwen-key");
+  assert.equal(seen[0].options.hostname, "dashscope.aliyuncs.com");
+  assert.equal(seen[0].options.path, "/compatible-mode/v1/chat/completions");
+  assert.equal(seen[0].body.model, "qwen-plus");
+  assert.equal(seen[0].body.enable_thinking, false);
+  assert.equal(Object.prototype.hasOwnProperty.call(seen[0].body, "thinking"), false);
 });
