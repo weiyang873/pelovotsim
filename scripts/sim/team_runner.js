@@ -2172,8 +2172,22 @@ async function runTeam(teamIndex, teamSize, api, logger, log = console, options 
   try {
     const { teamId, members, memberActors } = await runRound1(result, api, teamSize, teamIndex, options, tracker);
     await runRound2(result, api, teamId, members, memberActors, teamIndex, options, tracker);
-  } catch (_) {
-    // step-level errors are already recorded; stop remaining work for this team
+  } catch (err) {
+    // Most failures are recorded by runStep; record assertions thrown between steps too.
+    if (result.errors.length === 0) {
+      const message = String(err?.message || err || "runTeam failed outside runStep");
+      result.errors.push({
+        message,
+        status: Number.isFinite(Number(err?.status)) ? Number(err.status) : null,
+        step: "run_team",
+        code: err?.code || null
+      });
+      result.steps.run_team = {
+        status: "failed",
+        error: message,
+        http_status: Number.isFinite(Number(err?.status)) ? Number(err.status) : null
+      };
+    }
   }
   finishResult(result);
   Object.defineProperty(result, "tracker", {

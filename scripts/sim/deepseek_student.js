@@ -45,6 +45,13 @@ function parseGrid(gridId) {
   };
 }
 
+function describeGridStrategy(gridId, architecture) {
+  const parsed = parseGrid(gridId);
+  const segmentLabel = parsed.age === "elder" ? "老人" : parsed.age === "child" ? "儿童" : "成人";
+  const strategyLabel = parsed.strategy === "cost" ? "成本领先" : "差异化";
+  return `${parsed.channel} × ${strategyLabel} × ${segmentLabel}（${architecture || "未定架构"} 架构）`;
+}
+
 function buildFallbackPhase1(gridId, architecture) {
   const parsed = parseGrid(gridId);
   const isToB = parsed.channel === "ToB";
@@ -140,7 +147,11 @@ class DeepSeekStudent {
     this.teamIndex = Number(options.teamProfile?.teamIndex ?? options.teamIndex ?? 0);
     this.memberIndex = Number(options.teamProfile?.memberIndex ?? options.memberIndex ?? 0);
     this.memberName = String(options.teamProfile?.memberName || options.memberName || `成员${this.memberIndex + 1}`);
-    this.primaryStrategy = options.teamStrategy || strategyForTeam(this.teamIndex);
+    const primaryStrategy = options.teamStrategy || strategyForTeam(this.teamIndex);
+    this.primaryStrategy = {
+      ...primaryStrategy,
+      desc: primaryStrategy.desc || describeGridStrategy(primaryStrategy.grid_id, primaryStrategy.architecture)
+    };
   }
 
   logStudentLLM(entry) {
@@ -161,7 +172,11 @@ class DeepSeekStudent {
   }
 
   async generatePhase1Choice(gridChoice = null) {
-    const strategy = gridChoice || this.getStrategyVariant();
+    const rawStrategy = gridChoice || this.getStrategyVariant();
+    const strategy = {
+      ...rawStrategy,
+      desc: rawStrategy.desc || describeGridStrategy(rawStrategy.grid_id, rawStrategy.architecture)
+    };
     const fallback = buildFallbackPhase1(strategy.grid_id, strategy.architecture);
     const messages = [
       { role: "system", content: "你是商学院 EMBA 学生，只输出 JSON。" },
@@ -295,6 +310,75 @@ class DeepSeekStudent {
         usedFallback: true
       });
       return completion;
+    }
+  }
+
+  async generateVPRevision({ currentVP, coachReply, speakerReply, conversationHistory }) {
+    const strategy = this.primaryStrategy;
+    const currentText = String(currentVP || "").trim();
+    const historyText = (Array.isArray(conversationHistory) ? conversationHistory : [])
+      .slice(-6)
+      .map((item) => `${item.role === "assistant" ? "教练" : "学生"}：${item.content}`)
+      .join("\n");
+    const fallback = currentText;
+    const prompt = [
+      "你是 EMBA 学生，正在根据 AI 教练和队友反馈修订团队的 VP 方案。",
+      `团队市场定位：${strategy.desc}`,
+      historyText ? `最近对话：\n${historyText}` : "",
+      `AI 教练反馈：${JSON.stringify(String(coachReply || ""))}`,
+      `队友想法：${JSON.stringify(String(speakerReply || ""))}`,
+      "",
+      "当前 VP 草稿：",
+      currentText || "（空）",
+      "",
+      "请输出修订后的 VP 文本，自由文本即可，不要输出 JSON。",
+      "保留 WHO / PAIN / HOW 三个意思，但可以自然改写。"
+    ].filter(Boolean).join("\n\n");
+    const messages = [
+      { role: "system", content: "你是 EMBA 学生，用清楚、务实的中文修订 VP。" },
+      { role: "user", content: prompt }
+    ];
+    const startedAt = Date.now();
+    if (!this.apiKey) {
+      if (this.strictMode) {
+        throw new Error("STRICT_DEEPSEEK=1 but DEEPSEEK_API_KEY is missing");
+      }
+      this.logStudentLLM({
+        step: "R1.5_generate_vp_revision",
+        prompt: messages,
+        completion: fallback,
+        tokens: null,
+        durationMs: Date.now() - startedAt,
+        usedFallback: true
+      });
+      return fallback;
+    }
+    try {
+      const out = await rateLimitedChat(messages, { temperature: 0.8, max_tokens: 280 });
+      const completion = String(out || "").trim() || fallback;
+      this.logStudentLLM({
+        step: "R1.5_generate_vp_revision",
+        prompt: messages,
+        completion,
+        tokens: null,
+        durationMs: Date.now() - startedAt,
+        usedFallback: false
+      });
+      return completion;
+    } catch (err) {
+      if (this.strictMode) {
+        throw new Error(`DeepSeek VP revision failed: ${err.message || err}`);
+      }
+      this.logStudentLLM({
+        step: "R1.5_generate_vp_revision",
+        prompt: messages,
+        completion: fallback,
+        tokens: null,
+        durationMs: Date.now() - startedAt,
+        usedFallback: true,
+        error: String(err.message || err)
+      });
+      return fallback;
     }
   }
 
