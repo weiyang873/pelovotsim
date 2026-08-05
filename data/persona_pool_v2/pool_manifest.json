@@ -1,0 +1,49 @@
+{
+  "seed": "20260806",
+  "generated_at": "2026-08-05T17:01:27.487Z",
+  "script_path": "scripts/sim/generate_persona_pool_v2.js",
+  "script_git_hash": "276ac735c4758776c899ef15c86ed941ca9749d7",
+  "repo_git_hash": "5173be2e1dadc38411e004430b389b8504a98dae",
+  "script_sha256": "c7c7236e6b3bccb24902fd775c811345d5238ce8f508cdb61fa768957d45548a",
+  "prng": {
+    "name": "fnv1a_seeded_mulberry32",
+    "seed_input": "20260806"
+  },
+  "records_total": 42,
+  "counts_by_archetype": {
+    "A": 6,
+    "B": 6,
+    "C": 6,
+    "D": 6,
+    "E": 6,
+    "F": 6,
+    "G": 6
+  },
+  "source_definitions": {
+    "archetypes": "scripts/sim/persona_pool.js::PERSONAS",
+    "names": "scripts/sim/persona_pool.js::BACKUP_NAME_POOLS",
+    "education_distribution": "scripts/sim/persona_pool.js::EDUCATION_DISTRIBUTION",
+    "sampling_logic": "scripts/sim/persona_pool.js::sampleStudent with seeded Math.random"
+  },
+  "sampled_surface_fields": [
+    "name",
+    "gender",
+    "age",
+    "edu",
+    "overseas",
+    "mbti",
+    "expression_style"
+  ],
+  "kernel_parameter_distribution": {
+    "per_persona_kernel_enabled": false,
+    "satisfice_window": {
+      "status": "cancelled",
+      "values": []
+    },
+    "arm_level_quantity_policy": {
+      "value": "min6",
+      "source": "CODEX_FULL_RERUN_V4FLASH.md regime.quantity_policy"
+    }
+  },
+  "synthetic": true
+}
