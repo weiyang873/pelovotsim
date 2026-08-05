@@ -980,6 +980,8 @@ function createStudentActor(options, teamIndex, memberIndex, teamId, memberId, f
       teamId,
       memberId,
       student: studentProfile,
+      seedMemory: studentProfile.seedMemory || null,
+      classroomProfile: studentProfile.classroomProfile || null,
       teamIndex,
       memberIndex
     });

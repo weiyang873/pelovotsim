@@ -4,8 +4,9 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const ROOT = path.join(__dirname, "..", "..");
-const MODE = "layered_newflow_summary";
-const SOURCE_RUN = "sim_layered_newflow_2026-07-10T23-54-52-761Z";
+const MODE = process.env.SIM_MODE || "layered_newflow_summary";
+const SOURCE_RUN = process.env.SOURCE_RUN || "sim_layered_newflow_2026-07-10T23-54-52-761Z";
+const RUN_ID_PREFIX = process.env.RUN_ID_PREFIX || "sim_layered_newflow_summary_v2";
 const ROSTER_PATH = path.join(ROOT, "data", "persona_sim_logs", SOURCE_RUN, "students_summary.csv");
 
 const STRATEGIES = [
@@ -140,6 +141,12 @@ async function configureSummarySession(baseUrl) {
 async function main() {
   loadLocalEnvFile();
   process.env.STRICT_DEEPSEEK = "1";
+  if (process.env.DEEPSEEK_DISABLE_THINKING === undefined) {
+    process.env.DEEPSEEK_DISABLE_THINKING = "1";
+  }
+  if (process.env.LLM_MODEL_OVERRIDE === undefined) {
+    process.env.LLM_MODEL_OVERRIDE = process.env.DEEPSEEK_MODEL || "deepseek-v4-flash";
+  }
   if (!process.env.DEEPSEEK_API_KEY) throw new Error("STRICT_DEEPSEEK=1 but DEEPSEEK_API_KEY is missing");
 
   const { ApiClient } = require("./api_client");
@@ -156,12 +163,17 @@ async function main() {
   await configureSummarySession(baseUrl);
   const roster = loadRoster(PERSONAS);
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const runId = `sim_layered_newflow_summary_v2_${timestamp}`;
+  const runId = `${RUN_ID_PREFIX}_${timestamp}`;
   const logDir = path.join(ROOT, "data", "persona_sim_logs", runId);
   fs.mkdirSync(logDir, { recursive: true });
   const results = [];
+  const startIndex = Math.max(0, Math.min(STRATEGIES.length, Number(process.env.START_INDEX || 0)));
+  const endIndex = Math.max(startIndex, Math.min(
+    STRATEGIES.length,
+    Number(process.env.END_INDEX || STRATEGIES.length)
+  ));
 
-  for (let teamIndex = 0; teamIndex < STRATEGIES.length; teamIndex += 1) {
+  for (let teamIndex = startIndex; teamIndex < endIndex; teamIndex += 1) {
     const strategy = STRATEGIES[teamIndex];
     let result = null;
     for (let attempt = 1; attempt <= 2; attempt += 1) {
