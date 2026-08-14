@@ -2,6 +2,23 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
+
+// Which code produced a run must be recoverable later: run_meta records the commit hash of the
+// worktree the orchestrator ran from, plus whether tracked files had uncommitted edits.
+let cachedRepoGitState = null;
+function repoGitState() {
+  if (cachedRepoGitState) return cachedRepoGitState;
+  try {
+    const { execSync } = require("node:child_process");
+    const opts = { cwd: __dirname, stdio: ["ignore", "pipe", "ignore"] };
+    const commit = execSync("git rev-parse HEAD", opts).toString().trim();
+    const dirtyTracked = execSync("git status --porcelain -uno", opts).toString().trim().length > 0;
+    cachedRepoGitState = { commit, dirty_tracked_files: dirtyTracked };
+  } catch (error) {
+    cachedRepoGitState = { commit: null, dirty_tracked_files: null, error: String(error.message || error).slice(0, 120) };
+  }
+  return cachedRepoGitState;
+}
 const crypto = require("node:crypto");
 const RD = require("../../llm/rdCalculator");
 const TeamRoutes = require("../../routes/teamRoutes");
@@ -9857,6 +9874,7 @@ async function runTeam({ seed, batch, arm = "legacy", poolPath = null, outputRoo
     arm,
     team_id: teamId,
     seed,
+    code_git: repoGitState(),
     profile_pool_source: poolPath ? path.relative(ROOT, poolPath) : "scripts/sim/persona_pool.js via buildProfilePool",
     profile_ids: sampled.members.map((member) => member.profile_id),
     leader_id: leader.profile_id,
