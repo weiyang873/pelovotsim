@@ -2774,7 +2774,7 @@ async function callR1ActorEntranceDecision({ members, member, isLeader, ownPropo
   throw new Error(`r1 actor entrance decision failed after 2 attempts: ${lastError}`);
 }
 
-async function callR1IsolatedActor({ members, member, isLeader, ownProposal, privateState, screenText, uiState, transcript, phase, phaseTurnNumber, triggerContext, performanceMode, temperature, outputDir, eventIndex }) {
+async function callR1IsolatedActor({ members, member, isLeader, ownProposal, privateState, screenText, uiState, transcript, phase, phaseTurnNumber, triggerContext, performanceMode, temperature, outputDir, eventIndex, operateRetryNote = "" }) {
   const ownPublicHistory = clipText(transcript
     .filter((entry) => entry.speaker === member.profile_id && entry.phase === phase)
     .map((entry, index) => `${index + 1}. ${entry.text}`)
@@ -2848,6 +2848,7 @@ async function callR1IsolatedActor({ members, member, isLeader, ownProposal, pri
         ownPublicHistory,
         "",
 	        phaseInstruction,
+	        operateRetryNote ? `【上一镜作废，重演同一刻】${operateRetryNote}` : "",
 	        selectionBoundary,
 	        vpBoundary,
 	        performanceMode === "operate"
@@ -2907,7 +2908,8 @@ function r1ActorExplicitButtonClickEvidence(raw, buttonLabel) {
   const click = "(?:点击|点选|点下|点了下去|点了下|点了一下|点一下|点了|按下|按了下去|按了一下|按一下|按了|单击)";
   const label = `[“\"']?${buttonLabel}(?:按钮)?[”\"']?`;
   const patterns = [
-    new RegExp(`${click}(?:了)?(?:屏幕|页面|界面)?(?:上|下)?(?:的)?(?:那个)?${label}`, "u"),
+    new RegExp(`${click}(?:了)?(?:屏幕|页面|界面)?(?:[上下][方面边]|[左右][上下]角|底部|顶部|旁边|中间|上|下)?(?:的)?(?:那个|那颗|那枚)?${label}`, "u"),
+    new RegExp(`点(?:了)?(?:一?下)?${label}`, "u"),
     new RegExp(`(?:在|把|将)(?:那个)?${label}(?:上)?${click}(?:了)?`, "u"),
     new RegExp(`${label}(?:被)?${click}(?:了)?`, "u")
   ];
@@ -2945,11 +2947,13 @@ function r1ActorClickedControlEvidence(raw, label) {
   const text = String(raw || "");
   const escapedLabel = escapeRegExp(label);
   const quotedLabel = `[“\"']?${escapedLabel}[”\"']?`;
-  const control = `${quotedLabel}(?:按钮|格子|选项)?`;
+  const control = `${quotedLabel}(?:的)?(?:按钮|格子|选项)?`;
   const click = "(?:点击|点选|点下|点了下去|点了下|点了一下|点一下|点了两下|点两下|点了|按下|按了下去|按了一下|按一下|按了|单击|双击|选中|选择了)";
+  const pause = "(?:，|,|\\s)*(?:停[^，。；！？\\n]{0,8}|顿[^，。；！？\\n]{0,6}|犹豫[^，。；！？\\n]{0,6})?(?:，|,|\\s)*";
   const patterns = [
     new RegExp(`${click}(?:了)?(?:屏幕|页面|界面)?(?:上|下)?(?:的)?(?:那个)?${control}`, "gu"),
-    new RegExp(`(?:最后|最终|直接|重新|又)?(?:在|把|将)?(?:鼠标|光标)?(?:移到|挪到|放到)?(?:了)?(?:那个)?${control}(?:上)?(?:，|,|\\s)*${click}(?:了)?`, "gu")
+    new RegExp(`(?:最后|最终|直接|重新|又)?(?:在|把|将)?(?:鼠标|光标)?(?:移到|挪到|放到|移回|挪回|放回|回到)?(?:了)?(?:那个)?${control}(?:上)?${pause}${click}(?:了)?`, "gu"),
+    new RegExp(`从[^，。；！？\\n]{0,20}?(?:移|挪|滑)(?:到|回)(?:了)?(?:那个)?${control}(?:上)?${pause}${click}(?:了)?`, "gu")
   ];
   const matches = [];
   const directAfterCue = new RegExp(`(?:最后|最终|末了|后来|然后|直接|重新|又).{0,12}${click}(?:了)?(?:屏幕|页面|界面)?(?:上|下)?(?:的)?(?:那个)?${control}`, "gu");
@@ -2980,12 +2984,69 @@ function r1ActorClickedControlEvidence(raw, label) {
   return matches.sort((a, b) => (b.priority || 0) - (a.priority || 0) || b.index - a.index)[0] || null;
 }
 
+function r1ActorGenericControlSpokenLabel(raw, kind) {
+  // A click phrased against a control context ("产品定位按钮…点了一下", "（按钮上，点了下去。）",
+  // "点了产品定位按钮") followed shortly by a quoted utterance that consists solely of one legal
+  // label ⇒ that label was selected. Handles the actor style where the button click is a stage
+  // direction and the chosen value is spoken as a separate quoted line.
+  const text = String(raw || "");
+  const click = "(?:点击|点选|点下|点了下去|点了下|点了一下|点一下|点了|按下|按了下去|按了一下|按一下|按了|单击)";
+  const pause = "(?:，|,|\\s)*(?:停[^，。；！？\\n]{0,8}|顿[^，。；！？\\n]{0,6}|犹豫[^，。；！？\\n]{0,6})?(?:，|,|\\s)*";
+  const specificControl = kind === "grid" ? "(?:市场格)" : "(?:产品定位|定位)";
+  const genericControl = "(?:按钮|鼠标|光标)";
+  const labels = kind === "grid"
+    ? GRID_IDS.map((key) => ({ key, tokens: [key] }))
+    : [
+        { key: "Experience", tokens: ["Experience", "体验型", "体验"] },
+        { key: "Hybrid", tokens: ["Hybrid", "混合型", "混合"] },
+        { key: "Function", tokens: ["Function", "功能型", "功能"] }
+      ];
+  const contextPatterns = [
+    new RegExp(`${specificControl}[^。；！？\\n“”]{0,10}${pause}${click}`, "gu"),
+    new RegExp(`${genericControl}[^。；！？\\n“”]{0,8}${pause}${click}`, "gu"),
+    new RegExp(`${click}(?:了)?[^。；！？\\n“”]{0,6}${specificControl}(?:的)?(?:按钮|选项)?`, "gu")
+  ];
+  const matchLabel = (spoken) => {
+    const bare = String(spoken || "").replace(/[（）()【】\[\]\s，。,.!！?？:：;；]/gu, "");
+    if (!bare) return null;
+    for (const item of labels) {
+      let residual = bare;
+      for (const token of [...item.tokens].sort((a, b) => b.length - a.length)) {
+        residual = residual.split(token).join("");
+      }
+      if (!residual) return item.key;
+    }
+    return null;
+  };
+  const results = [];
+  for (const pattern of contextPatterns) {
+    for (const match of text.matchAll(pattern)) {
+      const clickOffset = match[0].search(new RegExp(click, "u"));
+      const clickIndex = clickOffset >= 0 ? match.index + clickOffset : match.index;
+      if (r1ActorClickEvidenceNegated(text, clickIndex)) continue;
+      const windowStart = match.index + match[0].length;
+      const window = text.slice(windowStart, Math.min(text.length, windowStart + 90));
+      let found = null;
+      for (const quoted of window.matchAll(/[“"]([^”"]{1,40})[”"]/gu)) {
+        const key = matchLabel(quoted[1]);
+        if (key) {
+          found = { key, evidence: match[0] + window.slice(0, quoted.index + quoted[0].length), index: match.index };
+          break;
+        }
+      }
+      if (found && !results.some((item) => item.key === found.key && item.index === found.index)) {
+        results.push(found);
+      }
+    }
+  }
+  return results;
+}
+
 function r1ActorClickedSelectionControls(raw) {
-  const grids = GRID_IDS
+  const directGrids = GRID_IDS
     .map((key) => ({ key, ...(r1ActorClickedControlEvidence(raw, key) || {}) }))
-    .filter((item) => item.evidence)
-    .sort((a, b) => a.index - b.index);
-  const architectures = [
+    .filter((item) => item.evidence);
+  const directArchitectures = [
     { key: "Experience", labels: ["Experience", "体验型", "体验"] },
     { key: "Hybrid", labels: ["Hybrid", "混合型", "混合"] },
     { key: "Function", labels: ["Function", "功能型", "功能"] }
@@ -2995,8 +3056,18 @@ function r1ActorClickedSelectionControls(raw) {
       .filter(Boolean)
       .sort((a, b) => b.index - a.index)[0];
     return { key: item.key, ...(evidence || {}) };
-  }).filter((item) => item.evidence).sort((a, b) => a.index - b.index);
-  return { grids, architectures };
+  }).filter((item) => item.evidence);
+  const mergeGeneric = (direct, generic) => {
+    const merged = direct.slice();
+    for (const item of generic) {
+      if (!merged.some((existing) => existing.key === item.key)) merged.push(item);
+    }
+    return merged.sort((a, b) => a.index - b.index);
+  };
+  return {
+    grids: mergeGeneric(directGrids, r1ActorGenericControlSpokenLabel(raw, "grid")),
+    architectures: mergeGeneric(directArchitectures, r1ActorGenericControlSpokenLabel(raw, "architecture"))
+  };
 }
 
 function r1ActorControlEvidenceIncludesLabel(evidence, label) {
@@ -3043,8 +3114,16 @@ function normalizeR1ActorUiEvent(parsed, { phase, isLeader, raw, uiState }) {
   const sourceArchitectureHasEvidence = phase === "selection"
     && ["Experience", "Hybrid", "Function"].includes(architecture)
     && r1ActorArchitectureLabels(architecture).some((label) => r1ActorControlEvidenceIncludesLabel(evidenceQuote, label));
+  // A field value the leader never wrote in this take is a UI-state echo or hallucination from
+  // the extractor; it must not ride into uiState on the back of another evidenced action.
+  const rawText = String(raw || "");
+  const rawMentionsGrid = gridId && rawText.includes(gridId);
+  const rawMentionsArchitecture = architecture
+    && r1ActorArchitectureLabels(architecture).some((label) => rawText.includes(label));
   if (finalClickedGrid && !sourceGridHasEvidence) gridId = finalClickedGrid.key;
+  else if (!sourceGridHasEvidence && !finalClickedGrid && !rawMentionsGrid) gridId = "";
   if (finalClickedArchitecture && !sourceArchitectureHasEvidence) architecture = finalClickedArchitecture.key;
+  else if (!sourceArchitectureHasEvidence && !finalClickedArchitecture && !rawMentionsArchitecture) architecture = "";
   if (!explicitContinue && phase === "selection" && (clickedControls.grids.length > 0 || clickedControls.architectures.length > 0)) {
     action = "edit_selection";
     const finalClick = [finalClickedGrid, finalClickedArchitecture]
@@ -3601,33 +3680,33 @@ async function runR1ActorIsolatedDiscussion({ members, leaderIdx, draws, proposa
       continue;
     }
     eventIndex += 1;
-    const raw = entrance.decision === "silent"
+    const actorCallArgs = {
+      members,
+      member,
+      isLeader: memberIndex === leaderIdx,
+      ownProposal: proposals[memberIndex].parsed,
+      privateState: phaseStates[phase][member.profile_id],
+      screenText,
+      uiState,
+      transcript,
+      phase,
+      phaseTurnNumber,
+      triggerContext: r1ActorTriggerContext({
+        mode: currentTrigger.mode,
+        phase,
+        trigger: currentTrigger.trigger,
+        members,
+        uiState
+      }),
+      performanceMode: entrance.decision,
+      temperature,
+      outputDir,
+      eventIndex
+    };
+    let raw = entrance.decision === "silent"
       ? `（${member.surface?.name || "这名成员"}没有开口。）`
-      : await callR1IsolatedActor({
-          members,
-          member,
-          isLeader: memberIndex === leaderIdx,
-          ownProposal: proposals[memberIndex].parsed,
-          privateState: phaseStates[phase][member.profile_id],
-          screenText,
-          uiState,
-          transcript,
-          phase,
-          phaseTurnNumber,
-          triggerContext: r1ActorTriggerContext({
-            mode: currentTrigger.mode,
-            phase,
-            trigger: currentTrigger.trigger,
-            members,
-            uiState
-          }),
-          performanceMode: entrance.decision,
-          temperature,
-          outputDir,
-          eventIndex
-        });
-    const participation = r1ActorPublicParticipation(raw);
-    const event = entrance.decision !== "operate"
+      : await callR1IsolatedActor(actorCallArgs);
+    let event = entrance.decision !== "operate"
       ? { action: "none", evidence_quote: "", grid_id: "", architecture: "", vp_summary: { who: "", pain: "", how: "" } }
       : await extractR1ActorUiEvent({
           raw,
@@ -3639,6 +3718,30 @@ async function runR1ActorIsolatedDiscussion({ members, leaderIdx, draws, proposa
           eventIndex,
           memberId: member.profile_id
 	        });
+    if (entrance.decision === "operate" && event.action === "none") {
+      // Re-shoot the same moment once: the actor already privately decided to operate, but the
+      // take contained no indexable UI action. The retry never invents a decision — it only asks
+      // the actor to make the already-decided operation explicit enough to index.
+      const retryRaw = await callR1IsolatedActor({
+        ...actorCallArgs,
+        operateRetryNote: "你刚才那一镜没有落下任何可索引的真实界面动作：没有点中任何合法按钮，也没有逐字写出某个输入框的最终文字。重演这一刻，在括号动作里把操作写实——点击时逐字写出按钮标签（例如 点击市场格“ToB_DIFF_ELDER”、点击产品定位“Hybrid”、点击“继续”按钮、点击“提交”按钮），输入时逐字写出该输入框的完整最终文字。仍然只演这一个操作。"
+      });
+      const retryEvent = await extractR1ActorUiEvent({
+        raw: retryRaw,
+        phase,
+        isLeader: memberIndex === leaderIdx,
+        uiState,
+        temperature,
+        outputDir,
+        eventIndex,
+        memberId: member.profile_id
+      });
+      if (retryEvent.action !== "none") {
+        raw = retryRaw;
+        event = retryEvent;
+      }
+    }
+    const participation = r1ActorPublicParticipation(raw);
     const previousPhase = phase;
     const transcriptEntry = { speaker: member.profile_id, phase: previousPhase, text: raw || "（没有说话）", participation, ui_action: event.action === "none" ? null : event };
     transcript.push(transcriptEntry);
@@ -10143,5 +10246,11 @@ module.exports = {
   runR2FromExistingR1,
   loadMaterials,
   buildProfilePool,
-  sampleTeam
+  sampleTeam,
+  __r1ActorTestables: {
+    r1ActorExplicitButtonClickEvidence,
+    r1ActorClickedSelectionControls,
+    r1ActorGenericControlSpokenLabel,
+    normalizeR1ActorUiEvent
+  }
 };
