@@ -8602,9 +8602,6 @@ function inferD4ScreenplayAction({ rawAction, item, line, stageDirection, allowe
   if (!["select_card", "unselect_card", "change_tier"].includes(type)) return null;
 
   let capId = d4ScreenplayCapId(action, text, allowedCards || [], capGroup);
-  if (!capId && !action && current.size === 1 && /保留|留下|确认|就这样|先这样|不用动|不改|可以/u.test(text)) {
-    capId = Array.from(current.keys())[0];
-  }
   if (!capId) {
     if (action) throw new Error("d4_screenplay invalid cap_id: (empty)");
     return null;
@@ -8613,8 +8610,10 @@ function inferD4ScreenplayAction({ rawAction, item, line, stageDirection, allowe
   const previousTier = current.get(capId)?.tier || null;
   let tier = normalizeD4ScreenplayTier(action?.tier ?? action?.level ?? action?.["档位"], line, previousTier);
   if (type !== "unselect_card" && !tier) {
-    if (type === "select_card") tier = previousTier || "low";
-    else throw new Error(`d4_screenplay ${type} missing valid tier for ${capId}`);
+    // A structured action missing its tier is a schema violation worth a rewrite; a merely
+    // spoken intent with no stated tier is not an indexable click — never invent a tier.
+    if (action) throw new Error(`d4_screenplay ${type} missing valid tier for ${capId}`);
+    return null;
   }
   return {
     type,
