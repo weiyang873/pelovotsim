@@ -1,0 +1,1457 @@
+{
+  "runId": "ai_generated_persona_maps_v2_2026-07-14",
+  "createdAt": "2026-07-14T06:46:23.573Z",
+  "paths": {
+    "maps": "/Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/scripts/analysis/ai_generated_persona_maps_v2_2026-07-14_maps.json",
+    "jsonl": "/Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/scripts/analysis/ai_generated_persona_maps_v2_2026-07-14.jsonl",
+    "summary": "/Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/scripts/analysis/ai_generated_persona_maps_v2_2026-07-14_summary.md",
+    "samples": "/Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/scripts/analysis/ai_generated_persona_maps_v2_2026-07-14_raw_samples.md",
+    "meta": "/Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/scripts/analysis/ai_generated_persona_maps_v2_2026-07-14_meta.json",
+    "failure": "/Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/scripts/analysis/ai_generated_persona_maps_v2_2026-07-14_failure.json"
+  },
+  "gitCommit": "ec988d4d8fc830983cef7cc20b27288c205a69a7",
+  "gitCommitObjectSha256": "283672c47dfaf1918f5e875d1e0f0b2e19518f014f12ce9707f1aef3eeff1528",
+  "gitStatusPorcelainSha256": "1ab58d421fe6b4b75c2c438ebaa13f5eb47a506f13d9b4e992200a9d060de2e6",
+  "script": {
+    "file": "scripts/analysis/ai_generated_persona_maps.js",
+    "sha256": "41e70ab2814c8c331fb4579fd894a12908c3b33becc60bd66fb439ffb42f61a8"
+  },
+  "inputs": {
+    "v2Spec": {
+      "file": "docs/CODEX_AI_GENERATED_PERSONA_MAPS.md",
+      "sha256": "e8122ddb96122853feb35759bd713ee105babaeda64e5d8959d706982bfbea94"
+    },
+    "personaPool": {
+      "file": "scripts/sim/persona_pool.js",
+      "sha256": "d6ae384e887aaf723ae2d351efe9895c52b5a5412a481d757964fb8767872c74"
+    },
+    "personaReports": {
+      "file": "game_config_v0.1/persona_reports_v1.1.json",
+      "sha256": "900da996382e5eb5e2104e4da6871ceab861418ba1f3258931fa4691de431623"
+    },
+    "capabilityGroups": {
+      "file": "data/capability_groups_v2.json",
+      "sha256": "89d38b8f4fba9d2ee5cd2ba398b4f4e449a27a6aedc70224375590db02fd28a3"
+    },
+    "compatibilityRules": {
+      "file": "data/compatibility_rules_v2.json",
+      "sha256": "0c6cf08d59c2ae5d5d08cc5d625b059b495215a877d11718dc3aa027a1e26930"
+    },
+    "frozenMapsUnchanged": {
+      "草根老板": {
+        "file": "scripts/analysis/cognitive_map_caogen_min.json",
+        "sha256": "40d8de670d52d202a344232ddd33099f755f92c6479501d07fc988371ea26f3d"
+      },
+      "二代接班人": {
+        "file": "scripts/analysis/cognitive_map_erdai_min.json",
+        "sha256": "97fa4be7f5bdced117e53eae1646b5ed18286ffc0ee1535770574d3989265151"
+      }
+    }
+  },
+  "generatedMaps": {
+    "file": "scripts/analysis/ai_generated_persona_maps_v2_2026-07-14_maps.json",
+    "sha256": "65cb2bde354abe0cf12685debe5ae025b79471dbb1965507e4e8d2cbf16cfeeb",
+    "personaSha256": {
+      "体制转型者": "54f82c90483652739154b7b7f0be0af17cb37ac7573d4935423bff24708341fb",
+      "职业经理人": "b3954a33940803d69aae30a3b6ca73c713ff5dc1853b90e8b358febc86edca2d",
+      "销售铁军": "3e5e406b63f58a9d658c0c0f9661ab6d5cb8477519e85808c21e90f1b9e7afe3",
+      "技术创业者": "201fd7fcbafc5c66a3c3139c68a6d945ff3956fbb2cbea7d799543ef5f19ef07",
+      "互联网PM转型": "0e0bdaec72fc8e5348ca5413a5ba44138e8328c56f8a467a8f8e0239f36d41f5"
+    }
+  },
+  "condition": "M",
+  "mapGeneration": {
+    "initialBatchCalls": 1,
+    "successfulInitialBatchCalls": 1,
+    "totalGenerationCalls": 1,
+    "counters": {
+      "numericRepairs": 0,
+      "leakRegenerations": 0
+    },
+    "regenerationByPersona": {
+      "体制转型者": {
+        "leak": 0,
+        "numeric": 0
+      },
+      "职业经理人": {
+        "leak": 0,
+        "numeric": 0
+      },
+      "销售铁军": {
+        "leak": 0,
+        "numeric": 0
+      },
+      "技术创业者": {
+        "leak": 0,
+        "numeric": 0
+      },
+      "互联网PM转型": {
+        "leak": 0,
+        "numeric": 0
+      }
+    },
+    "restoredInitialBatch": {
+      "file": "scripts/analysis/ai_generated_persona_maps_v1_2026-07-14_failure.json",
+      "sha256": "391bb0e972250b6a68f74cca6737de58d7dbc3a1aa1ca8e43e2d99cbb5ed97d6",
+      "sourceCallStatus": "OK",
+      "sourceCallAttempt": 3
+    },
+    "blindSpotMinSim": 0.55,
+    "gameTermCatalogSha256": "ae04869950a1ad9051666a819de7a6e488f1d54130040ff36549ff55590e527c",
+    "gameTermCatalog": [
+      {
+        "term": "陪伴机器人",
+        "source": "v2_spec"
+      },
+      {
+        "term": "LOVOT",
+        "source": "v2_spec"
+      },
+      {
+        "term": "锦囊",
+        "source": "v2_spec"
+      },
+      {
+        "term": "12格选择器",
+        "source": "v2_spec"
+      },
+      {
+        "term": "ToC",
+        "source": "v2_spec"
+      },
+      {
+        "term": "ToB",
+        "source": "v2_spec"
+      },
+      {
+        "term": "交互与表达",
+        "source": "data/capability_groups_v2.json#group_name"
+      },
+      {
+        "term": "voice_basic",
+        "source": "data/capability_groups_v2.json#cap_id"
+      },
+      {
+        "term": "语音基础",
+        "source": "data/capability_groups_v2.json#capability_name"
+      },
+      {
+        "term": "persona_dialog",
+        "source": "data/capability_groups_v2.json#cap_id"
+      },
+      {
+        "term": "多轮对话个性化",
+        "source": "data/capability_groups_v2.json#capability_name"
+      },
+      {
+        "term": "touch_hug",
+        "source": "data/capability_groups_v2.json#cap_id"
+      },
+      {
+        "term": "触摸/拥抱交互增强",
+        "source": "data/capability_groups_v2.json#capability_name"
+      },
+      {
+        "term": "music_companion",
+        "source": "data/capability_groups_v2.json#cap_id"
+      },
+      {
+        "term": "音乐播放与陪伴",
+        "source": "data/capability_groups_v2.json#capability_name"
+      },
+      {
+        "term": "visual_expression",
+        "source": "data/capability_groups_v2.json#cap_id"
+      },
+      {
+        "term": "视觉表达（OLED/灯效）",
+        "source": "data/capability_groups_v2.json#capability_name"
+      },
+      {
+        "term": "expressive_style_pack",
+        "source": "data/capability_groups_v2.json#cap_id"
+      },
+      {
+        "term": "表达风格包（角色/语气/动作脚本）",
+        "source": "data/capability_groups_v2.json#capability_name"
+      },
+      {
+        "term": "no_screen_costdown",
+        "source": "data/capability_groups_v2.json#cap_id"
+      },
+      {
+        "term": "无屏降本（删OLED）",
+        "source": "data/capability_groups_v2.json#capability_name"
+      },
+      {
+        "term": "感知与理解",
+        "source": "data/capability_groups_v2.json#group_name"
+      },
+      {
+        "term": "perception_base",
+        "source": "data/capability_groups_v2.json#cap_id"
+      },
+      {
+        "term": "基础感知（摄像头/语音融合）",
+        "source": "data/capability_groups_v2.json#capability_name"
+      },
+      {
+        "term": "emotion_recognition",
+        "source": "data/capability_groups_v2.json#cap_id"
+      },
+      {
+        "term": "情绪识别与表情捕捉",
+        "source": "data/capability_groups_v2.json#capability_name"
+      },
+      {
+        "term": "adaptive_learning",
+        "source": "data/capability_groups_v2.json#cap_id"
+      },
+      {
+        "term": "自适应学习（习惯/偏好）",
+        "source": "data/capability_groups_v2.json#capability_name"
+      },
+      {
+        "term": "memory_album",
+        "source": "data/capability_groups_v2.json#cap_id"
+      },
+      {
+        "term": "社交记忆（关系与偏好）",
+        "source": "data/capability_groups_v2.json#capability_name"
+      },
+      {
+        "term": "运动与导航",
+        "source": "data/capability_groups_v2.json#group_name"
+      },
+      {
+        "term": "basic_avoidance",
+        "source": "data/capability_groups_v2.json#cap_id"
+      },
+      {
+        "term": "基础避障",
+        "source": "data/capability_groups_v2.json#capability_name"
+      },
+      {
+        "term": "follow_mode",
+        "source": "data/capability_groups_v2.json#cap_id"
+      },
+      {
+        "term": "跟随/伴行模式",
+        "source": "data/capability_groups_v2.json#capability_name"
+      },
+      {
+        "term": "lidar_nav",
+        "source": "data/capability_groups_v2.json#cap_id"
+      },
+      {
+        "term": "室内导航与避障（LiDAR）",
+        "source": "data/capability_groups_v2.json#capability_name"
+      },
+      {
+        "term": "安全与信任",
+        "source": "data/capability_groups_v2.json#group_name"
+      },
+      {
+        "term": "privacy_trust",
+        "source": "data/capability_groups_v2.json#cap_id"
+      },
+      {
+        "term": "隐私模式与信任保障",
+        "source": "data/capability_groups_v2.json#capability_name"
+      },
+      {
+        "term": "child_safety",
+        "source": "data/capability_groups_v2.json#cap_id"
+      },
+      {
+        "term": "儿童安全",
+        "source": "data/capability_groups_v2.json#capability_name"
+      },
+      {
+        "term": "family_guardian",
+        "source": "data/capability_groups_v2.json#cap_id"
+      },
+      {
+        "term": "家庭监护（告警/权限/记录）",
+        "source": "data/capability_groups_v2.json#capability_name"
+      },
+      {
+        "term": "可扩展与连接",
+        "source": "data/capability_groups_v2.json#group_name"
+      },
+      {
+        "term": "cloud_update",
+        "source": "data/capability_groups_v2.json#cap_id"
+      },
+      {
+        "term": "云端智更新（灰度/回滚/遥测）",
+        "source": "data/capability_groups_v2.json#capability_name"
+      },
+      {
+        "term": "api_iot",
+        "source": "data/capability_groups_v2.json#cap_id"
+      },
+      {
+        "term": "API / IoT 联动",
+        "source": "data/capability_groups_v2.json#capability_name"
+      },
+      {
+        "term": "edu_content",
+        "source": "data/capability_groups_v2.json#cap_id"
+      },
+      {
+        "term": "教育内容",
+        "source": "data/capability_groups_v2.json#capability_name"
+      },
+      {
+        "term": "可运营与可维护",
+        "source": "data/capability_groups_v2.json#group_name"
+      },
+      {
+        "term": "self_diag",
+        "source": "data/capability_groups_v2.json#cap_id"
+      },
+      {
+        "term": "自诊断",
+        "source": "data/capability_groups_v2.json#capability_name"
+      },
+      {
+        "term": "remote_monitor",
+        "source": "data/capability_groups_v2.json#cap_id"
+      },
+      {
+        "term": "远程监控",
+        "source": "data/capability_groups_v2.json#capability_name"
+      },
+      {
+        "term": "predictive_maint",
+        "source": "data/capability_groups_v2.json#cap_id"
+      },
+      {
+        "term": "预测性维护",
+        "source": "data/capability_groups_v2.json#capability_name"
+      }
+    ],
+    "domainRulesSha256": "e7ac9f36e01557107bcc11853894c2ee3ffa939f87e4bd271205607eafc6c2a1",
+    "domainRules": [
+      {
+        "name": "养老康养",
+        "pattern": "养老|康养|护理院|养老院|老年服务|日间照料"
+      },
+      {
+        "name": "医疗医药",
+        "pattern": "医院|医疗|医药|药企|药店|诊所|医疗器械|健康服务"
+      },
+      {
+        "name": "教育培训",
+        "pattern": "学校|教育|培训|教培|幼儿园|高校|课程服务"
+      },
+      {
+        "name": "金融保险",
+        "pattern": "银行|金融|保险|证券|基金|信贷|支付机构"
+      },
+      {
+        "name": "零售快消",
+        "pattern": "零售|门店|商超|快消|便利店|电商|消费品牌"
+      },
+      {
+        "name": "汽车出行",
+        "pattern": "汽车|车企|4S店|出行|交通|充电桩|新能源车"
+      },
+      {
+        "name": "地产建筑",
+        "pattern": "地产|楼盘|物业|建筑|工程公司|基建|施工"
+      },
+      {
+        "name": "能源环保",
+        "pattern": "能源|电力|光伏|风电|环保|污水|碳排"
+      },
+      {
+        "name": "农业食品",
+        "pattern": "农业|农场|种植|养殖|食品|餐饮|农产品"
+      },
+      {
+        "name": "物流贸易",
+        "pattern": "物流|仓储|货运|外贸|贸易|海关|航运"
+      },
+      {
+        "name": "文旅酒店",
+        "pattern": "旅游|景区|酒店|文旅|会展|航空公司"
+      },
+      {
+        "name": "媒体文化",
+        "pattern": "媒体|广告|影视|出版|直播|短视频|文化公司"
+      },
+      {
+        "name": "专业服务",
+        "pattern": "咨询|律所|会计师|审计|猎头|专业服务"
+      },
+      {
+        "name": "通信电子",
+        "pattern": "通信|运营商|电子|家电|手机|消费硬件"
+      },
+      {
+        "name": "制造工业",
+        "pattern": "工厂|制造|产线|车间|机床|零部件|工业设备|质检"
+      },
+      {
+        "name": "科技软件",
+        "pattern": "互联网|软件|SaaS|算法|人工智能|AI公司|科技公司|数据产品"
+      },
+      {
+        "name": "政务公共",
+        "pattern": "政府|机关|央企|国企|公共服务|政务"
+      }
+    ]
+  },
+  "advisoryReports": {
+    "generatedBlindSpotSimilarity": {
+      "threshold": 0.55,
+      "labels": [
+        "体制转型者",
+        "职业经理人",
+        "销售铁军",
+        "技术创业者",
+        "互联网PM转型"
+      ],
+      "matrix": [
+        [
+          1,
+          0.48,
+          0.54,
+          0.44,
+          0.55
+        ],
+        [
+          0.48,
+          1,
+          0.6,
+          0.54,
+          0.56
+        ],
+        [
+          0.54,
+          0.6,
+          1,
+          0.51,
+          0.59
+        ],
+        [
+          0.44,
+          0.54,
+          0.51,
+          1,
+          0.49
+        ],
+        [
+          0.55,
+          0.56,
+          0.59,
+          0.49,
+          1
+        ]
+      ],
+      "pairs": [
+        {
+          "left": "体制转型者",
+          "right": "职业经理人",
+          "similarity": 0.48,
+          "conflict": false
+        },
+        {
+          "left": "体制转型者",
+          "right": "销售铁军",
+          "similarity": 0.54,
+          "conflict": false
+        },
+        {
+          "left": "体制转型者",
+          "right": "技术创业者",
+          "similarity": 0.44,
+          "conflict": false
+        },
+        {
+          "left": "体制转型者",
+          "right": "互联网PM转型",
+          "similarity": 0.55,
+          "conflict": true
+        },
+        {
+          "left": "职业经理人",
+          "right": "销售铁军",
+          "similarity": 0.6,
+          "conflict": true
+        },
+        {
+          "left": "职业经理人",
+          "right": "技术创业者",
+          "similarity": 0.54,
+          "conflict": false
+        },
+        {
+          "left": "职业经理人",
+          "right": "互联网PM转型",
+          "similarity": 0.56,
+          "conflict": true
+        },
+        {
+          "left": "销售铁军",
+          "right": "技术创业者",
+          "similarity": 0.51,
+          "conflict": false
+        },
+        {
+          "left": "销售铁军",
+          "right": "互联网PM转型",
+          "similarity": 0.59,
+          "conflict": true
+        },
+        {
+          "left": "技术创业者",
+          "right": "互联网PM转型",
+          "similarity": 0.49,
+          "conflict": false
+        }
+      ],
+      "aboveThresholdPairs": [
+        {
+          "left": "体制转型者",
+          "right": "互联网PM转型",
+          "similarity": 0.55,
+          "conflict": true
+        },
+        {
+          "left": "职业经理人",
+          "right": "销售铁军",
+          "similarity": 0.6,
+          "conflict": true
+        },
+        {
+          "left": "职业经理人",
+          "right": "互联网PM转型",
+          "similarity": 0.56,
+          "conflict": true
+        },
+        {
+          "left": "销售铁军",
+          "right": "互联网PM转型",
+          "similarity": 0.59,
+          "conflict": true
+        }
+      ],
+      "advisoryOnly": true
+    },
+    "oldHarnessBlindSpotSimilarity": {
+      "threshold": 0.55,
+      "labels": [
+        "草根老板",
+        "职业经理人",
+        "技术创业者",
+        "二代接班人",
+        "体制转型者"
+      ],
+      "matrix": [
+        [
+          1,
+          0.79,
+          0.34,
+          0.43,
+          0.71
+        ],
+        [
+          0.79,
+          1,
+          0.45,
+          0.31,
+          0.61
+        ],
+        [
+          0.34,
+          0.45,
+          1,
+          0.28,
+          0.25
+        ],
+        [
+          0.43,
+          0.31,
+          0.28,
+          1,
+          0.33
+        ],
+        [
+          0.71,
+          0.61,
+          0.25,
+          0.33,
+          1
+        ]
+      ],
+      "pairs": [
+        {
+          "left": "草根老板",
+          "right": "职业经理人",
+          "similarity": 0.79,
+          "conflict": true
+        },
+        {
+          "left": "草根老板",
+          "right": "技术创业者",
+          "similarity": 0.34,
+          "conflict": false
+        },
+        {
+          "left": "草根老板",
+          "right": "二代接班人",
+          "similarity": 0.43,
+          "conflict": false
+        },
+        {
+          "left": "草根老板",
+          "right": "体制转型者",
+          "similarity": 0.71,
+          "conflict": true
+        },
+        {
+          "left": "职业经理人",
+          "right": "技术创业者",
+          "similarity": 0.45,
+          "conflict": false
+        },
+        {
+          "left": "职业经理人",
+          "right": "二代接班人",
+          "similarity": 0.31,
+          "conflict": false
+        },
+        {
+          "left": "职业经理人",
+          "right": "体制转型者",
+          "similarity": 0.61,
+          "conflict": true
+        },
+        {
+          "left": "技术创业者",
+          "right": "二代接班人",
+          "similarity": 0.28,
+          "conflict": false
+        },
+        {
+          "left": "技术创业者",
+          "right": "体制转型者",
+          "similarity": 0.25,
+          "conflict": false
+        },
+        {
+          "left": "二代接班人",
+          "right": "体制转型者",
+          "similarity": 0.33,
+          "conflict": false
+        }
+      ],
+      "aboveThresholdPairs": [
+        {
+          "left": "草根老板",
+          "right": "职业经理人",
+          "similarity": 0.79,
+          "conflict": true
+        },
+        {
+          "left": "草根老板",
+          "right": "体制转型者",
+          "similarity": 0.71,
+          "conflict": true
+        },
+        {
+          "left": "职业经理人",
+          "right": "体制转型者",
+          "similarity": 0.61,
+          "conflict": true
+        }
+      ],
+      "advisoryOnly": true
+    },
+    "domainDistribution": {
+      "体制转型者": {
+        "counts": {
+          "养老康养": 1,
+          "医疗医药": 2,
+          "教育培训": 1,
+          "金融保险": 2,
+          "零售快消": 1,
+          "汽车出行": 2,
+          "地产建筑": 1,
+          "能源环保": 1,
+          "农业食品": 1,
+          "物流贸易": 1,
+          "文旅酒店": 2,
+          "媒体文化": 0,
+          "专业服务": 1,
+          "通信电子": 1,
+          "制造工业": 1,
+          "科技软件": 1,
+          "政务公共": 1
+        },
+        "itemMatches": [
+          {
+            "id": "map_tizhi_01",
+            "domains": [
+              "养老康养"
+            ]
+          },
+          {
+            "id": "map_tizhi_02",
+            "domains": [
+              "政务公共"
+            ]
+          },
+          {
+            "id": "map_tizhi_03",
+            "domains": [
+              "能源环保"
+            ]
+          },
+          {
+            "id": "map_tizhi_04",
+            "domains": [
+              "医疗医药"
+            ]
+          },
+          {
+            "id": "map_tizhi_05",
+            "domains": [
+              "物流贸易"
+            ]
+          },
+          {
+            "id": "map_tizhi_06",
+            "domains": [
+              "制造工业"
+            ]
+          },
+          {
+            "id": "map_tizhi_07",
+            "domains": [
+              "文旅酒店"
+            ]
+          },
+          {
+            "id": "map_tizhi_08",
+            "domains": [
+              "地产建筑"
+            ]
+          },
+          {
+            "id": "map_tizhi_09",
+            "domains": [
+              "金融保险"
+            ]
+          },
+          {
+            "id": "map_tizhi_10",
+            "domains": [
+              "金融保险"
+            ]
+          },
+          {
+            "id": "map_tizhi_11",
+            "domains": [
+              "汽车出行"
+            ]
+          },
+          {
+            "id": "map_tizhi_12",
+            "domains": [
+              "通信电子"
+            ]
+          },
+          {
+            "id": "map_tizhi_13",
+            "domains": [
+              "科技软件"
+            ]
+          },
+          {
+            "id": "map_tizhi_14",
+            "domains": [
+              "教育培训"
+            ]
+          },
+          {
+            "id": "map_tizhi_15",
+            "domains": [
+              "零售快消"
+            ]
+          },
+          {
+            "id": "map_tizhi_16",
+            "domains": [
+              "专业服务"
+            ]
+          },
+          {
+            "id": "map_tizhi_17",
+            "domains": [
+              "文旅酒店"
+            ]
+          },
+          {
+            "id": "map_tizhi_18",
+            "domains": [
+              "农业食品"
+            ]
+          },
+          {
+            "id": "map_tizhi_19",
+            "domains": [
+              "医疗医药"
+            ]
+          },
+          {
+            "id": "map_tizhi_20",
+            "domains": [
+              "汽车出行"
+            ]
+          }
+        ],
+        "classifiedExperiences": 20,
+        "unclassifiedExperiences": 0,
+        "maxDomain": {
+          "domain": "医疗医药",
+          "count": 2
+        },
+        "concentrationsAbove4": [],
+        "violations": [],
+        "advisoryOnly": true,
+        "valid": true
+      },
+      "职业经理人": {
+        "counts": {
+          "养老康养": 1,
+          "医疗医药": 1,
+          "教育培训": 1,
+          "金融保险": 1,
+          "零售快消": 3,
+          "汽车出行": 1,
+          "地产建筑": 1,
+          "能源环保": 1,
+          "农业食品": 1,
+          "物流贸易": 1,
+          "文旅酒店": 1,
+          "媒体文化": 1,
+          "专业服务": 1,
+          "通信电子": 1,
+          "制造工业": 1,
+          "科技软件": 2,
+          "政务公共": 1
+        },
+        "itemMatches": [
+          {
+            "id": "map_jingli_01",
+            "domains": [
+              "科技软件"
+            ]
+          },
+          {
+            "id": "map_jingli_02",
+            "domains": [
+              "零售快消"
+            ]
+          },
+          {
+            "id": "map_jingli_03",
+            "domains": [
+              "金融保险"
+            ]
+          },
+          {
+            "id": "map_jingli_04",
+            "domains": [
+              "汽车出行"
+            ]
+          },
+          {
+            "id": "map_jingli_05",
+            "domains": [
+              "制造工业"
+            ]
+          },
+          {
+            "id": "map_jingli_06",
+            "domains": [
+              "医疗医药"
+            ]
+          },
+          {
+            "id": "map_jingli_07",
+            "domains": [
+              "物流贸易"
+            ]
+          },
+          {
+            "id": "map_jingli_08",
+            "domains": [
+              "教育培训"
+            ]
+          },
+          {
+            "id": "map_jingli_09",
+            "domains": [
+              "能源环保"
+            ]
+          },
+          {
+            "id": "map_jingli_10",
+            "domains": [
+              "文旅酒店"
+            ]
+          },
+          {
+            "id": "map_jingli_11",
+            "domains": [
+              "专业服务"
+            ]
+          },
+          {
+            "id": "map_jingli_12",
+            "domains": [
+              "地产建筑"
+            ]
+          },
+          {
+            "id": "map_jingli_13",
+            "domains": [
+              "通信电子"
+            ]
+          },
+          {
+            "id": "map_jingli_14",
+            "domains": [
+              "农业食品"
+            ]
+          },
+          {
+            "id": "map_jingli_15",
+            "domains": [
+              "媒体文化"
+            ]
+          },
+          {
+            "id": "map_jingli_16",
+            "domains": [
+              "养老康养"
+            ]
+          },
+          {
+            "id": "map_jingli_17",
+            "domains": [
+              "政务公共"
+            ]
+          },
+          {
+            "id": "map_jingli_18",
+            "domains": [
+              "科技软件"
+            ]
+          },
+          {
+            "id": "map_jingli_19",
+            "domains": [
+              "零售快消"
+            ]
+          },
+          {
+            "id": "map_jingli_20",
+            "domains": [
+              "零售快消"
+            ]
+          }
+        ],
+        "classifiedExperiences": 20,
+        "unclassifiedExperiences": 0,
+        "maxDomain": {
+          "domain": "零售快消",
+          "count": 3
+        },
+        "concentrationsAbove4": [],
+        "violations": [],
+        "advisoryOnly": true,
+        "valid": true
+      },
+      "销售铁军": {
+        "counts": {
+          "养老康养": 1,
+          "医疗医药": 1,
+          "教育培训": 1,
+          "金融保险": 2,
+          "零售快消": 1,
+          "汽车出行": 2,
+          "地产建筑": 1,
+          "能源环保": 1,
+          "农业食品": 1,
+          "物流贸易": 1,
+          "文旅酒店": 1,
+          "媒体文化": 1,
+          "专业服务": 1,
+          "通信电子": 1,
+          "制造工业": 1,
+          "科技软件": 2,
+          "政务公共": 1
+        },
+        "itemMatches": [
+          {
+            "id": "map_xiaoshou_01",
+            "domains": [
+              "医疗医药"
+            ]
+          },
+          {
+            "id": "map_xiaoshou_02",
+            "domains": [
+              "零售快消"
+            ]
+          },
+          {
+            "id": "map_xiaoshou_03",
+            "domains": [
+              "科技软件"
+            ]
+          },
+          {
+            "id": "map_xiaoshou_04",
+            "domains": [
+              "汽车出行"
+            ]
+          },
+          {
+            "id": "map_xiaoshou_05",
+            "domains": [
+              "金融保险"
+            ]
+          },
+          {
+            "id": "map_xiaoshou_06",
+            "domains": [
+              "教育培训"
+            ]
+          },
+          {
+            "id": "map_xiaoshou_07",
+            "domains": [
+              "物流贸易"
+            ]
+          },
+          {
+            "id": "map_xiaoshou_08",
+            "domains": [
+              "制造工业"
+            ]
+          },
+          {
+            "id": "map_xiaoshou_09",
+            "domains": [
+              "文旅酒店"
+            ]
+          },
+          {
+            "id": "map_xiaoshou_10",
+            "domains": [
+              "能源环保"
+            ]
+          },
+          {
+            "id": "map_xiaoshou_11",
+            "domains": [
+              "通信电子"
+            ]
+          },
+          {
+            "id": "map_xiaoshou_12",
+            "domains": [
+              "农业食品"
+            ]
+          },
+          {
+            "id": "map_xiaoshou_13",
+            "domains": [
+              "专业服务"
+            ]
+          },
+          {
+            "id": "map_xiaoshou_14",
+            "domains": [
+              "养老康养"
+            ]
+          },
+          {
+            "id": "map_xiaoshou_15",
+            "domains": [
+              "媒体文化"
+            ]
+          },
+          {
+            "id": "map_xiaoshou_16",
+            "domains": [
+              "地产建筑"
+            ]
+          },
+          {
+            "id": "map_xiaoshou_17",
+            "domains": [
+              "政务公共"
+            ]
+          },
+          {
+            "id": "map_xiaoshou_18",
+            "domains": [
+              "科技软件"
+            ]
+          },
+          {
+            "id": "map_xiaoshou_19",
+            "domains": [
+              "汽车出行"
+            ]
+          },
+          {
+            "id": "map_xiaoshou_20",
+            "domains": [
+              "金融保险"
+            ]
+          }
+        ],
+        "classifiedExperiences": 20,
+        "unclassifiedExperiences": 0,
+        "maxDomain": {
+          "domain": "金融保险",
+          "count": 2
+        },
+        "concentrationsAbove4": [],
+        "violations": [],
+        "advisoryOnly": true,
+        "valid": true
+      },
+      "技术创业者": {
+        "counts": {
+          "养老康养": 1,
+          "医疗医药": 2,
+          "教育培训": 1,
+          "金融保险": 1,
+          "零售快消": 1,
+          "汽车出行": 2,
+          "地产建筑": 1,
+          "能源环保": 2,
+          "农业食品": 1,
+          "物流贸易": 1,
+          "文旅酒店": 0,
+          "媒体文化": 1,
+          "专业服务": 1,
+          "通信电子": 1,
+          "制造工业": 1,
+          "科技软件": 2,
+          "政务公共": 1
+        },
+        "itemMatches": [
+          {
+            "id": "map_jishu_01",
+            "domains": [
+              "医疗医药"
+            ]
+          },
+          {
+            "id": "map_jishu_02",
+            "domains": [
+              "科技软件"
+            ]
+          },
+          {
+            "id": "map_jishu_03",
+            "domains": [
+              "制造工业"
+            ]
+          },
+          {
+            "id": "map_jishu_04",
+            "domains": [
+              "能源环保"
+            ]
+          },
+          {
+            "id": "map_jishu_05",
+            "domains": [
+              "汽车出行"
+            ]
+          },
+          {
+            "id": "map_jishu_06",
+            "domains": [
+              "通信电子"
+            ]
+          },
+          {
+            "id": "map_jishu_07",
+            "domains": [
+              "农业食品"
+            ]
+          },
+          {
+            "id": "map_jishu_08",
+            "domains": [
+              "金融保险"
+            ]
+          },
+          {
+            "id": "map_jishu_09",
+            "domains": [
+              "教育培训"
+            ]
+          },
+          {
+            "id": "map_jishu_10",
+            "domains": [
+              "养老康养"
+            ]
+          },
+          {
+            "id": "map_jishu_11",
+            "domains": [
+              "物流贸易"
+            ]
+          },
+          {
+            "id": "map_jishu_12",
+            "domains": [
+              "零售快消"
+            ]
+          },
+          {
+            "id": "map_jishu_13",
+            "domains": [
+              "医疗医药"
+            ]
+          },
+          {
+            "id": "map_jishu_14",
+            "domains": [
+              "专业服务"
+            ]
+          },
+          {
+            "id": "map_jishu_15",
+            "domains": [
+              "媒体文化"
+            ]
+          },
+          {
+            "id": "map_jishu_16",
+            "domains": [
+              "政务公共"
+            ]
+          },
+          {
+            "id": "map_jishu_17",
+            "domains": [
+              "科技软件"
+            ]
+          },
+          {
+            "id": "map_jishu_18",
+            "domains": [
+              "地产建筑"
+            ]
+          },
+          {
+            "id": "map_jishu_19",
+            "domains": [
+              "汽车出行"
+            ]
+          },
+          {
+            "id": "map_jishu_20",
+            "domains": [
+              "能源环保"
+            ]
+          }
+        ],
+        "classifiedExperiences": 20,
+        "unclassifiedExperiences": 0,
+        "maxDomain": {
+          "domain": "医疗医药",
+          "count": 2
+        },
+        "concentrationsAbove4": [],
+        "violations": [],
+        "advisoryOnly": true,
+        "valid": true
+      },
+      "互联网PM转型": {
+        "counts": {
+          "养老康养": 2,
+          "医疗医药": 2,
+          "教育培训": 1,
+          "金融保险": 1,
+          "零售快消": 2,
+          "汽车出行": 2,
+          "地产建筑": 1,
+          "能源环保": 1,
+          "农业食品": 0,
+          "物流贸易": 1,
+          "文旅酒店": 1,
+          "媒体文化": 1,
+          "专业服务": 1,
+          "通信电子": 1,
+          "制造工业": 1,
+          "科技软件": 1,
+          "政务公共": 1
+        },
+        "itemMatches": [
+          {
+            "id": "map_pm_01",
+            "domains": [
+              "养老康养"
+            ]
+          },
+          {
+            "id": "map_pm_02",
+            "domains": [
+              "医疗医药"
+            ]
+          },
+          {
+            "id": "map_pm_03",
+            "domains": [
+              "教育培训"
+            ]
+          },
+          {
+            "id": "map_pm_04",
+            "domains": [
+              "制造工业"
+            ]
+          },
+          {
+            "id": "map_pm_05",
+            "domains": [
+              "科技软件"
+            ]
+          },
+          {
+            "id": "map_pm_06",
+            "domains": [
+              "金融保险"
+            ]
+          },
+          {
+            "id": "map_pm_07",
+            "domains": [
+              "零售快消"
+            ]
+          },
+          {
+            "id": "map_pm_08",
+            "domains": [
+              "汽车出行"
+            ]
+          },
+          {
+            "id": "map_pm_09",
+            "domains": [
+              "地产建筑"
+            ]
+          },
+          {
+            "id": "map_pm_10",
+            "domains": [
+              "能源环保"
+            ]
+          },
+          {
+            "id": "map_pm_11",
+            "domains": [
+              "零售快消"
+            ]
+          },
+          {
+            "id": "map_pm_12",
+            "domains": [
+              "物流贸易"
+            ]
+          },
+          {
+            "id": "map_pm_13",
+            "domains": [
+              "文旅酒店"
+            ]
+          },
+          {
+            "id": "map_pm_14",
+            "domains": [
+              "媒体文化"
+            ]
+          },
+          {
+            "id": "map_pm_15",
+            "domains": [
+              "政务公共"
+            ]
+          },
+          {
+            "id": "map_pm_16",
+            "domains": [
+              "专业服务"
+            ]
+          },
+          {
+            "id": "map_pm_17",
+            "domains": [
+              "通信电子"
+            ]
+          },
+          {
+            "id": "map_pm_18",
+            "domains": [
+              "养老康养"
+            ]
+          },
+          {
+            "id": "map_pm_19",
+            "domains": [
+              "医疗医药"
+            ]
+          },
+          {
+            "id": "map_pm_20",
+            "domains": [
+              "汽车出行"
+            ]
+          }
+        ],
+        "classifiedExperiences": 20,
+        "unclassifiedExperiences": 0,
+        "maxDomain": {
+          "domain": "养老康养",
+          "count": 2
+        },
+        "concentrationsAbove4": [],
+        "violations": [],
+        "advisoryOnly": true,
+        "valid": true
+      }
+    }
+  },
+  "mapsPassed": 5,
+  "requestedChains": 5,
+  "completedChains": 5,
+  "failedChains": 0,
+  "chainDecisionCalls": 21,
+  "invalidReferences": 0,
+  "invalidReferenceDetails": [],
+  "differentiation": {
+    "successful": 5,
+    "uniqueThemeTrajectories": 5,
+    "duplicatePairs": [],
+    "allDistinct": true
+  },
+  "comparisonNote": "No Claude draft map files were present in the workspace; persona_pool.js blindSpots were used post-generation as a descriptive direction reference only.",
+  "priorFailure": null
+}

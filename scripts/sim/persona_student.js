@@ -1005,7 +1005,7 @@ HOW：你觉得这款 AI 宠物机器人怎么帮他们`
     const base = Number(priceContext.defaultPrice || priceContext.basePrice || priceContext.P || priceContext.Pmax || 4000);
     const min = Number(priceContext.min || Math.max(2000, Math.round(base * 0.7)));
     const max = Number(priceContext.max || Math.max(min, Math.round(base * 1.15)));
-    const step = Number(priceContext.step || 100);
+    const step = Number(priceContext.step || 1);
     const totalCOGS = Number(priceContext.totalCOGS || priceContext.COGSbase || 600);
     const baseVariableCost = Number(priceContext.baseVariableCost || priceContext.COGSbase || 600);
     const dCOGSTotal = Number(priceContext.dCOGSTotal || Math.max(0, totalCOGS - baseVariableCost));
@@ -1045,12 +1045,11 @@ HOW：你觉得这款 AI 宠物机器人怎么帮他们`
           demandSummary,
           "",
           `定价区间：¥${min} - ¥${max}`,
-          `滑块步长：¥${step}`,
           "这个区间是课堂 UI 的硬边界，不是建议。低于最低值或高于最高值都会提交失败。",
           "不要输出低于区间或高于区间的价格，也不要把区间端点当作建议价。",
           "",
           "请输出 JSON，不要输出多余文字。字段要求：",
-          "- price：区间内且符合步长的整数价格",
+          "- price：区间内的整数价格",
           "- reason：一句话说明你的定价依据"
         ].join("\n")
       }
@@ -1097,10 +1096,10 @@ HOW：你觉得这款 AI 宠物机器人怎么帮他们`
           {
             role: "user",
             content: [
-              `你刚才输出的 price 不在课堂滑块区间 ¥${min} - ¥${max} 内，或不符合 ¥${step} 步长。`,
-              `请重新输出一个 ${min} 到 ${max} 之间、符合 ¥${step} 步长的整数价格。`,
+              `你刚才输出的 price 不在课堂滑块区间 ¥${min} - ¥${max} 内。`,
+              `请重新输出一个 ${min} 到 ${max} 之间的整数价格。`,
               "仍然只输出 JSON，不要输出多余文字。字段要求：",
-              "- price：区间内且符合步长的整数价格",
+              "- price：区间内的整数价格",
               "- reason：一句话说明你的定价依据"
             ].join("\n")
           }

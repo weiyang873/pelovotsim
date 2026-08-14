@@ -1,0 +1,178 @@
+{
+  "task_text": "Round 1 个人选择界面：\n用户要在消费者/企业、儿童/成人/老人、差异化/成本领先组成的 12 个市场格中选择一个。\n页面说明：差异化靠独特体验或功能赢得用户，可以定更高价格，但目标人群更窄；成本领先靠性价比和规模赢得用户，价格敏感但人群基数更大。\n用户还要选择产品定位方向：体验型、混合型或功能型。\n产品是一款 AI 宠物机器人。最后可填写 WHO、PAIN、HOW 的一句话价值主张。\n这是个人初选，之后才进入小组讨论。",
+  "task_text_sha256": "c488dbe97581b03bd17db725317cdf9c0fc0e77076d52be76669b2d1772110f5",
+  "field_catalog": [
+    {
+      "id": "age_and_life_stage",
+      "label": "年龄与人生阶段",
+      "description": "年龄及当前人生阶段，不包含任务相关年龄偏好",
+      "requires": []
+    },
+    {
+      "id": "gender",
+      "label": "性别",
+      "description": "性别及其在个人经历中的普通社会背景",
+      "requires": []
+    },
+    {
+      "id": "education_and_learning",
+      "label": "教育与学习经历",
+      "description": "教育程度、专业训练、学习路径",
+      "requires": [
+        "age_and_life_stage"
+      ]
+    },
+    {
+      "id": "region_and_mobility",
+      "label": "地域与迁移经历",
+      "description": "成长地、工作地、城乡或跨区域迁移",
+      "requires": [
+        "age_and_life_stage"
+      ]
+    },
+    {
+      "id": "career_context",
+      "label": "行业、职能与当前岗位",
+      "description": "行业、主要职能、公司环境、当前职位",
+      "requires": [
+        "age_and_life_stage",
+        "education_and_learning"
+      ]
+    },
+    {
+      "id": "career_trajectory",
+      "label": "职业路径",
+      "description": "进入行业、岗位变化、关键转折及经验积累",
+      "requires": [
+        "career_context"
+      ]
+    },
+    {
+      "id": "managerial_scope",
+      "label": "管理与责任范围",
+      "description": "团队、区域、项目或经营责任",
+      "requires": [
+        "career_context"
+      ]
+    },
+    {
+      "id": "customer_and_user_exposure",
+      "label": "客户与实际使用者接触",
+      "description": "工作中接触谁付钱、谁使用、谁影响决策的经验",
+      "requires": [
+        "career_context"
+      ]
+    },
+    {
+      "id": "procurement_and_budget_exposure",
+      "label": "采购与预算经验",
+      "description": "本人是否选供应商、管预算、审批采购或承担交付后果",
+      "requires": [
+        "career_context",
+        "managerial_scope"
+      ]
+    },
+    {
+      "id": "product_and_technology_familiarity",
+      "label": "产品与技术熟悉度",
+      "description": "日常接触硬件、软件、智能设备或服务系统的深浅",
+      "requires": [
+        "education_and_learning",
+        "career_context"
+      ]
+    },
+    {
+      "id": "household_structure",
+      "label": "家庭结构",
+      "description": "伴侣、子女、父母及同住或异地情况",
+      "requires": [
+        "age_and_life_stage"
+      ]
+    },
+    {
+      "id": "intergenerational_contact",
+      "label": "不同代际的实际接触",
+      "description": "与儿童、同龄成人和老年人的实际接触频率与深度；允许没有接触",
+      "requires": [
+        "household_structure"
+      ]
+    },
+    {
+      "id": "caregiving_and_dependents",
+      "label": "照护与被依赖经历",
+      "description": "本人是否实际承担过照护、教育或紧急决策；允许没有",
+      "requires": [
+        "household_structure",
+        "intergenerational_contact"
+      ]
+    },
+    {
+      "id": "economic_resources_and_pressure",
+      "label": "经济余量与现实压力",
+      "description": "家庭现金流、债务、收入稳定性和可支配空间，不直接推导选择",
+      "requires": [
+        "career_context",
+        "household_structure"
+      ]
+    },
+    {
+      "id": "personal_consumption_habits",
+      "label": "个人消费习惯",
+      "description": "搜索、比价、冲动、延迟购买、委托他人或复购等实际习惯",
+      "requires": [
+        "economic_resources_and_pressure"
+      ]
+    },
+    {
+      "id": "price_reference_history",
+      "label": "既有价格参照",
+      "description": "在普通耐用品、设备、服务或订阅中实际付过或见过的金额",
+      "requires": [
+        "personal_consumption_habits"
+      ]
+    },
+    {
+      "id": "quality_convenience_tradeoffs",
+      "label": "质量、便利与花费取舍经历",
+      "description": "买贵或买便宜后满意、后悔、闲置或长期使用的具体经历",
+      "requires": [
+        "personal_consumption_habits",
+        "price_reference_history"
+      ]
+    },
+    {
+      "id": "social_influence_on_choices",
+      "label": "他人如何影响选择",
+      "description": "家人、同事、熟人、专业人士、评价或品牌口碑的影响",
+      "requires": [
+        "personal_consumption_habits"
+      ]
+    },
+    {
+      "id": "current_life_pressure",
+      "label": "当前生活与工作状态",
+      "description": "近期时间压力、家庭事件、工作节点和精力状态",
+      "requires": [
+        "career_context",
+        "household_structure"
+      ]
+    },
+    {
+      "id": "communication_and_participation",
+      "label": "表达与参与习惯",
+      "description": "话多话少、表达节奏、争论方式和在小组中的参与状态",
+      "requires": []
+    }
+  ],
+  "messages": [
+    {
+      "role": "system",
+      "content": "你是行为模拟研究中的测量设计人员。你的职责只是判断：为了模拟人在一个任务中的自然差异，事前需要知道人物哪些一般背景信息。\n你不能设计人物、不能设定任何字段取值、不能预测选项、不能追求均匀分布，也不能提出任务专属 persona 类型。\n八个行为 trait 已经固定存在，不要再次选择心理 trait。只能从给定的一般人物字段目录中选择。\n选择标准：只有当同一行为 trait 下，该背景字段的不同现实取值仍可能改变理解、注意、经验联想或行动时才选择。\n少而够用。不要因为任务里出现了某一类用户，就要求每个人都具备与该类用户的经历。允许字段值为没有、很少或不熟悉。\n只输出可 JSON.parse 的 JSON。"
+    },
+    {
+      "role": "user",
+      "content": "【任务界面与行为】\nRound 1 个人选择界面：\n用户要在消费者/企业、儿童/成人/老人、差异化/成本领先组成的 12 个市场格中选择一个。\n页面说明：差异化靠独特体验或功能赢得用户，可以定更高价格，但目标人群更窄；成本领先靠性价比和规模赢得用户，价格敏感但人群基数更大。\n用户还要选择产品定位方向：体验型、混合型或功能型。\n产品是一款 AI 宠物机器人。最后可填写 WHO、PAIN、HOW 的一句话价值主张。\n这是个人初选，之后才进入小组讨论。\n\n【可选的一般人物字段目录】\n- age_and_life_stage: 年龄与人生阶段。年龄及当前人生阶段，不包含任务相关年龄偏好\n- gender: 性别。性别及其在个人经历中的普通社会背景\n- education_and_learning: 教育与学习经历。教育程度、专业训练、学习路径\n- region_and_mobility: 地域与迁移经历。成长地、工作地、城乡或跨区域迁移\n- career_context: 行业、职能与当前岗位。行业、主要职能、公司环境、当前职位\n- career_trajectory: 职业路径。进入行业、岗位变化、关键转折及经验积累\n- managerial_scope: 管理与责任范围。团队、区域、项目或经营责任\n- customer_and_user_exposure: 客户与实际使用者接触。工作中接触谁付钱、谁使用、谁影响决策的经验\n- procurement_and_budget_exposure: 采购与预算经验。本人是否选供应商、管预算、审批采购或承担交付后果\n- product_and_technology_familiarity: 产品与技术熟悉度。日常接触硬件、软件、智能设备或服务系统的深浅\n- household_structure: 家庭结构。伴侣、子女、父母及同住或异地情况\n- intergenerational_contact: 不同代际的实际接触。与儿童、同龄成人和老年人的实际接触频率与深度；允许没有接触\n- caregiving_and_dependents: 照护与被依赖经历。本人是否实际承担过照护、教育或紧急决策；允许没有\n- economic_resources_and_pressure: 经济余量与现实压力。家庭现金流、债务、收入稳定性和可支配空间，不直接推导选择\n- personal_consumption_habits: 个人消费习惯。搜索、比价、冲动、延迟购买、委托他人或复购等实际习惯\n- price_reference_history: 既有价格参照。在普通耐用品、设备、服务或订阅中实际付过或见过的金额\n- quality_convenience_tradeoffs: 质量、便利与花费取舍经历。买贵或买便宜后满意、后悔、闲置或长期使用的具体经历\n- social_influence_on_choices: 他人如何影响选择。家人、同事、熟人、专业人士、评价或品牌口碑的影响\n- current_life_pressure: 当前生活与工作状态。近期时间压力、家庭事件、工作节点和精力状态\n- communication_and_participation: 表达与参与习惯。话多话少、表达节奏、争论方式和在小组中的参与状态\n\n选择 6-12 个直接必要字段。不要选择只为让人物更丰满但与行为差异无关的字段。\n输出 schema：\n{\"selected_fields\":[{\"field_id\":\"目录中的 id\",\"relevance_reason\":\"为什么不同取值可能改变行为，不得预测方向\",\"relevant_stages\":[\"market\",\"strategy\",\"architecture\",\"value_proposition\"]}],\"omitted_but_tempting\":[{\"field_id\":\"目录中的 id\",\"reason\":\"为什么不需要\"}]}"
+    }
+  ],
+  "raw": "{\n  \"selected_fields\": [\n    {\n      \"field_id\": \"customer_and_user_exposure\",\n      \"relevance_reason\": \"不同取值反映对消费者/企业、不同年龄段用户的实际了解程度，可能影响对市场格的选择和产品定位方向的理解。\",\n      \"relevant_stages\": [\"market\", \"strategy\", \"value_proposition\"]\n    },\n    {\n      \"field_id\": \"product_and_technology_familiarity\",\n      \"relevance_reason\": \"对AI、机器人、智能设备的熟悉程度不同，可能影响对产品功能、体验型/功能型定位的可行性和吸引力的判断。\",\n      \"relevant_stages\": [\"strategy\", \"architecture\", \"value_proposition\"]\n    },\n    {\n      \"field_id\": \"economic_resources_and_pressure\",\n      \"relevance_reason\": \"经济余量不同可能影响对价格敏感度、成本领先策略的认同，以及差异化高价格是否可接受的判断。\",\n      \"relevant_stages\": [\"market\", \"strategy\"]\n    },\n    {\n      \"field_id\": \"personal_consumption_habits\",\n      \"relevance_reason\": \"个人消费习惯（如比价、冲动购买）可能影响对成本领先和差异化策略的偏好，以及价值主张中强调性价比还是体验。\",\n      \"relevant_stages\": [\"strategy\", \"value_proposition\"]\n    },\n    {\n      \"field_id\": \"price_reference_history\",\n      \"relevance_reason\": \"对类似产品（如宠物机器人、智能设备）的价格参照不同，可能影响对定价策略和成本领先/差异化选择的判断。\",\n      \"relevant_stages\": [\"market\", \"strategy\"]\n    },\n    {\n      \"field_id\": \"quality_convenience_tradeoffs\",\n      \"relevance_reason\": \"过去购买中质量、便利与花费的取舍经历不同，可能影响对产品定位（体验型/功能型）和策略的偏好。\",\n      \"relevant_stages\": [\"strategy\", \"architecture\", \"value_proposition\"]\n    },\n    {\n      \"field_id\": \"intergenerational_contact\",\n      \"relevance_reason\": \"与儿童、老人等不同代际的实际接触频率和深度不同，可能影响对目标人群（儿童/成人/老人）的理解和选择。\",\n      \"relevant_stages\": [\"market\", \"value_proposition\"]\n    },\n    {\n      \"field_id\": \"caregiving_and_dependents\",\n      \"relevance_reason\": \"有照护经历的人可能更理解儿童或老人的需求，影响对目标人群和产品功能（如陪伴、安全）的重视。\",\n      \"relevant_stages\": [\"market\", \"architecture\", \"value_proposition\"]\n    },\n    {\n      \"field_id\": \"social_influence_on_choices\",\n      \"relevance_reason\": \"他人影响程度不同可能影响对市场选择（如企业市场口碑重要性）和产品定位（如体验型依赖社交传播）的考虑。\",\n      \"relevant_stages\": [\"market\", \"strategy\", \"value_proposition\"]\n    },\n    {\n      \"field_id\": \"communication_and_participation\",\n      \"relevance_reason\": \"表达和参与习惯不同可能影响在小组讨论中的贡献方式，但本任务为个人初选，此字段对个人选择影响较小，但可能影响价值主张的表述。\",\n      \"relevant_stages\": [\"value_proposition\"]\n    }\n  ],\n  \"omitted_but_tempting\": [\n    {\n      \"field_id\": \"age_and_life_stage\",\n      \"reason\": \"虽然年龄可能影响对目标人群的偏好，但任务中已有儿童/成人/老人选项，且年龄本身不直接决定选择，其他字段如代际接触更能反映相关经验。\"\n    },\n    {\n      \"field_id\": \"gender\",\n      \"reason\": \"性别与任务行为差异无直接关联，除非有特定社会背景，但本任务中不必要。\"\n    },\n    {\n      \"field_id\": \"education_and_learning\",\n      \"reason\": \"教育背景可能影响对技术理解，但产品和技术熟悉度已涵盖，且教育程度不直接决定市场选择。\"\n    },\n    {\n      \"field_id\": \"region_and_mobility\",\n      \"reason\": \"地域可能影响市场认知，但任务为通用市场选择，且无地域相关线索，不必要。\"\n    },\n    {\n      \"field_id\": \"career_context\",\n      \"reason\": \"行业和职能可能影响对客户的理解，但客户接触字段已涵盖，且任务不特定于某行业。\"\n    },\n    {\n      \"field_id\": \"career_trajectory\",\n      \"reason\": \"职业路径与当前任务行为差异关联不大，除非有特殊经历，但客户接触已足够。\"\n    },\n    {\n      \"field_id\": \"managerial_scope\",\n      \"reason\": \"管理范围可能影响对成本领先的理解，但经济资源和预算经验已部分涵盖，且任务为个人选择，不必要。\"\n    },\n    {\n      \"field_id\": \"procurement_and_budget_exposure\",\n      \"reason\": \"采购经验可能影响对企业市场的理解，但客户接触已涵盖，且任务不特定于采购决策。\"\n    },\n    {\n      \"field_id\": \"household_structure\",\n      \"reason\": \"家庭结构可能影响对儿童/老人的关注，但代际接触和照护经历更直接，且家庭结构不直接决定选择。\"\n    },\n    {\n      \"field_id\": \"current_life_pressure\",\n      \"reason\": \"当前压力可能影响决策速度，但任务为模拟自然差异，且压力状态不稳定，不必要。\"\n    }\n  ]\n}"
+}

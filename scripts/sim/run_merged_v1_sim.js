@@ -5,6 +5,10 @@ const path = require("node:path");
 const { Pool } = require("pg");
 const { ApiClient } = require("./api_client");
 const { DEFAULT_PARAMS, GLOBAL_PARAMS, GRID_PARAMS, parseGridId } = require("../../server/llm/rdCalculator");
+const {
+  loadRound2PricingContextConfig,
+  validateRound2Price
+} = require("../../server/multiplayer/pricingContext");
 
 let deepseekClient = null;
 let personaModules = null;
@@ -29,17 +33,10 @@ const BASE_URL = process.env.BASE_URL || "http://127.0.0.1:8787";
 const ROOT = path.join(__dirname, "../..");
 const LOG_ROOT = path.join(ROOT, "data/sim_logs/merged_v1");
 const BENCHMARK_LOG_ROOT = path.join(ROOT, "data/sim_logs/decision_benchmark_v2");
-const ROUND2_ENGINE_PARAMS_PATH = path.join(ROOT, "game_config_v0.1/round2_engine_params.json");
 const ARCHITECTURES = ["Experience", "Hybrid", "Function"];
 const SESSION_PREFIX = "sim_merged_v1_";
 const MAX_LLM_RETRIES = 1;
 const LLM_DELAY_MS = Number(process.env.MERGED_V1_LLM_DELAY_MS || 350);
-const DEFAULT_PRICING_UI = {
-  price_min: 1000,
-  price_max: 6000,
-  price_step: 100,
-  default_price: 3500
-};
 
 const GRIDS = [
   "ToB_Differentiation_Elder",
@@ -149,26 +146,7 @@ function writeCsv(filePath, columns, rows) {
 }
 
 function loadPricingUiConfig() {
-  let raw = {};
-  try {
-    raw = JSON.parse(fs.readFileSync(ROUND2_ENGINE_PARAMS_PATH, "utf8"));
-  } catch (_) {
-    raw = {};
-  }
-  const src = raw.pricing_ui && typeof raw.pricing_ui === "object" ? raw.pricing_ui : {};
-  const min = Number(src.price_min ?? DEFAULT_PRICING_UI.price_min);
-  const max = Number(src.price_max ?? DEFAULT_PRICING_UI.price_max);
-  const step = Number(src.price_step ?? DEFAULT_PRICING_UI.price_step);
-  const defaultPrice = Number(src.default_price ?? DEFAULT_PRICING_UI.default_price);
-  if (!Number.isFinite(min) || !Number.isFinite(max) || !Number.isFinite(step) || !Number.isFinite(defaultPrice) || min <= 0 || max <= min || step <= 0) {
-    throw new Error("round2 pricing_ui config invalid");
-  }
-  return {
-    price_min: min,
-    price_max: max,
-    price_step: step,
-    default_price: Math.max(min, Math.min(max, defaultPrice))
-  };
+  return loadRound2PricingContextConfig();
 }
 
 function parseCsv(text) {
@@ -381,19 +359,14 @@ function validateSelectionShape(selection, validCardIds) {
   if (!String(selection?.selection_reason || "").trim()) errors.push("missing selection_reason");
   if (!String(selection?.pricing_reason || "").trim()) errors.push("missing pricing_reason");
   const price = Number(selection?.price);
-  if (!Number.isFinite(price) || price <= 0) errors.push(`invalid price: ${selection?.price}`);
+  if (!Number.isFinite(price) || price <= 0) errors.push("invalid price");
   return errors;
 }
 
 function validateDecisionPrice(selection, pricingUi) {
   const price = Number(selection?.price);
-  const min = Number(pricingUi.price_min);
-  const max = Number(pricingUi.price_max);
-  if (!Number.isFinite(price)) return [`invalid price: ${selection?.price}`];
-  if (price < min || price > max) {
-    return [`price ${price} out of slider range ${min}-${max}`];
-  }
-  return [];
+  const check = validateRound2Price(price, pricingUi);
+  return check.ok ? [] : [check.error || "invalid price"];
 }
 
 function flattenReports(reports) {
@@ -622,7 +595,7 @@ async function reviseVp(llm, draft, feedback, gridId, architecture, simSeed) {
 
 async function chooseCardsAndPrice(llm, context) {
   const reportsText = flattenReports(context.reports);
-  const pricingUi = context.pricingUi || DEFAULT_PRICING_UI;
+  const pricingUi = context.pricingUi || loadPricingUiConfig();
   const prompt = [
     `市场格子：${gridLabel(context.gridId)}`,
     `本次模拟随机种子：${context.simSeed}`,
@@ -637,15 +610,15 @@ async function chooseCardsAndPrice(llm, context) {
     "任务：",
     "1. 选择 8-10 张能力卡，每张给 low/mid/high 档位。",
     "2. 需要预算意识：解释 NRE 总额、单位 dCOGS 与可能销量/支付意愿之间的取舍。",
-    `3. 定价必须遵守课堂 UI 滑块硬边界：最低 ¥${pricingUi.price_min}，最高 ¥${pricingUi.price_max}，步长 ¥${pricingUi.price_step}，默认停在 ¥${pricingUi.default_price}。`,
-    "   这不是建议区间；低于最低值或高于最高值都会提交失败。请在滑块边界内自主决定价格。",
+    `3. 最终价格必须能被课堂 UI 定价滑块提交：最低 ¥${pricingUi.price_min}，最高 ¥${pricingUi.price_max}。`,
+    "   这是提交边界，不代表建议价、合理价、市场价或锚定价格。请在滑块边界内自主决定价格。",
     "4. 不要为了高分全选高档；要像认真学生一样做取舍。",
     "",
     "只输出 JSON，格式：",
     "{",
     "  \"selections\": [{\"cap_id\":\"voice_basic\",\"tier\":\"mid\",\"reason\":\"为什么选\"}],",
     "  \"selection_reason\": \"总的选卡理由，80-160字\",",
-    `  "price": ${pricingUi.default_price},`,
+    '  "price": "<最终价格数字>",',
     "  \"pricing_reason\": \"定价理由，80-160字\"",
     "}"
   ].join("\n");
@@ -657,7 +630,7 @@ async function chooseCardsAndPrice(llm, context) {
 
 async function chooseCardsAndPriceWithValidation(llm, context) {
   const validCardIds = new Set(context.cards.map((card) => card.cap_id));
-  const pricingUi = context.pricingUi || DEFAULT_PRICING_UI;
+  const pricingUi = context.pricingUi || loadPricingUiConfig();
   let validationRetryCount = 0;
   let decision = await chooseCardsAndPrice(llm, context);
   let errors = [
@@ -673,7 +646,7 @@ async function chooseCardsAndPriceWithValidation(llm, context) {
         `错误：${errors.join("; ")}`,
         "合法 cap_id 列表：",
         context.cards.map((card) => card.cap_id).join(", "),
-        `价格硬边界：最低 ¥${pricingUi.price_min}，最高 ¥${pricingUi.price_max}，步长 ¥${pricingUi.price_step}，默认 ¥${pricingUi.default_price}。`,
+        `价格提交边界：最低 ¥${pricingUi.price_min}，最高 ¥${pricingUi.price_max}。这是提交边界，不代表建议价、合理价、市场价或锚定价格。`,
         "price 必须落在硬边界内，不能由系统夹逼修正。",
         "原输出：",
         JSON.stringify(decision, null, 2),

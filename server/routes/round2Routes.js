@@ -45,6 +45,10 @@ const {
   MONEY_SCALE_CONTRACT,
   scaleStoredMoney
 } = require("../multiplayer/moneyScale");
+const {
+  loadRound2PricingContextConfig,
+  validateRound2Price
+} = require("../multiplayer/pricingContext");
 const TAG_MAP = require("../../data/tag_map_v2_1.json");
 
 const ROOT = path.join(__dirname, "..", "..");
@@ -52,7 +56,6 @@ let __round2RoutesSchemaPromise = null;
 const ROUND2_LLM_TIMEOUT_MS = 60000;
 const CONFIG_DIR = path.join(ROOT, "game_config_v0.1");
 const GRID_PRIOR_PATH = path.join(ROOT, "data", "grid_priors_v4_cap_weights.json");
-const ROUND2_ENGINE_PARAMS_PATH = path.join(CONFIG_DIR, "round2_engine_params.json");
 const STATIC_PERSONA_REPORTS_PATH = path.join(CONFIG_DIR, "persona_reports_v1.3.json");
 const GRID_DIMENSION_EVIDENCE_PATH = path.join(CONFIG_DIR, "grid_dimension_evidence_v2.json");
 let cachedEngineConfig = null;
@@ -62,12 +65,6 @@ let cachedGridDimensionEvidence = null;
 const ROUND2_PERSONA_POOL_VERSION = 5;
 const SUMMARY_DYNAMIC_EVI_MAX = 0.85;
 const LEGACY_LIVE_EVI_FALLBACK = 0.7;
-const DEFAULT_ROUND2_PRICING_CONTEXT = {
-  price_min: 1000,
-  price_max: 6000,
-  price_step: 100,
-  default_price: 3500
-};
 const ROUND1_NOT_FINALIZED_MESSAGE = "第一轮尚未定稿,无法进行第二轮操作";
 
 const DIM_KEYS_SHORT = ["interaction", "perception", "motion", "safety", "extend", "ops"];
@@ -257,37 +254,6 @@ function buildStudentRound1MoneyView(raw = {}) {
   };
 }
 
-function clampNumber(value, min, max) {
-  const num = Number(value);
-  if (!Number.isFinite(num)) return min;
-  return Math.max(min, Math.min(max, num));
-}
-
-function loadRound2PricingContextConfig() {
-  let raw = {};
-  try {
-    raw = JSON.parse(fs.readFileSync(ROUND2_ENGINE_PARAMS_PATH, "utf8"));
-  } catch (_) {
-    raw = {};
-  }
-  const src = raw.pricing_ui && typeof raw.pricing_ui === "object"
-    ? raw.pricing_ui
-    : {};
-  const min = Number(src.price_min ?? DEFAULT_ROUND2_PRICING_CONTEXT.price_min);
-  const max = Number(src.price_max ?? DEFAULT_ROUND2_PRICING_CONTEXT.price_max);
-  const step = Number(src.price_step ?? DEFAULT_ROUND2_PRICING_CONTEXT.price_step);
-  const defaultPrice = Number(src.default_price ?? DEFAULT_ROUND2_PRICING_CONTEXT.default_price);
-  if (!Number.isFinite(min) || !Number.isFinite(max) || !Number.isFinite(step) || !Number.isFinite(defaultPrice) || min <= 0 || max <= min || step <= 0) {
-    throw new Error("round2 pricing_ui 配置无效");
-  }
-  return {
-    price_min: min,
-    price_max: max,
-    price_step: step,
-    default_price: clampNumber(defaultPrice, min, max)
-  };
-}
-
 function buildRound2PricingContextForTeam(_team) {
   const pricing = loadRound2PricingContextConfig();
   const fixedBase = Number(GLOBAL_PARAMS.F || 0);
@@ -301,22 +267,7 @@ function buildRound2PricingContextForTeam(_team) {
 
 function validateRound2PriceForTeam(team, price) {
   const pricing = buildRound2PricingContextForTeam(team);
-  const num = Number(price);
-  if (!Number.isFinite(num) || num <= 0) {
-    return {
-      ok: false,
-      pricing,
-      message: "请输入有效的产品售价"
-    };
-  }
-  if (num < pricing.price_min || num > pricing.price_max) {
-    return {
-      ok: false,
-      pricing,
-      message: `产品售价需在 ¥${pricing.price_min.toLocaleString()} 到 ¥${pricing.price_max.toLocaleString()} 之间`
-    };
-  }
-  return { ok: true, pricing };
+  return validateRound2Price(price, pricing);
 }
 
 function buildLeaderMeta(team, requesterMemberId = "") {

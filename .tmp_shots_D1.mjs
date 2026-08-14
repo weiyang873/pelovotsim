@@ -1,0 +1,16 @@
+import { chromium } from '@playwright/test';
+const TID='56c37e3e-43f8-49b9-9cf7-6d4d76387dcb';
+const MID='0a5f6257-6ae6-475f-8077-3cc338ff36f7';
+const OUT=process.env.HOME+'/Desktop/scale_check_0714/ppt_shots';
+const b=await chromium.launch();
+const ctx=await b.newContext({viewport:{width:1600,height:1100},deviceScaleFactor:2});
+const p=await ctx.newPage();
+await p.goto(`https://app.praxisengine.xyz/multiplayer/round2?teamId=${TID}&memberId=${MID}`,{waitUntil:'domcontentloaded'});
+await p.waitForTimeout(4000);
+const t=await p.evaluate(()=>document.body.innerText);
+console.log('status:', (t.match(/R2_[A-Z_]+/)||[])[0]);
+console.log('has slider?', await p.locator('input[type=range]').count());
+console.log('price mentions:', JSON.stringify((t.match(/[^\n]*定价[^\n]*/g)||[]).slice(0,4)));
+console.log('buttons:', JSON.stringify(await p.evaluate(()=>[...document.querySelectorAll('button')].map(x=>x.textContent.trim().slice(0,20)).filter(x=>x))));
+await p.screenshot({path:`${OUT}/debug/D1-merge.png`, fullPage:false});
+await b.close();

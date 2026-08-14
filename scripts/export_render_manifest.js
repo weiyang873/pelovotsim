@@ -318,14 +318,13 @@ function buildManifest() {
       fields: [
         { path: "pricing.price_min", form: "currency", visibility: "primary" },
         { path: "pricing.price_max", form: "currency", visibility: "primary" },
-        { path: "pricing.price_step", form: "currency", visibility: "primary" },
         { path: "team.unit_cost", form: "currency", visibility: "primary", mode: "team" },
         { path: "team.fixed_cost", form: "currency", visibility: "primary", mode: "team" },
         { path: "team.channel_fee", form: "percentage", visibility: "primary", mode: "team" }
       ],
-      individual_experiment_policy: "D5 persona prompt keeps only price range and step; team-only cost accounting fields are not injected in solo experiments.",
-      price_defaults_for_experiment: { price_min: 1000, price_max: 6000, price_step: 100 },
-      allowed_numbers: ["1000", "6000", "100"]
+      individual_experiment_policy: "D5 persona prompt may mention only slider min/max as submit bounds; other control settings/defaults are not injected in solo experiments.",
+      price_defaults_for_experiment: { price_min: 2000, price_max: 6000 },
+      allowed_numbers: ["2000", "6000"]
     }
   };
 

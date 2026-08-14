@@ -5,8 +5,9 @@ const path = require("node:path");
 const crypto = require("node:crypto");
 const { spawnSync } = require("node:child_process");
 
-const Engine = require("../../engine");
 const RD = require("../../server/llm/rdCalculator");
+const TeamRoutes = require("../../server/routes/teamRoutes");
+const Round2Routes = require("../../server/routes/round2Routes");
 const { loadJinangConfig } = require("../../server/multiplayer/jinangDealer");
 const { computeJinangWtpBonus, clamp01 } = require("../../server/multiplayer/jinangCoeff");
 const { scaleStoredMoney, PRICE_SCALE, MONEY_SCALE_CONTRACT } = require("../../server/multiplayer/moneyScale");
@@ -20,6 +21,7 @@ const CONDITION = "M";
 const TEMPERATURE = Number(process.env.RUN_TEMPERATURE || 0.55);
 const MAX_REPAIRS = 2;
 const COACH_ROUNDS = 3;
+const DEFAULT_QUESTION_DEFINITION_INSTRUCTION = "在做这个决策之前，以你的经验和直觉，你觉得此刻必须先搞清楚的问题是什么？只写问题本身，不要回答它。";
 const PERSONA_ORDER = ["A", "D", "E", "B", "F", "C", "G"];
 const FROZEN_MAP_FILES = {
   A: path.join(__dirname, "cognitive_map_caogen_min.json"),
@@ -51,6 +53,7 @@ const RADAR_LABELS = {
   operations: "可运营与可维护"
 };
 const STACK_REFERENCES = new Set(["承前:R1", "承前:Coach", "承前:D3", "承前:D4"]);
+const PERSONA_SURFACE_SOURCE = "persona_surface";
 const GRID_OPTIONS = [
   { grid_id: "ToC_DIFF_CHILD", customer_type: "ToC", strategy: "DIFF", age: "CHILD", label: "ToC / 儿童 / 差异化", generatorLabel: "ToC 儿童家庭差异化市场" },
   { grid_id: "ToC_COST_CHILD", customer_type: "ToC", strategy: "COST", age: "CHILD", label: "ToC / 儿童 / 成本", generatorLabel: "ToC 儿童家庭成本市场" },
@@ -124,10 +127,201 @@ function outputPaths(runId) {
 }
 
 function parseJsonObject(raw) {
-  const text = String(raw || "").replace(/```json|```/gi, "").trim();
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  return JSON.parse(start >= 0 && end > start ? text.slice(start, end + 1) : text);
+  const parsed = JSON.parse(String(raw || "").trim());
+  if (!parsed || Array.isArray(parsed) || typeof parsed !== "object") {
+    throw new Error("response is not a JSON object");
+  }
+  return parsed;
+}
+
+function tryParseJsonObject(text) {
+  try {
+    return { ok: true, parsed: parseJsonObject(text), error: "" };
+  } catch (error) {
+    return { ok: false, parsed: null, error: String(error?.message || error) };
+  }
+}
+
+function stripJsonFences(text) {
+  const trimmed = String(text || "").trim();
+  const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```\s*$/i);
+  if (fenced) return { text: fenced[1].trim(), applied: true };
+  const replaced = trimmed.replace(/```(?:json)?/gi, "").replace(/```/g, "").trim();
+  return { text: replaced, applied: replaced !== trimmed };
+}
+
+function removeTrailingCommas(text) {
+  return String(text || "").replace(/,\s*([}\]])/g, "$1");
+}
+
+function firstJsonObjectBlock(text) {
+  const source = String(text || "");
+  for (let start = source.indexOf("{"); start >= 0; start = source.indexOf("{", start + 1)) {
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+    for (let index = start; index < source.length; index += 1) {
+      const char = source[index];
+      if (inString) {
+        if (escaped) {
+          escaped = false;
+        } else if (char === "\\") {
+          escaped = true;
+        } else if (char === "\"") {
+          inString = false;
+        }
+        continue;
+      }
+      if (char === "\"") {
+        inString = true;
+      } else if (char === "{") {
+        depth += 1;
+      } else if (char === "}") {
+        depth -= 1;
+        if (depth === 0) return source.slice(start, index + 1);
+      }
+    }
+  }
+  return "";
+}
+
+function salvageJsonText(raw) {
+  const steps = [];
+  const fenced = stripJsonFences(raw);
+  let text = fenced.text;
+  if (fenced.applied) steps.push("strip_fences");
+
+  const block = firstJsonObjectBlock(text);
+  if (block && block.trim() !== text.trim()) {
+    text = block.trim();
+    steps.push("extract_json_block");
+  }
+
+  const direct = tryParseJsonObject(text);
+  if (direct.ok && steps.length) return { text, parsed: direct.parsed, steps };
+
+  const withoutTrailingCommas = removeTrailingCommas(text).trim();
+  if (withoutTrailingCommas !== text.trim()) {
+    const repaired = tryParseJsonObject(withoutTrailingCommas);
+    if (repaired.ok) {
+      return {
+        text: withoutTrailingCommas,
+        parsed: repaired.parsed,
+        steps: [...steps, "strip_trailing_commas"]
+      };
+    }
+  }
+
+  return null;
+}
+
+function parseJsonForDiff(raw) {
+  const direct = tryParseJsonObject(raw);
+  if (direct.ok) return { ...direct, salvage_steps: [] };
+  const salvaged = salvageJsonText(raw);
+  if (salvaged) {
+    return {
+      ok: true,
+      parsed: salvaged.parsed,
+      error: "",
+      salvage_steps: salvaged.steps
+    };
+  }
+  return { ok: false, parsed: null, error: direct.error, salvage_steps: [] };
+}
+
+function jsonStable(value) {
+  return JSON.stringify(value == null ? null : value);
+}
+
+function decisionFieldSnapshot(stage, parsed) {
+  if (!parsed || typeof parsed !== "object") return null;
+  if (stage === "D_q") return { question: parsed.question };
+  if (stage === "R1") {
+    return {
+      grid_id: parsed.grid_id,
+      architecture: parsed.architecture,
+      vp_draft: parsed.vp_draft,
+      choice_reason: parsed.choice_reason,
+      map_sources: parsed.map_sources,
+      updated_constraints: parsed.updated_constraints
+    };
+  }
+  if (stage === "D3") {
+    return {
+      key_evidence: parsed.key_evidence,
+      market_judgment: parsed.market_judgment,
+      evidence_themes: parsed.evidence_themes,
+      updated_constraints: parsed.updated_constraints
+    };
+  }
+  if (stage === "D4") {
+    return {
+      cards: parsed.cards,
+      cost_stance: parsed.cost_stance,
+      updated_constraints: parsed.updated_constraints
+    };
+  }
+  if (stage === "D5") {
+    return {
+      price: parsed.price,
+      basis: parsed.basis,
+      reasoning: parsed.reasoning
+    };
+  }
+  return parsed;
+}
+
+function diffDecisionFields(before, after) {
+  const beforeObject = before && typeof before === "object" ? before : {};
+  const afterObject = after && typeof after === "object" ? after : {};
+  const keys = Array.from(new Set([...Object.keys(beforeObject), ...Object.keys(afterObject)])).sort();
+  return keys
+    .filter((key) => jsonStable(beforeObject[key]) !== jsonStable(afterObject[key]))
+    .map((key) => ({
+      field: key,
+      before: Object.prototype.hasOwnProperty.call(beforeObject, key) ? beforeObject[key] : null,
+      after: Object.prototype.hasOwnProperty.call(afterObject, key) ? afterObject[key] : null
+    }));
+}
+
+function buildRepairDiffs(failedAttemptLogs, finalParsed, stage, finalAttempt) {
+  const after = decisionFieldSnapshot(stage, finalParsed);
+  return failedAttemptLogs.map((attempt) => ({
+    stage,
+    from_attempt: attempt.llm_attempt,
+    to_attempt: finalAttempt,
+    validator_error: attempt.validator_error,
+    before_parse_ok: Boolean(attempt.parsed_decision_fields),
+    before_parse_error: attempt.parse_error || "",
+    before_decision_fields: attempt.parsed_decision_fields,
+    after_decision_fields: after,
+    field_diffs: attempt.parsed_decision_fields ? diffDecisionFields(attempt.parsed_decision_fields, after) : []
+  }));
+}
+
+function promptForInfoSetAssert(prompt, stage = "UNKNOWN") {
+  let text = String(prompt || "").replace(
+    /【你刚刚提出的问题】[\s\S]*?(?=【输出契约】)/g,
+    "【你刚刚提出的问题】\n"
+  );
+  if (text.includes("不要把自己当研究助理") || text.includes("【界面：")) {
+    const allowed = STAGE_ALLOWED_NUMBERS[stage] || new Set();
+    text = text
+      .replace(/\bSAM\b/g, "可见市场规模")
+      .replace(/\bWTP(?:ref|adj)?\b/gi, "可见支付意愿")
+      .replace(/支付意愿/g, "可见意愿")
+      .replace(/毛利率/g, "可见毛利状态")
+      .replace(/盈亏平衡销量/g, "可见回本提示")
+      .replace(/\bdCOGS\b/g, "可见成本小计")
+      .replace(/\bNRE\b/g, "可见研发投入")
+      .replace(/\brisk\b|\bsub_lift\b|\bload\b/gi, "可见提示")
+      .replace(/(?<![A-Za-z_0-9])[-+]?\d+(?:\.\d+)?%?(?![A-Za-z_0-9])/g, (raw) => {
+        const normalized = String(raw).replace(/^[+\-]/, "").replace(/%$/, "");
+        return allowed.has(normalized) ? raw : "若干";
+      });
+  }
+  return text;
 }
 
 function requireText(value, label) {
@@ -202,6 +396,181 @@ function renderStack(records) {
   ].join("\n");
 }
 
+function interfacePromptMode(optionsOrMode) {
+  if (optionsOrMode === "interface") return true;
+  return Boolean(optionsOrMode?.interfaceFaithful || optionsOrMode?.promptMode === "interface");
+}
+
+function interfacePersona(persona) {
+  return [
+    `你正在以"${persona.label}"这位课堂参与者的身份使用界面。`,
+    "只根据界面上看得到的信息、你的背景直觉和你已经提交过的内容来填写控件。",
+    "不要把自己当研究助理，不要输出隐藏模型分析。",
+    "【你的背景】",
+    sanitizeInterfaceCarryForward(persona.desc)
+  ].join("\n");
+}
+
+function renderInterfaceRecap(records) {
+  if (!records.length) return "";
+  return [
+    "【界面上已提交/已看到的内容回顾】",
+    ...records.map((record) => `${record.point}：${sanitizeInterfaceCarryForward(record.summary)}`)
+  ].join("\n");
+}
+
+function interfaceSourceInstruction(stackRefs = "承前:R1/承前:Coach/承前:D3/承前:D4") {
+  return `${PERSONA_SURFACE_SOURCE} 或 ${stackRefs}`;
+}
+
+function sanitizeInterfaceCarryForward(value) {
+  return String(value || "")
+    .replace(/[0-9]+(?:\.[0-9]+)?\s*(?:万)?元/g, "一笔投入")
+    .replace(/[一二三四五六七八九十百千万]+元/g, "一笔投入")
+    .replace(/[0-9]+(?:\.[0-9]+)?\s*%/g, "较高比例")
+    .replace(/愿意为([^，。；、\n]{0,16})花钱/g, "重视$1体验")
+    .replace(/愿意真掏钱|真掏钱|掏钱/g, "认真考虑")
+    .replace(/花钱/g, "投入关注")
+    .replace(/支付意愿|付费意愿|愿意掏钱|愿意花钱|愿意付费/g, "购买意向")
+    .replace(/支付|付费/g, "购买")
+    .replace(/愿意为/g, "重视")
+    .replace(/愿意为[^，。；、\n]{0,24}买单/g, "会认真考虑相关体验")
+    .replace(/为[^，。；、\n]{0,24}买单/g, "重视相关体验")
+    .replace(/买单/g, "认可")
+    .replace(/复购率|复购/g, "持续使用可能性")
+    .replace(/溢价/g, "偏好强度")
+    .replace(/昂贵/g, "负担较重")
+    .replace(/高额消费/g, "较重投入")
+    .replace(/价格合理/g, "条件合适")
+    .replace(/低价/g, "低门槛")
+    .replace(/高价/g, "高门槛")
+    .replace(/消费能力/g, "明确需求")
+    .replace(/消费/g, "使用")
+    .replace(/采购预算/g, "采购计划")
+    .replace(/预算有限|预算限制/g, "资源受限")
+    .replace(/预算/g, "资源安排")
+    .replace(/人力成本|金钱成本|时间成本|学习成本|维护成本|高成本|低成本|成本控制|成本/g, "资源投入")
+    .replace(/高费用|低费用|费用/g, "负担")
+    .replace(/投入产出比|投入产出/g, "效果回报")
+    .replace(/降本增效/g, "提升运营效率")
+    .replace(/真金白银/g, "真实运营压力")
+    .replace(/赔偿/g, "责任处理")
+    .replace(/保险/g, "风险保障")
+    .replace(/营收/g, "运营结果")
+    .replace(/回款/g, "验证反馈")
+    .replace(/价格敏感/g, "选择谨慎")
+    .replace(/性价比/g, "综合吸引力")
+    .replace(/预算限制/g, "资源约束")
+    .replace(/浪费钱/g, "造成浪费")
+    .replace(/心理价位|价格区间|价位区间|价格带/g, "可接受范围")
+    .replace(/额外购买多少偏好强度/g, "额外偏好强度")
+    .replace(/千元以内|千元级|[0-9一二三四五六七八九十百千万]+元以内/g, "界面低位区间")
+    .replace(/售价压到[^，。；、\n]{0,16}/g, "提交价格保持克制")
+    .replace(/\bBOM\b|BOM成本/g, "硬件配置")
+    .replace(/目标毛利率|目标毛利|合理毛利|毛利率|毛利/g, "商业可行性")
+    .replace(/定价应该锚定|定价锚定|锚定/g, "定价参考");
+}
+
+function validateQuestionDefinition(raw, options = {}) {
+  const parsed = parseJsonObject(raw);
+  const question = requireText(parsed.question, "question");
+  void options;
+  return {
+    question
+  };
+}
+
+function buildQuestionDefinitionPrompt(persona, stack, neutralDescription, instruction = DEFAULT_QUESTION_DEFINITION_INSTRUCTION, promptMode = "formal") {
+  if (interfacePromptMode(promptMode)) {
+    return [
+      interfacePersona(persona),
+      renderInterfaceRecap(stack),
+      "【当前界面步骤】",
+      neutralDescription,
+      "【界面前的自我提问】",
+      instruction,
+      '输出 JSON：{"question":"<问题本身>"}',
+      "只输出可 JSON.parse 的 JSON，不要 Markdown，不要额外文字。"
+    ].filter(Boolean).join("\n");
+  }
+  const identityLines = [
+    `你是一位"${persona.label}"型的企业管理者。`,
+    `一句话背景：${persona.desc}`
+  ];
+  if (usesCognitiveMap(persona)) {
+    identityLines.push(`核心盲区摘要：${persona.core_blind_spot || persona.profile.blindSpots || ""}`);
+  }
+  return [
+    ...identityLines,
+    renderPersonaContext(persona, "【你的认知地图；M 条件，全量在场】"),
+    renderStack(stack),
+    "【中性局面描述】",
+    neutralDescription,
+    `【问题定义】${instruction}`,
+    '输出 JSON：{"question":"<问题本身>"}',
+    "只输出可 JSON.parse 的 JSON，不要 Markdown，不要额外文字。"
+  ].join("\n");
+}
+
+function questionStackRecord(stage, question) {
+  return {
+    point: `问题定义(${stage})`,
+    summary: `此刻先问：${question}`
+  };
+}
+
+function neutralQuestionDescription(stage) {
+  if (stage === "R1") {
+    return "现在到了开局选定位的环节。可见边界：12 个市场格子（3 类人群 × 2 类渠道 × 2 类策略）与 3 个架构标签。";
+  }
+  if (stage === "D4") {
+    return "现在到了配置产品能力卡的环节。可见边界：每个能力维度至少 1 张，总数至少 6 张，tier 有 low/mid/high 三档。";
+  }
+  if (stage === "D5") {
+    return "现在到了定价环节。可见边界：课堂定价滑块最低 2000，最高 6000；这是提交边界，不代表建议价、合理价、市场价或锚定价格。";
+  }
+  return "现在到了一个新的决策环节。";
+}
+
+async function runQuestionDefinition(runtime, options, row, persona, stage, stack) {
+  if (!options?.questionDefinition) return null;
+  let neutralDescription = neutralQuestionDescription(stage);
+  if (typeof options.questionDefinitionContextProvider === "function") {
+    const extraContext = options.questionDefinitionContextProvider({ row, persona, stage, stack: stack.slice() });
+    if (extraContext) neutralDescription = [neutralDescription, String(extraContext)].join("\n");
+  }
+  const prompt = buildQuestionDefinitionPrompt(
+    persona,
+    stack,
+    neutralDescription,
+    options.questionDefinitionInstruction || DEFAULT_QUESTION_DEFINITION_INSTRUCTION,
+    options.promptMode
+  );
+  const startedAt = new Date().toISOString();
+  const call = await callJson(runtime.chatCompletion, prompt, (raw) => validateQuestionDefinition(raw, {
+    stage,
+    promptMode: options.promptMode
+  }), {
+    max_tokens: 500,
+    infoSetStage: stage,
+    auditStage: "D_q",
+    infoSetManifest: options.infoSetManifest,
+    promptMode: options.promptMode
+  });
+  const record = {
+    stage,
+    neutral_description: neutralDescription,
+    started_at: startedAt,
+    ended_at: new Date().toISOString(),
+    ...call
+  };
+  row.question_definition = row.question_definition || { enabled: true, calls: [] };
+  row.question_definition.calls.push(record);
+  row.calls.question_definition = Number(row.calls.question_definition || 0) + Number(call.attempts || 0);
+  if (call.status !== "OK") throw new Error(`D_q ${stage} failed: ${call.error}`);
+  return record;
+}
+
 function normalizeArchitecture(value) {
   const raw = String(value || "").trim();
   const low = raw.toLowerCase();
@@ -238,6 +607,15 @@ function formatJinangForPrompt(draw) {
   return [
     `市场锦囊：${market.name || market.id}（${market.r1_display || market.desc_for_player || ""}）`,
     `技术锦囊：${tech.name || tech.id}（${tech.r1_display || tech.desc_for_player || ""}）`
+  ].join("\n");
+}
+
+function formatInterfaceJinangForPrompt(draw) {
+  const market = draw.market || {};
+  const tech = draw.tech || {};
+  return [
+    `市场锦囊：${sanitizeInterfaceCarryForward(market.name || market.id)}（${sanitizeInterfaceCarryForward(market.r1_display || market.desc_for_player || "")}）`,
+    `技术锦囊：${sanitizeInterfaceCarryForward(tech.name || tech.id)}（${sanitizeInterfaceCarryForward(tech.r1_display || tech.desc_for_player || "")}）`
   ].join("\n");
 }
 
@@ -295,6 +673,7 @@ function loadMaterials() {
   const tagMap = loadJson(TAG_MAP_PATH);
   const dimensionAnchors = loadJson(DIMENSION_ANCHOR_PATH);
   const round1Model = loadJson(ROUND1_MODEL_PATH);
+  const round2Params = loadJson(ROUND2_PARAMS_PATH);
   const jinangConfig = loadJinangConfig();
   const capabilityIndex = new Map();
   const groupByCapability = new Map();
@@ -319,6 +698,7 @@ function loadMaterials() {
     tagMap,
     dimensionAnchors,
     round1Model,
+    round2Params,
     jinangConfig,
     capabilityIndex,
     groupByCapability
@@ -395,82 +775,147 @@ function settleJinang(draw, grid, architecture) {
   };
 }
 
-function computeVpCompositeScore(C, G, E) {
-  const c = Math.max(1, Math.min(5, Number(C || 3)));
-  const g = Math.max(1, Math.min(5, Number(G || 3)));
-  const e = Math.max(1, Math.min(5, Number(E || 3)));
-  return Math.min(5, Math.round(Math.sqrt(c * ((g + e) / 2)) * 10) / 10);
+function productionMarketJinangSummary(jinangSettlement) {
+  const market = jinangSettlement?.market || {};
+  return {
+    topMatchStrength: Number(market.match_strength || 0),
+    totalBonus: Number(market.bonus || 0)
+  };
+}
+
+function computeProductionTargetGm(r1Outcome, materials) {
+  const gmCap = Number(materials?.round1Model?.GM_cap);
+  const multiplier = Number(materials?.round1Model?.target_gm_suggest_multiplier);
+  const rhoC = Number(r1Outcome?.rho_C);
+  if (!Number.isFinite(gmCap)) throw new Error("round1Model.GM_cap must be finite");
+  if (!Number.isFinite(multiplier)) throw new Error("round1Model.target_gm_suggest_multiplier must be finite");
+  if (!Number.isFinite(rhoC)) throw new Error("production round1 rho_C must be finite");
+  return Math.min(gmCap, Number((rhoC * multiplier).toFixed(4)));
 }
 
 function buildRound1Outcome(gridId, architecture, vpScores, jinangSettlement, materials) {
-  const baseNoJinang = Engine.computeRound1V2(gridId, architecture, vpScores, 0);
-  const grid = getGrid(gridId);
-  const C = Number(vpScores.C || baseNoJinang.C || 3);
-  const G = Number(vpScores.G || baseNoJinang.G || 3);
-  const E = Number(vpScores.E || baseNoJinang.E || 3);
-  const vpEffectOnly = Number((Number(baseNoJinang.lambda_G || 1) * Number(baseNoJinang.lambda_E || 1) * Number(baseNoJinang.rho_C || 1)).toFixed(4));
-  const wtpMultiplier = Number((vpEffectOnly * (1 + Number(jinangSettlement.market.bonus || 0))).toFixed(4));
-  const compressedMult = RD.compressWtpMult(wtpMultiplier);
-  const WTPrefRaw = Math.round(Number(baseNoJinang.WTPref || 0));
-  const WTPadjRaw = Math.round(WTPrefRaw * wtpMultiplier);
-  const WTPadjCompressedRaw = Math.round(WTPrefRaw * compressedMult);
-  const targetGm = Math.min(
-    Number(materials.round1Model.GM_cap || 0.65),
-    Number(((Number(baseNoJinang.rho_C || 0.45)) * Number(materials.round1Model.target_gm_suggest_multiplier || 0.85)).toFixed(4))
+  if (typeof TeamRoutes.buildRound1Outcome !== "function") {
+    throw new Error("production TeamRoutes.buildRound1Outcome is unavailable");
+  }
+  const production = TeamRoutes.buildRound1Outcome(
+    gridId,
+    architecture,
+    vpScores,
+    productionMarketJinangSummary(jinangSettlement)
   );
+  const grid = getGrid(gridId);
+  const WTPrefRaw = Math.round(Number(production.WTPref || 0));
+  const WTPadjCompressedRaw = Math.round(Number(production.WTPadj || 0));
   return {
-    ...baseNoJinang,
+    ...production,
     grid_label: grid.label,
-    C,
-    G,
-    E_raw: E,
-    Eadj: E,
-    VPscore: computeVpCompositeScore(C, G, E),
+    architecture: normalizeArchitecture(architecture),
     WTPref: WTPrefRaw,
-    WTPadj_raw: WTPadjRaw,
     WTPadj: WTPadjCompressedRaw,
     WTPref_scaled: scaleStoredMoney(WTPrefRaw, { positiveOnly: true }),
     WTPadj_scaled: scaleStoredMoney(WTPadjCompressedRaw, { positiveOnly: true }),
-    wtp_vp_effect: vpEffectOnly,
-    jinang_wtp_bonus: Number(jinangSettlement.market.bonus || 0),
-    wtp_multiplier: wtpMultiplier,
-    wtp_mult_compressed: compressedMult,
-    jinang_match_strength: jinangSettlement.market.matched ? jinangSettlement.market.match_strength : 0,
     jinang_settlement: jinangSettlement,
-    target_gm: targetGm,
-    target_gm_rule: "min(GM_cap, rho_C * target_gm_suggest_multiplier)"
+    target_gm: computeProductionTargetGm(production, materials),
+    target_gm_rule: "simulation-shape-only: min(GM_cap, production rho_C * target_gm_suggest_multiplier)",
+    production_source: "server/routes/teamRoutes.js::buildRound1Outcome"
   };
 }
 
 async function callJson(chatCompletion, prompt, validator, options = {}) {
-  if (options.infoSetStage) assertInfoSet(prompt, options.infoSetStage);
+  if (options.infoSetStage) assertInfoSet(promptForInfoSetAssert(prompt, options.infoSetStage), options.infoSetStage);
   let messages = [{ role: "user", content: prompt }];
   let raw = "";
   let lastError = null;
+  const stage = options.auditStage || options.infoSetStage || "unknown";
+  const attemptLog = [];
+  const failedAttemptLogs = [];
   for (let attempt = 0; attempt <= MAX_REPAIRS; attempt += 1) {
+    const llmAttempt = attempt + 1;
+    const startedAt = new Date().toISOString();
     try {
       raw = await chatCompletion(messages, {
         temperature: options.temperature ?? TEMPERATURE,
         max_tokens: options.max_tokens || 1600,
         maxRetries: 1
       });
-      const parsed = validator(raw);
+      let parsed;
+      let salvageResult = null;
+      try {
+        parsed = validator(raw);
+      } catch (directError) {
+        const salvaged = salvageJsonText(raw);
+        if (!salvaged) throw directError;
+        try {
+          parsed = validator(salvaged.text);
+          salvageResult = salvaged;
+        } catch (salvagedError) {
+          salvagedError.directError = directError;
+          salvagedError.salvageResult = salvaged;
+          throw salvagedError;
+        }
+      }
+      const endedAt = new Date().toISOString();
+      const attemptRecord = {
+        llm_attempt: llmAttempt,
+        stage,
+        started_at: startedAt,
+        ended_at: endedAt,
+        raw_response: raw,
+        raw_sha256: sha256(raw),
+        raw_chars: String(raw || "").length,
+        validator_status: "ok",
+        validator_error: "",
+        salvage: Boolean(salvageResult),
+        salvage_steps: salvageResult?.steps || [],
+        salvaged_raw_response: salvageResult?.text || "",
+        parsed_decision_fields: decisionFieldSnapshot(stage, parsed)
+      };
+      attemptLog.push(attemptRecord);
+      const repairDiffs = buildRepairDiffs(failedAttemptLogs, parsed, stage, llmAttempt);
       return {
         prompt,
         prompt_sha256: sha256(prompt),
         raw_response: raw,
         parsed,
-        attempts: attempt + 1,
+        attempts: llmAttempt,
         status: "OK",
-        error: ""
+        error: "",
+        salvage: Boolean(salvageResult),
+        salvage_steps: salvageResult?.steps || [],
+        attempt_log: attemptLog,
+        repair_diffs: repairDiffs
       };
     } catch (error) {
       lastError = error;
+      const parseProbe = parseJsonForDiff(raw);
+      const endedAt = new Date().toISOString();
+      const attemptRecord = {
+        llm_attempt: llmAttempt,
+        stage,
+        started_at: startedAt,
+        ended_at: endedAt,
+        raw_response: raw,
+        raw_sha256: sha256(raw),
+        raw_chars: String(raw || "").length,
+        validator_status: "error",
+        validator_error: String(error?.message || error),
+        direct_validator_error: String(error?.directError?.message || ""),
+        salvage_candidate_steps: error?.salvageResult?.steps || parseProbe.salvage_steps || [],
+        salvage_candidate_response: error?.salvageResult?.text || "",
+        parse_error: parseProbe.ok ? "" : parseProbe.error,
+        parsed_decision_fields: parseProbe.ok ? decisionFieldSnapshot(stage, parseProbe.parsed) : null
+      };
+      attemptLog.push(attemptRecord);
+      failedAttemptLogs.push(attemptRecord);
       if (attempt < MAX_REPAIRS) {
+        const repairError = sanitizeRepairErrorForPrompt(error, stage);
+        const repairAssistantContent = interfacePromptMode(options.promptMode)
+          ? sanitizeInterfaceCarryForward(raw || "(空输出)")
+          : (raw || "(空输出)");
         messages = [
           { role: "user", content: prompt },
-          { role: "assistant", content: raw || "(空输出)" },
-          { role: "user", content: `上一次输出无法用于实验：${error.message || error}。请只修正为合法 JSON，不要改变核心决策。` }
+          { role: "assistant", content: repairAssistantContent },
+          { role: "user", content: `上一次输出无法用于实验：${repairError}。请只修正为合法 JSON，不要改变核心决策。` }
         ];
       }
     }
@@ -482,8 +927,24 @@ async function callJson(chatCompletion, prompt, validator, options = {}) {
     parsed: null,
     attempts: MAX_REPAIRS + 1,
     status: "FAIL",
-    error: String(lastError?.message || lastError || "unknown error")
+    error: String(lastError?.message || lastError || "unknown error"),
+    salvage: false,
+    salvage_steps: [],
+    attempt_log: attemptLog,
+    repair_diffs: []
   };
+}
+
+function sanitizeRepairErrorForPrompt(error, stage = "") {
+  let text = String(error?.message || error || "");
+  if (String(stage || "").includes("D5")) {
+    text = text
+      .replace(/1000\s*[-~—–到至]\s*6000/gi, "课堂滑块边界")
+      .replace(/2000\s*[-~—–到至]\s*6000/gi, "课堂滑块边界")
+      .replace(/\b[1-6]\d{3}\b/g, "某个价格")
+      .replace(/\b100\b/g, "某个数值");
+  }
+  return text;
 }
 
 function normalizeConstraints(value, validMapIds, label, max = 5) {
@@ -497,9 +958,39 @@ function normalizeConstraints(value, validMapIds, label, max = 5) {
   });
 }
 
+function usesCognitiveMap(persona) {
+  return !persona?.no_cognitive_map;
+}
+
+function validSourceIds(persona) {
+  if (!usesCognitiveMap(persona)) return new Set([PERSONA_SURFACE_SOURCE]);
+  return new Set((persona.map_items || []).map((item) => item.id));
+}
+
+function renderPersonaContext(persona, heading = "【你的认知地图】") {
+  if (!usesCognitiveMap(persona)) {
+    return [
+      "【随机人设；不提供认知地图】",
+      `可引用来源固定为 ${PERSONA_SURFACE_SOURCE}。`,
+      "你只能依据上面的一句话背景、随机身份、课堂任务和已提交内容来判断。"
+    ].join("\n");
+  }
+  return [
+    heading,
+    renderMap(persona.map_items)
+  ].join("\n");
+}
+
+function sourceInstruction(persona, stackRefs = "承前:R1/承前:Coach/承前:D3/承前:D4") {
+  if (!usesCognitiveMap(persona)) {
+    return `source 必须引用 ${PERSONA_SURFACE_SOURCE} 或 ${stackRefs}。`;
+  }
+  return `source 必须引用真实地图 id 或 ${stackRefs}。`;
+}
+
 function validateR1Choice(raw, persona) {
   const parsed = parseJsonObject(raw);
-  const validMapIds = new Set(persona.map_items.map((item) => item.id));
+  const validMapIds = validSourceIds(persona);
   const gridId = requireText(parsed.grid_id, "grid_id");
   getGrid(gridId);
   const architecture = normalizeArchitecture(parsed.architecture);
@@ -508,12 +999,17 @@ function validateR1Choice(raw, persona) {
     pain: requireText(parsed.vp_draft?.pain, "vp_draft.pain"),
     how: requireText(parsed.vp_draft?.how, "vp_draft.how")
   };
-  const mapSources = (Array.isArray(parsed.map_sources) ? parsed.map_sources : []).map((item, index) => {
-    const source = requireText(item, `map_sources[${index}]`);
-    if (!validMapIds.has(source)) throw new Error(`invalid map source: ${source}`);
+  const sourceList = Array.isArray(parsed.map_sources)
+    ? parsed.map_sources
+    : Array.isArray(parsed.evidence_sources)
+      ? parsed.evidence_sources
+      : [];
+  const mapSources = sourceList.map((item, index) => {
+    const source = requireText(item, `r1_sources[${index}]`);
+    if (!validMapIds.has(source)) throw new Error(`invalid R1 source: ${source}`);
     return source;
   });
-  if (!mapSources.length) throw new Error("map_sources must contain at least one valid map id");
+  if (!mapSources.length) throw new Error("R1 sources must contain at least one valid source id");
   return {
     grid_id: gridId,
     grid_label: getGrid(gridId).label,
@@ -525,39 +1021,102 @@ function validateR1Choice(raw, persona) {
   };
 }
 
-function buildR1Prompt(persona, draw) {
+function buildR1InterfacePrompt(persona, draw, questionDefinition = null) {
+  const qLines = questionDefinition
+    ? [
+      "【你刚刚在界面前问自己的问题】",
+      sanitizeInterfaceCarryForward(questionDefinition.parsed.question),
+      "你可以参考这个问题，但仍按当前界面直接提交选择。"
+    ]
+    : [];
   return [
+    interfacePersona(persona),
+    "【界面：选择你的战略定位】",
+    "根据你的锦囊能力和对市场的判断，在下方地图上点击你认为最有机会的目标市场。",
+    "这是你的个人初选，之后小组会看到所有人的选择，再一起讨论收敛。",
+    "【你的锦囊】",
+    formatInterfaceJinangForPrompt(draw),
+    "【策略说明】",
+    "差异化：靠独特体验或功能形成清晰偏好，目标人群更聚焦。",
+    "成本领先：靠交付效率和可及性覆盖更广人群。",
+    "【市场地图：12 个可点击格子；请选择一个 grid_id】",
+    GRID_OPTIONS.map((item) => `- ${item.grid_id}: ${item.label}`).join("\n"),
+    "【产品定位方向按钮；请选择一个 architecture】",
+    "Experience：体验型。用户买的是情感价值和陪伴体验，功能够用就行。",
+    "Hybrid：混合型。体验和功能都是卖点，缺一不可。",
+    "Function：功能型。用户买的是实用功能，情感体验是锦上添花。",
+    "【一句话价值主张草稿（选填）】",
+    "尝试回答：给谁（WHO）、解决什么问题（PAIN）、怎么解决（HOW）。",
+    ...qLines,
+    "【提交字段】脚本会代替你点击“提交我的选择”。请只返回这些控件值；choice_reason 和 updated_constraints 只是提交日志备注，不要展开研究分析。",
+    `输出 JSON：{"grid_id":"ToC_DIFF_CHILD|...","architecture":"Experience|Hybrid|Function","vp_draft":{"who":"...","pain":"...","how":"..."},"choice_reason":"一句最直接的选择备注","evidence_sources":["${PERSONA_SURFACE_SOURCE}"],"updated_constraints":[{"text":"下一步要记住的一条界面备注","source":"${PERSONA_SURFACE_SOURCE}"}]}`,
+    "只输出可 JSON.parse 的 JSON，不要 Markdown，不要额外文字。"
+  ].join("\n");
+}
+
+function buildR1Prompt(persona, draw, questionDefinition = null, promptMode = "formal") {
+  if (interfacePromptMode(promptMode)) return buildR1InterfacePrompt(persona, draw, questionDefinition);
+  const qLines = questionDefinition
+    ? [
+      "【你刚刚提出的问题】",
+      questionDefinition.parsed.question,
+      `【输出契约】围绕你自己的问题，填好 R1 JSON：grid_id 必须来自上方 12 个合法市场格子；architecture 必须是 Experience/Hybrid/Function；VP 草稿必须包含 WHO/PAIN/HOW；updated_constraints 与 map_sources ${usesCognitiveMap(persona) ? "必须引用真实地图 id" : `固定引用 ${PERSONA_SURFACE_SOURCE}`}。`
+    ]
+    : [
+      "【任务】做出 R1 的第一个战略选择：自选完整 12 格之一、架构标签、VP 草稿（WHO/PAIN/HOW），并把你的当前约束压栈。",
+      usesCognitiveMap(persona)
+        ? "不要为了分散而分散；按你的认知地图自然判断。updated_constraints 与 map_sources 必须引用真实地图 id。"
+        : `不要为了分散而分散；按你的随机人设自然判断。updated_constraints 与 map_sources 固定引用 ${PERSONA_SURFACE_SOURCE}。`
+    ];
+  const identityLines = [
     `你是一位"${persona.label}"型的企业管理者。`,
-    `一句话背景：${persona.desc}`,
-    `核心盲区摘要：${persona.core_blind_spot || persona.profile.blindSpots || ""}`,
-    "【你的认知地图；M 条件，全量在场】",
-    renderMap(persona.map_items),
+    `一句话背景：${persona.desc}`
+  ];
+  if (usesCognitiveMap(persona)) {
+    identityLines.push(`核心盲区摘要：${persona.core_blind_spot || persona.profile.blindSpots || ""}`);
+  }
+  return [
+    ...identityLines,
+    renderPersonaContext(persona, "【你的认知地图；M 条件，全量在场】"),
     "【通用游戏场景】你在中国推广一款陪伴机器人产品，目标是找到一个能盈利的市场定位。",
     "【本轮随机锦囊；只按玩家可见文案理解，不要反推出隐藏权重】",
     formatJinangForPrompt(draw),
     "【12 个合法市场格子；必须自选其中一个完整 grid_id】",
     GRID_OPTIONS.map((item) => `- ${item.grid_id}: ${item.label}`).join("\n"),
     "【架构标签；必须自选其一】Experience=体验型，Hybrid=混合型，Function=功能型。",
-    "【任务】做出 R1 的第一个战略选择：自选完整 12 格之一、架构标签、VP 草稿（WHO/PAIN/HOW），并把你的当前约束压栈。",
-    "不要为了分散而分散；按你的认知地图自然判断。updated_constraints 与 map_sources 必须引用真实地图 id。",
-    '输出 JSON：{"grid_id":"ToC_DIFF_CHILD|...","architecture":"Experience|Hybrid|Function","vp_draft":{"who":"...","pain":"...","how":"..."},"choice_reason":"一句话理由","map_sources":["map_xx"],"updated_constraints":[{"text":"...","source":"map_xx"}]}',
+    ...qLines,
+    `输出 JSON：{"grid_id":"ToC_DIFF_CHILD|...","architecture":"Experience|Hybrid|Function","vp_draft":{"who":"...","pain":"...","how":"..."},"choice_reason":"一句话理由","map_sources":["${usesCognitiveMap(persona) ? "map_xx" : PERSONA_SURFACE_SOURCE}"],"updated_constraints":[{"text":"...","source":"${usesCognitiveMap(persona) ? "map_xx" : PERSONA_SURFACE_SOURCE}"}]}`,
     "只输出可 JSON.parse 的 JSON，不要 Markdown，不要额外文字。"
   ].join("\n");
 }
 
-function r1StackRecord(parsed) {
+function r1StackRecord(parsed, promptMode = "formal") {
+  if (interfacePromptMode(promptMode)) {
+    return {
+      point: "R1",
+      summary: sanitizeInterfaceCarryForward(`格子=${parsed.grid_label}(${parsed.grid_id})；产品定位=${parsed.architecture}；VP草稿[WHO=${parsed.vp_draft.who}；PAIN=${parsed.vp_draft.pain}；HOW=${parsed.vp_draft.how}]；提交备注=${parsed.choice_reason}；界面备注=${parsed.updated_constraints.map((item) => item.text).join("；")}`)
+    };
+  }
   return {
     point: "R1",
     summary: `格子=${parsed.grid_label}(${parsed.grid_id})；架构=${parsed.architecture}；VP草稿[WHO=${parsed.vp_draft.who}；PAIN=${parsed.vp_draft.pain}；HOW=${parsed.vp_draft.how}]；理由=${parsed.choice_reason}；约束=${parsed.updated_constraints.map((item) => item.text).join("；")}`
   };
 }
 
-function buildPersonaReplyPrompt(persona, stack, coachMessage) {
+function buildPersonaReplyPrompt(persona, stack, coachMessage, promptMode = "formal") {
+  if (interfacePromptMode(promptMode)) {
+    return [
+      interfacePersona(persona),
+      renderInterfaceRecap(stack),
+      "【VP Coach 反馈面板】",
+      sanitizeInterfaceCarryForward(coachMessage),
+      "【界面操作】你正在根据反馈修改价值主张草稿。用第一人称自然回复，重点补齐 WHO/PAIN/HOW/替代方案/边界里缺的部分。120-220字。"
+    ].filter(Boolean).join("\n");
+  }
   return [
-    `你是"${persona.label}"本人，不是旁白。按你的认知地图自然回答 VP Coach。`,
+    `你是"${persona.label}"本人，不是旁白。按你的${usesCognitiveMap(persona) ? "认知地图" : "随机人设"}自然回答 VP Coach。`,
     `一句话背景：${persona.desc}`,
-    "【你的认知地图】",
-    renderMap(persona.map_items),
+    renderPersonaContext(persona),
     renderStack(stack),
     "【Coach 刚刚说】",
     coachMessage,
@@ -587,6 +1146,7 @@ async function preparePromptContext(options, row, persona, stage, stack, taskDes
 
 async function runCoach(runtime, persona, r1, draw, stack, options = {}) {
   const vpCoach = runtime.vpCoach;
+  const sanitizeCoachTranscript = interfacePromptMode(options.promptMode);
   const grid = getGrid(r1.grid_id);
   const session = {
     teamId: `full_game_${persona.id}`,
@@ -599,7 +1159,7 @@ async function runCoach(runtime, persona, r1, draw, stack, options = {}) {
       architecture: r1.architecture,
       architectureLabel: r1.architecture,
       team_size: 1,
-      who_raw: r1.vp_draft.who,
+      who_raw: sanitizeCoachTranscript ? sanitizeInterfaceCarryForward(r1.vp_draft.who) : r1.vp_draft.who,
       marketJinang: [draw.market?.name].filter(Boolean),
       techJinang: [draw.tech?.name].filter(Boolean),
       jinang: {
@@ -610,9 +1170,10 @@ async function runCoach(runtime, persona, r1, draw, stack, options = {}) {
   };
   const turns = [];
   const opening = await vpCoach.chat(session, "开始", { mode: "chat", temperature: 0.55 });
+  const openingContent = sanitizeCoachTranscript ? sanitizeInterfaceCarryForward(opening.replyText) : opening.replyText;
   session.messages.push({ role: "user", content: "开始" });
-  session.messages.push({ role: "assistant", content: opening.replyText });
-  turns.push({ role: "assistant", content: opening.replyText, mode: "chat", raw: opening });
+  session.messages.push({ role: "assistant", content: openingContent });
+  turns.push({ role: "assistant", content: openingContent, mode: "chat", raw: opening });
 
   for (let index = 0; index < COACH_ROUNDS; index += 1) {
     const lastCoach = session.messages.filter((message) => message.role === "assistant").slice(-1)[0]?.content || "";
@@ -625,15 +1186,17 @@ async function runCoach(runtime, persona, r1, draw, stack, options = {}) {
       `VP Coach 回复：承接 R1 选择，补充 WHO/PAIN/HOW/边界/替代方案。Coach 问题：${lastCoach}`,
       { callId: `Coach_${index + 1}` }
     );
-    const replyPrompt = buildPersonaReplyPrompt(promptContext.persona, promptContext.stack, lastCoach);
-    const studentReply = String(await runtime.chatCompletion([
+    const replyPrompt = buildPersonaReplyPrompt(promptContext.persona, promptContext.stack, lastCoach, options.promptMode);
+    const studentReplyRaw = String(await runtime.chatCompletion([
       { role: "user", content: replyPrompt }
     ], { temperature: 0.75, max_tokens: 500, maxRetries: 1 })).trim();
+    const studentReply = sanitizeCoachTranscript ? sanitizeInterfaceCarryForward(studentReplyRaw) : studentReplyRaw;
     session.messages.push({ role: "user", content: studentReply });
-    turns.push({ role: "user", content: studentReply, prompt: replyPrompt, prompt_sha256: sha256(replyPrompt) });
+    turns.push({ role: "user", content: studentReply, raw_content: studentReplyRaw, prompt: replyPrompt, prompt_sha256: sha256(replyPrompt) });
     const coach = await vpCoach.chat(session, studentReply, { mode: "chat", temperature: 0.55, forceSubmitGuide: index === COACH_ROUNDS - 1 });
-    session.messages.push({ role: "assistant", content: coach.replyText });
-    turns.push({ role: "assistant", content: coach.replyText, mode: "chat", raw: coach });
+    const coachContent = sanitizeCoachTranscript ? sanitizeInterfaceCarryForward(coach.replyText) : coach.replyText;
+    session.messages.push({ role: "assistant", content: coachContent });
+    turns.push({ role: "assistant", content: coachContent, mode: "chat", raw: coach });
   }
 
   const synthesis = await vpCoach.synthesizeVP(session);
@@ -643,7 +1206,10 @@ async function runCoach(runtime, persona, r1, draw, stack, options = {}) {
     turns,
     rounds: COACH_ROUNDS,
     synthesis,
-    final_vp_text: String(synthesis?.vpText || "").trim()
+    final_vp_text: String(synthesis?.vpText || "").trim(),
+    visible_final_vp_text: sanitizeCoachTranscript
+      ? sanitizeInterfaceCarryForward(String(synthesis?.vpText || "").trim())
+      : String(synthesis?.vpText || "").trim()
   };
 }
 
@@ -680,29 +1246,33 @@ async function scoreFinalVp(runtime, r1, coach) {
   };
 }
 
-function buildPersonaSummaryText(personaCard, grid, r1) {
+function buildPersonaSummaryText(personaCard, grid, r1, promptMode = "formal") {
+  const visible = (value) => interfacePromptMode(promptMode)
+    ? sanitizeInterfaceCarryForward(value)
+    : String(value || "");
+  const visibleList = (items) => (items || []).map((item) => visible(item));
   const rows = [
-    `画像对象：${personaCard.name}，${personaCard.age}岁，${personaCard.occupation || personaCard.title || "访谈对象"}`,
+    `画像对象：${visible(personaCard.name)}，${visible(personaCard.age)}岁，${visible(personaCard.occupation || personaCard.title || "访谈对象")}`,
     `格子来源：${grid.label}`,
-    `R1 WHO：${r1.vp_draft.who}`,
-    `背景/机构：${personaCard.living_situation || personaCard.org_type || ""} ${personaCard.org_scale || ""}`.trim(),
-    `日常情境：${personaCard.daily_routine || ""}`,
-    `科技态度：${personaCard.tech_comfort || ""}`,
-    `表面需求：${(personaCard.desires || []).join("；")}`,
-    `核心痛点：${(personaCard.pains || personaCard.pressures || []).join("；")}`,
-    `深层触发：${personaCard.hidden_pain || personaCard.trigger || ""}`,
-    `矛盾点：${(personaCard.contradictions || []).join("；")}`,
-    `沟通风格：${personaCard.interview_style || personaCard.personality || ""}`
+    `R1 WHO：${visible(r1.vp_draft.who)}`,
+    `背景/机构：${visible(`${personaCard.living_situation || personaCard.org_type || ""} ${personaCard.org_scale || ""}`.trim())}`,
+    `日常情境：${visible(personaCard.daily_routine || "")}`,
+    `科技态度：${visible(personaCard.tech_comfort || "")}`,
+    `表面需求：${visibleList(personaCard.desires).join("；")}`,
+    `核心痛点：${visibleList(personaCard.pains || personaCard.pressures).join("；")}`,
+    `深层触发：${visible(personaCard.hidden_pain || personaCard.trigger || "")}`,
+    `矛盾点：${visibleList(personaCard.contradictions).join("；")}`,
+    `沟通风格：${visible(personaCard.interview_style || personaCard.personality || "")}`
   ];
   return rows.filter((line) => line.replace(/：\s*$/, "").trim()).join("\n");
 }
 
-async function generateDynamicPersonaSummary(runtime, persona, r1) {
+async function generateDynamicPersonaSummary(runtime, persona, r1, promptMode = "formal") {
   const grid = getGrid(r1.grid_id);
   const strategy = {
     teamId: `full_game_${persona.id}`,
     gridLabel: grid.generatorLabel,
-    who_raw: r1.vp_draft.who,
+    who_raw: interfacePromptMode(promptMode) ? sanitizeInterfaceCarryForward(r1.vp_draft.who) : r1.vp_draft.who,
     architectureLabel: r1.architecture,
     isToB: grid.customer_type === "ToB",
     previousPersonas: []
@@ -713,14 +1283,14 @@ async function generateDynamicPersonaSummary(runtime, persona, r1) {
     method: "personaGenerator.generatePersona(null, strategy) -> experiment summary text",
     strategy,
     persona_card: generated,
-    summary_text: buildPersonaSummaryText(generated, grid, r1),
+    summary_text: buildPersonaSummaryText(generated, grid, r1, promptMode),
     note: "D3 device is dynamic persona summary for the actual selected grid, not fixed persona_reports_v1.1."
   };
 }
 
 function validateD3(raw, persona) {
   const parsed = parseJsonObject(raw);
-  const validMapIds = new Set(persona.map_items.map((item) => item.id));
+  const validMapIds = validSourceIds(persona);
   if (!Array.isArray(parsed.key_evidence) || parsed.key_evidence.length < 1 || parsed.key_evidence.length > 3) {
     throw new Error("key_evidence must contain one to three rows");
   }
@@ -734,37 +1304,68 @@ function validateD3(raw, persona) {
   };
 }
 
-function buildD3Prompt(persona, stack, summaryText) {
+function buildD3InterfacePrompt(persona, stack, summaryText) {
+  const visibleSummaryText = sanitizeInterfaceCarryForward(summaryText);
+  return [
+    interfacePersona(persona),
+    renderInterfaceRecap(stack),
+    "【界面：客户调研报告】",
+    "你先独立阅读客户调研报告，再进入后续研发选择。",
+    visibleSummaryText,
+    "【界面操作】从报告里摘下一到三条最影响后续产品选择的信息；再写一句你读完后的自然判断。",
+    "updated_constraints 是给后续界面保留的简短备注，不要展开研究分析。",
+    `source 可用：${interfaceSourceInstruction("承前:R1/承前:Coach")}。`,
+    `输出 JSON：{"key_evidence":["报告里的具体信息"],"market_judgment":"一句读后判断","evidence_themes":["主题词"],"updated_constraints":[{"text":"下一步要记住的一条界面备注","source":"${PERSONA_SURFACE_SOURCE}"}]}`,
+    "只输出可 JSON.parse 的 JSON，不要 Markdown，不要额外文字。"
+  ].filter(Boolean).join("\n");
+}
+
+function buildD3Prompt(persona, stack, summaryText, promptMode = "formal") {
+  if (interfacePromptMode(promptMode)) return buildD3InterfacePrompt(persona, stack, summaryText);
   return [
     `你是一位"${persona.label}"型的企业管理者。`,
-    "【你的认知地图】",
-    renderMap(persona.map_items),
+    renderPersonaContext(persona),
     renderStack(stack),
     "【动态用户画像 summary；这是按你 R1 实际所选格子即时生成的，不是 bench 固定报告】",
     summaryText,
     "【任务】从 summary 中最多提取三条与你既有立场最相关的关键证据，形成市场判断，并更新约束。不要重做价值主张。",
-    "updated_constraints 必须引用真实地图 id 或承前:R1/承前:Coach。",
-    '输出 JSON：{"key_evidence":["summary中的具体证据"],"market_judgment":"...","evidence_themes":["主题词"],"updated_constraints":[{"text":"...","source":"map_xx或承前:R1"}]}',
+    `updated_constraints ${sourceInstruction(persona, "承前:R1/承前:Coach")}`,
+    `输出 JSON：{"key_evidence":["summary中的具体证据"],"market_judgment":"...","evidence_themes":["主题词"],"updated_constraints":[{"text":"...","source":"${usesCognitiveMap(persona) ? "map_xx或承前:R1" : `${PERSONA_SURFACE_SOURCE}或承前:R1`}"}]}`,
     "只输出可 JSON.parse 的 JSON，不要 Markdown，不要额外文字。"
   ].join("\n");
 }
 
-function d3StackRecord(parsed) {
+function d3StackRecord(parsed, promptMode = "formal") {
+  if (interfacePromptMode(promptMode)) {
+    return {
+      point: "D3",
+      summary: sanitizeInterfaceCarryForward(`摘记=${parsed.key_evidence.join("；")}；读后判断=${parsed.market_judgment}；界面备注=${parsed.updated_constraints.map((item) => item.text).join("；")}`)
+    };
+  }
   return {
     point: "D3",
     summary: `证据=${parsed.key_evidence.join("；")}；市场判断=${parsed.market_judgment}；约束=${parsed.updated_constraints.map((item) => item.text).join("；")}`
   };
 }
 
-function tagExtractorMessages(d3, summaryText) {
+function tagExtractorMessages(d3, summaryText, promptMode = "formal") {
+  const visibleSummaryText = interfacePromptMode(promptMode)
+    ? sanitizeInterfaceCarryForward(summaryText)
+    : summaryText;
+  const visibleEvidence = interfacePromptMode(promptMode)
+    ? d3.key_evidence.map((item) => sanitizeInterfaceCarryForward(item))
+    : d3.key_evidence;
+  const visibleJudgment = interfacePromptMode(promptMode)
+    ? sanitizeInterfaceCarryForward(d3.market_judgment)
+    : d3.market_judgment;
   return [
-    { role: "assistant", content: summaryText },
+    { role: "assistant", content: visibleSummaryText },
     {
       role: "assistant",
       content: [
         "D3 已筛选的关键证据：",
-        ...d3.key_evidence.map((item, index) => `${index + 1}. ${item}`),
-        `D3 市场判断：${d3.market_judgment}`
+        ...visibleEvidence.map((item, index) => `${index + 1}. ${item}`),
+        `D3 市场判断：${visibleJudgment}`
       ].join("\n")
     }
   ];
@@ -782,8 +1383,8 @@ function assertRadarScores(scores) {
   return normalized;
 }
 
-async function extractEvidenceSignals(runtime, d3, summaryText, materials) {
-  const messages = tagExtractorMessages(d3, summaryText);
+async function extractEvidenceSignals(runtime, d3, summaryText, materials, promptMode = "formal") {
+  const messages = tagExtractorMessages(d3, summaryText, promptMode);
   const tags = await runtime.extractTags(messages);
   if (!Array.isArray(tags) || tags.length < 8 || tags.length > 12) {
     throw new Error(`tagExtractor returned invalid tag count: ${Array.isArray(tags) ? tags.length : "not-array"}`);
@@ -829,6 +1430,48 @@ function publicCardRows(materials) {
       tiers: ["low", "mid", "high"]
     }))
   }));
+}
+
+function visibleTierRows(capability) {
+  return Object.keys(capability.tiers || {}).map((tier) => {
+    const params = RD.getCapabilityParams(capability.cap_id, tier) || {};
+    const tierData = capability.tiers?.[tier] || {};
+    return {
+      tier,
+      unit_cost_yuan_per_unit: Number(params.dCOGS || 0),
+      rd_investment_wan: Number(params.nre_tier || params.nre || 0),
+      notes: String(tierData.notes || "")
+    };
+  });
+}
+
+function interfaceCardRows(materials) {
+  return (materials.capabilityGroups.groups || []).map((group) => ({
+    dimension: group.name,
+    group_id: group.group_id,
+    min_select: 1,
+    cards: (group.capabilities || []).map((capability) => ({
+      cap_id: capability.cap_id,
+      name: capability.name,
+      covers: capability.covers || [],
+      rd_work_note: capability.nre_desc || "",
+      tiers: visibleTierRows(capability)
+    }))
+  }));
+}
+
+function renderInterfaceCardRows(materials) {
+  return interfaceCardRows(materials).map((group, index) => [
+    `${index + 1}. ${group.dimension}（${group.group_id}，至少选 1 张）`,
+    ...group.cards.map((card) => {
+      const tiers = card.tiers.map((tier) => [
+        `${tier.tier}: +¥${tier.unit_cost_yuan_per_unit}/台`,
+        `研发投入 ${tier.rd_investment_wan}万`,
+        tier.notes ? `备注 ${tier.notes}` : ""
+      ].filter(Boolean).join("，")).join(" / ");
+      return `- ${card.cap_id}｜${card.name}｜覆盖：${card.covers.join("、") || "未标注"}｜${card.rd_work_note}｜档位：${tiers}`;
+    })
+  ].join("\n")).join("\n\n");
 }
 
 function qualitativeCompatibilityHints(materials) {
@@ -877,7 +1520,7 @@ function validateD4(raw, persona, materials) {
     const details = (validation.violations || []).map((item) => item.message || JSON.stringify(item)).join("; ");
     throw new Error(`compatibility validation failed: ${details || "unknown violation"}`);
   }
-  const validMapIds = new Set(persona.map_items.map((item) => item.id));
+  const validMapIds = validSourceIds(persona);
   const costStance = {
     text: requireText(parsed.cost_stance?.text, "cost_stance.text"),
     source: requireText(parsed.cost_stance?.source, "cost_stance.source")
@@ -893,12 +1536,51 @@ function validateD4(raw, persona, materials) {
   };
 }
 
-function buildD4Prompt(persona, stack, materials, d3Summary, r1Outcome) {
+function buildD4InterfacePrompt(persona, stack, materials, d3Summary, questionDefinition = null) {
+  const qLines = questionDefinition
+    ? [
+      "【你刚刚在界面前问自己的问题】",
+      sanitizeInterfaceCarryForward(questionDefinition.parsed.question),
+      "你可以参考这个问题，但仍按能力卡界面直接提交选择。"
+    ]
+    : [];
+  return [
+    interfacePersona(persona),
+    renderInterfaceRecap(stack),
+    "【客户调研摘记】",
+    sanitizeInterfaceCarryForward(d3Summary),
+    "【界面：个人选卡】",
+    "为你负责的维度选择能力卡。根据访谈结果和你的判断，把你认为产品应该具备的能力都选上，再选择合适的档次。",
+    "每个档位会显示单位成本、研发投入和团队投入说明，便于你在能力与成本之间取舍。",
+    "界面会显示：已选张数、dCOGS 小计、NRE 小计。",
+    "【六个功能区能力卡】",
+    renderInterfaceCardRows(materials),
+    "【兼容提示】",
+    qualitativeCompatibilityHints(materials).join("\n") || "无额外提示。",
+    "【提交规则】每个功能区至少 1 张，总数至少 6 张。每张卡必须同时选择真实 cap_id 和 low/mid/high tier。",
+    ...qLines,
+    "cost_stance 和 updated_constraints 只是提交日志备注，用一句自然话记录你的取舍即可。",
+    `source 可用：${interfaceSourceInstruction("承前:R1/承前:D3")}。`,
+    `输出 JSON：{"cards":[{"id":"<真实cap_id>","tier":"low|mid|high"}],"cost_stance":{"text":"一句选卡取舍备注","source":"${PERSONA_SURFACE_SOURCE}"},"updated_constraints":[{"text":"下一步要记住的一条界面备注","source":"${PERSONA_SURFACE_SOURCE}"}]}`,
+    "只输出可 JSON.parse 的 JSON，不要 Markdown，不要额外文字。"
+  ].filter(Boolean).join("\n");
+}
+
+function buildD4Prompt(persona, stack, materials, d3Summary, r1Outcome, questionDefinition = null, promptMode = "formal") {
+  if (interfacePromptMode(promptMode)) return buildD4InterfacePrompt(persona, stack, materials, d3Summary, questionDefinition);
   void r1Outcome;
+  const qLines = questionDefinition
+    ? [
+      "【你刚刚提出的问题】",
+      questionDefinition.parsed.question,
+      "【输出契约】围绕你自己的问题，填好能力卡 JSON：每张卡必须同时选择真实 cap_id 和 low/mid/high tier；每个维度至少 1 张、总数至少 6 张；具体张数、卡片和 tier 都由你决定。"
+    ]
+    : [
+      "【任务】依据 R1-R2 栈选择能力卡。每张卡必须同时选择真实 cap_id 和 low/mid/high tier；每个维度至少 1 张、总数至少 6 张。具体张数、卡片和 tier 都由你决定。"
+    ];
   return [
     `你是一位"${persona.label}"型的企业管理者。`,
-    "【你的认知地图】",
-    renderMap(persona.map_items),
+    renderPersonaContext(persona),
     renderStack(stack),
     "【D3 市场证据摘要】",
     d3Summary,
@@ -906,14 +1588,14 @@ function buildD4Prompt(persona, stack, materials, d3Summary, r1Outcome) {
     JSON.stringify(publicCardRows(materials), null, 2),
     "【兼容提示；学生可见文字提示】",
     qualitativeCompatibilityHints(materials).join("\n") || "无额外提示。",
-    "【任务】依据 R1-R2 栈选择能力卡。每张卡必须同时选择真实 cap_id 和 low/mid/high tier；每个维度至少 1 张、总数至少 6 张。具体张数、卡片和 tier 都由你决定。",
-    "cost_stance.source 必须引用真实地图 id 或承前:R1/承前:D3。",
-    '输出 JSON：{"cards":[{"id":"<真实cap_id>","tier":"low|mid|high"}],"cost_stance":{"text":"<成本立场>","source":"map_xx或承前:D3"},"updated_constraints":[{"text":"<约束>","source":"map_xx或承前:D3"}]}',
+    ...qLines,
+    `cost_stance.source ${sourceInstruction(persona, "承前:R1/承前:D3")}`,
+    `输出 JSON：{"cards":[{"id":"<真实cap_id>","tier":"low|mid|high"}],"cost_stance":{"text":"<成本立场>","source":"${usesCognitiveMap(persona) ? "map_xx或承前:D3" : `${PERSONA_SURFACE_SOURCE}或承前:D3`}"},"updated_constraints":[{"text":"<约束>","source":"${usesCognitiveMap(persona) ? "map_xx或承前:D3" : `${PERSONA_SURFACE_SOURCE}或承前:D3`}"}]}`,
     "只输出可 JSON.parse 的 JSON，不要 Markdown，不要额外文字。"
   ].join("\n");
 }
 
-function d4StackRecord(parsed, materials) {
+function d4StackRecord(parsed, materials, promptMode = "formal") {
   const grouped = new Map();
   for (const card of parsed.cards) {
     const group = materials.groupByCapability.get(card.id);
@@ -921,17 +1603,179 @@ function d4StackRecord(parsed, materials) {
     if (!grouped.has(key)) grouped.set(key, []);
     grouped.get(key).push(`${card.id}@${card.tier}`);
   }
+  if (interfacePromptMode(promptMode)) {
+    return {
+      point: "D4",
+      summary: sanitizeInterfaceCarryForward(`选卡${parsed.cards.length}张[${Array.from(grouped.entries()).map(([name, values]) => `${name}=${values.join(",")}`).join("；")}]；选卡备注=${parsed.cost_stance.text}；界面备注=${parsed.updated_constraints.map((item) => item.text).join("；")}`)
+    };
+  }
   return {
     point: "D4",
     summary: `选卡${parsed.cards.length}张[${Array.from(grouped.entries()).map(([name, values]) => `${name}=${values.join(",")}`).join("；")}]；成本立场=${parsed.cost_stance.text}；约束=${parsed.updated_constraints.map((item) => item.text).join("；")}`
   };
 }
 
-function validateD5(raw, persona) {
+function formatYuan(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "—";
+  return `¥${Math.round(n).toLocaleString("zh-CN")}`;
+}
+
+function formatSignedCurrency(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "—";
+  const prefix = n > 0 ? "+" : n < 0 ? "-" : "";
+  return `${prefix}${formatYuan(Math.abs(n))}`;
+}
+
+function formatWan(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "—";
+  return `${n.toLocaleString("zh-CN", { maximumFractionDigits: 1 })}万`;
+}
+
+function formatSignedPercent(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "0%";
+  return `${n > 0 ? "+" : ""}${Math.round(n)}%`;
+}
+
+function buildProductionPricingContext(r1Outcome, materials) {
+  const helper = Round2Routes.__test?.buildRound2PricingContextForTeam;
+  if (typeof helper === "function") {
+    return helper({
+      final_grid_id: r1Outcome.grid_id,
+      final_architecture: r1Outcome.architecture || r1Outcome.arch_tag || ""
+    });
+  }
+  return {
+    ...(materials.round2Params?.pricing_ui || {}),
+    COGSbase: Number(RD.GLOBAL_PARAMS.V || 0),
+    fixed_base: Number(RD.GLOBAL_PARAMS.F || 0),
+    fixed_base_wan: Number((Number(RD.GLOBAL_PARAMS.F || 0) / 10000).toFixed(1))
+  };
+}
+
+function calcGmPct(dCOGS, price, channelFee, baseCost = 0) {
+  const p = Number(price);
+  if (!Number.isFinite(p) || p <= 0) return NaN;
+  return ((p * (1 - Number(channelFee || 0)) - Number(baseCost || 0) - Number(dCOGS || 0)) / p) * 100;
+}
+
+function round1UiMoneyView(r1Outcome) {
+  const helper = Round2Routes.__test?.buildStudentRound1MoneyView;
+  if (typeof helper === "function") {
+    return helper({
+      round1Sam: r1Outcome.SAM_billion,
+      round1WtpAdj: r1Outcome.WTPadj
+    });
+  }
+  return {
+    round1_sam: scaleStoredMoney(r1Outcome.SAM_billion) || null,
+    round1_wtp_adj: r1Outcome.WTPadj_scaled || scaleStoredMoney(r1Outcome.WTPadj) || null
+  };
+}
+
+function r1WtpBreakdown(r1Outcome) {
+  const finalPct = Math.round((Number(r1Outcome.wtp_multiplier || 1) - 1) * 100);
+  const jinangDeltaPct = Math.round(Number(r1Outcome.jinang_wtp_bonus || 0) * 100);
+  return {
+    final_pct: finalPct,
+    base_pct: finalPct - jinangDeltaPct,
+    jinang_delta_pct: jinangDeltaPct
+  };
+}
+
+function selectedCardCostSummaryForUi(cards, r1Outcome, materials, pricingContext) {
+  let dCOGS = 0;
+  let nreWan = 0;
+  const selected = [];
+  const byGroup = new Map();
+  for (const card of cards || []) {
+    const params = RD.getCapabilityParams(card.id, card.tier) || {};
+    const capability = materials.capabilityIndex.get(card.id) || {};
+    const group = materials.groupByCapability.get(card.id) || { group_id: "", name: "未分组" };
+    const unitCost = Number(params.dCOGS || 0);
+    const nre = Number(params.nre_tier || params.nre || 0);
+    dCOGS += unitCost;
+    nreWan += nre;
+    selected.push(`${card.id}｜${capability.name || card.id}｜${card.tier}（${formatSignedCurrency(unitCost)}/台，研发${formatWan(nre)}）`);
+    const current = byGroup.get(group.group_id) || { name: group.name, dCOGS: 0, nreWan: 0 };
+    current.dCOGS += unitCost;
+    current.nreWan += nre;
+    byGroup.set(group.group_id, current);
+  }
+  const baseUnitCost = Number(pricingContext.COGSbase || RD.GLOBAL_PARAMS.V || 0);
+  const fixedBaseWan = Number(pricingContext.fixed_base_wan ?? (Number(RD.GLOBAL_PARAMS.F || 0) / 10000));
+  if (typeof Round2Routes.__test?.getRound2ChannelFeeByGrid !== "function") {
+    throw new Error("production Round2 getRound2ChannelFeeByGrid is unavailable");
+  }
+  const channelFee = Number(Round2Routes.__test.getRound2ChannelFeeByGrid(r1Outcome.grid_id));
+  return {
+    selected,
+    group_breakdown: Array.from(byGroup.values()).map((item) =>
+      `${item.name}: ${formatSignedCurrency(item.dCOGS)}/台 / NRE ${formatWan(item.nreWan)}`
+    ),
+    card_count: selected.length,
+    dCOGS: Math.round(dCOGS),
+    nre_wan: Number(nreWan.toFixed(2)),
+    base_unit_cost: Math.round(baseUnitCost),
+    unit_cost_total: Math.round(baseUnitCost + dCOGS),
+    fixed_base_wan: Number(fixedBaseWan.toFixed(2)),
+    fixed_base: Number(pricingContext.fixed_base ?? RD.GLOBAL_PARAMS.F ?? fixedBaseWan * 10000),
+    fixed_total: Number(pricingContext.fixed_base ?? RD.GLOBAL_PARAMS.F ?? fixedBaseWan * 10000) + (nreWan * 10000),
+    fixed_total_wan: Number((fixedBaseWan + nreWan).toFixed(2)),
+    channel_fee: channelFee,
+    channel_fee_pct: Math.round(channelFee * 100)
+  };
+}
+
+function renderD5InterfacePricingContext(r1Outcome, d4Decision, materials) {
+  const pricingContext = buildProductionPricingContext(r1Outcome, materials);
+  const summary = selectedCardCostSummaryForUi(d4Decision?.cards || [], r1Outcome, materials, pricingContext);
+  const defaultPrice = Number(pricingContext.default_price || pricingContext.price_min || 0);
+  const previewUnitMargin = Math.round(defaultPrice * (1 - summary.channel_fee) - summary.unit_cost_total);
+  const previewBreakevenQ = previewUnitMargin > 0 ? Math.ceil(summary.fixed_total / previewUnitMargin) : null;
+  const currentGm = calcGmPct(summary.dCOGS, defaultPrice, summary.channel_fee, summary.base_unit_cost);
+  const moneyView = round1UiMoneyView(r1Outcome);
+  const samText = Number.isFinite(Number(moneyView.round1_sam))
+    ? `${Math.round(Number(moneyView.round1_sam)).toLocaleString("zh-CN")} 亿`
+    : "待揭示";
+  const wtpText = Number.isFinite(Number(moneyView.round1_wtp_adj))
+    ? formatYuan(moneyView.round1_wtp_adj)
+    : "待揭示";
+  const wtpBreakdown = r1WtpBreakdown(r1Outcome);
+  return [
+    `预期毛利率：${Number.isFinite(currentGm) ? `${currentGm.toFixed(0)}%` : "待计算"}；提交按钮要求毛利率 ≥ 20%。`,
+    `已选能力卡：${summary.selected.join("、") || "无"}`,
+    `已选 ${summary.card_count} 张；dCOGS 合计 ${formatSignedCurrency(summary.dCOGS)}/台；NRE 合计 ${formatWan(summary.nre_wan)}；单台总变动成本 ${formatYuan(summary.unit_cost_total)}（基础 ${formatYuan(summary.base_unit_cost)} + dCOGS）。`,
+    summary.group_breakdown.length ? `分功能区成本：${summary.group_breakdown.join("；")}` : "",
+    `Round 1 锚定市场：${r1Outcome.grid_label || r1Outcome.grid_id}；SAM ${samText} / WTPadj ${wtpText}。`,
+    `价值主张对支付意愿的影响：${formatSignedPercent(wtpBreakdown.final_pct)}（仅看 VP 本身 ${formatSignedPercent(wtpBreakdown.base_pct)}，市场锦囊额外影响 ${formatSignedPercent(wtpBreakdown.jinang_delta_pct)}）。`,
+    `定价参考框架：当前单台变动成本是 ${formatYuan(summary.unit_cost_total)}，固定成本是 ${formatWan(summary.fixed_total_wan)}（基础 ${formatWan(summary.fixed_base_wan)} + NRE ${formatWan(summary.nre_wan)}）。渠道抽走 ${summary.channel_fee_pct}% 后到手更少，需要在价格、销量和固定投入之间找到平衡。`,
+    `产品售价控件当前显示 ${formatYuan(defaultPrice)}；滑块最低 ${formatYuan(pricingContext.price_min)}（低价走量），最高 ${formatYuan(pricingContext.price_max)}（高端定位）。`,
+    `按当前显示价格估算：渠道抽成后每台到手 ${formatYuan(defaultPrice * (1 - summary.channel_fee))}；总固定成本 ${formatWan(summary.fixed_total_wan)}；盈亏平衡销量 ${previewBreakevenQ ? `${previewBreakevenQ.toLocaleString("zh-CN")} 台` : "无法回本"}；单台毛利 ${formatSignedCurrency(previewUnitMargin)}。`
+  ].join("\n");
+}
+
+function validateD5(raw, persona, r1Outcome, materials) {
   const parsed = parseJsonObject(raw);
   const price = Number(parsed.price);
-  if (!Number.isFinite(price) || price < 1000 || price > 6000) throw new Error(`price must be numeric within 1000-6000: ${parsed.price}`);
-  const validMapIds = new Set(persona.map_items.map((item) => item.id));
+  const priceCheck = r1Outcome && materials && typeof Round2Routes.__test?.validateRound2PriceForTeam === "function"
+    ? Round2Routes.__test.validateRound2PriceForTeam({
+        final_grid_id: r1Outcome.grid_id,
+        final_architecture: r1Outcome.architecture || r1Outcome.arch_tag || ""
+      }, price)
+    : r1Outcome && materials
+      ? (() => {
+        const pricing = buildProductionPricingContext(r1Outcome, materials);
+        return { ok: price >= Number(pricing.price_min) && price <= Number(pricing.price_max), pricing };
+      })()
+      : { ok: price >= 2000 && price <= 6000, pricing: { price_min: 2000, price_max: 6000 } };
+  if (!Number.isFinite(price) || !priceCheck.ok) {
+    throw new Error(`price must be numeric within production slider bounds: ${priceCheck.message || JSON.stringify(priceCheck.pricing || {})}`);
+  }
+  const validMapIds = validSourceIds(persona);
   const basis = {
     text: requireText(parsed.basis?.text, "basis.text"),
     source: requireText(parsed.basis?.source, "basis.source")
@@ -939,22 +1783,61 @@ function validateD5(raw, persona) {
   if (!validMapIds.has(basis.source) && !STACK_REFERENCES.has(basis.source)) throw new Error(`invalid basis.source: ${basis.source}`);
   return {
     price,
-    aligned_price: Math.max(1000, Math.min(6000, Math.round(price / 100) * 100)),
+    aligned_price: price,
     basis,
     reasoning: requireText(parsed.reasoning, "reasoning")
   };
 }
 
-function buildD5Prompt(persona, stack, r1Outcome) {
+function buildD5InterfacePrompt(persona, stack, r1Outcome, questionDefinition = null, d4Decision = null, materials = null) {
+  const qLines = questionDefinition
+    ? [
+      "【你刚刚在界面前问自己的问题】",
+      sanitizeInterfaceCarryForward(questionDefinition.parsed.question),
+      "你可以参考这个问题，但仍按定价界面直接提交价格。"
+    ]
+    : [];
+  return [
+    interfacePersona(persona),
+    renderInterfaceRecap(stack),
+    "【界面：定价决策】",
+    "定价参考框架：",
+    renderD5InterfacePricingContext(r1Outcome, d4Decision, materials),
+    "【定价须知】",
+    "渠道成本：你们定的售价不等于到手收入。渠道抽成后到手更少。",
+    "量价权衡：价格越高，每台赚得越多，但愿意买的用户越少。价格越低，用户越多，但可能卖一台亏一台。",
+    "产品力影响：产品能力组合越精准匹配目标场景，用户对价格的敏感度越低——好产品可以卖更贵。",
+    "【产品售价控件】",
+    "按这个界面直接填写最终售价。",
+    ...qLines,
+    "basis 和 reasoning 只是提交日志备注，用一句自然话记录你为什么填这个价格即可。",
+    `source 可用：${interfaceSourceInstruction("承前:R1/承前:Coach/承前:D3/承前:D4")}。`,
+    `输出 JSON：{"price":"<最终价格数字>","basis":{"text":"一句定价备注","source":"${PERSONA_SURFACE_SOURCE}"},"reasoning":"一句自然说明"}`,
+    "只输出可 JSON.parse 的 JSON，不要 Markdown，不要额外文字。"
+  ].filter(Boolean).join("\n");
+}
+
+function buildD5Prompt(persona, stack, r1Outcome, questionDefinition = null, d4Decision = null, promptMode = "formal", materials = null) {
+  if (interfacePromptMode(promptMode)) return buildD5InterfacePrompt(persona, stack, r1Outcome, questionDefinition, d4Decision, materials);
   void r1Outcome;
+  const qLines = questionDefinition
+    ? [
+      "【你刚刚提出的问题】",
+      questionDefinition.parsed.question,
+      "【提交控件约束】最终价格必须能被课堂定价滑块提交：最低 2000，最高 6000。这只是提交边界，不代表建议价、合理价、市场价或锚定价格。",
+      "【输出契约】围绕你自己的问题，填好定价 JSON。"
+    ]
+    : [
+      "【任务】依据既有栈做最终定价，赚最多的钱。",
+      "【提交控件约束】最终价格必须能被课堂定价滑块提交：最低 2000，最高 6000。这只是提交边界，不代表建议价、合理价、市场价或锚定价格。"
+    ];
   return [
     `你是一位"${persona.label}"型的企业管理者。`,
-    "【你的认知地图】",
-    renderMap(persona.map_items),
+    renderPersonaContext(persona),
     renderStack(stack),
-    "【任务】依据既有栈做最终定价，赚最多的钱。可定价范围 1000-6000 元，步进 100 元。",
-    "basis.source 必须引用真实地图 id 或承前:R1/承前:Coach/承前:D3/承前:D4。",
-    '输出 JSON：{"price":1000到6000之间、且为100的整数倍,"basis":{"text":"<依据>","source":"map_xx或承前:D4"},"reasoning":"<理由>"}',
+    ...qLines,
+    `basis.source ${sourceInstruction(persona, "承前:R1/承前:Coach/承前:D3/承前:D4")}`,
+    `输出 JSON：{"price":"<最终价格数字>","basis":{"text":"<依据>","source":"${usesCognitiveMap(persona) ? "map_xx或承前:D4" : `${PERSONA_SURFACE_SOURCE}或承前:D4`}"},"reasoning":"<理由>"}`,
     "只输出可 JSON.parse 的 JSON，不要 Markdown，不要额外文字。"
   ].join("\n");
 }
@@ -981,7 +1864,23 @@ async function calculateR2(row, materials) {
   const signals = row.r2.evidence_signals;
   const price = d5.aligned_price;
   const selections = d4.cards.map((card) => ({ cap_id: card.id, tier: card.tier }));
-  const calcGridId = toGridPriorId(r1.grid_id);
+  const calcGridId = typeof Round2Routes.toCalcGridId === "function"
+    ? Round2Routes.toCalcGridId(r1.grid_id, r1.architecture || r1.arch_tag || "")
+    : toGridPriorId(r1.grid_id);
+  const round2Wtp = RD.computeWTPParams(calcGridId, {
+    round1GridId: r1.grid_id,
+    round1Context: { gridId: r1.grid_id }
+  });
+  const Pmax = Math.round(Number(round2Wtp.WTPref || 0));
+  const WTP = Math.round(Number(round2Wtp.WTPmedian || round2Wtp.WTPref || 0));
+  if (!Number.isFinite(Pmax) || Pmax <= 0) throw new Error(`production round2 Pmax unavailable for ${calcGridId}`);
+  if (!Number.isFinite(WTP) || WTP <= 0) throw new Error(`production round2 WTP unavailable for ${calcGridId}`);
+  const pricingContext = Round2Routes.__test?.buildRound2PricingContextForTeam
+    ? Round2Routes.__test.buildRound2PricingContextForTeam({
+        final_grid_id: r1.grid_id,
+        final_architecture: r1.architecture || r1.arch_tag || ""
+      })
+    : {};
   const input = {
     gridId: calcGridId,
     engineGridId: r1.grid_id,
@@ -992,13 +1891,13 @@ async function calculateR2(row, materials) {
     tags: signals.tag_extraction.output_tags,
     evi: Number(signals.evi.value),
     P: price,
-    Pmax: Number(r1.WTPadj_scaled || r1.WTPref_scaled || 0),
+    Pmax,
     WTPref_override: Number(r1.WTPref_scaled || 0) || undefined,
-    WTP: Number(r1.WTPadj_scaled || r1.WTPref_scaled || 0),
+    WTP,
     e: 1.2,
-    COGSbase: Number(RD.GLOBAL_PARAMS.V || 600),
+    COGSbase: Number(pricingContext.COGSbase || RD.GLOBAL_PARAMS.V || 600),
     wtp_multiplier: Number(r1.wtp_multiplier || 1),
-    source: "scripts/analysis/full_game_all_personas.js"
+    source: "production-parity: server/routes/round2Routes.js::buildComputedTeamSnapshot"
   };
   const output = await RD.calculate(input);
   const exactMappedCount = Number(signals.tag_extraction.exact_mapped_count || 0);
@@ -1042,6 +1941,10 @@ function assertFiniteOutput(row) {
 
 async function runPlaythrough(runtime, persona, materials, runId, options = {}) {
   const createdAt = new Date().toISOString();
+  const promptMode = interfacePromptMode(options) ? "interface" : "formal";
+  const promptPersona = promptMode === "interface"
+    ? { ...persona, no_cognitive_map: true }
+    : persona;
   const row = {
     run_id: runId,
     created_at: createdAt,
@@ -1049,6 +1952,7 @@ async function runPlaythrough(runtime, persona, materials, runId, options = {}) 
     persona_label: persona.label,
     condition: options.condition || CONDITION,
     map_condition: CONDITION,
+    prompt_mode: promptMode,
     rep: Number(options.rep || 1),
     status: "RUNNING",
     error: "",
@@ -1061,34 +1965,46 @@ async function runPlaythrough(runtime, persona, materials, runId, options = {}) 
     vp_report_only: null,
     r1_settlement: null,
     r2: null,
-    calls: { decision_json: 0, coach_persona_replies: 0, persona_generator: 0, tag_extractor: 0, vp_word_scorer: 0 }
+    question_definition: options.questionDefinition ? { enabled: true, calls: [] } : null,
+    calls: { decision_json: 0, question_definition: 0, coach_persona_replies: 0, persona_generator: 0, tag_extractor: 0, vp_word_scorer: 0 }
   };
   try {
     const draw = options.jinangDraw || drawJinang(materials.jinangConfig);
     row.r0_jinang = draw;
 
+    const r1Question = await runQuestionDefinition(runtime, { ...options, promptMode }, row, promptPersona, "R1", []);
     const r1Context = await preparePromptContext(
       options,
       row,
-      persona,
+      promptPersona,
       "R1",
       [],
-      "R1 选战略：在中国推广陪伴机器人，自选 12 格市场、架构标签、VP 草稿与当前约束。",
+      promptMode === "interface"
+        ? "R1 界面：选择目标市场、产品定位方向、填写一句话价值主张草稿。"
+        : "R1 选战略：在中国推广陪伴机器人，自选 12 格市场、架构标签、VP 草稿与当前约束。",
       { callId: "R1" }
     );
-    const r1Prompt = buildR1Prompt(r1Context.persona, draw);
-    const r1Call = await callJson(runtime.chatCompletion, r1Prompt, (raw) => validateR1Choice(raw, persona), { max_tokens: 1800, infoSetStage: "R1" });
+    const r1Prompt = buildR1Prompt(r1Context.persona, draw, r1Question, promptMode);
+    const r1Call = await callJson(runtime.chatCompletion, r1Prompt, (raw) => validateR1Choice(raw, promptPersona), {
+      max_tokens: 1800,
+      infoSetStage: "R1",
+      infoSetManifest: materials.renderManifest,
+      promptMode
+    });
     row.calls.decision_json += r1Call.attempts;
     if (r1Call.status !== "OK") throw new Error(`R1 choice failed: ${r1Call.error}`);
     row.r1_choice = r1Call;
-    let stack = [r1StackRecord(r1Call.parsed)];
+    let stack = [
+      ...(r1Question ? [questionStackRecord("R1", r1Question.parsed.question)] : []),
+      r1StackRecord(r1Call.parsed, promptMode)
+    ];
 
-    const coach = await runCoach(runtime, persona, r1Call.parsed, draw, stack, { ...options, row });
+    const coach = await runCoach(runtime, promptPersona, r1Call.parsed, draw, stack, { ...options, promptMode, row });
     row.calls.coach_persona_replies += COACH_ROUNDS;
     row.coach = coach;
     stack = [...stack, {
       point: "Coach",
-      summary: `Coach轮数=${coach.rounds}；最终VP=${coach.final_vp_text || "（空）"}`
+      summary: `Coach轮数=${coach.rounds}；最终VP=${coach.visible_final_vp_text || coach.final_vp_text || "（空）"}`
     }];
 
     const vpScore = await scoreFinalVp(runtime, r1Call.parsed, coach);
@@ -1107,14 +2023,14 @@ async function runPlaythrough(runtime, persona, materials, runId, options = {}) 
       materials
     );
 
-    const dynamicSummary = await generateDynamicPersonaSummary(runtime, persona, r1Call.parsed);
+    const dynamicSummary = await generateDynamicPersonaSummary(runtime, promptPersona, r1Call.parsed, promptMode);
     row.calls.persona_generator += 1;
     let d3SummaryText = dynamicSummary.summary_text;
     if (typeof options.beforeD3Summary === "function") {
       const result = options.beforeD3Summary({
         summaryText: d3SummaryText,
         row,
-        persona,
+        persona: promptPersona,
         r1: r1Call.parsed,
         dynamicSummary,
         stack: stack.slice()
@@ -1128,28 +2044,34 @@ async function runPlaythrough(runtime, persona, materials, runId, options = {}) 
     const d3Context = await preparePromptContext(
       options,
       row,
-      persona,
+      promptPersona,
       "D3",
       stack,
-      "D3 市场证据提取：从动态用户画像 summary 中提取关键证据、形成市场判断、更新约束。",
+      promptMode === "interface"
+        ? "D3 界面：阅读客户调研报告，摘记一到三条关键信息。"
+        : "D3 市场证据提取：从动态用户画像 summary 中提取关键证据、形成市场判断、更新约束。",
       { callId: "D3" }
     );
-    const d3Prompt = buildD3Prompt(d3Context.persona, d3Context.stack, d3SummaryText);
-    const d3Call = await callJson(runtime.chatCompletion, d3Prompt, (raw) => validateD3(raw, persona), { max_tokens: 1600, infoSetStage: "D3" });
+    const d3Prompt = buildD3Prompt(d3Context.persona, d3Context.stack, d3SummaryText, promptMode);
+    const d3Call = await callJson(runtime.chatCompletion, d3Prompt, (raw) => validateD3(raw, promptPersona), { max_tokens: 1600, infoSetStage: "D3", promptMode });
     row.calls.decision_json += d3Call.attempts;
     if (d3Call.status !== "OK") throw new Error(`D3 failed: ${d3Call.error}`);
-    stack = [...stack, d3StackRecord(d3Call.parsed)];
+    stack = [...stack, d3StackRecord(d3Call.parsed, promptMode)];
 
-    const evidenceSignals = await extractEvidenceSignals(runtime, d3Call.parsed, d3SummaryText, materials);
+    const evidenceSignals = await extractEvidenceSignals(runtime, d3Call.parsed, d3SummaryText, materials, promptMode);
     row.calls.tag_extractor += 1;
 
+    const d4Question = await runQuestionDefinition(runtime, { ...options, promptMode }, row, promptPersona, "D4", stack);
+    if (d4Question) stack = [...stack, questionStackRecord("D4", d4Question.parsed.question)];
     const d4Context = await preparePromptContext(
       options,
       row,
-      persona,
+      promptPersona,
       "D4",
       stack,
-      "D4 能力卡选择：依据 R1-R2 栈选择 cap_id 与 tier，每个维度至少 1 张、总数至少 6 张，并形成成本立场。",
+      promptMode === "interface"
+        ? "D4 界面：在六个功能区分别选择能力卡和档位，提交个人选卡。"
+        : "D4 能力卡选择：依据 R1-R2 栈选择 cap_id 与 tier，每个维度至少 1 张、总数至少 6 张，并形成成本立场。",
       { callId: "D4" }
     );
     const d4Prompt = buildD4Prompt(
@@ -1157,35 +2079,51 @@ async function runPlaythrough(runtime, persona, materials, runId, options = {}) 
       d4Context.stack,
       materials,
       `${d3Call.parsed.key_evidence.join("；")} / ${d3Call.parsed.market_judgment}`,
-      row.r1_settlement
+      row.r1_settlement,
+      d4Question,
+      promptMode
     );
-    const d4Call = await callJson(runtime.chatCompletion, d4Prompt, (raw) => validateD4(raw, persona, materials), { max_tokens: 4000, infoSetStage: "D4" });
+    const d4Call = await callJson(runtime.chatCompletion, d4Prompt, (raw) => validateD4(raw, promptPersona, materials), {
+      max_tokens: 4000,
+      infoSetStage: "D4",
+      infoSetManifest: materials.renderManifest,
+      promptMode
+    });
     row.calls.decision_json += d4Call.attempts;
     if (d4Call.status !== "OK") throw new Error(`D4 failed: ${d4Call.error}`);
-    stack = [...stack, d4StackRecord(d4Call.parsed, materials)];
+    stack = [...stack, d4StackRecord(d4Call.parsed, materials, promptMode)];
 
     let d5PromptOutcome = row.r1_settlement;
     if (typeof options.beforeD5Prompt === "function") {
       const result = options.beforeD5Prompt({
         r1Outcome: row.r1_settlement,
         row,
-        persona,
+        persona: promptPersona,
         stack: stack.slice()
       }) || {};
       d5PromptOutcome = result.r1Outcome || d5PromptOutcome;
       row.defect_audit.d5_prompt = result.audit || null;
     }
+    const d5Question = await runQuestionDefinition(runtime, { ...options, promptMode }, row, promptPersona, "D5", stack);
+    if (d5Question) stack = [...stack, questionStackRecord("D5", d5Question.parsed.question)];
     const d5Context = await preparePromptContext(
       options,
       row,
-      persona,
+      promptPersona,
       "D5",
       stack,
-      "D5 最终定价：依据既有栈与选卡方案，在价格滑块范围内确定最终价格。",
+      promptMode === "interface"
+        ? "D5 界面：查看定价参考框架、定价须知和产品售价滑块，提交最终价格。"
+        : "D5 最终定价：依据既有栈与选卡方案，在课堂定价滑块最低 2000、最高 6000 的提交边界内确定最终价格；边界不是建议价。",
       { callId: "D5" }
     );
-    const d5Prompt = buildD5Prompt(d5Context.persona, d5Context.stack, d5PromptOutcome);
-    const d5Call = await callJson(runtime.chatCompletion, d5Prompt, (raw) => validateD5(raw, persona), { max_tokens: 1600, infoSetStage: "D5" });
+    const d5Prompt = buildD5Prompt(d5Context.persona, d5Context.stack, d5PromptOutcome, d5Question, d4Call.parsed, promptMode, materials);
+    const d5Call = await callJson(runtime.chatCompletion, d5Prompt, (raw) => validateD5(raw, promptPersona, d5PromptOutcome, materials), {
+      max_tokens: 1600,
+      infoSetStage: "D5",
+      infoSetManifest: materials.renderManifest,
+      promptMode
+    });
     row.calls.decision_json += d5Call.attempts;
     if (d5Call.status !== "OK") throw new Error(`D5 failed: ${d5Call.error}`);
     stack = [...stack, {
@@ -1355,7 +2293,7 @@ function leakMappingRows() {
   return [
     "| D4 每卡 dCOGS/risk/sub_lift/load/NRE | 移除；只保留 cap_id/name/covers 与 low/mid/high 档位存在 |",
     "| D4 预算惩罚公式/兼容性机器规则 | 移除；只保留学生可见文字兼容提示 |",
-    "| D5 WTPadj/WTPref/定价天花板 | 移除；只保留价格滑块范围与步进 |",
+    "| D5 WTPadj/WTPref/定价天花板 | 移除；D5 prompt 不再给数值价格锚点 |",
     "| D5 target_gm/target_gm_rule/强制毛利算术 | 移除；输出 schema 不再要求 target_gm_usage |",
     "| 锦囊 match_strength/effect_at_full_match 精确值 | prompt 中不注入；报告只用定性契合标签 |"
   ];
@@ -1579,7 +2517,7 @@ function writeMeta(paths, rows, args, materials) {
       v1_leak_to_v2_handling: {
         d4_card_costs: "Removed from prompt; public card pool only includes cap_id/name/covers and tier options.",
         d4_budget_penalty_and_machine_rules: "Removed from prompt; only qualitative compatibility hints are rendered.",
-        d5_wtp_and_target_gm: "Removed from prompt and output schema; D5 only sees price range and step.",
+        d5_wtp_and_target_gm: "Removed from prompt and output schema; D5 only sees slider-validity wording without numeric price anchors.",
         jinang_exact_strengths: "Not injected into prompt; summary reports qualitative fit only.",
         settlement_parameters: "Retained only as internal engine/audit data after decisions; not visible to persona prompts."
       }
@@ -1673,10 +2611,13 @@ async function main() {
 module.exports = {
   RUN_ID,
   CONDITION,
+  DEFAULT_QUESTION_DEFINITION_INSTRUCTION,
   PERSONA_ORDER,
   GRID_OPTIONS,
   loadMaterials,
+  publicCardRows,
   validateR1Choice,
+  validateQuestionDefinition,
   validateD3,
   validateD4,
   validateD5,

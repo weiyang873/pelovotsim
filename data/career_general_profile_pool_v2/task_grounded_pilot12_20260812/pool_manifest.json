@@ -1,0 +1,42 @@
+{
+  "schema": "career_general_profile_task_grounded_manifest_v1",
+  "seed": "20260812-task-grounded-r1-v1",
+  "generated_at": "2026-08-12T14:07:42.741Z",
+  "started_at": "2026-08-12T14:07:42.738Z",
+  "wall_clock_ms": 3,
+  "provider": "deepseek",
+  "model": "deepseek-v4-flash",
+  "base_url_host": "api.deepseek.com",
+  "source_pool_path": "data/career_general_profile_pool_v2/family_r1_42_complete_20260812/persona_pool_career_general_profile_v2.json",
+  "source_pool_sha256": "66d665910ab9effa1fa4596dadb8cf7b53b192f49a542de02dae316c7d26bd3e",
+  "output_pool_path": "data/career_general_profile_pool_v2/task_grounded_pilot12_20260812/persona_pool_career_general_profile_task_grounded_v1.json",
+  "output_pool_sha256": "71d066ee6adce64052ccaf278c912da338e1793168a3ce1ec2c0a7e031d412cf",
+  "selected_persona_ids": [
+    "CGP31",
+    "CGP35",
+    "CGP29",
+    "CGP22",
+    "CGP42",
+    "CGP17",
+    "CGP28",
+    "CGP08",
+    "CGP07",
+    "CGP15",
+    "CGP34",
+    "CGP02"
+  ],
+  "records_total": 42,
+  "records_augmented": 12,
+  "records_recovered_from_calls": 12,
+  "recovery_calls_path": "../../../../../../tmp/task_grounded_recovery/augmentation_calls_first.jsonl",
+  "decision_basis": [
+    "payer_user_and_purchase_route",
+    "child_adult_elder_lived_contact",
+    "emotional_experience_and_practical_utility",
+    "scale_affordability_and_distinct_value",
+    "adjacent_category_price_anchors"
+  ],
+  "prompt_policy": "task decisions guide biography generation, but output contains only lived episodes and no target product, option labels, recommendation, or answer",
+  "script_path": "scripts/analysis/augment_career_profiles_task_grounded.js",
+  "script_sha256": "987905bc47e8a60e25ee78c03358bab6ea1ef84b6fae26fc0bf5ab5ed7d51def"
+}

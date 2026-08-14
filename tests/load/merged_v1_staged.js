@@ -69,37 +69,37 @@ export const options = {
     },
     stage3_finalize_freeze: {
       executor: "per-vu-iterations",
-      vus: 10, iterations: 1, startTime: "7m", maxDuration: "4m",
+      vus: 10, iterations: 1, startTime: "8m30s", maxDuration: "4m",
       exec: "stage3FinalizeAndFreeze"
     },
     stage4_assign: {
       executor: "per-vu-iterations",
-      vus: 10, iterations: 1, startTime: "8m", maxDuration: "60s",
+      vus: 10, iterations: 1, startTime: "9m30s", maxDuration: "60s",
       exec: "stage4AssignDimensions"
     },
     stage4_reports: {
       executor: "per-vu-iterations",
-      vus: 60, iterations: 1, startTime: "9m", maxDuration: "2m",
+      vus: 60, iterations: 1, startTime: "10m30s", maxDuration: "2m",
       exec: "stage4ReadReports"
     },
     stage4_freeze_reports: {
       executor: "per-vu-iterations",
-      vus: 10, iterations: 1, startTime: "10m", maxDuration: "60s",
+      vus: 10, iterations: 1, startTime: "11m30s", maxDuration: "60s",
       exec: "stage4FreezeReports"
     },
     stage5_cards: {
       executor: "per-vu-iterations",
-      vus: 60, iterations: 1, startTime: "11m", maxDuration: "2m",
+      vus: 60, iterations: 1, startTime: "12m30s", maxDuration: "2m",
       exec: "stage5SubmitCards"
     },
     stage5_draft: {
       executor: "per-vu-iterations",
-      vus: 10, iterations: 1, startTime: "12m", maxDuration: "2m",
+      vus: 10, iterations: 1, startTime: "13m30s", maxDuration: "2m",
       exec: "stage5LeaderDraft"
     },
     stage6_submit: {
       executor: "shared-iterations",
-      vus: 1, iterations: 1, startTime: "13m", maxDuration: "3m",
+      vus: 1, iterations: 1, startTime: "14m30s", maxDuration: "3m",
       exec: "stage6SerialSubmit"
     }
   },

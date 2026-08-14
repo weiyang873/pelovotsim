@@ -271,7 +271,10 @@ class DecisionTracker {
     this.team.r1_sam_billion = safeNumber(result.SAM_billion);
     this.team.r1_rho_c = safeNumber(result.rho_C);
     this.team.r1_wtp_multiplier = safeNumber(result.wtp_multiplier);
-    this.team.target_gm = safeNumber(result.WTPadj);
+    this.team.target_gm = safeNumber(
+      data?.target_gm ?? data?.team?.target_gm ?? data?.team?.final_target_gm ?? data?.team?.final_gm_max,
+      this.team.target_gm
+    );
     this.team.market_space_tier = breakdown?.market_jinang_match_strength != null
       ? String(breakdown.market_jinang_match_strength)
       : this.team.market_space_tier;

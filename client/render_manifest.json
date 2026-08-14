@@ -1,17 +1,17 @@
 {
-  "manifest_version": "10586745dfc4c4d192ce240f9bb9b18dad2ef5d829d51a55fc4239e26dc5047e",
-  "generated_from": "c254c4cb5bf11b036881de2b92730b1f12e3759e",
-  "generated_from_worktree_dirty": true,
+  "manifest_version": "f253f342b3d5d5ecc8efe738fdf9594310921ba73a8d4494f1005b681f0c19d9",
+  "generated_from": "b21c5c8790783d36e11ec2eea05f748676c017d8",
+  "generated_from_worktree_dirty": false,
   "generator": "scripts/export_render_manifest.js",
   "source_files": [
     {
       "path": "client/src/pages/Round2Flow.jsx",
-      "sha256": "1cb00fdf38f75499a9962e60f47f41d87580d986f4b1831fd06bc255997ba518",
-      "git_status_dirty": true
+      "sha256": "9d7b960596e472d4a98d487afb5e8400d7d3dc8acae85f62b1566635f61c518e",
+      "git_status_dirty": false
     },
     {
       "path": "client/src/pages/MultiplayerFlow.jsx",
-      "sha256": "5d7586bdd2ff1e303a4abe81898490fe14ab8626cda1518ee94eb03fa297c0de",
+      "sha256": "2d39ae33aea298d2cf02d2dcac0a1967f185f8e1863155d52c83abed825299f6",
       "git_status_dirty": false
     },
     {
@@ -22,7 +22,7 @@
     {
       "path": "data/capability_groups_v2.json",
       "sha256": "38eccff0c10efb8454fd25a8a05c3b925221f1f78d58608d3a5ea6bb35829182",
-      "git_status_dirty": true
+      "git_status_dirty": false
     },
     {
       "path": "game_config_v0.1/jinang_cards_v2.json",
@@ -4231,11 +4231,6 @@
           "visibility": "primary"
         },
         {
-          "path": "pricing.price_step",
-          "form": "currency",
-          "visibility": "primary"
-        },
-        {
           "path": "team.unit_cost",
           "form": "currency",
           "visibility": "primary",
@@ -4254,16 +4249,14 @@
           "mode": "team"
         }
       ],
-      "individual_experiment_policy": "D5 persona prompt keeps only price range and step; team-only cost accounting fields are not injected in solo experiments.",
+      "individual_experiment_policy": "D5 persona prompt may mention only slider min/max as submit bounds; other control settings/defaults are not injected in solo experiments.",
       "price_defaults_for_experiment": {
-        "price_min": 1000,
-        "price_max": 6000,
-        "price_step": 100
+        "price_min": 2000,
+        "price_max": 6000
       },
       "allowed_numbers": [
-        "1000",
-        "6000",
-        "100"
+        "2000",
+        "6000"
       ]
     }
   },

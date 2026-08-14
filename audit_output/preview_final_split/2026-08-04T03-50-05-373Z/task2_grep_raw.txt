@@ -1,0 +1,51 @@
+
+===== scripts_analysis =====
+$ rg -n "calculate_preview|submit_final|decision_tracker|r2_calculate_preview|R2\.7_calculate_preview|submitFinal|calculateRD" scripts/analysis -S
+
+(exit=1)
+
+===== server_synthetic_teamSim =====
+$ rg -n "calculate_preview|submit_final|decision_tracker|r2_calculate_preview|R2\.7_calculate_preview|submitFinal|calculateRD" server/synthetic/teamSim -S
+
+(exit=1)
+
+===== mini_engine_candidates =====
+$ rg -n "calculate_preview|submit_final|decision_tracker|r2_calculate_preview|R2\.7_calculate_preview|submitFinal|calculateRD" scripts server -g "*mini*" -g "*kernel*" -g "*aspiration*" -g "*benchmark*" -S
+
+(exit=1)
+
+===== all_project_refs =====
+$ rg -n "calculate_preview|submit_final|decision_tracker|r2_calculate_preview|R2\.7_calculate_preview|submitFinal|calculateRD" scripts server -S
+scripts/sim/data_export.js:8:const { scoreProduct } = require("./decision_tracker");
+scripts/sim/api_client.js:291:  async calculateRD(payload) {
+scripts/sim/api_client.js:305:  async submitFinal(teamId, payload) {
+scripts/sim/team_runner.js:10:const { DecisionTracker, scoreProduct } = require("./decision_tracker");
+scripts/sim/team_runner.js:1357:  const previewData = await runStep(result, "r2_calculate_preview", async () => {
+scripts/sim/team_runner.js:1359:    const data = await stepApi(api, "R2.7_calculate_preview").calculateRD({
+scripts/sim/team_runner.js:1378:    assert(data.ok === true, "calculateRD returned ok=false");
+scripts/sim/team_runner.js:1379:    assert(Number.isFinite(Number(data.share)), "calculateRD missing share");
+scripts/sim/team_runner.js:1380:    assert(Number.isFinite(Number(data.units)), "calculateRD missing units");
+scripts/sim/team_runner.js:1381:    assert(Number.isFinite(Number(data.profit)), "calculateRD missing profit");
+scripts/sim/team_runner.js:1387:  await runStep(result, "r2_submit_final", async () => {
+scripts/sim/team_runner.js:1388:    const data = await stepApi(api, "R2.7_submit_final").submitFinal(teamId, {
+scripts/sim/team_runner.js:1399:    assert(data.ok === true, "submitFinal returned ok=false");
+scripts/sim/team_runner.js:1400:    assert(data.result && typeof data.result === "object", "submitFinal missing result");
+scripts/sim/team_runner.js:1401:    assert(Number.isFinite(Number(data.result.profit)), "submitFinal missing result.profit");
+scripts/sim/team_runner.js:1402:    assert(Number.isFinite(Number(data.result.units)), "submitFinal missing result.units");
+scripts/sim/team_runner.js:2080:  const previewData = await runStep(result, "r2_calculate_preview", async () => {
+scripts/sim/team_runner.js:2082:    const data = await stepApi(api, "R2.7_calculate_preview").calculateRD({
+scripts/sim/team_runner.js:2101:    assert(data.ok === true, "calculateRD returned ok=false");
+scripts/sim/team_runner.js:2102:    assert(Number.isFinite(Number(data.share)), "calculateRD missing share");
+scripts/sim/team_runner.js:2103:    assert(Number.isFinite(Number(data.units)), "calculateRD missing units");
+scripts/sim/team_runner.js:2104:    assert(Number.isFinite(Number(data.profit)), "calculateRD missing profit");
+scripts/sim/team_runner.js:2110:  await runStep(result, "r2_submit_final", async () => {
+scripts/sim/team_runner.js:2116:    const data = await stepApi(api, "R2.7_submit_final").submitFinal(teamId, {
+scripts/sim/team_runner.js:2124:    assert(data.ok === true, "submitFinal returned ok=false");
+scripts/sim/team_runner.js:2125:    assert(data.result && typeof data.result === "object", "submitFinal missing result");
+scripts/sim/team_runner.js:2126:    assert(Number.isFinite(Number(data.result.profit)), "submitFinal missing result.profit");
+scripts/sim/team_runner.js:2127:    assert(Number.isFinite(Number(data.result.units)), "submitFinal missing result.units");
+scripts/test_vp_wtp_impact.js:137:    const previewStep = findStep(entries, "R2.7_calculate_preview");
+scripts/test_vp_wtp_impact.js:141:      throw new Error(`Missing R2.7_calculate_preview payload for team_index=${teamIndex}`);
+scripts/test_full_12grid_sim.js:10:const { scoreProduct } = require("./sim/decision_tracker");
+
+(exit=0)

@@ -1,0 +1,112 @@
+{
+  "run_id": "full_game_all_personas_v4flash_nothink_2026-07-26",
+  "generated_at": "2026-07-26T14:19:55.262Z",
+  "git_head": "7ba9c5adad90d861e49089538795737d117dd383",
+  "script_sha256": "9f620e48131d5e40438d056195c9daaf2bb615d5fee508b44bc0663fecd6465a",
+  "rows_total": 7,
+  "latest_rows": 7,
+  "ok_rows": 5,
+  "money_scale": {
+    "PRICE_SCALE": 0.3,
+    "MONEY_SCALE_CONTRACT": "raw-db-scaled-api-v1@0.3"
+  },
+  "d3_device_note": "Dynamic persona summary generated from the actual selected grid via server/llm/personaGenerator.js; not directly comparable to fixed-report bench D3.",
+  "info_set_alignment": {
+    "spec_path": "docs/CODEX_INFO_SET_ALIGNMENT.md",
+    "assert_module": "scripts/analysis/info_set_assert.js",
+    "assert_enabled_for_stages": [
+      "R1",
+      "D3",
+      "D4",
+      "D5"
+    ],
+    "numeric_whitelist_by_stage": {
+      "R1": [
+        "12",
+        "3",
+        "2"
+      ],
+      "Coach": [],
+      "D3": [],
+      "D4": [
+        "1",
+        "6"
+      ],
+      "D5": [
+        "1000",
+        "6000",
+        "100"
+      ]
+    },
+    "forbidden_pattern_ids": [
+      "target_gm",
+      "wtp_scaled",
+      "wtp_multiplier",
+      "jinang_match_strength",
+      "card_cost_fields",
+      "capacity_budget",
+      "machine_rules",
+      "internal_formula"
+    ],
+    "boundary_verification": {
+      "round2_individual_card_selection": {
+        "source": "client/src/pages/Round2Flow.jsx",
+        "finding": "Round2Flow Step2 personal card selection renders cards with showCost=false and has a NO cost numbers code comment; v2 D4 aligns to this individual/card-selection information set."
+      },
+      "round2_team_merge_discussion": {
+        "source": "client/src/pages/Round2Flow.jsx",
+        "finding": "Later team merge/discussion UI can render exact cost/NRE fields; v2 deliberately does not expose them to the individual D4 persona prompt per CODEX_INFO_SET_ALIGNMENT v2."
+      },
+      "target_gm_visibility": {
+        "source": "client/src/pages/Round2Flow.jsx",
+        "finding": "R2 target_gm recap is rendered inside display:none, so v2 D5 does not inject target_gm or target_gm_rule."
+      },
+      "round1_results_visibility": {
+        "source": "client/src/pages/MultiplayerFlow.jsx",
+        "finding": "R1 result UI exposes qualitative/summary settlement outputs, but v2 R2 prompts do not inject exact WTP, target_gm, or hidden multipliers."
+      }
+    },
+    "v1_leak_to_v2_handling": {
+      "d4_card_costs": "Removed from prompt; public card pool only includes cap_id/name/covers and tier options.",
+      "d4_budget_penalty_and_machine_rules": "Removed from prompt; only qualitative compatibility hints are rendered.",
+      "d5_wtp_and_target_gm": "Removed from prompt and output schema; D5 only sees price range and step.",
+      "jinang_exact_strengths": "Not injected into prompt; summary reports qualitative fit only.",
+      "settlement_parameters": "Retained only as internal engine/audit data after decisions; not visible to persona prompts."
+    }
+  },
+  "map_sha256": {
+    "草根老板": "956b0ff7c29a40924bfec8a9d10679ca75645cfee82ad2a5eae72694a36ef941",
+    "二代接班人": "faf422d5a87097922ff6a00cc5a9bb3016dd4cf935fa37e077b642074682ebcc",
+    "体制转型者": "322408d954f20a4bc7f4d9680777e5cfc9d21247fe223a6c20fff6406efb78dd",
+    "职业经理人": "eff9c147034ba2b49d7e283f0274aff7e0d855ddd8a91e85079016cd8e5131e8",
+    "销售铁军": "71d37121a47415aa86ad3ea31a9e165ab60eb9a3b43a10ee08d94944b4d3a1cb",
+    "技术创业者": "c392c42d255e29f1982874baa20711163dc225807a51c514ac45414ec1eb6a7f",
+    "互联网PM转型": "03ed4036c3389750193d475fa84e789a59d45a5b8ccad6fa6b7750590568d9d3"
+  },
+  "config_sha256": {
+    "docs/CODEX_FULL_GAME_ALL_PERSONAS.md": "903da415ce11b1a48ef331d1e7f64227a4bf5e7b0610c46575f85bd5ea912d6d",
+    "docs/CODEX_INFO_SET_ALIGNMENT.md": "1dc28cde899df68ab00d1ae93861af1e6bc0685533a16aaf73418f776c0c1a0a",
+    "scripts/analysis/info_set_assert.js": "ca50c4a5a6455c52e5f4e15aa2184e3afb111cd179163f079d38e3b27de32194",
+    "docs/CODEX_AI_GENERATED_PERSONA_MAPS.md": "e8122ddb96122853feb35759bd713ee105babaeda64e5d8959d706982bfbea94",
+    "scripts/analysis/ai_generated_persona_maps_v2_2026-07-14_maps.json": "65cb2bde354abe0cf12685debe5ae025b79471dbb1965507e4e8d2cbf16cfeeb",
+    "data/capability_groups_v2.json": "38eccff0c10efb8454fd25a8a05c3b925221f1f78d58608d3a5ea6bb35829182",
+    "data/compatibility_rules_v2.json": "0c6cf08d59c2ae5d5d08cc5d625b059b495215a877d11718dc3aa027a1e26930",
+    "data/tag_map_v2_1.json": "bfc9e1790c719946c31f302121f18066dd0e8d58e63e8b83b96dbd1cf0747dd7",
+    "data/round2_dim_anchors_v1.json": "416fad4b35daee92a97bd5206762e9db919f29d7700a9c9b956d55eb464aa2e9",
+    "data/grid_priors_v4_cap_weights.json": "e6083550fbd1e65bb8c516374d6ef04aee11fc8677655bc29c32d2644f57c784",
+    "game_config_v0.1/round1_gm_model.json": "7bf19b3a4a0128de56574e74b15dcc0d5cb38f5c17921c71042b7779fdfa42e4",
+    "game_config_v0.1/round2_engine_params.json": "9adb113c7aeb1a591db0c63dd85936934bc7798cf268669e4b1e27224e75b3ac",
+    "game_config_v0.1/jinang_cards_v2.json": "087060d0a3543fb013056d0456a375b802e1ea68a034fe675a7294ce8ffd89ef",
+    "scripts/analysis/full_game_all_personas_v1_2026-07-14.jsonl": "eccb77a5a7337a7c04ed782074dcd217256d1df87384566885b50bb98899f1bb",
+    "client/src/pages/Round2Flow.jsx": "9d7b960596e472d4a98d487afb5e8400d7d3dc8acae85f62b1566635f61c518e",
+    "client/src/pages/MultiplayerFlow.jsx": "2d39ae33aea298d2cf02d2dcac0a1967f185f8e1863155d52c83abed825299f6"
+  },
+  "assumptions": {
+    "single_member_team": true,
+    "condition": "M",
+    "n_per_persona": 1,
+    "no_server_or_ui": true,
+    "target_gm_visibility": "target_gm is not carried into D5 prompt or output schema in v2; current rdCalculator.calculate still uses true WTP/cost parameters internally as settlement bookkeeping.",
+    "jinang_random_draw": "market+tech draws reused from scripts/analysis/full_game_all_personas_v1_2026-07-14.jsonl when available."
+  }
+}

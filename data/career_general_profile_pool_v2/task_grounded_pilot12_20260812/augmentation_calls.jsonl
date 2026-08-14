@@ -1,0 +1,12 @@
+{"ts":"2026-08-12T14:07:42.731Z","persona_id":"CGP08","attempt":1,"status":"recovered","recovery_source":"../../../../../../tmp/task_grounded_recovery/augmentation_calls_first.jsonl"}
+{"ts":"2026-08-12T14:07:42.732Z","persona_id":"CGP07","attempt":1,"status":"recovered","recovery_source":"../../../../../../tmp/task_grounded_recovery/augmentation_calls_first.jsonl"}
+{"ts":"2026-08-12T14:07:42.732Z","persona_id":"CGP02","attempt":2,"status":"recovered","recovery_source":"../../../../../../tmp/task_grounded_recovery/augmentation_calls_first.jsonl"}
+{"ts":"2026-08-12T14:07:42.732Z","persona_id":"CGP15","attempt":3,"status":"recovered","recovery_source":"../../../../../../tmp/task_grounded_recovery/augmentation_calls_first.jsonl"}
+{"ts":"2026-08-12T14:07:42.732Z","persona_id":"CGP22","attempt":1,"status":"recovered","recovery_source":"../../../../../../tmp/task_grounded_recovery/augmentation_calls_first.jsonl"}
+{"ts":"2026-08-12T14:07:42.733Z","persona_id":"CGP28","attempt":1,"status":"recovered","recovery_source":"../../../../../../tmp/task_grounded_recovery/augmentation_calls_first.jsonl"}
+{"ts":"2026-08-12T14:07:42.733Z","persona_id":"CGP17","attempt":2,"status":"recovered","recovery_source":"../../../../../../tmp/task_grounded_recovery/augmentation_calls_first.jsonl"}
+{"ts":"2026-08-12T14:07:42.733Z","persona_id":"CGP29","attempt":1,"status":"recovered","recovery_source":"../../../../../../tmp/task_grounded_recovery/augmentation_calls_first.jsonl"}
+{"ts":"2026-08-12T14:07:42.733Z","persona_id":"CGP31","attempt":1,"status":"recovered","recovery_source":"../../../../../../tmp/task_grounded_recovery/augmentation_calls_first.jsonl"}
+{"ts":"2026-08-12T14:07:42.733Z","persona_id":"CGP34","attempt":1,"status":"recovered","recovery_source":"../../../../../../tmp/task_grounded_recovery/augmentation_calls_first.jsonl"}
+{"ts":"2026-08-12T14:07:42.733Z","persona_id":"CGP42","attempt":1,"status":"recovered","recovery_source":"../../../../../../tmp/task_grounded_recovery/augmentation_calls_first.jsonl"}
+{"ts":"2026-08-12T14:07:42.733Z","persona_id":"CGP35","attempt":2,"status":"recovered","recovery_source":"../../../../../../tmp/task_grounded_recovery/augmentation_calls_first.jsonl"}

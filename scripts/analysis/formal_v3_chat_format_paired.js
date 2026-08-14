@@ -8,32 +8,70 @@ const { spawnSync } = require("node:child_process");
 
 const ROOT = path.join(__dirname, "..", "..");
 const SOURCE_RUN_ID = process.env.FORMAL_CHAT_SOURCE_RUN_ID || "formal_v3_2026-07-16";
-const RUN_ID = process.env.FORMAL_CHAT_RUN_ID || "formal_v3_chat_format_paired_2026-07-29";
+let RUN_ID = process.env.FORMAL_CHAT_RUN_ID || "formal_v3_chat_format_paired_2026-07-29";
 const SOURCE_JSONL = path.join(__dirname, `${SOURCE_RUN_ID}.jsonl`);
 const SOURCE_SUMMARY = path.join(__dirname, `${SOURCE_RUN_ID}_summary.md`);
-const LLM_MODEL = process.env.FORMAL_CHAT_MODEL || "deepseek-v4-flash";
+const SOURCE_CHAIN_DIR = String(process.env.FORMAL_CHAT_SOURCE_DIR || "").trim();
+const OUTPUT_DIR = String(process.env.FORMAL_CHAT_OUTPUT_DIR || "").trim();
+const DEFAULT_CHAT_MODEL = "deepseek-v4-flash";
+const QWEN_DEFAULT_MODEL = "deepseek-v4-flash-0731";
+let LLM_MODEL = process.env.FORMAL_CHAT_MODEL || "";
 const ARM_LABEL = process.env.FORMAL_CHAT_ARM_LABEL || "paired chat D4/D5";
+const ARM_ID = String(process.env.FORMAL_CHAT_ARM_ID || "").trim();
 const MANIPULATED_FACTOR = process.env.FORMAL_CHAT_MANIPULATED_FACTOR || "D4/D5 response format only";
 const TEMPERATURE = Number(process.env.FORMAL_CHAT_TEMPERATURE || "0.55");
 const MAX_REPAIRS = Math.max(0, parseInt(process.env.FORMAL_CHAT_MAX_REPAIRS || "2", 10));
 const MAX_ATTEMPTS = MAX_REPAIRS + 1;
 const TIMEOUT_MS = Math.max(1, parseInt(process.env.FORMAL_CHAT_TIMEOUT_MS || "120000", 10));
 const QUANTITY_POLICY = String(process.env.FORMAL_CHAT_QUANTITY_POLICY || "min6").trim();
+const DEFAULT_CONCURRENCY = Math.max(1, parseInt(process.env.FORMAL_CHAT_CONCURRENCY || "1", 10));
+const MAX_LIMIT = 84;
 const PERSONA_ORDER = ["A", "D", "E", "B", "F", "C", "G"];
 const CONDITIONS = ["Q", "S"];
 const REPS = [1, 2, 3];
 const TIER_CN_TO_ENGINE = { "低": "low", "中": "mid", "高": "high", low: "low", mid: "mid", high: "high" };
 const QUANTITY_POLICIES = new Set(["min6", "unlimited"]);
 
-function outputPaths(runId = RUN_ID) {
+function resolveWorkspacePath(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  return path.isAbsolute(text) ? text : path.join(ROOT, text);
+}
+
+function ensureParentDir(filePath) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+}
+
+function outputPaths(runId = RUN_ID, outputDir = OUTPUT_DIR) {
+  const explicitOutputDir = String(outputDir || "").trim();
+  if (explicitOutputDir) {
+    const baseDir = resolveWorkspacePath(explicitOutputDir);
+    const chainsDir = path.join(baseDir, "chains");
+    fs.mkdirSync(chainsDir, { recursive: true });
+    return {
+      baseDir,
+      jsonl: path.join(baseDir, "rows.jsonl"),
+      auditJsonl: path.join(baseDir, "call_audit.jsonl"),
+      failuresJsonl: path.join(baseDir, "failures.jsonl"),
+      rowMetricsCsv: path.join(baseDir, "row_metrics.csv"),
+      replayCsv: path.join(baseDir, "formal_replay.csv"),
+      summary: path.join(baseDir, "summary.md"),
+      meta: path.join(baseDir, "meta.json"),
+      armSummary: path.join(baseDir, "arm_summary.json"),
+      chainsDir
+    };
+  }
   return {
+    baseDir: __dirname,
     jsonl: path.join(__dirname, `${runId}.jsonl`),
     auditJsonl: path.join(__dirname, `${runId}_call_audit.jsonl`),
     failuresJsonl: path.join(__dirname, `${runId}_failures.jsonl`),
     rowMetricsCsv: path.join(__dirname, `${runId}_row_metrics.csv`),
     replayCsv: path.join(__dirname, `${runId}_formal_replay.csv`),
     summary: path.join(__dirname, `${runId}_summary.md`),
-    meta: path.join(__dirname, `${runId}_meta.json`)
+    meta: path.join(__dirname, `${runId}_meta.json`),
+    armSummary: "",
+    chainsDir: ""
   };
 }
 
@@ -57,10 +95,12 @@ function loadJsonl(filePath) {
 }
 
 function appendJsonl(filePath, row) {
+  ensureParentDir(filePath);
   fs.appendFileSync(filePath, `${JSON.stringify(row)}\n`, "utf8");
 }
 
 function writeJson(filePath, value) {
+  ensureParentDir(filePath);
   fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
 }
 
@@ -70,6 +110,7 @@ function csvCell(value) {
 }
 
 function writeCsv(filePath, rows, columns) {
+  ensureParentDir(filePath);
   fs.writeFileSync(filePath, `${[columns.join(","), ...rows.map((row) => columns.map((column) => csvCell(row[column])).join(","))].join("\n")}\n`, "utf8");
 }
 
@@ -97,22 +138,66 @@ function pct(value) {
 }
 
 function parseArgs(argv) {
-  const args = { mode: "replay", runId: RUN_ID, limit: 42, chainKey: "", summarizeOnly: false, force: false, onePerPersona: false };
+  const args = {
+    mode: "replay",
+    runId: RUN_ID,
+    limit: 42,
+    chainKey: "",
+    model: "",
+    sourceDir: SOURCE_CHAIN_DIR,
+    outputDir: OUTPUT_DIR,
+    concurrency: DEFAULT_CONCURRENCY,
+    summarizeOnly: false,
+    force: false,
+    onePerPersona: false
+  };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--mode") args.mode = String(argv[++index] || "").trim();
     else if (arg === "--run-id") args.runId = String(argv[++index] || "").trim();
     else if (arg === "--limit") args.limit = Number(argv[++index]);
     else if (arg === "--chain-key") args.chainKey = String(argv[++index] || "").trim();
+    else if (arg === "--model") args.model = String(argv[++index] || "").trim();
+    else if (arg === "--source-dir") args.sourceDir = String(argv[++index] || "").trim();
+    else if (arg === "--output-dir") args.outputDir = String(argv[++index] || "").trim();
+    else if (arg === "--concurrency") args.concurrency = Number(argv[++index]);
     else if (arg === "--summarize-only") args.summarizeOnly = true;
     else if (arg === "--force") args.force = true;
     else if (arg === "--one-per-persona") args.onePerPersona = true;
     else throw new Error(`unknown argument: ${arg}`);
   }
   if (!new Set(["replay", "chat", "satisfice", "satisfice_formal", "dimension", "dimension_satisfice", "dimension_satisfice_chat", "summarize"]).has(args.mode)) throw new Error(`invalid mode: ${args.mode}`);
-  if (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > 42) throw new Error("limit must be 1..42");
+  if (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > MAX_LIMIT) throw new Error(`limit must be 1..${MAX_LIMIT}`);
+  if (!Number.isInteger(args.concurrency) || args.concurrency < 1) throw new Error("concurrency must be a positive integer");
   if (!QUANTITY_POLICIES.has(QUANTITY_POLICY)) throw new Error(`invalid FORMAL_CHAT_QUANTITY_POLICY: ${QUANTITY_POLICY}`);
   return args;
+}
+
+function resolveLlmModel(explicitModel = "") {
+  const requested = String(explicitModel || "").trim();
+  if (requested) return requested;
+  const formalModel = String(process.env.FORMAL_CHAT_MODEL || "").trim();
+  if (formalModel) return formalModel;
+  const genericModel = String(process.env.LLM_MODEL_OVERRIDE || process.env.LLM_MODEL || "").trim();
+  if (genericModel) return genericModel;
+  const provider = String(process.env.LLM_PROVIDER || "").trim().toLowerCase();
+  if (provider === "qwen") {
+    return String(process.env.QWEN_MODEL || process.env.DASHSCOPE_MODEL || QWEN_DEFAULT_MODEL).trim();
+  }
+  if (provider === "deepseek") {
+    return String(process.env.DEEPSEEK_MODEL || DEFAULT_CHAT_MODEL).trim();
+  }
+  return String(process.env.OPENAI_MODEL || DEFAULT_CHAT_MODEL).trim();
+}
+
+function configureLlmModel(model) {
+  LLM_MODEL = String(model || "").trim();
+  if (!LLM_MODEL) throw new Error("LLM model must be non-empty");
+  process.env.FORMAL_CHAT_MODEL = LLM_MODEL;
+  process.env.LLM_MODEL_OVERRIDE = LLM_MODEL;
+  const provider = String(process.env.LLM_PROVIDER || "").trim().toLowerCase();
+  if (provider === "qwen") process.env.QWEN_MODEL = LLM_MODEL;
+  if (provider === "deepseek") process.env.DEEPSEEK_MODEL = LLM_MODEL;
 }
 
 function ensureModuleResolution() {
@@ -151,11 +236,10 @@ function loadLocalEnv() {
     }
     break;
   }
-  process.env.DEEPSEEK_MODEL = LLM_MODEL;
   return {
     path: envPath ? path.relative(ROOT, envPath) : "",
     loaded_keys: loaded.sort(),
-    key_count: Object.keys(process.env).filter((key) => /^DEEPSEEK_API_KEY(_\d+)?$/.test(key) && String(process.env[key] || "").trim()).length
+    key_count: Object.keys(process.env).filter((key) => /^(DEEPSEEK_API_KEY|QWEN_API_KEY|DASHSCOPE_API_KEY)(_\d+)?$/.test(key) && String(process.env[key] || "").trim()).length
   };
 }
 
@@ -163,7 +247,41 @@ function chainKey(row) {
   return `${row.persona_id}|${row.condition}|${Number(row.rep || 1)}`;
 }
 
-function orderedSourceRows() {
+function stage1SourceFileName(row) {
+  return `${String(row.persona_id || "unknown").replace(/[^A-Za-z0-9._-]/g, "_")}_${String(row.condition || "X").replace(/[^A-Za-z0-9._-]/g, "_")}${Number(row.rep || 1)}.json`;
+}
+
+function loadSourceRowsFromChainDir(sourceDir) {
+  const absDir = resolveWorkspacePath(sourceDir);
+  if (!absDir) throw new Error("FORMAL_CHAT_SOURCE_DIR/--source-dir must be non-empty");
+  if (!fs.existsSync(absDir)) throw new Error(`source chain dir missing: ${absDir}`);
+  const files = fs.readdirSync(absDir)
+    .filter((file) => file.endsWith(".json"))
+    .sort((a, b) => a.localeCompare(b));
+  if (!files.length) throw new Error(`source chain dir has no json files: ${absDir}`);
+  const rows = files.map((file) => {
+    const filePath = path.join(absDir, file);
+    const artifact = JSON.parse(fs.readFileSync(filePath, "utf8"));
+    if (!artifact.row || artifact.row.status !== "OK") throw new Error(`source chain artifact is not OK: ${filePath}`);
+    const row = JSON.parse(JSON.stringify(artifact.row));
+    row.persona_id = artifact.persona_id || row.persona_id;
+    row.condition = artifact.condition || row.condition;
+    row.rep = Number(artifact.rep || row.rep || 1);
+    row.status = "OK";
+    row.archetype = artifact.archetype || row.archetype || String(row.persona_id || "").split("-")[0];
+    row.persona_pool_record = row.persona_pool_record || artifact.persona_pool_record || null;
+    row.source_chain_key = artifact.chain_key || chainKey(row);
+    row.source_chain_file = path.relative(ROOT, filePath);
+    return row;
+  });
+  const latest = new Map();
+  for (const row of rows) latest.set(chainKey(row), row);
+  if (latest.size !== rows.length) throw new Error(`duplicate source chain keys in ${absDir}: files=${rows.length}, unique=${latest.size}`);
+  return rows;
+}
+
+function orderedSourceRows(sourceDir = SOURCE_CHAIN_DIR) {
+  if (String(sourceDir || "").trim()) return loadSourceRowsFromChainDir(sourceDir);
   const latest = new Map();
   for (const row of loadJsonl(SOURCE_JSONL).filter((item) => item.run_id === SOURCE_RUN_ID && item.status === "OK")) {
     latest.set(chainKey(row), row);
@@ -506,7 +624,8 @@ function parseDimensionD4ChatPlan(raw, group, materials) {
       if (!selected.has(cap.cap_id)) selected.set(cap.cap_id, { id: cap.cap_id, tier });
     }
   }
-  if (missingTiers.length) throw new Error(`missing tier for cap_id(s): ${Array.from(new Set(missingTiers)).join(",")}`);
+  const unresolvedMissingTiers = Array.from(new Set(missingTiers)).filter((id) => !selected.has(id));
+  if (unresolvedMissingTiers.length) throw new Error(`missing tier for cap_id(s): ${unresolvedMissingTiers.join(",")}`);
   const cards = [...selected.values()];
   if (cards.length < 1) throw new Error(`dimension ${group.group_id} must contain at least one card`);
   for (const card of cards) {
@@ -832,8 +951,9 @@ function buildD5ChatPrompt(sourceRow, d4Parsed, d4Raw, materials) {
     prefix,
     "",
     "【输出方式变更：自然对话，不填 JSON】",
-    "现在请像真实决策者一样，用自己的话定最终价格。目标仍然是赚最多的钱；价格范围仍然是 1000-6000 元，步进 100 元。",
-    "先说你为什么这么定，再在最后单独写一句：最终价格：X元。",
+    "现在请像真实决策者一样，用自己的话定最终价格。目标仍然是赚最多的钱。",
+    "【提交控件约束】最终价格必须能被课堂定价滑块提交：最低 1000，最高 6000。这只是提交边界，不代表建议价、合理价、市场价或锚定价格。",
+    "先说你为什么这么定，再在最后单独写一句：最终价格：<你的价格>元。",
     "不要输出 JSON，不要 Markdown 表格。",
     "",
     "【你刚才自然语言选卡的原文，供你承接】",
@@ -844,7 +964,20 @@ function buildD5ChatPrompt(sourceRow, d4Parsed, d4Raw, materials) {
 function buildD5FormalPrompt(sourceRow, d4Parsed, materials) {
   let prompt = String(sourceRow.r2?.d5?.prompt || "");
   const d4Record = `D4：选卡${d4Parsed.cards.length}张[${renderCardsByGroup(d4Parsed.cards, materials)}]；成本立场=${truncate(d4Parsed.cost_stance.text, 260)}；约束=${d4Parsed.updated_constraints.map((item) => item.text).join("；")}`;
-  return prompt.replace(/D4：选卡.*?\n/, `${d4Record}\n`);
+  prompt = prompt.replace(/D4：选卡.*?\n/, `${d4Record}\n`);
+  const outputContractAt = prompt.indexOf("【输出契约】");
+  const taskAt = prompt.indexOf("【任务】");
+  const cut = outputContractAt >= 0 ? outputContractAt : taskAt;
+  const prefix = (cut >= 0 ? prompt.slice(0, cut) : prompt).trim();
+  return [
+    prefix,
+    "",
+    "【任务】依据既有栈做最终定价，赚最多的钱。",
+    "【提交控件约束】最终价格必须能被课堂定价滑块提交：最低 1000，最高 6000。这只是提交边界，不代表建议价、合理价、市场价或锚定价格。",
+    "basis.source 必须引用真实地图 id 或承前:R1/承前:Coach/承前:D3/承前:D4。",
+    '输出 JSON：{"price":"<最终价格数字>","basis":{"text":"<依据>","source":"map_xx或承前:D4"},"reasoning":"<理由>"}',
+    "只输出可 JSON.parse 的 JSON，不要 Markdown，不要额外文字。"
+  ].join("\n");
 }
 
 function parseCardsFromChat(raw, materials) {
@@ -868,7 +1001,8 @@ function parseCardsFromChat(raw, materials) {
       if (!selected.has(card.id)) selected.set(card.id, { id: card.id, tier });
     }
   }
-  if (missingTiers.length) throw new Error(`missing tier for cap_id(s): ${Array.from(new Set(missingTiers)).join(",")}`);
+  const unresolvedMissingTiers = Array.from(new Set(missingTiers)).filter((id) => !selected.has(id));
+  if (unresolvedMissingTiers.length) throw new Error(`missing tier for cap_id(s): ${unresolvedMissingTiers.join(",")}`);
   const cards = [...selected.values()];
   if (cards.length < 6) throw new Error(`cards must contain at least six rows, got ${cards.length}`);
   const RD = require("../../server/llm/rdCalculator");
@@ -890,13 +1024,13 @@ function parsePriceFromChat(raw) {
   const explicit = [...text.matchAll(/(?:最终价格|最终定价)\s*[：:]?\s*(\d{2,5})\s*元/g)].map((match) => Number(match[1]));
   let price = explicit.length ? explicit[explicit.length - 1] : null;
   if (price !== null && (price < 1000 || price > 6000)) {
-    throw new Error(`final price out of 1000-6000 range: ${price}`);
+    throw new Error("final price outside slider bounds");
   }
   if (price === null) {
     const matches = [...text.matchAll(/(?<!\d)([1-6]\d{3})(?!\d)/g)]
       .map((match) => Number(match[1]))
       .filter((num) => num >= 1000 && num <= 6000);
-    if (!matches.length) throw new Error("no 1000-6000 price found");
+    if (!matches.length) throw new Error("no valid slider price found");
     price = matches[matches.length - 1];
   }
   return {
@@ -911,7 +1045,7 @@ function parseD5Json(raw) {
   const parsed = parseJsonObject(raw);
   const price = Number(parsed.aligned_price ?? parsed.price);
   if (!Number.isFinite(price)) throw new Error("D5 JSON price is not numeric");
-  if (price < 1000 || price > 6000) throw new Error(`D5 JSON price out of 1000-6000 range: ${price}`);
+  if (price < 1000 || price > 6000) throw new Error("D5 JSON price outside slider bounds");
   return {
     ...parsed,
     price,
@@ -922,17 +1056,175 @@ function parseD5Json(raw) {
 }
 
 function parseJsonObject(raw) {
-  const text = String(raw || "").trim();
-  try {
-    return JSON.parse(text);
-  } catch (_) {
-    const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-    if (fenced) return JSON.parse(fenced[1].trim());
-    const start = text.indexOf("{");
-    const end = text.lastIndexOf("}");
-    if (start >= 0 && end > start) return JSON.parse(text.slice(start, end + 1));
+  const parsed = JSON.parse(String(raw || "").trim());
+  if (!parsed || Array.isArray(parsed) || typeof parsed !== "object") {
     throw new Error("response is not a JSON object");
   }
+  return parsed;
+}
+
+function tryParseJsonObject(text) {
+  try {
+    return { ok: true, parsed: parseJsonObject(text), error: "" };
+  } catch (error) {
+    return { ok: false, parsed: null, error: String(error?.message || error) };
+  }
+}
+
+function stripJsonFences(text) {
+  const trimmed = String(text || "").trim();
+  const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```\s*$/i);
+  if (fenced) return { text: fenced[1].trim(), applied: true };
+  const replaced = trimmed.replace(/```(?:json)?/gi, "").replace(/```/g, "").trim();
+  return { text: replaced, applied: replaced !== trimmed };
+}
+
+function removeTrailingCommas(text) {
+  return String(text || "").replace(/,\s*([}\]])/g, "$1");
+}
+
+function firstJsonObjectBlock(text) {
+  const source = String(text || "");
+  for (let start = source.indexOf("{"); start >= 0; start = source.indexOf("{", start + 1)) {
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+    for (let index = start; index < source.length; index += 1) {
+      const char = source[index];
+      if (inString) {
+        if (escaped) {
+          escaped = false;
+        } else if (char === "\\") {
+          escaped = true;
+        } else if (char === "\"") {
+          inString = false;
+        }
+        continue;
+      }
+      if (char === "\"") {
+        inString = true;
+      } else if (char === "{") {
+        depth += 1;
+      } else if (char === "}") {
+        depth -= 1;
+        if (depth === 0) return source.slice(start, index + 1);
+      }
+    }
+  }
+  return "";
+}
+
+function salvageJsonText(raw) {
+  const steps = [];
+  const fenced = stripJsonFences(raw);
+  let text = fenced.text;
+  if (fenced.applied) steps.push("strip_fences");
+
+  const block = firstJsonObjectBlock(text);
+  if (block && block.trim() !== text.trim()) {
+    text = block.trim();
+    steps.push("extract_json_block");
+  }
+
+  const direct = tryParseJsonObject(text);
+  if (direct.ok && steps.length) return { text, parsed: direct.parsed, steps };
+
+  const withoutTrailingCommas = removeTrailingCommas(text).trim();
+  if (withoutTrailingCommas !== text.trim()) {
+    const repaired = tryParseJsonObject(withoutTrailingCommas);
+    if (repaired.ok) {
+      return {
+        text: withoutTrailingCommas,
+        parsed: repaired.parsed,
+        steps: [...steps, "strip_trailing_commas"]
+      };
+    }
+  }
+
+  return null;
+}
+
+function parseJsonForDiff(raw) {
+  const direct = tryParseJsonObject(raw);
+  if (direct.ok) return { ...direct, salvage_steps: [] };
+  const salvaged = salvageJsonText(raw);
+  if (salvaged) {
+    return {
+      ok: true,
+      parsed: salvaged.parsed,
+      error: "",
+      salvage_steps: salvaged.steps
+    };
+  }
+  return { ok: false, parsed: null, error: direct.error, salvage_steps: [] };
+}
+
+function sanitizeRepairErrorForPrompt(error, stage = "") {
+  let text = String(error?.message || error || "");
+  if (String(stage || "").includes("D5")) {
+    text = text
+      .replace(/1000\s*[-~—–到至]\s*6000/gi, "课堂滑块边界")
+      .replace(/\b[1-6]\d{3}\b/g, "某个价格")
+      .replace(/\b100\b/g, "某个数值");
+  }
+  return text;
+}
+
+function jsonStable(value) {
+  return JSON.stringify(value == null ? null : value);
+}
+
+function decisionFieldSnapshot(stage, parsed) {
+  if (!parsed || typeof parsed !== "object") return null;
+  const stageText = String(stage || "");
+  if (stageText.includes("D4")) {
+    return {
+      cards: parsed.cards,
+      cost_stance: parsed.cost_stance,
+      updated_constraints: parsed.updated_constraints,
+      concerns: parsed.concerns,
+      satisfaction: parsed.satisfaction,
+      overall: parsed.overall,
+      alternatives: parsed.alternatives
+    };
+  }
+  if (stageText.includes("D5")) {
+    return {
+      price: parsed.price,
+      aligned_price: parsed.aligned_price,
+      basis: parsed.basis,
+      reasoning: parsed.reasoning
+    };
+  }
+  return parsed;
+}
+
+function diffDecisionFields(before, after) {
+  const beforeObject = before && typeof before === "object" ? before : {};
+  const afterObject = after && typeof after === "object" ? after : {};
+  const keys = Array.from(new Set([...Object.keys(beforeObject), ...Object.keys(afterObject)])).sort();
+  return keys
+    .filter((key) => jsonStable(beforeObject[key]) !== jsonStable(afterObject[key]))
+    .map((key) => ({
+      field: key,
+      before: Object.prototype.hasOwnProperty.call(beforeObject, key) ? beforeObject[key] : null,
+      after: Object.prototype.hasOwnProperty.call(afterObject, key) ? afterObject[key] : null
+    }));
+}
+
+function buildRepairDiffs(failedAttemptLogs, finalParsed, stage, finalAttempt) {
+  const after = decisionFieldSnapshot(stage, finalParsed);
+  return failedAttemptLogs.map((attempt) => ({
+    stage,
+    from_attempt: attempt.llm_attempt,
+    to_attempt: finalAttempt,
+    validator_error: attempt.validator_error,
+    before_parse_ok: Boolean(attempt.parsed_decision_fields),
+    before_parse_error: attempt.parse_error || "",
+    before_decision_fields: attempt.parsed_decision_fields,
+    after_decision_fields: after,
+    field_diffs: attempt.parsed_decision_fields ? diffDecisionFields(attempt.parsed_decision_fields, after) : []
+  }));
 }
 
 function parseD4JsonPlan(raw, materials) {
@@ -1098,21 +1390,61 @@ function buildD4FinalFromSatisficePrompt(base, concerns, defaultPlan, evaluation
 
 async function callWithRepair({ client, prompt, parser, paths, chain, stage, maxTokens }) {
   let messages = [{ role: "user", content: prompt }];
-  let raw = "";
   let lastError = null;
+  let raw = "";
+  const attemptLog = [];
+  const failedAttemptLogs = [];
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
     const promptText = messages.map((message) => `${message.role}:${message.content}`).join("\n\n");
     const startedAt = new Date().toISOString();
+    const startedMs = Date.now();
+    raw = "";
     try {
       raw = await client.chatCompletion(messages, {
         model: LLM_MODEL,
         temperature: TEMPERATURE,
         max_tokens: maxTokens,
         timeoutMs: TIMEOUT_MS,
+        disableThinking: true,
         thinking: { type: "disabled" },
         maxRetries: 1
       });
-      const parsed = parser(raw);
+      let parsed;
+      let salvageResult = null;
+      try {
+        parsed = parser(raw);
+      } catch (directError) {
+        const salvaged = salvageJsonText(raw);
+        if (!salvaged) throw directError;
+        try {
+          parsed = parser(salvaged.text);
+          salvageResult = salvaged;
+        } catch (salvagedError) {
+          salvagedError.directError = directError;
+          salvagedError.salvageResult = salvaged;
+          throw salvagedError;
+        }
+      }
+      const endedAt = new Date().toISOString();
+      const latencyMs = Date.now() - startedMs;
+      const attemptRecord = {
+        llm_attempt: attempt,
+        stage,
+        started_at: startedAt,
+        ended_at: endedAt,
+        latency_ms: latencyMs,
+        raw_response: raw,
+        raw_sha256: sha256(raw),
+        raw_chars: Array.from(raw || "").length,
+        validator_status: "ok",
+        validator_error: "",
+        salvage: Boolean(salvageResult),
+        salvage_steps: salvageResult?.steps || [],
+        salvaged_raw_response: salvageResult?.text || "",
+        parsed_decision_fields: decisionFieldSnapshot(stage, parsed)
+      };
+      attemptLog.push(attemptRecord);
+      const repairDiffs = buildRepairDiffs(failedAttemptLogs, parsed, stage, attempt);
       appendJsonl(paths.auditJsonl, {
         run_id: RUN_ID,
         chain_key: chain,
@@ -1120,18 +1452,59 @@ async function callWithRepair({ client, prompt, parser, paths, chain, stage, max
         attempt,
         status: "OK",
         started_at: startedAt,
-        ended_at: new Date().toISOString(),
+        ended_at: endedAt,
+        latency_ms: latencyMs,
+        http_code: 200,
         model: LLM_MODEL,
         temperature: TEMPERATURE,
-        thinking: "disabled",
+        enable_thinking: false,
         prompt_sha256: sha256(promptText),
         prompt_chars: Array.from(promptText).length,
         raw_response_sha256: sha256(raw),
-        raw_response_chars: Array.from(raw).length
+        raw_response_chars: Array.from(raw).length,
+        validator_status: "ok",
+        validator_error: "",
+        salvage: Boolean(salvageResult),
+        salvage_steps: salvageResult?.steps || []
       });
-      return { prompt, prompt_sha256: sha256(prompt), raw_response: raw, parsed, attempts: attempt, status: "OK", error: "" };
+      return {
+        stage,
+        prompt,
+        prompt_sha256: sha256(prompt),
+        raw_response: raw,
+        parsed,
+        attempts: attempt,
+        status: "OK",
+        error: "",
+        salvage: Boolean(salvageResult),
+        salvage_steps: salvageResult?.steps || [],
+        attempt_log: attemptLog,
+        repair_diffs: repairDiffs
+      };
     } catch (error) {
       lastError = error;
+      const endedAt = new Date().toISOString();
+      const latencyMs = Date.now() - startedMs;
+      const parseProbe = parseJsonForDiff(raw);
+      const attemptRecord = {
+        llm_attempt: attempt,
+        stage,
+        started_at: startedAt,
+        ended_at: endedAt,
+        latency_ms: latencyMs,
+        raw_response: raw,
+        raw_sha256: sha256(raw),
+        raw_chars: Array.from(raw || "").length,
+        validator_status: "error",
+        validator_error: String(error?.message || error),
+        direct_validator_error: String(error?.directError?.message || ""),
+        salvage_candidate_steps: error?.salvageResult?.steps || parseProbe.salvage_steps || [],
+        salvage_candidate_response: error?.salvageResult?.text || "",
+        parse_error: parseProbe.ok ? "" : parseProbe.error,
+        parsed_decision_fields: parseProbe.ok ? decisionFieldSnapshot(stage, parseProbe.parsed) : null
+      };
+      attemptLog.push(attemptRecord);
+      failedAttemptLogs.push(attemptRecord);
       appendJsonl(paths.auditJsonl, {
         run_id: RUN_ID,
         chain_key: chain,
@@ -1139,24 +1512,50 @@ async function callWithRepair({ client, prompt, parser, paths, chain, stage, max
         attempt,
         status: "ERROR",
         started_at: startedAt,
-        ended_at: new Date().toISOString(),
+        ended_at: endedAt,
+        latency_ms: latencyMs,
+        http_code: Number(error?.statusCode || error?.status || 0) || null,
         model: LLM_MODEL,
         temperature: TEMPERATURE,
-        thinking: "disabled",
+        enable_thinking: false,
         prompt_sha256: sha256(promptText),
         prompt_chars: Array.from(promptText).length,
-        error: String(error?.message || error)
+        raw_response_sha256: raw ? sha256(raw) : "",
+        raw_response_chars: Array.from(raw || "").length,
+        validator_status: "error",
+        validator_error: String(error?.message || error),
+        direct_validator_error: String(error?.directError?.message || ""),
+        salvage_candidate_steps: error?.salvageResult?.steps || parseProbe.salvage_steps || [],
+        parse_error: parseProbe.ok ? "" : parseProbe.error
       });
       if (attempt < MAX_ATTEMPTS) {
+        const repairError = sanitizeRepairErrorForPrompt(error, stage);
         messages = [
           { role: "user", content: prompt },
           { role: "assistant", content: raw || "(空输出)" },
-          { role: "user", content: `上一次输出无法用于实验：${error.message || error}。请只修正为可解析、满足硬性约束的回答，不要改变核心决策。` }
+          { role: "user", content: `上一次输出无法用于实验：${repairError}。请只修正为可解析、满足硬性约束的回答，不要改变核心决策。` }
         ];
       }
     }
   }
-  throw lastError;
+  const failureResult = {
+    stage,
+    prompt,
+    prompt_sha256: sha256(prompt),
+    raw_response: raw,
+    parsed: null,
+    attempts: MAX_ATTEMPTS,
+    status: "FAIL",
+    error: String(lastError?.message || lastError || "unknown error"),
+    salvage: false,
+    salvage_steps: [],
+    attempt_log: attemptLog,
+    repair_diffs: []
+  };
+  const failure = new Error(failureResult.error);
+  failure.call_result = failureResult;
+  failure.stage = stage;
+  throw failure;
 }
 
 async function recalculateFormalRows(rows, FullGame, materials) {
@@ -1193,6 +1592,7 @@ function existingChatRows(paths) {
 function compactChatJsonl(paths) {
   const latest = [...existingChatRows(paths).values()];
   if (!latest.length) return latest;
+  ensureParentDir(paths.jsonl);
   fs.writeFileSync(paths.jsonl, `${latest.map((row) => JSON.stringify(row)).join("\n")}\n`, "utf8");
   return latest;
 }
@@ -1200,10 +1600,75 @@ function compactChatJsonl(paths) {
 function writeCurrentFailures(paths, rows) {
   const failures = rows.filter((row) => row.status !== "OK");
   if (failures.length) {
+    ensureParentDir(paths.failuresJsonl);
     fs.writeFileSync(paths.failuresJsonl, `${failures.map((row) => JSON.stringify(row)).join("\n")}\n`, "utf8");
   } else if (fs.existsSync(paths.failuresJsonl)) {
     fs.unlinkSync(paths.failuresJsonl);
   }
+}
+
+function attachFailureCall(row, error) {
+  if (!error?.call_result) return;
+  row.failed_stage = error.stage || error.call_result.stage || "";
+  row.failed_call = error.call_result;
+}
+
+async function runSixDimensionChatD4({ sourceRow, materials, client, paths, chain }) {
+  const dimensionCalls = [];
+  let selectedSoFar = [];
+  for (const group of materials.capabilityGroups.groups || []) {
+    const prompt = buildDimensionD4ChatPrompt(sourceRow.r2.d4.prompt, group, selectedSoFar, materials, {
+      quantityPolicy: QUANTITY_POLICY
+    });
+    const call = await callWithRepair({
+      client,
+      prompt,
+      parser: (raw) => parseDimensionD4ChatPlan(raw, group, materials),
+      paths,
+      chain,
+      stage: `chat_D4_${group.group_id}`,
+      maxTokens: 1800
+    });
+    dimensionCalls.push(call);
+    selectedSoFar = selectedSoFar.concat(call.parsed.cards);
+  }
+
+  let globalRepairCall = null;
+  let finalParsed = null;
+  try {
+    finalParsed = combineDimensionPlans(dimensionCalls, materials);
+  } catch (combineError) {
+    globalRepairCall = await callWithRepair({
+      client,
+      prompt: buildDimensionGlobalRepairPrompt(sourceRow.r2.d4.prompt, dimensionCalls, combineError, materials, {
+        quantityPolicy: QUANTITY_POLICY
+      }),
+      parser: (raw) => parseD4JsonPlan(raw, materials),
+      paths,
+      chain,
+      stage: "chat_D4_global_repair",
+      maxTokens: 3800
+    });
+    finalParsed = globalRepairCall.parsed;
+  }
+
+  const calls = [...dimensionCalls, globalRepairCall].filter(Boolean);
+  return {
+    combined: {
+      prompt: calls.map((call) => call.prompt).filter(Boolean).join("\n\n===== NEXT DIMENSION CHAT STEP =====\n\n"),
+      prompt_sha256: sha256(calls.map((call) => call.prompt_sha256).filter(Boolean).join("|")),
+      raw_response: calls.map((call) => call.raw_response).filter(Boolean).join("\n\n===== NEXT DIMENSION CHAT STEP =====\n\n"),
+      parsed: finalParsed,
+      attempts: calls.reduce((sum, call) => sum + Number(call.attempts || 0), 0),
+      status: "OK",
+      error: ""
+    },
+    detail: {
+      dimension_rounds: dimensionCalls,
+      global_repair: globalRepairCall,
+      repaired: Boolean(globalRepairCall)
+    }
+  };
 }
 
 async function runChatRow({ sourceRow, FullGame, materials, client, paths, force = false }) {
@@ -1216,21 +1681,19 @@ async function runChatRow({ sourceRow, FullGame, materials, client, paths, force
   row.source_chain_key = sourceChainKey;
   row.status = "RUNNING";
   row.created_at = new Date().toISOString();
-  row.format_arm = "chat_D4_D5_only";
+  row.format_arm = "six_dimension_chat_D4_chat_D5";
   row.source_baseline = sourceBaselineSnapshot(sourceRow);
   try {
-    const d4Prompt = stripD4JsonContract(sourceRow.r2.d4.prompt);
-    const d4Call = await callWithRepair({
+    const d4Result = await runSixDimensionChatD4({
       client,
-      prompt: d4Prompt,
-      parser: (raw) => parseCardsFromChat(raw, materials),
       paths,
-      chain: sourceChainKey,
-      stage: "chat_D4",
-      maxTokens: 5000
+      materials,
+      sourceRow,
+      chain: sourceChainKey
     });
-    row.r2.d4 = d4Call;
-    const d5Prompt = buildD5ChatPrompt(sourceRow, d4Call.parsed, d4Call.raw_response, materials);
+    row.r2.d4 = d4Result.combined;
+    row.r2.d4_dimension_chat = d4Result.detail;
+    const d5Prompt = buildD5ChatPrompt(sourceRow, d4Result.combined.parsed, d4Result.combined.raw_response, materials);
     const d5Call = await callWithRepair({
       client,
       prompt: d5Prompt,
@@ -1254,6 +1717,7 @@ async function runChatRow({ sourceRow, FullGame, materials, client, paths, force
     return row;
   } catch (error) {
     row.status = "FAIL";
+    attachFailureCall(row, error);
     row.error = String(error?.stack || error?.message || error);
     appendJsonl(paths.failuresJsonl, row);
     appendJsonl(paths.jsonl, row);
@@ -1352,6 +1816,7 @@ async function runSatisficeRow({ sourceRow, FullGame, materials, client, paths, 
     return row;
   } catch (error) {
     row.status = "FAIL";
+    attachFailureCall(row, error);
     row.error = String(error?.stack || error?.message || error);
     appendJsonl(paths.failuresJsonl, row);
     appendJsonl(paths.jsonl, row);
@@ -1450,6 +1915,7 @@ async function runSatisficeFormalRow({ sourceRow, FullGame, materials, client, p
     return row;
   } catch (error) {
     row.status = "FAIL";
+    attachFailureCall(row, error);
     row.error = String(error?.stack || error?.message || error);
     appendJsonl(paths.failuresJsonl, row);
     appendJsonl(paths.jsonl, row);
@@ -1537,6 +2003,7 @@ async function runDimensionRow({ sourceRow, FullGame, materials, client, paths, 
     return row;
   } catch (error) {
     row.status = "FAIL";
+    attachFailureCall(row, error);
     row.error = String(error?.stack || error?.message || error);
     appendJsonl(paths.failuresJsonl, row);
     appendJsonl(paths.jsonl, row);
@@ -1676,6 +2143,7 @@ async function runDimensionSatisficeRow({ sourceRow, FullGame, materials, client
     return row;
   } catch (error) {
     row.status = "FAIL";
+    attachFailureCall(row, error);
     row.error = String(error?.stack || error?.message || error);
     appendJsonl(paths.failuresJsonl, row);
     appendJsonl(paths.jsonl, row);
@@ -1815,6 +2283,7 @@ async function runDimensionSatisficeChatRow({ sourceRow, FullGame, materials, cl
     return row;
   } catch (error) {
     row.status = "FAIL";
+    attachFailureCall(row, error);
     row.error = String(error?.stack || error?.message || error);
     appendJsonl(paths.failuresJsonl, row);
     appendJsonl(paths.jsonl, row);
@@ -1899,7 +2368,7 @@ function buildSummary({ sourceRows, replayRows, chatRows }) {
   lines.push(`- Source: \`${SOURCE_RUN_ID}\` / ${sourceRows.length} OK rows.`);
   lines.push(`- Stored formal result: ${sourceStats.profitable}/${sourceStats.n} profitable, loss_rate=${pct(sourceStats.loss_rate)}.`);
   lines.push(`- Current-code replay rows: ${replayRows.length}; exact profit/loss match=${replayMatches ? "YES" : "NO"}.`);
-  lines.push("- Interpretation gate: chat rows are interpretable only against this formal/global 42-chain source, not against the fixed child-grid controls.");
+  lines.push(`- Interpretation gate: chat rows are interpretable only against this formal/global ${sourceRows.length}-chain source, not against the fixed child-grid controls.`);
   lines.push("", "## Format Comparison", "");
   lines.push("| arm | n | profitable | loss_rate | unique_configs | price_mean | price_sd | price_range | cards_mean | cards_range | profit_mean |");
   lines.push("|---|---:|---:|---:|---:|---:|---:|---|---:|---|---:|");
@@ -1939,8 +2408,214 @@ function buildSummary({ sourceRows, replayRows, chatRows }) {
   return lines.join("\n");
 }
 
+function providerSummaryLabel() {
+  const provider = String(process.env.LLM_PROVIDER || "").trim().toLowerCase();
+  if (provider === "qwen") return "qwen-ai-platform";
+  if (provider === "deepseek") return "deepseek";
+  return provider || "openai-compatible";
+}
+
+function percentile(values, pctValue) {
+  const sorted = values.filter((value) => Number.isFinite(Number(value))).map(Number).sort((a, b) => a - b);
+  if (!sorted.length) return null;
+  const index = Math.ceil((pctValue / 100) * sorted.length) - 1;
+  return sorted[Math.max(0, Math.min(sorted.length - 1, index))];
+}
+
+function incrementNested(map, firstKey, secondKey, amount = 1) {
+  if (!map[firstKey]) map[firstKey] = {};
+  map[firstKey][secondKey] = (map[firstKey][secondKey] || 0) + amount;
+}
+
+function errorKind(errorText) {
+  const text = String(errorText || "").trim();
+  if (!text) return "unknown";
+  if (/HTTP\s*429|rate limit|too many requests/i.test(text)) return "rate_limited";
+  if (/empty response/i.test(text)) return "empty";
+  if (/compatibility validation failed/i.test(text)) return "compatibility_validation";
+  if (/cards must contain at least/i.test(text)) return "cards_min_count";
+  if (/missing tier/i.test(text)) return "missing_tier";
+  if (/invalid tier/i.test(text)) return "invalid_tier";
+  if (/unknown cap_id/i.test(text)) return "unknown_cap_id";
+  if (/duplicate cap_id/i.test(text)) return "duplicate_cap_id";
+  if (/no valid slider price found/i.test(text)) return "missing_price";
+  if (/price .*outside slider bounds/i.test(text)) return "price_range";
+  if (/Unexpected token|Unexpected end|JSON|parse/i.test(text)) return "json_parse";
+  return text.split(/\r?\n/)[0].slice(0, 160);
+}
+
+function collectCallObjectsFrom(value, out, seen, chain) {
+  if (!value) return;
+  if (Array.isArray(value)) {
+    for (const item of value) collectCallObjectsFrom(item, out, seen, chain);
+    return;
+  }
+  if (typeof value !== "object") return;
+  if (Array.isArray(value.attempt_log) && value.stage && value.prompt_sha256) {
+    const key = `${chain}|${value.stage}|${value.prompt_sha256}|${value.attempt_log.map((item) => item.raw_sha256 || "").join(",")}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      out.push(value);
+    }
+  }
+  for (const item of Object.values(value)) collectCallObjectsFrom(item, out, seen, chain);
+}
+
+function collectCallObjects(rows) {
+  const out = [];
+  const seen = new Set();
+  for (const row of rows) {
+    const chain = row.source_chain_key || chainKey(row);
+    collectCallObjectsFrom(row.r2, out, seen, chain);
+    collectCallObjectsFrom(row.failed_call, out, seen, chain);
+  }
+  return out;
+}
+
+function auditWindowStats(auditRows, fallbackStartedAtIso, fallbackFinishedAtIso, fallbackWallClockMs) {
+  const intervals = auditRows
+    .map((row) => ({
+      start: Date.parse(row.started_at),
+      end: Date.parse(row.ended_at)
+    }))
+    .filter((row) => Number.isFinite(row.start) && Number.isFinite(row.end) && row.end >= row.start)
+    .sort((a, b) => a.start - b.start);
+  if (!intervals.length) {
+    return {
+      started_at: fallbackStartedAtIso,
+      finished_at: fallbackFinishedAtIso,
+      wall_clock_ms: fallbackWallClockMs,
+      windows: []
+    };
+  }
+  const windows = [];
+  let current = { start: intervals[0].start, end: intervals[0].end };
+  for (const interval of intervals.slice(1)) {
+    if (interval.start - current.end > 5 * 60 * 1000) {
+      windows.push(current);
+      current = { start: interval.start, end: interval.end };
+    } else {
+      current.end = Math.max(current.end, interval.end);
+    }
+  }
+  windows.push(current);
+  return {
+    started_at: new Date(windows[0].start).toISOString(),
+    finished_at: new Date(windows[windows.length - 1].end).toISOString(),
+    wall_clock_ms: windows.reduce((sum, item) => sum + item.end - item.start, 0),
+    windows: windows.map((item) => ({
+      started_at: new Date(item.start).toISOString(),
+      finished_at: new Date(item.end).toISOString(),
+      wall_clock_ms: item.end - item.start
+    }))
+  };
+}
+
+function writeChainArtifacts(paths, rows, args) {
+  if (!paths.chainsDir) return;
+  fs.mkdirSync(paths.chainsDir, { recursive: true });
+  for (const row of rows) {
+    writeJson(path.join(paths.chainsDir, stage1SourceFileName(row)), {
+      arm_id: ARM_ID || args.mode,
+      arm_label: ARM_LABEL,
+      run_id: args.runId,
+      source_run_id: SOURCE_RUN_ID,
+      source_chain_key: row.source_chain_key || chainKey(row),
+      source_chain_file: row.source_chain_file || "",
+      persona_id: row.persona_id,
+      archetype: row.archetype || row.persona_pool_record?.archetype || String(row.persona_id || "").split("-")[0],
+      condition: row.condition,
+      rep: Number(row.rep || 1),
+      status: row.status,
+      generated_at: new Date().toISOString(),
+      row
+    });
+  }
+}
+
+function buildArmSummary({ paths, args, sourceRows, replayRows, chatRows, targetCount, startedAtMs, startedAtIso, finishedAtIso }) {
+  const auditRows = loadJsonl(paths.auditJsonl).filter((row) => row.run_id === RUN_ID);
+  const callObjects = collectCallObjects(chatRows);
+  const attempts = callObjects.flatMap((call) => Array.isArray(call.attempt_log) ? call.attempt_log : []);
+  const finishedAtMs = Date.now();
+  const windowStats = auditWindowStats(auditRows, startedAtIso, finishedAtIso, finishedAtMs - startedAtMs);
+  const salvageByStage = {};
+  const repairsByStage = {};
+  const repairDiffsByStage = {};
+  const attemptsDistributionByStage = {};
+  const validatorErrorsByKindStage = {};
+
+  for (const attempt of attempts) {
+    if (attempt.validator_status === "ok" && attempt.salvage) {
+      salvageByStage[attempt.stage] = (salvageByStage[attempt.stage] || 0) + 1;
+    }
+    if (attempt.validator_status === "error") {
+      incrementNested(validatorErrorsByKindStage, errorKind(attempt.validator_error), attempt.stage || "unknown");
+    }
+  }
+  for (const audit of auditRows) {
+    if (audit.status === "ERROR") repairsByStage[audit.stage || "unknown"] = (repairsByStage[audit.stage || "unknown"] || 0) + 1;
+  }
+  for (const call of callObjects) {
+    incrementNested(attemptsDistributionByStage, call.stage || "unknown", String(call.attempts || 0));
+    for (const diff of call.repair_diffs || []) {
+      repairDiffsByStage[diff.stage || call.stage || "unknown"] = (repairDiffsByStage[diff.stage || call.stage || "unknown"] || 0) + 1;
+    }
+  }
+  const is429 = (row) => Number(row.http_code || 0) === 429 || /HTTP\s*429|rate limit|too many requests/i.test(String(row.validator_error || row.error || ""));
+  const isEmpty = (row) => /empty response/i.test(String(row.validator_error || row.error || ""));
+  const errorRows = auditRows.filter((row) => row.status === "ERROR");
+  return {
+    arm_id: ARM_ID || args.mode,
+    arm_label: ARM_LABEL,
+    run_id: args.runId,
+    source_run_id: SOURCE_RUN_ID,
+    source_dir: args.sourceDir ? path.relative(ROOT, resolveWorkspacePath(args.sourceDir)) : "",
+    source_rows: sourceRows.length,
+    source_arm_id: "simple",
+    chains_expected: targetCount,
+    chains_ok: chatRows.filter((row) => row.status === "OK").length,
+    chains_failed: chatRows.filter((row) => row.status !== "OK").length,
+    replay_rows: replayRows.length,
+    calls_total: auditRows.length,
+    logical_calls_total: callObjects.length,
+    count_429: errorRows.filter(is429).length,
+    count_empty: errorRows.filter(isEmpty).length,
+    count_retry_other: errorRows.filter((row) => !is429(row) && !isEmpty(row)).length,
+    salvage_count: attempts.filter((attempt) => attempt.validator_status === "ok" && attempt.salvage).length,
+    salvage_by_stage: salvageByStage,
+    repairs_by_stage: repairsByStage,
+    repair_decision_diff_count: callObjects.reduce((sum, call) => sum + (Array.isArray(call.repair_diffs) ? call.repair_diffs.length : 0), 0),
+    repair_diffs_by_stage: repairDiffsByStage,
+    attempts_distribution_by_stage: attemptsDistributionByStage,
+    validator_errors_by_kind_stage: validatorErrorsByKindStage,
+    latency_p50_ms: percentile(auditRows.map((row) => row.latency_ms), 50),
+    latency_p95_ms: percentile(auditRows.map((row) => row.latency_ms), 95),
+    wall_clock_ms: windowStats.wall_clock_ms,
+    started_at: windowStats.started_at,
+    finished_at: windowStats.finished_at,
+    invocation_windows: windowStats.windows,
+    concurrency: args.concurrency,
+    model: LLM_MODEL,
+    provider: providerSummaryLabel(),
+    enable_thinking: false,
+    temperature: TEMPERATURE,
+    quantity_policy: QUANTITY_POLICY,
+    max_repairs: MAX_REPAIRS,
+    output_dir: paths.baseDir ? path.relative(ROOT, paths.baseDir) : "",
+    failed_chain_keys: chatRows.filter((row) => row.status !== "OK").map((row) => row.source_chain_key || chainKey(row))
+  };
+}
+
+function writeArmSummary(paths, args, sourceRows, replayRows, chatRows, targetCount, startedAtMs, startedAtIso, finishedAtIso) {
+  if (!paths.armSummary) return null;
+  const summary = buildArmSummary({ paths, args, sourceRows, replayRows, chatRows, targetCount, startedAtMs, startedAtIso, finishedAtIso });
+  writeJson(paths.armSummary, summary);
+  return summary;
+}
+
 function writeMeta(paths, args, envInfo, sourceRows, replayRows, chatRows) {
-  const existing = Object.values(paths).filter((filePath) => fs.existsSync(filePath));
+  const existing = Object.values(paths).filter((filePath) => filePath && fs.existsSync(filePath) && fs.statSync(filePath).isFile());
   writeJson(paths.meta, {
     run_id: args.runId,
     generated_at: new Date().toISOString(),
@@ -1955,10 +2630,10 @@ function writeMeta(paths, args, envInfo, sourceRows, replayRows, chatRows) {
       not_compared_to: "single_mechanism_paired fixed child-grid Arm A"
     },
     llm_config: {
-      provider: "deepseek",
+      provider: providerSummaryLabel(),
       model: LLM_MODEL,
       temperature: TEMPERATURE,
-      thinking: "disabled",
+      enable_thinking: false,
       timeout_ms: TIMEOUT_MS,
       max_repairs: MAX_REPAIRS,
       env_path_loaded: envInfo?.path || "",
@@ -1972,7 +2647,12 @@ function writeMeta(paths, args, envInfo, sourceRows, replayRows, chatRows) {
     },
     config_sha256: {
       runner: fileSha256(__filename),
-      source_jsonl: fileSha256(SOURCE_JSONL),
+      source_jsonl: fs.existsSync(SOURCE_JSONL) ? fileSha256(SOURCE_JSONL) : null,
+      source_chain_dir: args.sourceDir ? sha256(JSON.stringify(loadSourceRowsFromChainDir(args.sourceDir).map((row) => ({
+        chain_key: chainKey(row),
+        source_chain_file: row.source_chain_file,
+        source_chain_file_sha256: fileSha256(path.join(ROOT, row.source_chain_file))
+      })))) : null,
       source_summary: fs.existsSync(SOURCE_SUMMARY) ? fileSha256(SOURCE_SUMMARY) : null,
       deepseekClient: fileSha256(path.join(ROOT, "server", "llm", "deepseekClient.js")),
       full_game_all_personas: fileSha256(path.join(__dirname, "full_game_all_personas.js")),
@@ -1984,17 +2664,23 @@ function writeMeta(paths, args, envInfo, sourceRows, replayRows, chatRows) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+  RUN_ID = args.runId;
+  process.env.FORMAL_CHAT_RUN_ID = RUN_ID;
+  const startedAtMs = Date.now();
+  const startedAtIso = new Date().toISOString();
   ensureModuleResolution();
   const envInfo = args.mode === "replay" ? null : loadLocalEnv();
+  configureLlmModel(resolveLlmModel(args.model));
   const FullGame = require("./full_game_all_personas");
   const materials = FullGame.loadMaterials();
-  const sourceRows = orderedSourceRows();
-  const paths = outputPaths(args.runId);
+  const sourceRows = orderedSourceRows(args.sourceDir);
+  const paths = outputPaths(args.runId, args.outputDir);
   const replayRows = await recalculateFormalRows(sourceRows, FullGame, materials);
   writeCsv(paths.replayCsv, replayRows, Object.keys(replayRows[0] || {
     chain_key: "", persona_id: "", persona_label: "", condition: "", rep: "", stored_price: "", replay_price: "", stored_profit: "", replay_profit: "", stored_loss: "", replay_loss: "", stored_cards: "", replay_cards: "", profit_delta: ""
   }));
 
+  let targetCount = Math.min(args.limit, sourceRows.length);
   if ((args.mode === "chat" || args.mode === "satisfice" || args.mode === "satisfice_formal" || args.mode === "dimension" || args.mode === "dimension_satisfice" || args.mode === "dimension_satisfice_chat") && !args.summarizeOnly) {
     const client = require("../../server/llm/deepseekClient");
     if (!client.hasAnyKey()) throw new Error("DeepSeek key unavailable");
@@ -2002,11 +2688,15 @@ async function main() {
     const targetPool = args.onePerPersona
       ? PERSONA_ORDER.map((personaId) => sourceRows.find((row) => row.persona_id === personaId && row.condition === "Q" && Number(row.rep) === 1)).filter(Boolean)
       : sourceRows;
-    const targets = targetPool
-      .filter((row) => !args.chainKey || chainKey(row) === args.chainKey)
-      .slice(0, args.limit)
+    const targetRowsForArm = targetPool.slice(0, args.limit);
+    targetCount = targetRowsForArm.length;
+    const targetRows = targetRowsForArm
+      .filter((row) => !args.chainKey || chainKey(row) === args.chainKey);
+    const targets = targetRows
       .filter((row) => args.force || existing.get(chainKey(row))?.status !== "OK");
-    for (const sourceRow of targets) {
+    const { default: pLimit } = await import("p-limit");
+    const limit = pLimit(args.concurrency);
+    await Promise.all(targets.map((sourceRow) => limit(async () => {
       const row = args.mode === "satisfice"
         ? await runSatisficeRow({ sourceRow, FullGame, materials, client, paths, force: args.force })
         : args.mode === "satisfice_formal"
@@ -2018,19 +2708,33 @@ async function main() {
               : args.mode === "dimension_satisfice_chat"
                 ? await runDimensionSatisficeChatRow({ sourceRow, FullGame, materials, client, paths, force: args.force })
                 : await runChatRow({ sourceRow, FullGame, materials, client, paths, force: args.force });
+      writeChainArtifacts(paths, [row], args);
       console.log(`[${args.runId}] ${row.source_chain_key} ${row.status} base_profit=${Math.round(row.source_baseline?.profit ?? profitOf(sourceRow))} chat_profit=${Number.isFinite(profitOf(row)) ? Math.round(profitOf(row)) : "NA"} error=${row.error ? String(row.error).split("\n")[0] : ""}`);
-    }
+    })));
   }
 
   const chatRows = compactChatJsonl(paths).filter((row) => row.run_id === args.runId);
   writeCurrentFailures(paths, chatRows);
+  writeChainArtifacts(paths, chatRows, args);
   const rowMetrics = buildRowMetrics(chatRows);
   writeCsv(paths.rowMetricsCsv, rowMetrics, Object.keys(rowMetrics[0] || {
     source_chain_key: "", persona_id: "", persona_label: "", condition: "", rep: "", baseline_cards: "", chat_cards: "", baseline_price: "", chat_price: "", baseline_profit: "", chat_profit: "", baseline_loss: "", chat_loss: "", price_delta: "", profit_delta: "", card_delta: "", d4_attempts: "", d5_attempts: ""
   }));
+  ensureParentDir(paths.summary);
   fs.writeFileSync(paths.summary, buildSummary({ sourceRows, replayRows, chatRows }), "utf8");
+  const finishedAtIso = new Date().toISOString();
+  const armSummary = writeArmSummary(paths, args, sourceRows, replayRows, chatRows, targetCount, startedAtMs, startedAtIso, finishedAtIso);
   writeMeta(paths, args, envInfo, sourceRows, replayRows, chatRows);
-  console.log(JSON.stringify({ run_id: args.runId, mode: args.mode, source_rows: sourceRows.length, chat_rows: chatRows.filter((row) => row.status === "OK").length, summary: paths.summary }, null, 2));
+  console.log(JSON.stringify({
+    run_id: args.runId,
+    mode: args.mode,
+    source_rows: sourceRows.length,
+    chat_rows: chatRows.filter((row) => row.status === "OK").length,
+    summary: paths.summary,
+    arm_summary: paths.armSummary || "",
+    chains_expected: armSummary?.chains_expected ?? targetCount,
+    chains_failed: armSummary?.chains_failed ?? chatRows.filter((row) => row.status !== "OK").length
+  }, null, 2));
 }
 
 if (require.main === module) {
@@ -2039,3 +2743,13 @@ if (require.main === module) {
     process.exit(1);
   });
 }
+
+module.exports = {
+  parseCardsFromChat,
+  parsePriceFromChat,
+  parseD4JsonPlan,
+  parseD5Json,
+  parseDimensionD4ChatPlan,
+  parseDimensionD4Plan,
+  errorKind
+};
