@@ -1,0 +1,193 @@
+{
+  "schema": "emba_sim_freeze_manifest_v1",
+  "version_id": "sanity_r2_team_story_from_r1_actor12_20260814_2329",
+  "scope": "sanity_r2_team",
+  "design": "story_d4d5_narrator_from_actor_isolated_r1_source12",
+  "created_at": "2026-08-14T23:29:10+08:00",
+  "status": "pre_run",
+  "git": {
+    "head": "b21c5c8790783d36e11ec2eea05f748676c017d8",
+    "head_policy": "ancestor_ok_with_hashes",
+    "dirty_policy": "key_hash_locked_legacy",
+    "note": "Historical accepted R2 was restored from HEAD plus archived dirty patch; guard locks key files by sha256 before replay."
+  },
+  "references": {
+    "restored_archive": "runs_v4flash_0731/version_archive/20260814_clean_pipeline_v1_prefreeze/archive_manifest.json",
+    "restored_patch": "runs_v4flash_0731/version_archive/20260814_clean_pipeline_v1_prefreeze/current_relevant_dirty_diff.patch",
+    "polluted_backup": "runs_v4flash_0731/version_archive/20260814_restore_polluted_backup_20260814T232020",
+    "r2_reference_summary": "runs_v4flash_0731/team_pilot/team_room_story_d4d5_narrator_d5_v1_pilot42_combined_patch1_summary.json"
+  },
+  "hashes": {
+    "code": [
+      {
+        "path": "server/synthetic/teamSim/orchestrator.js",
+        "sha256": "76ab8fd4049681371c125a9fd63c228560d0838a810f5cebdb366c9cdae2b092"
+      },
+      {
+        "path": "server/synthetic/teamSim/submitParser.js",
+        "sha256": "642a72cb9c1922c3b1a7816ede24d2cd3f415f59ced6f54afb7c31b7c75c7781"
+      },
+      {
+        "path": "server/multiplayer/pricingContext.js",
+        "sha256": "30089f2f6d600fafe797e033a7e0ba8d22ee73adb336428f3f17b514656ca5ef"
+      }
+    ],
+    "runner": [
+      {
+        "path": "scripts/analysis/replay_team_r2_from_r1.js",
+        "sha256": "92b0f22d225c3c1fac2432f420a91d7948ac815a8f1e54ebbb83cab3fdc236b1"
+      },
+      {
+        "path": "scripts/analysis/freeze_guard.js",
+        "sha256": "b5dbebc8d91b1a1ede6cc1cd02a1f6422e9078c3f105a5e56b4b2029743e211b"
+      }
+    ],
+    "data": [
+      {
+        "path": "data/task_blind_persona_pipeline_v1/r1_pool42_20260812/persona_pool_task_blind_narrative_v1.json",
+        "sha256": "3e79d106138e4f7ee57b02b142cd5e9ed3d37bedd815172313c564a1f945438e"
+      }
+    ],
+    "config": [
+      {
+        "path": "game_config_v0.1/team_sim_config.json",
+        "sha256": "0105095744acb918544f706ff3336da71a9b23b6ab8398183f1acf2e6ef43c17"
+      },
+      {
+        "path": "game_config_v0.1/llm_models.json",
+        "sha256": "a45d15fc33a6ba51c7194e156ed59fed5bb61d0a437d2b8b6a9702289b51e1b6"
+      },
+      {
+        "path": "game_config_v0.1/round2_engine_params.json",
+        "sha256": "918deac452bfffb1b759685e3303fae7db8b382fdf5bafffe769cdedd80f0d5a"
+      }
+    ]
+  },
+  "forbidden_patterns": [
+    {
+      "path": "server/synthetic/teamSim/orchestrator.js",
+      "patterns": [
+        "task_blind_adapter_mode",
+        "require_d5_confirm_price",
+        "team_r2_taskblind_adapter_confirm_v2"
+      ]
+    },
+    {
+      "path": "scripts/analysis/replay_team_r2_from_r1.js",
+      "patterns": [
+        "team_sim_presets",
+        "--preset",
+        "--fork-from",
+        "task_blind_adapter_mode",
+        "require_d5_confirm_price"
+      ]
+    }
+  ],
+  "source": {
+    "description": "Accepted changed R1 source for 12-team sanity replay.",
+    "batches": [
+      "runs_v4flash_0731/team_pilot/team_r1_taskblind_actor_isolated_v1_12check_20260814",
+      "runs_v4flash_0731/team_pilot/team_r1_taskblind_actor_isolated_v1_12check_20260814_retry10"
+    ],
+    "expected_replay_dirs": 12,
+    "r1_frozen_hashes": [
+      {
+        "path": "runs_v4flash_0731/team_pilot/team_r1_taskblind_actor_isolated_v1_12check_20260814/SYN-team_r1_taskblind_actor_isolated_v1_12check_20260814-team_room_r1_actor_isolated_v1-20260813-taskblind-team-actor-r1r2-full42:01/r1_frozen.json",
+        "seed": "01",
+        "grid_id": "ToC_DIFF_ADULT",
+        "architecture": "Hybrid",
+        "sha256": "989e160142f161c1bb13098412332840ecb30fe403e7b8c0838f5d0ed79432a7"
+      },
+      {
+        "path": "runs_v4flash_0731/team_pilot/team_r1_taskblind_actor_isolated_v1_12check_20260814/SYN-team_r1_taskblind_actor_isolated_v1_12check_20260814-team_room_r1_actor_isolated_v1-20260813-taskblind-team-actor-r1r2-full42:02/r1_frozen.json",
+        "seed": "02",
+        "grid_id": "ToC_DIFF_CHILD",
+        "architecture": "Experience",
+        "sha256": "4c2f9051e2701c99a1db46db825c54eb96fe643f7b64ef99f5a127d67884635c"
+      },
+      {
+        "path": "runs_v4flash_0731/team_pilot/team_r1_taskblind_actor_isolated_v1_12check_20260814/SYN-team_r1_taskblind_actor_isolated_v1_12check_20260814-team_room_r1_actor_isolated_v1-20260813-taskblind-team-actor-r1r2-full42:03/r1_frozen.json",
+        "seed": "03",
+        "grid_id": "ToC_DIFF_ELDER",
+        "architecture": "Experience",
+        "sha256": "2c01285ac04f1e90bd5baef10ddf2a04b692fdc328d4610f24df5ec003d62989"
+      },
+      {
+        "path": "runs_v4flash_0731/team_pilot/team_r1_taskblind_actor_isolated_v1_12check_20260814/SYN-team_r1_taskblind_actor_isolated_v1_12check_20260814-team_room_r1_actor_isolated_v1-20260813-taskblind-team-actor-r1r2-full42:04/r1_frozen.json",
+        "seed": "04",
+        "grid_id": "ToB_DIFF_ELDER",
+        "architecture": "Experience",
+        "sha256": "84d9d38cf9dc8469f9ce0412f145ab1d7f5bb4bc4c574febe82de81d4bbecf8a"
+      },
+      {
+        "path": "runs_v4flash_0731/team_pilot/team_r1_taskblind_actor_isolated_v1_12check_20260814/SYN-team_r1_taskblind_actor_isolated_v1_12check_20260814-team_room_r1_actor_isolated_v1-20260813-taskblind-team-actor-r1r2-full42:05/r1_frozen.json",
+        "seed": "05",
+        "grid_id": "ToB_DIFF_ELDER",
+        "architecture": "Hybrid",
+        "sha256": "75fb494c233c82f77953806c46df44e5568f9cc8c3abc00a224d6d90a80206a4"
+      },
+      {
+        "path": "runs_v4flash_0731/team_pilot/team_r1_taskblind_actor_isolated_v1_12check_20260814/SYN-team_r1_taskblind_actor_isolated_v1_12check_20260814-team_room_r1_actor_isolated_v1-20260813-taskblind-team-actor-r1r2-full42:06/r1_frozen.json",
+        "seed": "06",
+        "grid_id": "ToB_DIFF_ELDER",
+        "architecture": "Function",
+        "sha256": "b0fd59db43ac1d8da7ed684130e25cd8a58bba8746c2c5e812c9723a9e4b2ea8"
+      },
+      {
+        "path": "runs_v4flash_0731/team_pilot/team_r1_taskblind_actor_isolated_v1_12check_20260814/SYN-team_r1_taskblind_actor_isolated_v1_12check_20260814-team_room_r1_actor_isolated_v1-20260813-taskblind-team-actor-r1r2-full42:07/r1_frozen.json",
+        "seed": "07",
+        "grid_id": "ToB_COST_ELDER",
+        "architecture": "Hybrid",
+        "sha256": "4866eede21e6f1e5b04b425540054467732e1accaff920ec34deac603398f030"
+      },
+      {
+        "path": "runs_v4flash_0731/team_pilot/team_r1_taskblind_actor_isolated_v1_12check_20260814/SYN-team_r1_taskblind_actor_isolated_v1_12check_20260814-team_room_r1_actor_isolated_v1-20260813-taskblind-team-actor-r1r2-full42:08/r1_frozen.json",
+        "seed": "08",
+        "grid_id": "ToB_DIFF_ADULT",
+        "architecture": "Function",
+        "sha256": "0aeaeef9905a5e758e770d07c1baf8594d78c5e85d465bb7c0b63dc9128b1710"
+      },
+      {
+        "path": "runs_v4flash_0731/team_pilot/team_r1_taskblind_actor_isolated_v1_12check_20260814/SYN-team_r1_taskblind_actor_isolated_v1_12check_20260814-team_room_r1_actor_isolated_v1-20260813-taskblind-team-actor-r1r2-full42:09/r1_frozen.json",
+        "seed": "09",
+        "grid_id": "ToB_COST_ADULT",
+        "architecture": "Hybrid",
+        "sha256": "6227377fb09faf7576ec1597ca307d5c15a5cc0e15fcfd3b4b2e7c514e35e6f5"
+      },
+      {
+        "path": "runs_v4flash_0731/team_pilot/team_r1_taskblind_actor_isolated_v1_12check_20260814_retry10/SYN-team_r1_taskblind_actor_isolated_v1_12check_20260814_retry10-team_room_r1_actor_isolated_v1-20260813-taskblind-team-actor-r1r2-full42:10/r1_frozen.json",
+        "seed": "10",
+        "grid_id": "ToC_DIFF_CHILD",
+        "architecture": "Experience",
+        "sha256": "c1ad044f91f46574c74b61905537654ae0f4759656e207e9fe594d07d674d3af"
+      },
+      {
+        "path": "runs_v4flash_0731/team_pilot/team_r1_taskblind_actor_isolated_v1_12check_20260814/SYN-team_r1_taskblind_actor_isolated_v1_12check_20260814-team_room_r1_actor_isolated_v1-20260813-taskblind-team-actor-r1r2-full42:11/r1_frozen.json",
+        "seed": "11",
+        "grid_id": "ToB_COST_ADULT",
+        "architecture": "Function",
+        "sha256": "41adda6e18ada367353a57d1af839bc88742878934efe38c77bcf7454ba43e72"
+      },
+      {
+        "path": "runs_v4flash_0731/team_pilot/team_r1_taskblind_actor_isolated_v1_12check_20260814/SYN-team_r1_taskblind_actor_isolated_v1_12check_20260814-team_room_r1_actor_isolated_v1-20260813-taskblind-team-actor-r1r2-full42:12/r1_frozen.json",
+        "seed": "12",
+        "grid_id": "ToC_DIFF_ELDER",
+        "architecture": "Experience",
+        "sha256": "49748f134a1efdc12c21f6b6d7484232546579c0df6cf3585ec293b739c91287"
+      }
+    ]
+  },
+  "runner": {
+    "script": "scripts/analysis/replay_team_r2_from_r1.js",
+    "output_root": "runs_v4flash_0731/team_r2_replay",
+    "batch": "sanity_r2_team_story_from_r1_actor12_20260814_2329",
+    "command": "LLM_PROVIDER=deepseek LLM_MODEL_OVERRIDE=deepseek-v4-flash LLM_BASE_URL=https://api.deepseek.com LLM_DISABLE_THINKING=1 DEEPSEEK_DISABLE_THINKING=1 node scripts/analysis/replay_team_r2_from_r1.js --source-batch runs_v4flash_0731/team_pilot/team_r1_taskblind_actor_isolated_v1_12check_20260814 --source-batch runs_v4flash_0731/team_pilot/team_r1_taskblind_actor_isolated_v1_12check_20260814_retry10 --batch sanity_r2_team_story_from_r1_actor12_20260814_2329 --concurrency 10 --arm team_room_story_d4d5_narrator_d5_v1 --pool-path data/task_blind_persona_pipeline_v1/r1_pool42_20260812/persona_pool_task_blind_narrative_v1.json --use-current-config --team-size 5 --temperature 0.55"
+  },
+  "expected": {
+    "api_calls": "R2 replay only; no R1 API calls",
+    "sanity_sample_size": 12,
+    "r2_arm": "team_room_story_d4d5_narrator_d5_v1",
+    "team_size": 5,
+    "temperature": 0.55
+  }
+}

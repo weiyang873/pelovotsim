@@ -4,6 +4,13 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
+const {
+  FROZEN_PRESETS,
+  applyPresetDefaults,
+  assertSummaryMatchesPreset,
+  listPresets,
+  rejectLockedOverrides
+} = require("./team_sim_presets");
 
 const ROOT = path.resolve(__dirname, "../..");
 const DEFAULT_POOL_PATH = path.join(ROOT, "data", "persona_pool_random42_interface_v1", "persona_pool_v2.json");
@@ -38,18 +45,60 @@ function parseArgs(argv) {
     concurrency: 10,
     batch: `single_simple_layered_ui_parity_${now}`,
     poolPath: DEFAULT_POOL_PATH,
-    outputRoot: DEFAULT_OUTPUT_ROOT
+    outputRoot: DEFAULT_OUTPUT_ROOT,
+    presetMeta: null,
+    listPresets: false,
+    showPreset: null
   };
+  let presetName = "";
+  let forkFrom = "";
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
-    if (arg === "--arms") args.arms = String(argv[++index] || "").split(",").map((item) => item.trim()).filter(Boolean);
-    else if (arg === "--personas") args.personas = Number(argv[++index]);
-    else if (arg === "--concurrency") args.concurrency = Number(argv[++index]);
-    else if (arg === "--batch") args.batch = String(argv[++index] || "").trim();
-    else if (arg === "--pool-path") args.poolPath = path.resolve(ROOT, String(argv[++index] || "").trim());
-    else if (arg === "--output-root") args.outputRoot = path.resolve(ROOT, String(argv[++index] || "").trim());
+    if (arg === "--preset") presetName = String(argv[++index] || "").trim();
+    else if (arg === "--fork-from") forkFrom = String(argv[++index] || "").trim();
+    else if (arg === "--show-preset") index += 1;
+    else if (arg.startsWith("--") && !["--list-presets"].includes(arg)) index += 1;
+  }
+  if (presetName && forkFrom) throw new Error("use either --preset or --fork-from, not both");
+  const activePresetName = presetName || forkFrom;
+  if (activePresetName) applyPresetDefaults(args, activePresetName, "single_ui_parity", Boolean(forkFrom));
+  const cliTouched = new Set();
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+    if (arg === "--preset" || arg === "--fork-from") {
+      index += 1;
+    } else if (arg === "--list-presets") {
+      args.listPresets = true;
+    } else if (arg === "--show-preset") {
+      args.showPreset = String(argv[++index] || "").trim();
+    } else if (arg === "--arms") {
+      args.arms = String(argv[++index] || "").split(",").map((item) => item.trim()).filter(Boolean);
+      cliTouched.add("arms");
+    }
+    else if (arg === "--personas") {
+      args.personas = Number(argv[++index]);
+      cliTouched.add("personas");
+    }
+    else if (arg === "--concurrency") {
+      args.concurrency = Number(argv[++index]);
+      cliTouched.add("concurrency");
+    }
+    else if (arg === "--batch") {
+      args.batch = String(argv[++index] || "").trim();
+      cliTouched.add("batch");
+    }
+    else if (arg === "--pool-path") {
+      args.poolPath = path.resolve(ROOT, String(argv[++index] || "").trim());
+      cliTouched.add("poolPath");
+    }
+    else if (arg === "--output-root") {
+      args.outputRoot = path.resolve(ROOT, String(argv[++index] || "").trim());
+      cliTouched.add("outputRoot");
+    }
     else throw new Error(`unknown argument: ${arg}`);
   }
+  if (activePresetName) rejectLockedOverrides(cliTouched, "single_ui_parity", Boolean(forkFrom), activePresetName);
+  if (args.listPresets || args.showPreset) return args;
   if (!args.arms.length || args.arms.some((arm) => !["simple", "layered"].includes(arm))) {
     throw new Error("--arms must contain simple and/or layered");
   }
@@ -316,6 +365,16 @@ async function main() {
   process.env.LLM_DISABLE_THINKING = "1";
 
   const args = parseArgs(process.argv.slice(2));
+  if (args.listPresets) {
+    console.log(JSON.stringify(listPresets("single_ui_parity"), null, 2));
+    return;
+  }
+  if (args.showPreset) {
+    const preset = FROZEN_PRESETS[args.showPreset];
+    if (!preset) throw new Error(`unknown preset: ${args.showPreset}`);
+    console.log(JSON.stringify(preset, null, 2));
+    return;
+  }
   const modelRegistry = require("../../server/llm/modelRegistry");
   const deepseek = require("../../server/llm/deepseekClient");
   if (modelRegistry.getProvider() !== "deepseek") throw new Error(`LLM_PROVIDER must resolve to deepseek, got ${modelRegistry.getProvider()}`);
@@ -388,7 +447,8 @@ async function main() {
       persona_pool_seed: task.record.seed || null,
       provider: modelRegistry.getProvider(),
       model: modelRegistry.getModel("chat_service"),
-      disable_thinking: true
+      disable_thinking: true,
+      preset: args.presetMeta
     };
     rows.push(row);
     writeJson(path.join(chainsDir, `${task.arm}_${task.record.persona_id}.json`), row);
@@ -411,12 +471,14 @@ async function main() {
     personas_per_arm: args.personas,
     concurrency: args.concurrency,
     pool_path: path.relative(ROOT, args.poolPath),
+    preset: args.presetMeta,
     selected_persona_ids: pool.map((record) => record.persona_id),
     started_at: startedAt,
     finished_at: finishedAt,
     wall_clock_ms: new Date(finishedAt).getTime() - new Date(startedAt).getTime(),
     by_arm: Object.fromEntries(args.arms.map((arm) => [arm, summarizeRows(rows, arm)]))
   };
+  if (args.presetMeta) assertSummaryMatchesPreset(summary, args.presetMeta);
   writeJson(path.join(outputDir, "summary.json"), summary);
   writeJson(path.join(outputDir, "rows.json"), rows);
   console.log(JSON.stringify(summary, null, 2));

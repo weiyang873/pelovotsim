@@ -1,0 +1,556 @@
+[
+  {
+    "persona_id": "R01",
+    "pair_index": 1,
+    "archetype": "B",
+    "archetype_label": "职业经理人",
+    "seed": "20260814-random6-free-persona-simple-layered-trial-v1",
+    "surface": {
+      "name": "陈雅琳",
+      "gender": "female",
+      "age": 39,
+      "edu": "MBA（国内）",
+      "overseas": {
+        "hasOverseas": false,
+        "destination": "",
+        "duration": ""
+      },
+      "mbti": "ESTJ",
+      "expression_style": "结构化、有逻辑层次、喜欢第一第二第三、PPT 思维。同样结构化但更注重团队共识，会主动询问大家怎么看\n\n你的思维特征（MBTI: ESTJ）：\n你在小组讨论中倾向主动发言、提出观点，不怕表达不同意见。\n你关注具体的事实和细节，喜欢用实际案例说话，不太信空洞的理论。\n你做决策偏逻辑分析，写 VP 时注重因果关系和数据支撑，访谈时关注功能和效率。\n你喜欢尽快达成结论、做好计划，讨论时倾向推动收敛，不喜欢开放式发散太久。"
+    },
+    "jinang_draw": {
+      "market": {
+        "id": "M-02",
+        "name": "机构客户需求挖掘",
+        "desc_for_player": "你有丰富的 B 端大客户销售经验，擅长理解采购决策链、写方案、做 POC 验证。你知道机构客户最看重的不是'酷'，而是'可量化的效果'和'可控的售后风险'。",
+        "hint_keyword": "B端销售",
+        "r1_display": "你的团队具备机构客户开发能力，在面向组织/企业的方向上可能有优势",
+        "affinity_weights": {
+          "customer_type": {
+            "ToB": 0.9,
+            "ToC": 0.2
+          },
+          "strategy": {
+            "DIFF": 0.7,
+            "COST": 0.7
+          },
+          "age": {
+            "ELDER": 0.8,
+            "ADULT": 0.7,
+            "CHILD": 0.7
+          },
+          "channel": {
+            "DIRECT": 0.9,
+            "DISTRIBUTOR": 0.5,
+            "E_COMMERCE": 0.1
+          }
+        },
+        "effect_at_full_match": {
+          "r2_share_bonus": 0.04,
+          "r2_evi_bonus": 0.1,
+          "description_reveal": "B端销售经验提升了客户访谈质量和渠道执行效率"
+        }
+      },
+      "tech": {
+        "id": "T-06",
+        "name": "安全与合规工程",
+        "desc_for_player": "你的团队在产品安全认证（电气、材料、数据隐私）方面有完整经验，知道 CE/FCC/GB 的全套流程。你的经验是：'安全合规做得早，比做得急便宜十倍'。",
+        "hint_keyword": "安全合规",
+        "r1_display": "你的团队在安全合规工程上有积累",
+        "affinity_weights": {
+          "architecture": {
+            "Function": 0.8,
+            "Hybrid": 0.7,
+            "Experience": 0.5
+          },
+          "strategy": {
+            "DIFF": 0.6,
+            "COST": 0.7
+          },
+          "age": {
+            "CHILD": 0.9,
+            "ELDER": 0.9,
+            "ADULT": 0.5
+          },
+          "r2_groups": {
+            "safety_trust": 0.9,
+            "ops_maintenance": 0.4,
+            "motion_navigation": 0.3
+          }
+        },
+        "effect_at_full_match": {
+          "r2_risk_reduction_for_group": {
+            "safety_trust": 0.35
+          },
+          "r2_dCOGS_discount_for_cards": {
+            "child_safety_module": 0.3,
+            "data_privacy_compliance": 0.25
+          },
+          "description_reveal": "安全合规经验大幅降低了认证成本和安全类能力卡的风险"
+        }
+      },
+      "method": "seeded_random_pair_draw_from_jinang_cards_v2; same draw for Q/S pair"
+    },
+    "synthetic": true
+  },
+  {
+    "persona_id": "R02",
+    "pair_index": 2,
+    "archetype": "F",
+    "archetype_label": "销售铁军",
+    "seed": "20260814-random6-free-persona-simple-layered-trial-v1",
+    "surface": {
+      "name": "杨彪",
+      "gender": "male",
+      "age": 46,
+      "edu": "大专",
+      "overseas": {
+        "hasOverseas": false,
+        "destination": "",
+        "duration": ""
+      },
+      "mbti": "ESTP",
+      "expression_style": "有感染力、善于讲故事和用案例、语言有画面感但逻辑有时跳跃\n\n你的思维特征（MBTI: ESTP）：\n你在小组讨论中倾向主动发言、提出观点，不怕表达不同意见。\n你关注具体的事实和细节，喜欢用实际案例说话，不太信空洞的理论。\n你做决策偏逻辑分析，写 VP 时注重因果关系和数据支撑，访谈时关注功能和效率。\n你喜欢保持开放、多探索可能性，讨论时可能提出意外角度，但有时拖延决策。"
+    },
+    "jinang_draw": {
+      "market": {
+        "id": "M-04",
+        "name": "企业采购预算运作",
+        "desc_for_player": "你熟悉企业内部的预算审批流程——从部门提需求到财务审批到最终采购。你知道怎么帮客户'把预算用在你的产品上'，也知道什么时候该走集采、什么时候该走部门试点。",
+        "hint_keyword": "预算运作",
+        "r1_display": "你的团队了解企业预算流程，在面向有采购预算的客户时可能有优势",
+        "affinity_weights": {
+          "customer_type": {
+            "ToB": 0.9,
+            "ToC": 0.1
+          },
+          "strategy": {
+            "DIFF": 0.8,
+            "COST": 0.6
+          },
+          "age": {
+            "ADULT": 0.8,
+            "ELDER": 0.7,
+            "CHILD": 0.6
+          },
+          "channel": {
+            "DIRECT": 0.9,
+            "DISTRIBUTOR": 0.4,
+            "E_COMMERCE": 0.1
+          }
+        },
+        "effect_at_full_match": {
+          "r2_wtp_bonus": 0.08,
+          "r2_share_bonus": 0.02,
+          "description_reveal": "预算运作经验提升了客户的有效支付意愿"
+        }
+      },
+      "tech": {
+        "id": "T-07",
+        "name": "云服务与内容运营",
+        "desc_for_player": "你的团队有云端服务架构和内容运营的经验——推送系统、用户画像、A/B 测试、内容生命周期管理都做过。你知道'持续运营'比'一次开发'难十倍但也值十倍。",
+        "hint_keyword": "云端运营",
+        "r1_display": "你的团队在云服务和内容运营上有积累",
+        "affinity_weights": {
+          "architecture": {
+            "Experience": 0.8,
+            "Hybrid": 0.7,
+            "Function": 0.4
+          },
+          "strategy": {
+            "DIFF": 0.7,
+            "COST": 0.5
+          },
+          "age": {
+            "ADULT": 0.8,
+            "CHILD": 0.7,
+            "ELDER": 0.6
+          },
+          "r2_groups": {
+            "ops_maintenance": 0.9,
+            "scalable_connectable": 0.7,
+            "interaction_expression": 0.3
+          }
+        },
+        "effect_at_full_match": {
+          "r2_sub_lift_bonus": 0.2,
+          "r2_attach_bonus": 0.06,
+          "description_reveal": "云端运营能力提升了订阅服务的留存率和运营效率"
+        }
+      },
+      "method": "seeded_random_pair_draw_from_jinang_cards_v2; same draw for Q/S pair"
+    },
+    "synthetic": true
+  },
+  {
+    "persona_id": "R03",
+    "pair_index": 3,
+    "archetype": "G",
+    "archetype_label": "互联网PM转型",
+    "seed": "20260814-random6-free-persona-simple-layered-trial-v1",
+    "surface": {
+      "name": "高悦",
+      "gender": "female",
+      "age": 31,
+      "edu": "硕士（国内）",
+      "overseas": {
+        "hasOverseas": false,
+        "destination": "",
+        "duration": ""
+      },
+      "mbti": "ENTJ",
+      "expression_style": "会用赋能、用户心智、北极星指标、PMF、MVP 这类术语，流畅但可能过度抽象。同样使用互联网术语但更注重用户情感维度，会主动补充用户感受类洞察\n\n你的思维特征（MBTI: ENTJ）：\n你在小组讨论中倾向主动发言、提出观点，不怕表达不同意见。\n你喜欢看大局和趋势，善于联想和类比，有时会忽略执行细节。\n你做决策偏逻辑分析，写 VP 时注重因果关系和数据支撑，访谈时关注功能和效率。\n你喜欢尽快达成结论、做好计划，讨论时倾向推动收敛，不喜欢开放式发散太久。"
+    },
+    "jinang_draw": {
+      "market": {
+        "id": "M-04",
+        "name": "企业采购预算运作",
+        "desc_for_player": "你熟悉企业内部的预算审批流程——从部门提需求到财务审批到最终采购。你知道怎么帮客户'把预算用在你的产品上'，也知道什么时候该走集采、什么时候该走部门试点。",
+        "hint_keyword": "预算运作",
+        "r1_display": "你的团队了解企业预算流程，在面向有采购预算的客户时可能有优势",
+        "affinity_weights": {
+          "customer_type": {
+            "ToB": 0.9,
+            "ToC": 0.1
+          },
+          "strategy": {
+            "DIFF": 0.8,
+            "COST": 0.6
+          },
+          "age": {
+            "ADULT": 0.8,
+            "ELDER": 0.7,
+            "CHILD": 0.6
+          },
+          "channel": {
+            "DIRECT": 0.9,
+            "DISTRIBUTOR": 0.4,
+            "E_COMMERCE": 0.1
+          }
+        },
+        "effect_at_full_match": {
+          "r2_wtp_bonus": 0.08,
+          "r2_share_bonus": 0.02,
+          "description_reveal": "预算运作经验提升了客户的有效支付意愿"
+        }
+      },
+      "tech": {
+        "id": "T-10",
+        "name": "健康数据与算法",
+        "desc_for_player": "你的团队在健康数据采集、清洗和算法分析方面有经验——从传感器选型到数据管线到异常检测模型。你知道'数据准确'比'算法花哨'重要一百倍。",
+        "hint_keyword": "健康算法",
+        "r1_display": "你的团队在健康数据与算法上有积累",
+        "affinity_weights": {
+          "architecture": {
+            "Function": 0.8,
+            "Hybrid": 0.7,
+            "Experience": 0.4
+          },
+          "strategy": {
+            "DIFF": 0.7,
+            "COST": 0.5
+          },
+          "age": {
+            "ELDER": 0.9,
+            "ADULT": 0.6,
+            "CHILD": 0.4
+          },
+          "r2_groups": {
+            "perception_understanding": 0.8,
+            "safety_trust": 0.6,
+            "ops_maintenance": 0.4
+          }
+        },
+        "effect_at_full_match": {
+          "r2_risk_reduction_for_group": {
+            "perception_understanding": 0.2,
+            "safety_trust": 0.15
+          },
+          "r2_performance_bonus_for_group": {
+            "perception_understanding": 3
+          },
+          "description_reveal": "健康数据能力降低了监测类能力卡的风险并提升了数据准确性"
+        }
+      },
+      "method": "seeded_random_pair_draw_from_jinang_cards_v2; same draw for Q/S pair"
+    },
+    "synthetic": true
+  },
+  {
+    "persona_id": "R04",
+    "pair_index": 4,
+    "archetype": "D",
+    "archetype_label": "二代接班人",
+    "seed": "20260814-random6-free-persona-simple-layered-trial-v1",
+    "surface": {
+      "name": "黄思齐",
+      "gender": "female",
+      "age": 36,
+      "edu": "本科（海外）",
+      "overseas": {
+        "hasOverseas": true,
+        "destination": "英国（LSE/UCL）",
+        "duration": "1-3年"
+      },
+      "mbti": "ESFP",
+      "expression_style": "流利但偶尔空洞、喜欢引用国外案例、中英文混杂。可能更有人文关怀，对企业社会责任类话题更敏感\n\n你的思维特征（MBTI: ESFP）：\n你在小组讨论中倾向主动发言、提出观点，不怕表达不同意见。\n你关注具体的事实和细节，喜欢用实际案例说话，不太信空洞的理论。\n你做决策时会考虑人的感受，写 VP 时自然关注用户情感痛点，访谈时善于共情。\n你喜欢保持开放、多探索可能性，讨论时可能提出意外角度，但有时拖延决策。"
+    },
+    "jinang_draw": {
+      "market": {
+        "id": "M-06",
+        "name": "行业政策与合规导航",
+        "desc_for_player": "你对政策环境非常敏感，擅长解读行业法规和补贴政策，知道怎么让产品'符合标准'并利用政策红利。你的经验是：'合规不是成本，是护城河'。",
+        "hint_keyword": "政策合规",
+        "r1_display": "你的团队具备政策合规能力，在受监管或有政策支持的方向上可能有优势",
+        "affinity_weights": {
+          "customer_type": {
+            "ToB": 0.8,
+            "ToC": 0.5
+          },
+          "strategy": {
+            "DIFF": 0.6,
+            "COST": 0.7
+          },
+          "age": {
+            "ELDER": 0.9,
+            "CHILD": 0.8,
+            "ADULT": 0.4
+          },
+          "channel": {
+            "DIRECT": 0.8,
+            "DISTRIBUTOR": 0.5,
+            "E_COMMERCE": 0.3
+          }
+        },
+        "effect_at_full_match": {
+          "r2_risk_reduction": 0.2,
+          "r2_crowding_reduction": 0.1,
+          "description_reveal": "合规能力降低了准入风险并减少有效竞争者数量"
+        }
+      },
+      "tech": {
+        "id": "T-06",
+        "name": "安全与合规工程",
+        "desc_for_player": "你的团队在产品安全认证（电气、材料、数据隐私）方面有完整经验，知道 CE/FCC/GB 的全套流程。你的经验是：'安全合规做得早，比做得急便宜十倍'。",
+        "hint_keyword": "安全合规",
+        "r1_display": "你的团队在安全合规工程上有积累",
+        "affinity_weights": {
+          "architecture": {
+            "Function": 0.8,
+            "Hybrid": 0.7,
+            "Experience": 0.5
+          },
+          "strategy": {
+            "DIFF": 0.6,
+            "COST": 0.7
+          },
+          "age": {
+            "CHILD": 0.9,
+            "ELDER": 0.9,
+            "ADULT": 0.5
+          },
+          "r2_groups": {
+            "safety_trust": 0.9,
+            "ops_maintenance": 0.4,
+            "motion_navigation": 0.3
+          }
+        },
+        "effect_at_full_match": {
+          "r2_risk_reduction_for_group": {
+            "safety_trust": 0.35
+          },
+          "r2_dCOGS_discount_for_cards": {
+            "child_safety_module": 0.3,
+            "data_privacy_compliance": 0.25
+          },
+          "description_reveal": "安全合规经验大幅降低了认证成本和安全类能力卡的风险"
+        }
+      },
+      "method": "seeded_random_pair_draw_from_jinang_cards_v2; same draw for Q/S pair"
+    },
+    "synthetic": true
+  },
+  {
+    "persona_id": "R05",
+    "pair_index": 5,
+    "archetype": "B",
+    "archetype_label": "职业经理人",
+    "seed": "20260814-random6-free-persona-simple-layered-trial-v1",
+    "surface": {
+      "name": "周明远",
+      "gender": "male",
+      "age": 40,
+      "edu": "本科（985）",
+      "overseas": {
+        "hasOverseas": true,
+        "destination": "短期交换/考察",
+        "duration": "3-6个月"
+      },
+      "mbti": "ESTJ",
+      "expression_style": "结构化、有逻辑层次、喜欢第一第二第三、PPT 思维\n\n你的思维特征（MBTI: ESTJ）：\n你在小组讨论中倾向主动发言、提出观点，不怕表达不同意见。\n你关注具体的事实和细节，喜欢用实际案例说话，不太信空洞的理论。\n你做决策偏逻辑分析，写 VP 时注重因果关系和数据支撑，访谈时关注功能和效率。\n你喜欢尽快达成结论、做好计划，讨论时倾向推动收敛，不喜欢开放式发散太久。"
+    },
+    "jinang_draw": {
+      "market": {
+        "id": "M-01",
+        "name": "社群运营与口碑裂变",
+        "desc_for_player": "你擅长在垂直社群中制造话题和口碑传播，懂得如何让早期用户自发成为产品的推广者。你的经验覆盖多个消费品类，核心能力是'低成本冷启动'。",
+        "hint_keyword": "口碑冷启动",
+        "r1_display": "你的团队具备社群冷启动能力，在需要快速建立用户认知的方向上可能有优势",
+        "affinity_weights": {
+          "customer_type": {
+            "ToC": 0.9,
+            "ToB": 0.3
+          },
+          "strategy": {
+            "DIFF": 0.8,
+            "COST": 0.5
+          },
+          "age": {
+            "ADULT": 0.9,
+            "CHILD": 0.7,
+            "ELDER": 0.4
+          },
+          "channel": {
+            "E_COMMERCE": 0.9,
+            "DIRECT": 0.5,
+            "DISTRIBUTOR": 0.2
+          }
+        },
+        "effect_at_full_match": {
+          "r2_share_bonus": 0.03,
+          "r2_price_penalty_reduction": 0.15,
+          "description_reveal": "社群口碑降低了市场教育成本，早期渗透率提升"
+        }
+      },
+      "tech": {
+        "id": "T-05",
+        "name": "边缘计算与低功耗架构",
+        "desc_for_player": "你的团队在嵌入式 AI 和低功耗芯片方案方面有积累，能在端侧跑起实时推理而不依赖云端。你最看重的指标是'每瓦特算力'和'离线可用性'。",
+        "hint_keyword": "边缘计算",
+        "r1_display": "你的团队在边缘计算技术上有积累",
+        "affinity_weights": {
+          "architecture": {
+            "Function": 0.8,
+            "Hybrid": 0.7,
+            "Experience": 0.5
+          },
+          "strategy": {
+            "COST": 0.8,
+            "DIFF": 0.5
+          },
+          "age": {
+            "ADULT": 0.7,
+            "ELDER": 0.7,
+            "CHILD": 0.6
+          },
+          "r2_groups": {
+            "ops_maintenance": 0.7,
+            "perception_understanding": 0.6,
+            "interaction_expression": 0.5
+          }
+        },
+        "effect_at_full_match": {
+          "r2_total_dCOGS_discount": 0.08,
+          "r2_risk_reduction_global": 0.05,
+          "description_reveal": "边缘计算能力降低了云依赖成本和整体技术风险"
+        }
+      },
+      "method": "seeded_random_pair_draw_from_jinang_cards_v2; same draw for Q/S pair"
+    },
+    "synthetic": true
+  },
+  {
+    "persona_id": "R06",
+    "pair_index": 6,
+    "archetype": "C",
+    "archetype_label": "技术创业者",
+    "seed": "20260814-random6-free-persona-simple-layered-trial-v1",
+    "surface": {
+      "name": "张博宇",
+      "gender": "male",
+      "age": 44,
+      "edu": "硕士（海归）",
+      "overseas": {
+        "hasOverseas": true,
+        "destination": "美国（MIT/Stanford/CMU）",
+        "duration": "1-3年"
+      },
+      "mbti": "INTP",
+      "expression_style": "偶尔夹杂英文术语、喜欢类比技术概念、精确但有时太技术化\n\n你的思维特征（MBTI: INTP）：\n你在小组讨论中倾向先听别人说，等想清楚再发言，但观点往往更深入。\n你喜欢看大局和趋势，善于联想和类比，有时会忽略执行细节。\n你做决策偏逻辑分析，写 VP 时注重因果关系和数据支撑，访谈时关注功能和效率。\n你喜欢保持开放、多探索可能性，讨论时可能提出意外角度，但有时拖延决策。"
+    },
+    "jinang_draw": {
+      "market": {
+        "id": "M-02",
+        "name": "机构客户需求挖掘",
+        "desc_for_player": "你有丰富的 B 端大客户销售经验，擅长理解采购决策链、写方案、做 POC 验证。你知道机构客户最看重的不是'酷'，而是'可量化的效果'和'可控的售后风险'。",
+        "hint_keyword": "B端销售",
+        "r1_display": "你的团队具备机构客户开发能力，在面向组织/企业的方向上可能有优势",
+        "affinity_weights": {
+          "customer_type": {
+            "ToB": 0.9,
+            "ToC": 0.2
+          },
+          "strategy": {
+            "DIFF": 0.7,
+            "COST": 0.7
+          },
+          "age": {
+            "ELDER": 0.8,
+            "ADULT": 0.7,
+            "CHILD": 0.7
+          },
+          "channel": {
+            "DIRECT": 0.9,
+            "DISTRIBUTOR": 0.5,
+            "E_COMMERCE": 0.1
+          }
+        },
+        "effect_at_full_match": {
+          "r2_share_bonus": 0.04,
+          "r2_evi_bonus": 0.1,
+          "description_reveal": "B端销售经验提升了客户访谈质量和渠道执行效率"
+        }
+      },
+      "tech": {
+        "id": "T-10",
+        "name": "健康数据与算法",
+        "desc_for_player": "你的团队在健康数据采集、清洗和算法分析方面有经验——从传感器选型到数据管线到异常检测模型。你知道'数据准确'比'算法花哨'重要一百倍。",
+        "hint_keyword": "健康算法",
+        "r1_display": "你的团队在健康数据与算法上有积累",
+        "affinity_weights": {
+          "architecture": {
+            "Function": 0.8,
+            "Hybrid": 0.7,
+            "Experience": 0.4
+          },
+          "strategy": {
+            "DIFF": 0.7,
+            "COST": 0.5
+          },
+          "age": {
+            "ELDER": 0.9,
+            "ADULT": 0.6,
+            "CHILD": 0.4
+          },
+          "r2_groups": {
+            "perception_understanding": 0.8,
+            "safety_trust": 0.6,
+            "ops_maintenance": 0.4
+          }
+        },
+        "effect_at_full_match": {
+          "r2_risk_reduction_for_group": {
+            "perception_understanding": 0.2,
+            "safety_trust": 0.15
+          },
+          "r2_performance_bonus_for_group": {
+            "perception_understanding": 3
+          },
+          "description_reveal": "健康数据能力降低了监测类能力卡的风险并提升了数据准确性"
+        }
+      },
+      "method": "seeded_random_pair_draw_from_jinang_cards_v2; same draw for Q/S pair"
+    },
+    "synthetic": true
+  }
+]

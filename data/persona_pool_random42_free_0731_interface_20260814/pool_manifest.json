@@ -1,0 +1,57 @@
+{
+  "seed": "20260814-random42-free-persona-simple-layered-interface-v1",
+  "generated_at": "2026-08-14T11:39:11.194Z",
+  "script_path": "scripts/sim/generate_persona_pool_random42.js",
+  "script_git_hash": "437a2435ae2ed0874d9b24cf73db495d331e214c",
+  "repo_git_hash": "b21c5c8790783d36e11ec2eea05f748676c017d8",
+  "script_sha256": "01018eed894d47b4596a423869910c15ac2aace38b261ec7a258dfabbc83ea55",
+  "prng": {
+    "name": "fnv1a_seeded_mulberry32",
+    "seed_input": "20260814-random42-free-persona-simple-layered-interface-v1"
+  },
+  "records_total": 42,
+  "sampling_mode": "random42_unbalanced_archetype_iid",
+  "archetype_sampling": {
+    "method": "iid_uniform_with_replacement_over_7_archetypes",
+    "forced_balance": false,
+    "counts_by_archetype": {
+      "A": 7,
+      "B": 7,
+      "G": 6,
+      "D": 6,
+      "E": 6,
+      "C": 5,
+      "F": 5
+    }
+  },
+  "persona_sampling": {
+    "method": "scripts/sim/persona_pool.js::sampleStudent under seeded Math.random",
+    "fields": [
+      "archetype",
+      "name",
+      "gender",
+      "age",
+      "edu",
+      "overseas",
+      "mbti",
+      "expression_style"
+    ]
+  },
+  "jinang_sampling": {
+    "source": "game_config_v0.1/jinang_cards_v2.json",
+    "method": "seeded random market + tech draw per persona; Q/S share the same draw"
+  },
+  "pairing": {
+    "conditions": [
+      "Q",
+      "S"
+    ],
+    "shared_persona_for_QS": true,
+    "shared_jinang_for_QS": true
+  },
+  "validation": {
+    "expected_records_total": 42,
+    "null_values_allowed": false
+  },
+  "synthetic": true
+}
