@@ -1,9 +1,8 @@
 "use strict";
-// teamR1Cap24Sim.js — self-contained team roleplay R1 frozen design: team_room_r1_actor_isolated_v1
-// with max_r1_actor_events cap + timeout-forced public submission, extracted VERBATIM from the
-// rescued codex worktree version (tag frozen/codex-cap24-forced-submit-rescued, blob 0311617d)
-// that produced team_r1_taskblind_actor_isolated_v1_12check_20260814. Predates the claude-fork
-// indexer fixes by design, to stay identical to the frozen evidence runs.
+// teamR1Cap24Sim.js — team roleplay R1 frozen-candidate: codex v5 mechanism (cap24 +
+// deadline 收口 + 临场提交 timeout submission + replay state carryover, snapshot b9cb8a93)
+// MERGED with the claude-fork indexer fixes (explicit-click recognition, no-manufacture
+// guards, operate-retry) so the leader's real UI actions actually index.
 
 
 const fs = require("node:fs");
@@ -1209,6 +1208,107 @@ function ensureBehavioralState(member, isLeader = false) {
   return member.behavioral_state;
 }
 
+function clonePlain(value) {
+  return value == null ? value : JSON.parse(JSON.stringify(value));
+}
+
+function normalizeBehavioralStateForReplay(state, member, isLeader) {
+  const base = state && typeof state === "object"
+    ? clonePlain(state)
+    : initBehavioralState(member, isLeader);
+  if (!Array.isArray(base.activated_memory)) base.activated_memory = [];
+  if (!base.d4_group_state || typeof base.d4_group_state !== "object") base.d4_group_state = {};
+  if (!Object.prototype.hasOwnProperty.call(base, "d4_recent_review")) base.d4_recent_review = null;
+  if (!Object.prototype.hasOwnProperty.call(base, "d5_card_review")) base.d5_card_review = null;
+  return base;
+}
+
+function r1ActorPrivateStateByMember(r1ActorState, phase, memberId) {
+  const phaseState = r1ActorState?.private_states?.[phase];
+  if (!phaseState || typeof phaseState !== "object") return "";
+  return String(phaseState[memberId] || "").trim();
+}
+
+function buildR1ActorCarryover(member, r1ActorState) {
+  if (!r1ActorState || typeof r1ActorState !== "object") return null;
+  const selectionState = r1ActorPrivateStateByMember(r1ActorState, "selection", member.profile_id);
+  const vpState = r1ActorPrivateStateByMember(r1ActorState, "vp", member.profile_id);
+  if (!selectionState && !vpState) return null;
+  const parsed = r1ActorState.parsed_submission && typeof r1ActorState.parsed_submission === "object"
+    ? r1ActorState.parsed_submission
+    : null;
+  return {
+    source: "r1_actor_isolated_state",
+    member_id: member.profile_id,
+    selection_private_state: selectionState,
+    vp_private_state: vpState,
+    final_submission: parsed
+      ? {
+          grid_id: parsed.grid_id || "",
+          architecture: parsed.architecture || "",
+          vp_summary: clonePlain(parsed.vp_summary || {})
+        }
+      : null,
+    event_cap: r1ActorState.event_cap ?? null,
+    turn_count: Array.isArray(r1ActorState.turns) ? r1ActorState.turns.length : null,
+    timeout_forced_submission: Boolean(r1ActorState.timeout_forced_submission)
+  };
+}
+
+function restoreReplayBehavioralState({ members, leaderIdx, sourceMeta, r1ActorState = null }) {
+  const initialByMember = new Map(ensureArray(sourceMeta?.behavioral_state_initial).map((item) => [
+    item?.member_id,
+    item?.state
+  ]));
+  let restoredBehavioralState = 0;
+  let restoredR1ActorCarryover = 0;
+  const memberSummaries = [];
+  members.forEach((member, index) => {
+    const initialState = initialByMember.get(member.profile_id);
+    member.behavioral_state = normalizeBehavioralStateForReplay(initialState, member, index === leaderIdx);
+    if (initialState) restoredBehavioralState += 1;
+    const carryover = buildR1ActorCarryover(member, r1ActorState);
+    if (carryover) {
+      member.r1_actor_carryover = carryover;
+      restoredR1ActorCarryover += 1;
+    }
+    memberSummaries.push({
+      member_id: member.profile_id,
+      is_leader: index === leaderIdx,
+      behavioral_state_restored: Boolean(initialState),
+      r1_actor_carryover_restored: Boolean(carryover)
+    });
+  });
+  return {
+    restored_behavioral_state_count: restoredBehavioralState,
+    restored_r1_actor_carryover_count: restoredR1ActorCarryover,
+    members: memberSummaries
+  };
+}
+
+function snapshotBehavioralStateForRunMeta(members, leaderIdx) {
+  return members.map((member, index) => ({
+    member_id: member.profile_id,
+    is_leader: index === leaderIdx,
+    state: clonePlain(ensureBehavioralState(member, index === leaderIdx)),
+    r1_actor_carryover_restored: Boolean(member.r1_actor_carryover)
+  }));
+}
+
+function formatR1ActorCarryoverForPrompt(member, chars = 520) {
+  const carryover = member.r1_actor_carryover;
+  if (!carryover) return "";
+  const final = carryover.final_submission || {};
+  const vp = final.vp_summary || {};
+  return [
+    "【R1 延续记忆】",
+    "这是你上一轮在市场/VP界面留下的个人连续性；其他人不知道你的私有状态。不要逐字念出来，也不要把它当价格锚点。",
+    carryover.selection_private_state ? `市场选择页当时的私有状态：${clipText(carryover.selection_private_state, chars)}` : "",
+    carryover.vp_private_state ? `VP页当时的私有状态：${clipText(carryover.vp_private_state, chars)}` : "",
+    final.grid_id ? `团队最终提交：${final.grid_id}/${final.architecture || ""}；WHO=${vp.who || ""}；PAIN=${vp.pain || ""}；HOW=${vp.how || ""}` : ""
+  ].filter(Boolean).join("\n");
+}
+
 function scoreStateBand(value, labels) {
   return scoreBand(value, labels);
 }
@@ -1328,6 +1428,7 @@ function formatBehavioralState(member, topic, isLeader = false, arm = "legacy") 
     `疲劳/敷衍：${scoreStateBand(state.fatigue, ["还投入", "有点想快点过", "明显想省事"])}`,
     `公开承诺压力：${scoreStateBand(state.social_commitment, ["还没站队", "有点站队", "不太想改口"])}`,
     `价格敏感：${scoreStateBand(state.price_sensitivity, ["不怕高价", "会权衡", "担心卖贵"])}`,
+    formatR1ActorCarryoverForPrompt(member),
     review ? [
       "【D5 前私有选卡复盘】",
       "这是你自己的心理状态，不要逐字念出来；只让它影响你此刻怎么说话、坚持或退让。",
@@ -2582,9 +2683,7 @@ function validateR1ActorPublicRaw(raw, performanceMode = "speak", phase = "", ui
   ];
   const leakedMarker = privateMarkers.find((pattern) => pattern.test(stageDirections));
   if (leakedMarker) throw new Error(`public performance exposed private narration: ${leakedMarker}`);
-  const outsidePerformance = text
-    .replace(/（[^）]*）/gsu, "")
-    .replace(/\([^)]*\)/gsu, "")
+  const outsidePerformance = stripR1ParentheticalContent(text)
     .replace(/“[^”]*”/gsu, "")
     .replace(/"[^"]*"/gsu, "")
     .replace(/[\s，。！？、；：,.!?;:—-]/gu, "");
@@ -2609,6 +2708,26 @@ function validateR1ActorPublicRaw(raw, performanceMode = "speak", phase = "", ui
     }
   }
   return text;
+}
+
+function stripR1ParentheticalContent(value) {
+  const chars = Array.from(String(value || ""));
+  let depth = 0;
+  let output = "";
+  for (const char of chars) {
+    if (char === "（" || char === "(") {
+      depth += 1;
+      continue;
+    }
+    if (char === "）" || char === ")") {
+      if (depth > 0) {
+        depth -= 1;
+        continue;
+      }
+    }
+    if (depth === 0) output += char;
+  }
+  return output;
 }
 
 function projectR1ActorPublicRaw(raw, member, performanceMode = "speak") {
@@ -2781,7 +2900,7 @@ async function callR1ActorEntranceDecision({ members, member, isLeader, ownPropo
   throw new Error(`r1 actor entrance decision failed after 2 attempts: ${lastError}`);
 }
 
-async function callR1IsolatedActor({ members, member, isLeader, ownProposal, privateState, screenText, uiState, transcript, phase, phaseTurnNumber, triggerContext, performanceMode, temperature, outputDir, eventIndex }) {
+async function callR1IsolatedActor({ members, member, isLeader, ownProposal, privateState, screenText, uiState, transcript, phase, phaseTurnNumber, triggerContext, performanceMode, temperature, outputDir, eventIndex , operateRetryNote = "" }) {
   const ownPublicHistory = clipText(transcript
     .filter((entry) => entry.speaker === member.profile_id && entry.phase === phase)
     .map((entry, index) => `${index + 1}. ${entry.text}`)
@@ -2855,6 +2974,7 @@ async function callR1IsolatedActor({ members, member, isLeader, ownProposal, pri
         ownPublicHistory,
         "",
 	        phaseInstruction,
+	        operateRetryNote ? `【上一镜作废，重演同一刻】${operateRetryNote}` : "",
 	        selectionBoundary,
 	        vpBoundary,
 	        performanceMode === "operate"
@@ -2914,7 +3034,8 @@ function r1ActorExplicitButtonClickEvidence(raw, buttonLabel) {
   const click = "(?:点击|点选|点下|点了下去|点了下|点了一下|点一下|点了|按下|按了下去|按了一下|按一下|按了|单击)";
   const label = `[“\"']?${buttonLabel}(?:按钮)?[”\"']?`;
   const patterns = [
-    new RegExp(`${click}(?:了)?(?:屏幕|页面|界面)?(?:上|下)?(?:的)?(?:那个)?${label}`, "u"),
+    new RegExp(`${click}(?:了)?(?:屏幕|页面|界面)?(?:[上下][方面边]|[左右][上下]角|底部|顶部|旁边|中间|上|下)?(?:的)?(?:那个|那颗|那枚)?${label}`, "u"),
+    new RegExp(`点(?:了)?(?:一?下)?${label}`, "u"),
     new RegExp(`(?:在|把|将)(?:那个)?${label}(?:上)?${click}(?:了)?`, "u"),
     new RegExp(`${label}(?:被)?${click}(?:了)?`, "u")
   ];
@@ -2952,11 +3073,13 @@ function r1ActorClickedControlEvidence(raw, label) {
   const text = String(raw || "");
   const escapedLabel = escapeRegExp(label);
   const quotedLabel = `[“\"']?${escapedLabel}[”\"']?`;
-  const control = `${quotedLabel}(?:按钮|格子|选项)?`;
+  const control = `${quotedLabel}(?:的)?(?:按钮|格子|选项)?`;
   const click = "(?:点击|点选|点下|点了下去|点了下|点了一下|点一下|点了两下|点两下|点了|按下|按了下去|按了一下|按一下|按了|单击|双击|选中|选择了)";
+  const pause = "(?:，|,|\\s)*(?:停[^，。；！？\\n]{0,8}|顿[^，。；！？\\n]{0,6}|犹豫[^，。；！？\\n]{0,6})?(?:，|,|\\s)*";
   const patterns = [
     new RegExp(`${click}(?:了)?(?:屏幕|页面|界面)?(?:上|下)?(?:的)?(?:那个)?${control}`, "gu"),
-    new RegExp(`(?:最后|最终|直接|重新|又)?(?:在|把|将)?(?:鼠标|光标)?(?:移到|挪到|放到)?(?:了)?(?:那个)?${control}(?:上)?(?:，|,|\\s)*${click}(?:了)?`, "gu")
+    new RegExp(`(?:最后|最终|直接|重新|又)?(?:在|把|将)?(?:鼠标|光标)?(?:移到|挪到|放到|移回|挪回|放回|回到)?(?:了)?(?:那个)?${control}(?:上)?${pause}${click}(?:了)?`, "gu"),
+    new RegExp(`从[^，。；！？\\n]{0,20}?(?:移|挪|滑)(?:到|回)(?:了)?(?:那个)?${control}(?:上)?${pause}${click}(?:了)?`, "gu")
   ];
   const matches = [];
   const directAfterCue = new RegExp(`(?:最后|最终|末了|后来|然后|直接|重新|又).{0,12}${click}(?:了)?(?:屏幕|页面|界面)?(?:上|下)?(?:的)?(?:那个)?${control}`, "gu");
@@ -2987,12 +3110,69 @@ function r1ActorClickedControlEvidence(raw, label) {
   return matches.sort((a, b) => (b.priority || 0) - (a.priority || 0) || b.index - a.index)[0] || null;
 }
 
+function r1ActorGenericControlSpokenLabel(raw, kind) {
+  // A click phrased against a control context ("产品定位按钮…点了一下", "（按钮上，点了下去。）",
+  // "点了产品定位按钮") followed shortly by a quoted utterance that consists solely of one legal
+  // label ⇒ that label was selected. Handles the actor style where the button click is a stage
+  // direction and the chosen value is spoken as a separate quoted line.
+  const text = String(raw || "");
+  const click = "(?:点击|点选|点下|点了下去|点了下|点了一下|点一下|点了|按下|按了下去|按了一下|按一下|按了|单击)";
+  const pause = "(?:，|,|\\s)*(?:停[^，。；！？\\n]{0,8}|顿[^，。；！？\\n]{0,6}|犹豫[^，。；！？\\n]{0,6})?(?:，|,|\\s)*";
+  const specificControl = kind === "grid" ? "(?:市场格)" : "(?:产品定位|定位)";
+  const genericControl = "(?:按钮|鼠标|光标)";
+  const labels = kind === "grid"
+    ? GRID_IDS.map((key) => ({ key, tokens: [key] }))
+    : [
+        { key: "Experience", tokens: ["Experience", "体验型", "体验"] },
+        { key: "Hybrid", tokens: ["Hybrid", "混合型", "混合"] },
+        { key: "Function", tokens: ["Function", "功能型", "功能"] }
+      ];
+  const contextPatterns = [
+    new RegExp(`${specificControl}[^。；！？\\n“”]{0,10}${pause}${click}`, "gu"),
+    new RegExp(`${genericControl}[^。；！？\\n“”]{0,8}${pause}${click}`, "gu"),
+    new RegExp(`${click}(?:了)?[^。；！？\\n“”]{0,6}${specificControl}(?:的)?(?:按钮|选项)?`, "gu")
+  ];
+  const matchLabel = (spoken) => {
+    const bare = String(spoken || "").replace(/[（）()【】\[\]\s，。,.!！?？:：;；]/gu, "");
+    if (!bare) return null;
+    for (const item of labels) {
+      let residual = bare;
+      for (const token of [...item.tokens].sort((a, b) => b.length - a.length)) {
+        residual = residual.split(token).join("");
+      }
+      if (!residual) return item.key;
+    }
+    return null;
+  };
+  const results = [];
+  for (const pattern of contextPatterns) {
+    for (const match of text.matchAll(pattern)) {
+      const clickOffset = match[0].search(new RegExp(click, "u"));
+      const clickIndex = clickOffset >= 0 ? match.index + clickOffset : match.index;
+      if (r1ActorClickEvidenceNegated(text, clickIndex)) continue;
+      const windowStart = match.index + match[0].length;
+      const window = text.slice(windowStart, Math.min(text.length, windowStart + 90));
+      let found = null;
+      for (const quoted of window.matchAll(/[“"]([^”"]{1,40})[”"]/gu)) {
+        const key = matchLabel(quoted[1]);
+        if (key) {
+          found = { key, evidence: match[0] + window.slice(0, quoted.index + quoted[0].length), index: match.index };
+          break;
+        }
+      }
+      if (found && !results.some((item) => item.key === found.key && item.index === found.index)) {
+        results.push(found);
+      }
+    }
+  }
+  return results;
+}
+
 function r1ActorClickedSelectionControls(raw) {
-  const grids = GRID_IDS
+  const directGrids = GRID_IDS
     .map((key) => ({ key, ...(r1ActorClickedControlEvidence(raw, key) || {}) }))
-    .filter((item) => item.evidence)
-    .sort((a, b) => a.index - b.index);
-  const architectures = [
+    .filter((item) => item.evidence);
+  const directArchitectures = [
     { key: "Experience", labels: ["Experience", "体验型", "体验"] },
     { key: "Hybrid", labels: ["Hybrid", "混合型", "混合"] },
     { key: "Function", labels: ["Function", "功能型", "功能"] }
@@ -3002,8 +3182,18 @@ function r1ActorClickedSelectionControls(raw) {
       .filter(Boolean)
       .sort((a, b) => b.index - a.index)[0];
     return { key: item.key, ...(evidence || {}) };
-  }).filter((item) => item.evidence).sort((a, b) => a.index - b.index);
-  return { grids, architectures };
+  }).filter((item) => item.evidence);
+  const mergeGeneric = (direct, generic) => {
+    const merged = direct.slice();
+    for (const item of generic) {
+      if (!merged.some((existing) => existing.key === item.key)) merged.push(item);
+    }
+    return merged.sort((a, b) => a.index - b.index);
+  };
+  return {
+    grids: mergeGeneric(directGrids, r1ActorGenericControlSpokenLabel(raw, "grid")),
+    architectures: mergeGeneric(directArchitectures, r1ActorGenericControlSpokenLabel(raw, "architecture"))
+  };
 }
 
 function r1ActorControlEvidenceIncludesLabel(evidence, label) {
@@ -3050,8 +3240,16 @@ function normalizeR1ActorUiEvent(parsed, { phase, isLeader, raw, uiState }) {
   const sourceArchitectureHasEvidence = phase === "selection"
     && ["Experience", "Hybrid", "Function"].includes(architecture)
     && r1ActorArchitectureLabels(architecture).some((label) => r1ActorControlEvidenceIncludesLabel(evidenceQuote, label));
+  // A field value the leader never wrote in this take is a UI-state echo or hallucination from
+  // the extractor; it must not ride into uiState on the back of another evidenced action.
+  const rawText = String(raw || "");
+  const rawMentionsGrid = gridId && rawText.includes(gridId);
+  const rawMentionsArchitecture = architecture
+    && r1ActorArchitectureLabels(architecture).some((label) => rawText.includes(label));
   if (finalClickedGrid && !sourceGridHasEvidence) gridId = finalClickedGrid.key;
+  else if (!sourceGridHasEvidence && !finalClickedGrid && !rawMentionsGrid) gridId = "";
   if (finalClickedArchitecture && !sourceArchitectureHasEvidence) architecture = finalClickedArchitecture.key;
+  else if (!sourceArchitectureHasEvidence && !finalClickedArchitecture && !rawMentionsArchitecture) architecture = "";
   if (!explicitContinue && phase === "selection" && (clickedControls.grids.length > 0 || clickedControls.architectures.length > 0)) {
     action = "edit_selection";
     const finalClick = [finalClickedGrid, finalClickedArchitecture]
@@ -3206,21 +3404,6 @@ function r1ActorTriggerContext({ mode, phase, trigger, members, uiState }) {
         : (vpReady
             ? "WHO、PAIN、HOW 三个框都已经非空。除非你真的要改某个框的文字，此刻更像真实界面的下一步是点击提交。"
             : "如果你是组长，此刻可以真实地填写/修改 WHO、PAIN、HOW；必须把输入框里的最终文字写出来。")
-      ].join("\n");
-  }
-  if (mode === "deadline_leader_operation") {
-    const selectionReady = phase === "selection" && uiState.grid_id && uiState.architecture;
-    const vpReady = phase === "vp" && Object.values(uiState.vp_summary || {}).every(Boolean);
-    return [
-      "这一页已经接近课堂/界面的自然收口时间。不是老师替你做决定，也不是系统代点按钮；只是如果还要改，必须现在改。",
-      r1ActorUiStateLine(phase, uiState),
-      phase === "selection"
-        ? (selectionReady
-            ? "如果当前暂存市场格和产品定位就是你愿意带着进入下一页的版本，此刻更像真实操作是点击继续；如果不是，只做最后一次真实改选。"
-            : "市场格或产品定位还没都暂存；如果你是组长，此刻需要真实点选缺失项，不能等系统替你选。")
-        : (vpReady
-            ? "WHO、PAIN、HOW 已经都有内容；如果这就是你愿意交的版本，此刻更像真实操作是点击提交；如果不是，只做最后一次真实修改。"
-            : "WHO、PAIN、HOW 还有空项；如果你是组长，此刻需要真实填写缺失输入框，不能等系统替你写。")
     ].join("\n");
   }
   if (mode === "response" && trigger) {
@@ -3253,72 +3436,220 @@ function applyR1ActorUiEvent({ event, phase, uiState }) {
   return "vp";
 }
 
-function mostCommonR1ProposalValue(proposals, key, preferred = "") {
-  const counts = new Map();
-  const firstIndex = new Map();
-  proposals.forEach((proposal, index) => {
-    const value = String(proposal?.parsed?.[key] || "").trim();
-    if (!value) return;
-    counts.set(value, (counts.get(value) || 0) + 1);
-    if (!firstIndex.has(value)) firstIndex.set(value, index);
+function formatR1ActorTimeoutProposalLines(members, proposals) {
+  return members.map((member, index) => {
+    const parsed = proposals[index]?.parsed || {};
+    const vp = parsed.vp_summary || {};
+    return [
+      `- ${member.surface?.name || member.profile_id}`,
+      `${parsed.grid_id || ""}/${parsed.architecture || ""}`,
+      `WHO=${vp.who || ""}`,
+      `PAIN=${vp.pain || ""}`,
+      `HOW=${vp.how || ""}`
+    ].join("；");
+  }).join("\n");
+}
+
+function pickR1ActorTimeoutEvidenceQuote(source, raw) {
+  const candidates = []
+    .concat(Array.isArray(source.evidence_quotes) ? source.evidence_quotes : [])
+    .concat(source.evidence_quote || [])
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+  const rawText = String(raw || "");
+  const exact = candidates.find((candidate) => rawText.includes(candidate));
+  if (exact) return exact;
+  const normalize = (value) => String(value || "")
+    .replace(/\\n/g, "\n")
+    .replace(/[“”"'‘’（）()\[\]【】\s，。！？、；：,.!?;:]/gu, "");
+  const normalizedRaw = normalize(rawText);
+  const normalized = candidates.find((candidate) => {
+    const normalizedCandidate = normalize(candidate);
+    return normalizedCandidate && normalizedRaw.includes(normalizedCandidate);
   });
-  if (preferred && counts.has(preferred)) return preferred;
-  return Array.from(counts.entries())
-    .sort((a, b) => b[1] - a[1] || (firstIndex.get(a[0]) || 0) - (firstIndex.get(b[0]) || 0))[0]?.[0] || "";
+  if (normalized) return normalized;
+  const submitClick = r1ActorExplicitButtonClickEvidence(rawText, "提交");
+  if (submitClick) return submitClick;
+  const finalSpeech = rawText.match(/“[^”]*(?:就按这个交|按这个交|这样交|交吧|提交)[^”]*”|"[^"]*(?:就按这个交|按这个交|这样交|交吧|提交)[^"]*"/u);
+  return finalSpeech?.[0] || "";
 }
 
-function r1TimeoutVpSource({ proposals, leaderIdx, gridId, architecture }) {
-  const leaderParsed = proposals[leaderIdx]?.parsed || {};
-  const matching = proposals.find((proposal) => {
-    const parsed = proposal?.parsed || {};
-    return parsed.grid_id === gridId && parsed.architecture === architecture;
-  })?.parsed;
-  return matching || leaderParsed || proposals[0]?.parsed || {};
-}
-
-function buildR1ActorTimeoutForcedSubmission({ uiState, proposals, leaderIdx, phase, eventIndex, entranceCheckIndex, eventCap }) {
-  const leaderParsed = proposals[leaderIdx]?.parsed || {};
-  const gridId = GRID_IDS.includes(uiState.grid_id)
-    ? uiState.grid_id
-    : GRID_IDS.includes(leaderParsed.grid_id)
-      ? leaderParsed.grid_id
-      : mostCommonR1ProposalValue(proposals, "grid_id");
-  const architecture = ["Experience", "Hybrid", "Function"].includes(uiState.architecture)
-    ? uiState.architecture
-    : ["Experience", "Hybrid", "Function"].includes(leaderParsed.architecture)
-      ? leaderParsed.architecture
-      : mostCommonR1ProposalValue(proposals, "architecture");
-  const vpSource = r1TimeoutVpSource({ proposals, leaderIdx, gridId, architecture });
-  const sourceVp = vpSource.vp_summary || {};
-  const uiVp = uiState.vp_summary || {};
+function normalizeR1ActorTimeoutSubmission(source, { raw }) {
+  const evidenceQuote = pickR1ActorTimeoutEvidenceQuote(source, raw);
+  if (!evidenceQuote) throw new Error("timeout submission requires evidence_quote from leader raw");
+  const vp = source.vp_summary && typeof source.vp_summary === "object" ? source.vp_summary : {};
   const parsed = validateParsed("r1", {
-    grid_id: gridId,
-    architecture,
+    grid_id: source.grid_id,
+    architecture: source.architecture,
     vp_summary: {
-      who: String(uiVp.who || sourceVp.who || leaderParsed.vp_summary?.who || "").trim(),
-      pain: String(uiVp.pain || sourceVp.pain || leaderParsed.vp_summary?.pain || "").trim(),
-      how: String(uiVp.how || sourceVp.how || leaderParsed.vp_summary?.how || "").trim()
+      who: vp.who,
+      pain: vp.pain,
+      how: vp.how
     },
-    rationale: [
-      `课堂时间到，第 ${eventIndex} 个公开事件后仍未自然提交。`,
-      `系统不代替商业判断，只把当前页面暂存与组长/组内初稿中已有的合法内容整理成必须提交的版本。`,
-      `触发点：phase=${phase}; public_events=${eventIndex}; entrance_checks=${entranceCheckIndex}; event_cap=${eventCap}。`
-    ].join("")
+    rationale: source.rationale || `时间到后，组长通过公开剧本操作提交：${evidenceQuote}`
   }, {});
-  return {
-    parsed,
-    source: {
-      type: "timeout_forced_submission",
-      phase,
-      event_index: eventIndex,
-      entrance_check_index: entranceCheckIndex,
-      event_cap: eventCap,
-      used_ui_grid: uiState.grid_id === parsed.grid_id,
-      used_ui_architecture: uiState.architecture === parsed.architecture,
-      vp_source_grid_id: vpSource.grid_id || "",
-      vp_source_architecture: vpSource.architecture || ""
+  return { parsed, evidence_quote: evidenceQuote };
+}
+
+async function extractR1ActorTimeoutSubmission({ raw, phase, uiState, members, proposals, temperature, outputDir, eventIndex, leaderId }) {
+  const messages = [
+    {
+      role: "system",
+      content: [
+        "你是课堂网页的事后记录器，只从组长这段公开剧本里抽取最终 Round 1 提交。",
+        "不能根据商业合理性、多数意见或你的判断补内容。只有原文明确点选、明确填写、或明确说按当前 UI 提交，才可以记录。",
+        "当前 UI 状态只是屏幕可见内容；只有原文明确说“按当前/就这个/不改并提交”时，才可沿用当前 UI 已经非空的值。",
+        "evidence_quote 必须逐字复制原文中直接证明最终提交动作的短句。只输出 JSON。"
+      ].join("\n")
+    },
+    {
+      role: "user",
+      content: [
+        `触发阶段：${phase}`,
+        `当前 UI 状态：${JSON.stringify(uiState)}`,
+        "",
+        "【屏幕上可见的五个人个人初选】",
+        formatR1ActorTimeoutProposalLines(members, proposals),
+        "",
+        "【组长时间到后的公开剧本原文】",
+        raw,
+        "",
+        `合法 grid_id 只能是：${GRID_IDS.join(", ")}`,
+        "architecture 只能是 Experience / Hybrid / Function。",
+        "WHO、PAIN、HOW 必须是最终提交框里的文字；如果原文没有写出且也没有明确沿用当前 UI，不要自行补。",
+        "{\"grid_id\":\"\",\"architecture\":\"\",\"vp_summary\":{\"who\":\"\",\"pain\":\"\",\"how\":\"\"},\"rationale\":\"\",\"evidence_quote\":\"原文逐字短句\"}"
+      ].join("\n")
     }
-  };
+  ];
+  let lastRaw = "";
+  let lastError = "";
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    const attemptMessages = attempt === 1 ? messages : [
+      ...messages,
+      { role: "assistant", content: lastRaw },
+      { role: "user", content: `刚才无法作为最终提交记录：${lastError}。重新只抽取原文里明确发生的提交；缺字段就让它失败，不要补。` }
+    ];
+    try {
+      lastRaw = await callText(attemptMessages, { temperature: Math.min(0.1, temperature), maxTokens: 620 });
+      const normalized = normalizeR1ActorTimeoutSubmission(parseJsonLoose(lastRaw), { raw });
+      if (outputDir) {
+        appendJsonl(path.join(outputDir, "r1_actor_isolated_timeout_extractors.jsonl"), {
+          ts: new Date().toISOString(), event: eventIndex, phase, leader_id: leaderId,
+          attempt, status: "ok", actor_raw: raw, raw: lastRaw, parsed: normalized.parsed,
+          evidence_quote: normalized.evidence_quote
+        });
+      }
+      return { ...normalized, extractor_raw: lastRaw, extractor_attempt: attempt };
+    } catch (error) {
+      lastError = error.message;
+      if (outputDir) {
+        appendJsonl(path.join(outputDir, "r1_actor_isolated_timeout_extractors.jsonl"), {
+          ts: new Date().toISOString(), event: eventIndex, phase, leader_id: leaderId,
+          attempt, status: "error", error: lastError, actor_raw: raw, raw: lastRaw
+        });
+      }
+    }
+  }
+  throw new Error(`r1 actor timeout submission extractor failed after 2 attempts: ${lastError}`);
+}
+
+async function callR1ActorTimeoutForcedSubmission({ members, leaderIdx, proposals, privateState, screenText, uiState, transcript, phase, temperature, outputDir, eventIndex, entranceCheckIndex, eventCap }) {
+  const leader = members[leaderIdx];
+  const leaderProposal = proposals[leaderIdx]?.parsed || {};
+  const vp = leaderProposal.vp_summary || {};
+  const messages = [
+    {
+      role: "system",
+      content: [
+        formatR1IsolatedActorPersona(leader, true),
+        "",
+        "你只扮演握鼠标的组长。课堂时间快到，大家的目光自然落回屏幕和你手边的鼠标。",
+        "你根据刚才公开讨论的情况临场提交 Round 1：可以坚持自己的判断，也可以顺着别人说过的话调整；不要把它演成投票统计。",
+        "继续保持剧本形式：可见动作写在全角括号（ ）里，说出口的话写在中文引号“ ”里。括号外和引号外不得有叙述。",
+        "不要写 JSON、字段名说明、研究解释、内心独白或其他人的台词。",
+        phase === "selection"
+          ? "如果还在市场格/定位页，你可以先明确点选或沿用当前市场格和定位，点击继续，然后在 WHO/PAIN/HOW 三个输入框写入最终文字，最后点击提交。每个最终输入框文字都要在可见动作里逐字出现。"
+          : "如果已经在 WHO/PAIN/HOW 页，你可以改写任一输入框或沿用当前文字，但最后必须在公开动作里点击提交。每个被改写的最终输入框文字都要逐字出现。",
+        "可以用一两句很短的口语收口，但最后提交必须是可见网页操作，不是系统默认填值。"
+      ].join("\n")
+    },
+    {
+      role: "user",
+      content: [
+        "【只给你看的主人公状态】",
+        privateState || "（此前没有额外私有状态，只按你的人物设定和现场反应。）",
+        "",
+        "【你自己的个人初选】",
+        `${leaderProposal.grid_id || ""}/${leaderProposal.architecture || ""}；WHO=${vp.who || ""}；PAIN=${vp.pain || ""}；HOW=${vp.how || ""}`,
+        "",
+        "【屏幕上可见的五个人个人初选】",
+        formatR1ActorTimeoutProposalLines(members, proposals),
+        "",
+        "【眼前页面】",
+        screenText,
+        "",
+        "【当前 UI 暂存】",
+        JSON.stringify(uiState),
+        "",
+        "【已经公开发生过的内容】",
+        formatR1ActorPublicTranscript(transcript, members, 14),
+        "",
+        "镜头里不需要写分析过程；只让你的最后动作像是根据刚才讨论的情况临场提交。",
+        "",
+        `【收口提示】已经到第 ${eventIndex} 个公开事件、第 ${entranceCheckIndex} 次入场判断，event_cap=${eventCap}。现场像课堂时间快结束那样自然收住，大家等你把屏幕上的版本交出去。你作为组长，现在像真人在界面上那样当场提交一个 Round 1 决策。`,
+        "输出一段公开剧本。不要解释为什么，不要分析任务，不要生成 JSON。"
+      ].join("\n")
+    }
+  ];
+  let lastRaw = "";
+  let lastError = "";
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    const attemptMessages = attempt === 1 ? messages : [
+      ...messages,
+      { role: "assistant", content: lastRaw },
+      {
+        role: "user",
+        content: [
+          `刚才不能成为有效的时间到提交：${lastError}。`,
+          "重演同一个收口瞬间：必须用公开剧本写出组长可见操作，并让 extractor 能从原文直接抽出 grid_id、architecture、WHO、PAIN、HOW 和点击提交证据。",
+          "不要把缺失内容交给系统默认填。"
+        ].join("\n")
+      }
+    ];
+    try {
+      lastRaw = await callText(attemptMessages, { temperature, maxTokens: 1150 });
+      const raw = validateR1ActorPublicRaw(lastRaw, "timeout_forced_submit", phase, uiState);
+      const extracted = await extractR1ActorTimeoutSubmission({
+        raw,
+        phase,
+        uiState,
+        members,
+        proposals,
+        temperature,
+        outputDir,
+        eventIndex,
+        leaderId: leader.profile_id
+      });
+      if (outputDir) {
+        appendJsonl(path.join(outputDir, "r1_actor_isolated_timeout_submissions.jsonl"), {
+          ts: new Date().toISOString(), event: eventIndex, phase, leader_id: leader.profile_id,
+          attempt, status: "ok", raw, parsed: extracted.parsed,
+          evidence_quote: extracted.evidence_quote,
+          extractor_raw: extracted.extractor_raw
+        });
+      }
+      return { raw, attempt, ...extracted };
+    } catch (error) {
+      lastError = error.message;
+      if (outputDir) {
+        appendJsonl(path.join(outputDir, "r1_actor_isolated_timeout_submissions.jsonl"), {
+          ts: new Date().toISOString(), event: eventIndex, phase, leader_id: leader.profile_id,
+          attempt, status: "error", error: lastError, raw: lastRaw
+        });
+      }
+    }
+  }
+  throw new Error(`r1_actor_isolated_timeout_forced_public_submission_failed_after_3_attempts: ${lastError}`);
 }
 
 function assertR1WritingAssistKeepsChoice(draft, assisted) {
@@ -3549,7 +3880,7 @@ async function runR1ActorIsolatedDiscussion({ members, leaderIdx, draws, proposa
   const turns = [];
   const phaseStates = {};
   const actorTurnsByPhase = {};
-  // This is an API runaway guard, not a convergence rule; reaching it fails the run and never manufactures a submission.
+  // This is an API runaway guard, not a convergence rule; if reached, the leader must submit through a final public scene.
   const eventCap = Math.max(1, Math.floor(Number(maxEvents) || 100));
   const entranceCheckCap = Math.max(eventCap * Math.max(3, members.length + 1), members.length * 4);
   const deadlineLeaderEventAt = Math.max(1, eventCap - Math.max(2, Math.ceil(members.length / 2)));
@@ -3563,16 +3894,16 @@ async function runR1ActorIsolatedDiscussion({ members, leaderIdx, draws, proposa
   let queue = [];
   const deadlinePromptedByPhase = {};
 
-		  const setResponseQueue = (mode, trigger, excludeIndex = null) => {
-		    triggerSerial += 1;
-		    currentTrigger = { mode, trigger, token: `${phase}:${mode}:${triggerSerial}` };
-		    queue = mode === "phase_open"
-	      ? r1ActorPhaseOpenQueue({ members, leaderIdx, seed, phase })
-	      : leaderOperationModes.has(mode)
-		      ? [leaderIdx]
+	  const setResponseQueue = (mode, trigger, excludeIndex = null) => {
+	    triggerSerial += 1;
+	    currentTrigger = { mode, trigger, token: `${phase}:${mode}:${triggerSerial}` };
+	    queue = mode === "phase_open"
+      ? r1ActorPhaseOpenQueue({ members, leaderIdx, seed, phase })
+      : leaderOperationModes.has(mode)
+	      ? [leaderIdx]
 	      : r1ActorEventQueue(members, seed, phase, currentTrigger.token, excludeIndex);
-		    quietBeatStreak = 0;
-		  };
+	    quietBeatStreak = 0;
+	  };
 
   while (phase !== "submitted" && eventIndex < eventCap && entranceCheckIndex < entranceCheckCap) {
     const screenText = phase === "selection"
@@ -3597,22 +3928,22 @@ async function runR1ActorIsolatedDiscussion({ members, leaderIdx, draws, proposa
       members.forEach((member, index) => {
         phaseStates[phase][member.profile_id] = privateStates[index];
       });
-	      actorTurnsByPhase[phase] = {};
-	      setResponseQueue("phase_open", null, null);
-	    }
+      actorTurnsByPhase[phase] = {};
+      setResponseQueue("phase_open", null, null);
+    }
     if (!deadlinePromptedByPhase[phase] && eventIndex >= deadlineLeaderEventAt && phase !== "submitted") {
       const deadlineEntry = {
         speaker: "screen",
         phase,
         text: phase === "selection"
-          ? `课堂时间快到这一页的收口点了。页面不会替小组选择，但组长现在需要把还要改的最后改掉，或用当前暂存项进入下一页。`
-          : `课堂时间快到提交前的收口点了。页面不会替小组改写，但组长现在需要把 WHO、PAIN、HOW 的最后版本填好，或提交当前版本。`
+          ? "课堂时间快到这一页的收口点了。页面不会替小组选择，但组长现在需要把还要改的最后改掉，或用当前暂存项进入下一页。"
+          : "课堂时间快到提交前的收口点了。页面不会替小组改写，但组长现在需要把 WHO、PAIN、HOW 的最后版本填好，或提交当前版本。"
       };
       transcript.push(deadlineEntry);
       deadlinePromptedByPhase[phase] = true;
       setResponseQueue("deadline_leader_operation", deadlineEntry, null);
     }
-	    if (!queue.length) {
+    if (!queue.length) {
       if (phase === "selection" && currentTrigger.mode === "phase_open" && !r1ActorHasNonLeaderSubstantiveTurn(turns, phase)) {
         const fallbackIndex = await chooseR1ActorFallbackSpeaker({
           members,
@@ -3645,7 +3976,7 @@ async function runR1ActorIsolatedDiscussion({ members, leaderIdx, draws, proposa
     }
     const memberIndex = queue.shift();
     const member = members[memberIndex];
-	    const allowOperate = memberIndex === leaderIdx && leaderOperationModes.has(currentTrigger.mode);
+    const allowOperate = memberIndex === leaderIdx && leaderOperationModes.has(currentTrigger.mode);
     entranceCheckIndex += 1;
     actorTurnsByPhase[phase][member.profile_id] = (actorTurnsByPhase[phase][member.profile_id] || 0) + 1;
     const phaseTurnNumber = actorTurnsByPhase[phase][member.profile_id];
@@ -3706,33 +4037,33 @@ async function runR1ActorIsolatedDiscussion({ members, leaderIdx, draws, proposa
       continue;
     }
     eventIndex += 1;
-    const raw = entrance.decision === "silent"
+    const actorCallArgs = {
+      members,
+      member,
+      isLeader: memberIndex === leaderIdx,
+      ownProposal: proposals[memberIndex].parsed,
+      privateState: phaseStates[phase][member.profile_id],
+      screenText,
+      uiState,
+      transcript,
+      phase,
+      phaseTurnNumber,
+      triggerContext: r1ActorTriggerContext({
+        mode: currentTrigger.mode,
+        phase,
+        trigger: currentTrigger.trigger,
+        members,
+        uiState
+      }),
+      performanceMode: entrance.decision,
+      temperature,
+      outputDir,
+      eventIndex
+    };
+    let raw = entrance.decision === "silent"
       ? `（${member.surface?.name || "这名成员"}没有开口。）`
-      : await callR1IsolatedActor({
-          members,
-          member,
-          isLeader: memberIndex === leaderIdx,
-          ownProposal: proposals[memberIndex].parsed,
-          privateState: phaseStates[phase][member.profile_id],
-          screenText,
-          uiState,
-          transcript,
-          phase,
-          phaseTurnNumber,
-          triggerContext: r1ActorTriggerContext({
-            mode: currentTrigger.mode,
-            phase,
-            trigger: currentTrigger.trigger,
-            members,
-            uiState
-          }),
-          performanceMode: entrance.decision,
-          temperature,
-          outputDir,
-          eventIndex
-        });
-    const participation = r1ActorPublicParticipation(raw);
-    const event = entrance.decision !== "operate"
+      : await callR1IsolatedActor(actorCallArgs);
+    let event = entrance.decision !== "operate"
       ? { action: "none", evidence_quote: "", grid_id: "", architecture: "", vp_summary: { who: "", pain: "", how: "" } }
       : await extractR1ActorUiEvent({
           raw,
@@ -3743,7 +4074,30 @@ async function runR1ActorIsolatedDiscussion({ members, leaderIdx, draws, proposa
           outputDir,
           eventIndex,
           memberId: member.profile_id
-	        });
+        });
+    if (entrance.decision === "operate" && event.action === "none") {
+      // Re-shoot the same moment once: the actor already privately decided to operate, but the
+      // take contained no indexable UI action. Never invents a decision.
+      const retryRaw = await callR1IsolatedActor({
+        ...actorCallArgs,
+        operateRetryNote: "你刚才那一镜没有落下任何可索引的真实界面动作：没有点中任何合法按钮，也没有逐字写出某个输入框的最终文字。重演这一刻，在括号动作里把操作写实——点击时逐字写出按钮标签（例如 点击市场格“ToB_DIFF_ELDER”、点击产品定位“Hybrid”、点击“继续”按钮、点击“提交”按钮），输入时逐字写出该输入框的完整最终文字。仍然只演这一个操作。"
+      });
+      const retryEvent = await extractR1ActorUiEvent({
+        raw: retryRaw,
+        phase,
+        isLeader: memberIndex === leaderIdx,
+        uiState,
+        temperature,
+        outputDir,
+        eventIndex,
+        memberId: member.profile_id
+      });
+      if (retryEvent.action !== "none") {
+        raw = retryRaw;
+        event = retryEvent;
+      }
+    }
+    const participation = r1ActorPublicParticipation(raw);
     const previousPhase = phase;
     const transcriptEntry = { speaker: member.profile_id, phase: previousPhase, text: raw || "（没有说话）", participation, ui_action: event.action === "none" ? null : event };
     transcript.push(transcriptEntry);
@@ -3772,11 +4126,11 @@ async function runR1ActorIsolatedDiscussion({ members, leaderIdx, draws, proposa
         leader_id: leader.profile_id,
         phase,
         event_index: eventIndex,
-	        entrance_check_index: entranceCheckIndex,
-	        event_cap: eventCap,
-	        entrance_check_cap: entranceCheckCap,
-	        deadline_leader_event_at: deadlineLeaderEventAt,
-	        private_states: phaseStates,
+        entrance_check_index: entranceCheckIndex,
+        event_cap: eventCap,
+        entrance_check_cap: entranceCheckCap,
+        deadline_leader_event_at: deadlineLeaderEventAt,
+        private_states: phaseStates,
         turns,
         ui_state: uiState,
         trigger: currentTrigger,
@@ -3802,15 +4156,99 @@ async function runR1ActorIsolatedDiscussion({ members, leaderIdx, draws, proposa
 	    } else {
 	      queue = queue.slice();
 	    }
-	  }
-	  if (phase !== "submitted") {
-	    throw new Error(`r1_actor_isolated_safety_stop_without_natural_submission_after_${eventIndex}_public_events_${entranceCheckIndex}_entrance_checks_event_cap_${eventCap}_entrance_cap_${entranceCheckCap}`);
-	  }
+  }
+  let timeoutForcedSubmission = null;
+  if (phase !== "submitted") {
+    const timeoutPhase = phase;
+    const timeoutScreenText = timeoutPhase === "selection"
+      ? buildR1ActorIsolatedSelectionScreen({ members, leaderIdx, draws, proposals, uiState })
+      : buildR1ActorIsolatedVpScreen(uiState);
+    const timeoutCue = timeoutPhase === "selection"
+      ? "这一页的课堂时间到了。页面没有替小组点任何按钮；组长必须现在在界面上完成最后选择、进入下一页并提交 Round 1。"
+      : "Round 1 的课堂时间到了。页面没有替小组填任何文字；组长必须现在在界面上确认或改写 WHO、PAIN、HOW 并点击提交。";
+    transcript.push({ speaker: "screen", phase: timeoutPhase, text: timeoutCue });
+    eventIndex += 1;
+    timeoutForcedSubmission = await callR1ActorTimeoutForcedSubmission({
+      members,
+      leaderIdx,
+      proposals,
+      privateState: phaseStates[timeoutPhase]?.[leader.profile_id] || "",
+      screenText: timeoutScreenText,
+      uiState,
+      transcript,
+      phase: timeoutPhase,
+      temperature,
+      outputDir,
+      eventIndex,
+      entranceCheckIndex,
+      eventCap
+    });
+    const timeoutParsed = timeoutForcedSubmission.parsed;
+    uiState.grid_id = timeoutParsed.grid_id;
+    uiState.architecture = timeoutParsed.architecture;
+    uiState.vp_summary = { ...timeoutParsed.vp_summary };
+    actorTurnsByPhase[timeoutPhase] = actorTurnsByPhase[timeoutPhase] || {};
+    actorTurnsByPhase[timeoutPhase][leader.profile_id] = (actorTurnsByPhase[timeoutPhase][leader.profile_id] || 0) + 1;
+    const timeoutEvent = {
+      action: "timeout_forced_submit_r1",
+      evidence_quote: timeoutForcedSubmission.evidence_quote,
+      grid_id: timeoutParsed.grid_id,
+      architecture: timeoutParsed.architecture,
+      vp_summary: timeoutParsed.vp_summary
+    };
+    const timeoutTranscriptEntry = {
+      speaker: leader.profile_id,
+      phase: timeoutPhase,
+      text: timeoutForcedSubmission.raw,
+      participation: r1ActorPublicParticipation(timeoutForcedSubmission.raw),
+      ui_action: timeoutEvent
+    };
+    transcript.push(timeoutTranscriptEntry);
+    turns.push({
+      event: eventIndex,
+      phase: timeoutPhase,
+      actor: leader.profile_id,
+      is_leader: true,
+      phase_turn_number: actorTurnsByPhase[timeoutPhase][leader.profile_id],
+      trigger_mode: "timeout_forced_submission",
+      trigger_token: `${timeoutPhase}:timeout_forced_submission:${eventIndex}`,
+      allow_operate: true,
+      entrance_decision: "operate",
+      entrance_private_raw: "【收口提示】时间到，组长必须通过公开界面动作提交；系统不默认填值。",
+      participation: timeoutTranscriptEntry.participation,
+      raw: timeoutForcedSubmission.raw,
+      indexed_ui_event: timeoutEvent,
+      ui_state_after: JSON.parse(JSON.stringify(uiState))
+    });
+    phase = "submitted";
+    queue = [];
+    if (outputDir) {
+      writeJson(path.join(outputDir, "r1_actor_isolated_checkpoint.json"), {
+        seed,
+        arm,
+        leader_id: leader.profile_id,
+        phase,
+        event_index: eventIndex,
+        entrance_check_index: entranceCheckIndex,
+        event_cap: eventCap,
+        entrance_check_cap: entranceCheckCap,
+        deadline_leader_event_at: deadlineLeaderEventAt,
+        timeout_forced_submission: timeoutForcedSubmission,
+        private_states: phaseStates,
+        turns,
+        ui_state: uiState,
+        trigger: { mode: "timeout_forced_submission", trigger: timeoutTranscriptEntry, token: `${timeoutPhase}:timeout_forced_submission:${eventIndex}` },
+        queue
+      });
+    }
+  }
   const draftParsed = validateParsed("r1", {
     grid_id: uiState.grid_id,
     architecture: uiState.architecture,
     vp_summary: uiState.vp_summary,
-    rationale: `组长在第 ${eventIndex} 个公开事件中点击提交；市场、定位和 VP 均来自已记录的组长界面动作。`
+    rationale: timeoutForcedSubmission
+      ? `组长在第 ${eventIndex} 个公开事件中通过时间到后的公开剧本完成提交；证据：${timeoutForcedSubmission.evidence_quote}`
+      : `组长在第 ${eventIndex} 个公开事件中点击提交；市场、定位和 VP 均来自已记录的组长界面动作。`
   }, {});
   const writingAssist = await runR1ActorIsolatedWritingAssist({
     members,
@@ -3836,35 +4274,43 @@ async function runR1ActorIsolatedDiscussion({ members, leaderIdx, draws, proposa
       seed,
       arm,
       leader_id: leader.profile_id,
-	      private_states: phaseStates,
-	      event_cap: eventCap,
-	      entrance_check_cap: entranceCheckCap,
-	      deadline_leader_event_at: deadlineLeaderEventAt,
-	      turns,
+      private_states: phaseStates,
+      event_cap: eventCap,
+      entrance_check_cap: entranceCheckCap,
+      deadline_leader_event_at: deadlineLeaderEventAt,
+      turns,
       final_ui_state: uiState,
       draft_submission: draftParsed,
       writing_assist: writingAssist,
+      timeout_forced_submission: timeoutForcedSubmission,
       parsed_submission: parsed
     });
   }
   return {
     transcript,
     turns,
-	    termination: "actor_isolated_explicit_leader_submit_plus_ai_writing_assist",
-	    event_cap: eventCap,
-	    entrance_check_cap: entranceCheckCap,
-	    deadline_leader_event_at: deadlineLeaderEventAt,
+    termination: timeoutForcedSubmission
+      ? "actor_isolated_timeout_forced_public_submission_plus_ai_writing_assist"
+      : "actor_isolated_explicit_leader_submit_plus_ai_writing_assist",
+    event_cap: eventCap,
+    entrance_check_cap: entranceCheckCap,
+    deadline_leader_event_at: deadlineLeaderEventAt,
     narration: { mode: "deterministic_public_environment_plus_private_per_actor_states", private_states: phaseStates },
     leader_submit: {
       text: finalText,
       parsed,
       draft_parsed: draftParsed,
-      parse_raw: writingAssist.raw || uiState,
+      parse_raw: timeoutForcedSubmission?.extractor_raw || writingAssist.raw || uiState,
       attempts: writingAssist.attempts,
-      parse_method: writingAssist.status === "ok"
-        ? "actor_isolated_explicit_ui_actions_plus_ai_writing_assist"
-        : "actor_isolated_explicit_ui_actions_ai_writing_assist_failed_fallback_to_draft",
-      writing_assist: writingAssist
+      parse_method: timeoutForcedSubmission
+        ? (writingAssist.status === "ok"
+            ? "actor_isolated_timeout_public_submission_plus_ai_writing_assist"
+            : "actor_isolated_timeout_public_submission_ai_writing_assist_failed_fallback_to_draft")
+        : (writingAssist.status === "ok"
+            ? "actor_isolated_explicit_ui_actions_plus_ai_writing_assist"
+            : "actor_isolated_explicit_ui_actions_ai_writing_assist_failed_fallback_to_draft"),
+      writing_assist: writingAssist,
+      timeout_forced_submission: timeoutForcedSubmission
     }
   };
 }
@@ -7606,7 +8052,7 @@ async function individualCardStorySelection({ member, isLeader, draw, proposal, 
   const baseMessages = [
     {
       role: "system",
-      content: `${formatProfile(member, isLeader, arm)}\n\n你现在不是在做产品经理最优解，而是在演这个人如何读一个真实网页界面。允许漏看、误读、顺手点、嫌麻烦、被卡片名字吸引。`
+      content: `${formatProfile(member, isLeader, arm)}\n\n${formatR1ActorCarryoverForPrompt(member)}\n\n你现在不是在做产品经理最优解，而是在演这个人如何读一个真实网页界面。允许漏看、误读、顺手点、嫌麻烦、被卡片名字吸引。`
     },
     {
       role: "user",
@@ -7734,7 +8180,7 @@ async function individualCardSelection({ member, isLeader, draw, proposal, assig
   const baseMessages = [
     {
       role: "system",
-      content: `${formatProfile(member, isLeader, arm)}\n\n以下锦囊是你的私有信息，只能影响你自己的判断，不要假装别人知道。`
+      content: `${formatProfile(member, isLeader, arm)}\n\n${formatR1ActorCarryoverForPrompt(member)}\n\n以下锦囊是你的私有信息，只能影响你自己的判断，不要假装别人知道。`
     },
     {
       role: "user",
@@ -8799,6 +9245,11 @@ async function runR2FromExistingR1({ sourceDir, batch, arm = null, poolPath = nu
   const r1Frozen = readJson(path.join(resolvedSourceDir, "r1_frozen.json"));
   const sourceSettlementPath = path.join(resolvedSourceDir, "settlement.json");
   const sourceSettlement = fs.existsSync(sourceSettlementPath) ? readJson(sourceSettlementPath) : {};
+  const sourceR1ActorStatePath = path.join(resolvedSourceDir, "r1_actor_isolated_state.json");
+  const sourceR1ActorState = fs.existsSync(sourceR1ActorStatePath) ? readJson(sourceR1ActorStatePath) : null;
+  if (hasR1ActorIsolatedArm(sourceMeta.arm) && !sourceR1ActorState) {
+    throw new Error(`source R1 actor state missing: ${sourceR1ActorStatePath}`);
+  }
   const effectiveArm = arm || sourceMeta.arm || "legacy";
   if (!TEAM_ARMS.has(effectiveArm)) throw new Error(`unknown team arm: ${effectiveArm}`);
   const sourceConfig = sourceMeta.config_snapshot && typeof sourceMeta.config_snapshot === "object" && !useCurrentConfig
@@ -8821,6 +9272,24 @@ async function runR2FromExistingR1({ sourceDir, batch, arm = null, poolPath = nu
     outputDir,
     poolPath: sourcePoolPath
   });
+  const replayStateRestore = restoreReplayBehavioralState({
+    members: sampled.members,
+    leaderIdx: sampled.leaderIdx,
+    sourceMeta,
+    r1ActorState: sourceR1ActorState
+  });
+  if (sourceR1ActorState) {
+    writeJson(path.join(outputDir, "r1_actor_isolated_state.json"), {
+      ...sourceR1ActorState,
+      replay_from: path.relative(ROOT, sourceR1ActorStatePath)
+    });
+    writeJson(path.join(outputDir, "r1_actor_carryover.json"), {
+      replay_from: path.relative(ROOT, resolvedSourceDir),
+      source_file: path.relative(ROOT, sourceR1ActorStatePath),
+      restore: replayStateRestore,
+      final_submission: sourceR1ActorState.parsed_submission || null
+    });
+  }
   const draws = drawJinangForMembers(sampled.members, sourceMeta.seed, materials.jinang);
   const proposals = Array.isArray(sourceTranscript.proposals) ? sourceTranscript.proposals : [];
   if (proposals.length !== sampled.members.length) {
@@ -8836,17 +9305,26 @@ async function runR2FromExistingR1({ sourceDir, batch, arm = null, poolPath = nu
     ...sourceMeta,
     batch: replayBatch,
     arm: effectiveArm,
-    team_id: `${sourceTeamId}__r2_replay`,
-    replay_from: path.relative(ROOT, resolvedSourceDir),
-    replay_scope: "R2 only; R1 frozen strategy, member proposals, sampled members, leader, and jinang draws reconstructed from source seed",
-    profile_pool_source: sourcePoolPath ? path.relative(ROOT, sourcePoolPath) : sourceMeta.profile_pool_source,
-    config_snapshot: config,
-    source_config_snapshot_used: !useCurrentConfig,
-    implementation_notes: [
-      ...ensureArray(sourceMeta.implementation_notes),
-      "This run reuses existing r1_frozen.json and r1_transcript.json; no Round 1 LLM calls are made."
-    ]
-  });
+	    team_id: `${sourceTeamId}__r2_replay`,
+	    replay_from: path.relative(ROOT, resolvedSourceDir),
+	    replay_scope: "R2 only; R1 frozen strategy, member proposals, sampled members, leader, jinang draws, behavioral_state_initial, and R1 actor private carryover are restored from source",
+	    profile_pool_source: sourcePoolPath ? path.relative(ROOT, sourcePoolPath) : sourceMeta.profile_pool_source,
+	    config_snapshot: config,
+	    source_config_snapshot_used: !useCurrentConfig,
+    r1_actor_state_carryover: {
+      restored: Boolean(sourceR1ActorState),
+      source_file: sourceR1ActorState ? path.relative(ROOT, sourceR1ActorStatePath) : null,
+      ...replayStateRestore
+    },
+    behavioral_state_replay_runtime_initial: snapshotBehavioralStateForRunMeta(sampled.members, sampled.leaderIdx),
+	    implementation_notes: [
+	      ...ensureArray(sourceMeta.implementation_notes),
+	      "This run reuses existing r1_frozen.json and r1_transcript.json; no Round 1 LLM calls are made.",
+      sourceR1ActorState
+        ? "R1 actor private state is copied into replay output and injected into R2 member prompts as per-member carryover."
+        : "No R1 actor private state file was present in the source; R2 restored behavioral_state_initial only."
+	    ]
+	  });
   writeJson(path.join(outputDir, "r1_frozen.json"), r1Frozen);
   writeJson(path.join(outputDir, "r1_transcript.json"), {
     ...sourceTranscript,
@@ -8900,10 +9378,11 @@ async function runR2FromExistingR1({ sourceDir, batch, arm = null, poolPath = nu
   };
 }
 
-async function runTeam({ seed, batch, arm = "legacy", poolPath = null, outputRoot = OUTPUT_ROOT, configOverrides = {}, r1Only = false }) {
+async function runTeam({ seed, batch, arm = "legacy", publicArm = null, poolPath = null, outputRoot = OUTPUT_ROOT, configOverrides = {}, r1Only = false, presetMeta = null }) {
   if (!TEAM_ARMS.has(arm)) throw new Error(`unknown team arm: ${arm}`);
   const materials = loadMaterials();
   const config = { ...materials.config, ...configOverrides };
+  const visibleArm = publicArm || arm;
   const teamId = arm === "legacy" ? `SYN-${batch}-${seed}` : `SYN-${batch}-${arm}-${seed}`;
   const outputDir = path.join(outputRoot, batch, teamId);
   fs.mkdirSync(outputDir, { recursive: true });
@@ -8920,8 +9399,20 @@ async function runTeam({ seed, batch, arm = "legacy", poolPath = null, outputRoo
   const meta = {
     batch,
     arm,
+    public_arm: visibleArm,
+    runtime_arm: visibleArm === arm ? null : arm,
     team_id: teamId,
     seed,
+    preset: presetMeta
+      ? {
+          name: presetMeta.name,
+          lifecycle: presetMeta.lifecycle,
+          forked_from: presetMeta.forked_from,
+          description: presetMeta.description,
+          evidence: presetMeta.evidence,
+          runtime_arm_aliases: presetMeta.runtime_arm_aliases
+        }
+      : null,
     profile_pool_source: poolPath ? path.relative(ROOT, poolPath) : "scripts/sim/persona_pool.js via buildProfilePool",
     profile_ids: sampled.members.map((member) => member.profile_id),
     leader_id: leader.profile_id,
@@ -9251,10 +9742,11 @@ async function runTeam({ seed, batch, arm = "legacy", poolPath = null, outputRoo
       profit: null,
       profitable: null
     });
-    return {
-      synthetic: true,
-      arm,
-      team_id: teamId,
+	    return {
+	      synthetic: true,
+	      arm,
+      public_arm: visibleArm,
+	      team_id: teamId,
       output_dir: outputDir,
       leader_id: leader.profile_id,
       profile_ids: sampled.members.map((member) => member.profile_id),
@@ -9304,6 +9796,7 @@ async function runTeam({ seed, batch, arm = "legacy", poolPath = null, outputRoo
   return {
     synthetic: true,
     arm,
+    public_arm: visibleArm,
     team_id: teamId,
     output_dir: outputDir,
     leader_id: leader.profile_id,
