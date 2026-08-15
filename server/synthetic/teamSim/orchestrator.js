@@ -1113,7 +1113,60 @@ function scoreBand(value, labels) {
   return labels[2];
 }
 
+function requireFingerprintDim(fingerprint, dim, memberId) {
+  const value = Number(fingerprint?.[dim]);
+  if (!Number.isFinite(value)) {
+    throw new Error(`task_blind member ${memberId} missing behavioral_fingerprint.${dim}; refusing fallback`);
+  }
+  return value;
+}
+
+function taskBlindClassroomBehaviorProfile(member, isLeader) {
+  const fp = member.behavioral_fingerprint;
+  const id = member.profile_id;
+  const act = requireFingerprintDim(fp, "action_orientation", id);
+  const promo = requireFingerprintDim(fp, "regulatory_focus_promotion", id);
+  const nfc = requireFingerprintDim(fp, "need_for_cognition", id);
+  const maxi = requireFingerprintDim(fp, "maximizing_satisficing", id);
+  const aot = requireFingerprintDim(fp, "actively_open_minded_thinking", id);
+  requireFingerprintDim(fp, "ambiguity_tolerance", id);
+  const cfc = requireFingerprintDim(fp, "consideration_future_consequences", id);
+  requireFingerprintDim(fp, "risk_propensity_business", id);
+  // 1:1 design-native mapping: each knob is the semantically matching fingerprint dim,
+  // no invented composite weights, no rng. Dims are the persona design.
+  const talkativeness = act;
+  const dominance = clamp(act + (isLeader ? 0.15 : 0), 0, 1);
+  const statusMotive = promo;
+  const engagement = nfc;
+  const relevanceControl = cfc;
+  const agreeability = clamp(1 - aot, 0, 1);
+  const calculationImpulse = maxi;
+  const taskSkepticism = aot;
+  return {
+    talkativeness,
+    dominance,
+    statusMotive,
+    engagement,
+    relevanceControl,
+    agreeability,
+    calculationImpulse,
+    taskSkepticism,
+    labels: {
+      talkativeness: scoreBand(talkativeness, ["话少", "正常发言", "话多"]),
+      relevance: scoreBand(relevanceControl, ["容易跑题或讲自己行业", "偶尔发散", "比较聚焦"]),
+      status: scoreBand(statusMotive, ["不太在意表现", "正常参与", "想显得自己懂"]),
+      engagement: scoreBand(engagement, ["有点敷衍", "正常完成任务", "认真投入"]),
+      dominance: scoreBand(dominance, ["被点到才说", "看时机插话", "容易抢主导"]),
+      agreeability: scoreBand(agreeability, ["爱质疑", "正常回应", "喜欢调停/附和"]),
+      calculation: scoreBand(calculationImpulse, ["凭感觉", "会看数字", "忍不住算账"])
+    }
+  };
+}
+
 function classroomBehaviorProfile(member, isLeader = false) {
+  if (isTaskBlindNarrativeMember(member)) {
+    return taskBlindClassroomBehaviorProfile(member, isLeader);
+  }
   if (isCareerGeneralProfileMember(member)) {
     const profile = member.career_general_profile || {};
     const communication = String(profile.communication_style || "");
