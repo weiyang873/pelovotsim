@@ -9715,6 +9715,7 @@ function formatD4ScreenplayActorSheet(members, leaderIdx, segment, groupMap) {
     return [
       `【演员 ${member.profile_id}${index === leaderIdx ? " / 组长" : ""}】`,
       formatProfile(member, index === leaderIdx, "team_room_story_d4d5_v1"),
+      member.r1_own_proposal ? `他自己在 R1 的个人初选（公开过）：${member.r1_own_proposal}` : "",
       formatR1ActorCarryoverForPrompt(member),
       groupLines.length ? `D4 当前格私有状态：${groupLines.join("；")}` : "",
       `当前状态：注意点=${state.attention_focus || ""}；信心=${Number(state.confidence || 0).toFixed(2)}；疲劳=${Number(state.fatigue || 0).toFixed(2)}。`
