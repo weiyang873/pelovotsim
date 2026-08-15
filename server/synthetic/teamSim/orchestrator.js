@@ -10423,7 +10423,9 @@ async function runD4ActorReview({ members, leaderIdx, deck: deck0, individualSel
     turns.push({ event: eventIndex, member_id: member.profile_id, mode: entrance.decision, text: raw, ui_event: event });
     if (event.action !== "none") {
       if (event.action === "continue") {
-        const pendingConflicts = hardCompatibilityViolations(RD.validateSelections(deck)).map((item) => item.message);
+        const validationNow = RD.validateSelections(deck);
+        const pendingConflicts = hardCompatibilityViolations(validationNow).map((item) => item.message)
+          .concat((validationNow.violations || []).filter((item) => /至少选/.test(String(item.message))).map((item) => item.message));
         if (deck.length < minCards) {
           transcript.push({ speaker: "narrator", text: `页面提示：至少需要 ${minCards} 张能力卡才能继续。` });
         } else if (pendingConflicts.length) {
@@ -10460,11 +10462,13 @@ async function runD4ActorReview({ members, leaderIdx, deck: deck0, individualSel
     queue = addressed.concat(rest).concat(memberIndex === leaderIdx ? [] : [leaderIdx]);
   }
   if (!ended) {
-    const remaining = hardCompatibilityViolations(RD.validateSelections(deck));
+    const finalValidation = RD.validateSelections(deck);
+    const remaining = hardCompatibilityViolations(finalValidation)
+      .concat((finalValidation.violations || []).filter((item) => /至少选/.test(String(item.message))));
     if (remaining.length) {
       const capGroupById = capGroupsById(materials.capabilityGroups);
       const allGroups = new Set((materials.capabilityGroups.groups || []).map((group) => group.group_id));
-      const guard = applyDeterministicUiCardGuard({ selectedCards: deck, submittedCards: deck, segmentSet: allGroups, capGroupById, futureGroups: [], materials });
+      const guard = applyDeterministicUiCardGuard({ selectedCards: deck, submittedCards: deck, segmentSet: allGroups, capGroupById, futureGroups: new Set(), materials });
       if (!guard.ok) throw new Error(`compat_violation_unresolved_at_forced_submit: ${remaining.map((item) => item.message).join("; ")}`);
       deck = guard.cards;
       transcript.push({ speaker: "narrator", text: `页面提示：卡组存在冲突，无法继续：${remaining.map((item) => item.message).join("；")}。组长按页面提示把冲突项去掉后才点了“继续”。` });
