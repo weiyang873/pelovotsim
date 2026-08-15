@@ -6769,7 +6769,7 @@ function formatD5NarratorActorSheet(members, leaderIdx, arm) {
     return [
       `【成员 ${member.profile_id}${index === leaderIdx ? " / 组长" : ""}】`,
       formatProfile(member, index === leaderIdx, arm),
-      hasTaskBlindBiography(member)
+      isTaskBlindNarrativeMember(member)
         ? `个人消费与取舍（本人真实经历，定性）：${member.decisionStyle}；${member.consumption_habits}`
         : "",
       `课堂行为：${formatClassroomBehavior(member, index === leaderIdx)}`,
