@@ -7608,7 +7608,7 @@ async function runD5ScreenplayStagedPricing({ members, leaderIdx, draws, proposa
 }
 
 function d5IdeologyEnabled() {
-  return /^(1|true|yes|on)$/i.test(String(process.env.TEAM_SIM_D5_IDEOLOGY || "").trim());
+  return /^(1|true|yes|on|dims)$/i.test(String(process.env.TEAM_SIM_D5_IDEOLOGY || "").trim());
 }
 
 function d5IdeologyLine(member) {
@@ -7631,6 +7631,17 @@ async function prepareD5PersonaLayer({ members, r1Frozen, selectedCards, priceCo
   const costPanel = buildR2PricingActionPersonaPanel(r1Frozen, selectedCards, priceConfig);
   await Promise.all(members.map(async (member) => {
     if (!isTaskBlindNarrativeMember(member)) return;
+    if (!member.d5_pricing_view && /^dims$/i.test(String(process.env.TEAM_SIM_D5_IDEOLOGY || "").trim())) {
+      // Reverse-engineering experiment: seller-side stance straight from the dims (what a v2
+      // biography would have to carry). Extremes are deliberate, like the old-pool archetypes.
+      const fp = member.behavioral_fingerprint || {};
+      const promo = Number(fp.regulatory_focus_promotion), risk = Number(fp.risk_propensity_business);
+      if (promo >= 0.6 && risk >= 0.6) member.d5_pricing_view = "往高了定、保证利润的人：他给自己经手的产品定价一向偏高，敢定别人觉得贵的价，认为便宜了砸招牌，宁可卖慢也不降价。";
+      else if (promo <= 0.4 && risk <= 0.4) member.d5_pricing_view = "往低了定、先卖出去再说的人：他给自己经手的产品定价一向偏低，宁可薄利甚至先不赚钱，先把量做起来、别压在手里。";
+      else if (promo >= 0.6 || risk >= 0.6) member.d5_pricing_view = "偏往高了定的人：定价时更在意利润和定位，倾向比同行高一截。";
+      else if (promo <= 0.4 || risk <= 0.4) member.d5_pricing_view = "偏往低了定的人：定价时更怕卖不动，倾向比同行低一截先走量。";
+      else member.d5_pricing_view = "跟着身边参照走的人：定价先看别人卖多少、成本多少，然后放在中间。";
+    }
     if (!member.d5_pricing_view) {
       const raw = await callText([
         { role: "system", content: "你只根据下面这个人的小传，用一句话说出：这个人经手产品定价时，一贯是哪一种人——往低了定、先卖出去再说的人；往高了定、保证利润的人；还是跟着身边参照走的人。先明确说是哪一种，再用一句他自己经历里的事说明为什么。不要分析，不要列点。" },
