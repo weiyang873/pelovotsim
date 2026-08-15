@@ -856,33 +856,11 @@ function isTaskBlindNarrativeMember(member) {
   return Boolean(String(member?.task_blind_biography || "").trim());
 }
 
-function formatTaskBlindFingerprintScale(member) {
-  const fp = member.behavioral_fingerprint || {};
-  const DIMS = [
-    ["risk_propensity_business", "经营风险偏好"],
-    ["regulatory_focus_promotion", "进取导向"],
-    ["maximizing_satisficing", "追求最优而非够用"],
-    ["consideration_future_consequences", "看重长远后果"],
-    ["need_for_cognition", "爱琢磨复杂问题"],
-    ["actively_open_minded_thinking", "愿意听反面意见"],
-    ["ambiguity_tolerance", "对模糊情况的容忍"],
-    ["action_orientation", "行动派程度"]
-  ];
-  const parts = DIMS
-    .map(([key, name]) => {
-      const label = behaviorValueLabel(fp[key]);
-      return label ? `${name}${label}` : "";
-    })
-    .filter(Boolean);
-  return parts.length ? `【自我认知量表（本人历年测评，非他人评价）】${parts.join("；")}` : "";
-}
-
 function formatTaskBlindNarrativePersona(member, isLeader) {
   return [
     `姓名代号：${member.profile_id}`,
     "【人物小传】",
     member.task_blind_biography,
-    formatTaskBlindFingerprintScale(member),
     isLeader ? "你是组长，负责推进讨论并代表全队提交。" : "你是普通队员。",
     "你现在就是小传中的这个人。像本人临场一样看界面、说话和行动，不要复述或分析小传，不要把自己变成顾问。",
     "人物小传可能没有覆盖眼前问题；遇到没有经历支撑的地方，就按这个人当下会有的直觉、犹豫或误解处理。"
