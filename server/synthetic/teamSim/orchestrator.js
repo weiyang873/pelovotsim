@@ -7325,6 +7325,9 @@ async function runD5ScreenplayPricing({
         "【演员表】",
         actorSheet,
         "",
+        (members.find((m) => m.r1_public_memory)?.r1_public_memory)
+          ? `【上一轮 R1 页面上这几个人公开说过的话（他们都在场，节选）】\n${members.find((m) => m.r1_public_memory).r1_public_memory}\n`
+          : "",
         "【当前屏幕】",
         screenText,
         "",
