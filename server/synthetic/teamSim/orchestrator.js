@@ -4666,7 +4666,7 @@ async function runActorStageDiscussion({ members, leaderIdx, draws, proposals, i
         decision = "silent";
       }
       if (decision !== "speak") continue;
-      const utterance = await speak(member, idx === leaderIdx, draws[idx], proposals[idx].parsed, transcript, topic, temperature, arm);
+      const utterance = await speak(member, idx === leaderIdx, draws[idx], proposals[idx], transcript, topic, temperature, arm);
       transcript.push({ speaker: member.profile_id, text: utterance });
       turns.push({ round, member_id: member.profile_id, entrance: "self", text: utterance });
       spokeThisRound += 1;
