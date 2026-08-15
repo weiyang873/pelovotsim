@@ -6683,10 +6683,30 @@ async function runPricingActionPersonaD5({
   config,
   temperature,
   seed,
-  arm
+  arm,
+  individualSelections = [],
+  r1PublicMemory = "",
+  d4RoomTranscript = [],
+  outputDir = null
 }) {
-  const discussFn = isPricingActionActorArm(arm) ? runActorStageDiscussion : runDiscussion;
   const stageVoice = isPricingActionActorArm(arm) ? "screen" : "moderator";
+  const d5OwnActTexts = members.map((member, index) => [
+    d5OwnActForMember(member, index, proposals, individualSelections),
+  ].filter(Boolean).join("\n"));
+  const discussFn = isPricingActionActorArm(arm)
+    ? async ({ initialTranscript, topic, seed: sceneSeed }) => runD5ActorScene({
+        members,
+        leaderIdx,
+        screenEntries: initialTranscript.filter((e) => e.speaker === "screen" || e.speaker === "moderator" || e.speaker === "narrator"),
+        stageTopic: topic,
+        ownActTexts: d5OwnActTexts,
+        r1PublicMemory: r1PublicMemory || "",
+        roomMemory: buildRoomPublicMemory(d4RoomTranscript || [], members),
+        temperature,
+        seed: sceneSeed,
+        outputDir
+      })
+    : runDiscussion;
   const maxTurns = requireConfigNumber(config, "max_turns_r2_per_segment");
   const submitParseRetries = requireConfigNumber(config, "submit_parse_retries");
   const basePanel = [
@@ -9079,7 +9099,7 @@ async function individualCardSelection({ member, isLeader, draw, proposal, assig
           ? (humanPick ? "" : (isPricingActionActorArm(arm)
               ? [
                   privateState ? `【只给你自己看的此刻状态】\n${privateState}` : "",
-                  "带着上面这个状态，像本人此刻在自己屏幕前那样点卡。不需要解释。",
+                  "像本人此刻在自己屏幕前那样点卡。不需要解释。",
                   "只写一行【我的个人选卡提交】，然后给出可索引 JSON：",
                   '{"cards":[{"cap_id":"真实cap_id","tier":"low|mid|high"}],"rationale":"顺嘴一句，可空"}'
                 ].filter(Boolean).join("\n")
@@ -9897,19 +9917,26 @@ function d4TriggerContext({ mode, trigger, members }) {
   return "";
 }
 
+const D5_ACTOR_PAGE_RULES = [
+  "当前在产品售价页。屏幕上写着这一步谈什么，就只谈这一步的事；如果你能接受眼下的方向，又没有新的具体想法或疑问，这一步对你已经没有新话可说，最自然的是保持沉默。"
+].join("\n");
+
+const D4_ACTOR_PAGE_RULES = [
+  "当前在团队合并/集体讨论页。这一页只谈：某张卡留不留、要不要加某张卡、某张卡档位升降。能接受当前卡组、又没有新的具体改法或疑问，最自然的是沉默。",
+  "售价、渠道、回本这些属于下一页；除非它们直接让你要求改动某张卡，否则这一页先不说。"
+].join("\n");
+
 const D4_ACTOR_COMMON_SYSTEM = [
   "你只为这一个演员做一次私下的临场动作判断，不写其他人的行为，不替小组规划讨论，也不知道最后结果。",
   "这不是老师点名，也不是轮到你必须贡献内容；现在只是有人刚说了一句话、页面刚变了一下，或现场安静了几秒，镜头扫到你看你会不会自然接话。",
   "只对这一件刚发生的公共事件反应一次。没有被触发就沉默，不要为了补全小组答案而开口。",
   "只有眼前内容真正碰到这个人的经历、利益、困惑或他自己刚才点过的卡时，才选择公开发言；为了完善答案或显得参与而开口不算真实动机。",
-  "谁来张罗不由指派决定，是性格和互动一起长出来的：小传里习惯张罗、催大家往下走、爱拍板收口的人，开口说“先看一下这页”“一张张过？”“那就这样定，继续吧”是真实的；再看公开记录——你刚才说的话有人接、被当成了方向，你就更会继续张罗；你说了没人接，或者已经有人在张罗，就顺着他。小传里不是这种人、现场也没人跟你，就别替他推进流程。",
-  "组长只是被随机指派、唯一能碰网页的人，不是主持人、老师或更权威的决策者。普通成员不需要等组长点名、提问或停手才开口；催组长“那你点继续吧”也是正常说话。",
-  "当前在团队合并/集体讨论页。这一页只谈：某张卡留不留、要不要加某张卡、某张卡档位升降。能接受当前卡组、又没有新的具体改法或疑问，最自然的是沉默。",
-  "售价、渠道、回本这些属于下一页；除非它们直接让你要求改动某张卡，否则这一页先不说。",
+  "谁在张罗、谁在催大家往下走，由这个人自己和现场决定，不由谁被指派为组长决定。",
+  "组长只是唯一能碰网页的人，不是主持人、老师或更权威的决策者。普通成员不需要等组长点名、提问、停手或把页面填完才开口。",
   "一个具体疑问、半句话、没把握的反对、个人经历中的小片段都算真实发言动机；不要把‘还没形成完整方案’自动判成沉默。反过来，也不要为了参与而硬凑新案例。"
 ].join("\n");
 
-async function callD4ActorEntrance({ members, member, isLeader, ownActText, privateState, screenText, transcript, phaseTurnNumber, quietBeatStreak, triggerContext, allowOperate, temperature, outputDir, eventIndex, r1PublicMemory = "" }) {
+async function callD4ActorEntrance({ members, member, isLeader, ownActText, privateState, screenText, transcript, phaseTurnNumber, quietBeatStreak, triggerContext, allowOperate, temperature, outputDir, eventIndex, r1PublicMemory = "", pageRules = D4_ACTOR_PAGE_RULES, sharedMemory = "" }) {
   const publicName = member.surface?.name || "这名成员";
   const ownPublicHistory = clipText(transcript
     .filter((entry) => entry.speaker === member.profile_id)
@@ -9928,12 +9955,9 @@ async function callD4ActorEntrance({ members, member, isLeader, ownActText, priv
       content: [
         formatD4ActorPersona(member, isLeader),
         D4_ACTOR_COMMON_SYSTEM,
+        pageRules,
         isLeader && allowOperate
-          ? [
-              "操作网页和公开发言是两件事。组长可以一句话不说就实际加卡、取消某张卡、改某张卡的档位，或点击“继续”进入售价页；也可以只说话而不碰网页。点击继续是一项网页操作，不是宣布所有人内心一致。",
-              "刚才讨论里如果有人明确要求留某张卡、砍某张卡或改档位，而你也接受，那么把它落到页面上（加/删/调档）就是最自然的操作；不必等所有人表态。",
-              "页面只有你能推进：如果全场安静，你自己也不打算再改卡组、也没新话要说，最自然的就是点击“继续”进入售价页——不点继续，大家只能一直等着。"
-            ].join("\n")
+          ? "操作网页和公开发言是两件事。组长可以一句话不说就实际加卡、取消某张卡、改某张卡的档位，或点击“继续”进入售价页；也可以只说话而不碰网页。鼠标在手不是操作理由。如果你此刻也不打算改卡组或继续说，只有你能点击继续进入下一页；这是一项网页操作，不是宣布所有人内心一致。"
           : "这次镜头只判断沉默或公开发言，不发生网页操作。",
         "判断依据是人物与此刻现场，不是商业答案质量。输出是私下拍摄决定，不会进入共享 transcript。"
       ].join("\n")
@@ -9948,7 +9972,7 @@ async function callD4ActorEntrance({ members, member, isLeader, ownActText, priv
         ownActText,
         "",
         r1PublicMemory ? `【上一轮 R1 页面上大家公开说过的话（你都在场，节选）】\n${r1PublicMemory}` : "",
-        r1PublicMemory ? "" : "",
+        sharedMemory ? `【刚才这间屋里大家已经说过的话（节选）】\n${sharedMemory}` : "",
         "【当前页面】",
         screenText,
         "",
@@ -9958,7 +9982,7 @@ async function callD4ActorEntrance({ members, member, isLeader, ownActText, priv
         `【刚发生的事】${triggerContext || "（无）"}`,
         `【你自己已经公开说过的话】\n${ownPublicHistory}`,
         quietBeatStreak >= 2 ? "现场已经安静了一会儿。安静本身不是必须说话的理由。" : "",
-        isLeader && allowOperate && quietBeatStreak >= 2 ? "现在没人再说话，页面在等你这只握鼠标的手：刚才讨论里有人要留、要砍、要改档的卡，你接受的就落到页面上；都不打算动了，就点“继续”进入售价页。你不动，大家只能干等。" : "",
+
         "",
         `只输出：一两句私下判断，然后单独一行写【行动】沉默 或 【行动】发言${isLeader && allowOperate ? " 或 【行动】操作界面" : ""}。`
       ].filter((line) => line !== "").join("\n")
@@ -9988,7 +10012,7 @@ async function callD4ActorEntrance({ members, member, isLeader, ownActText, priv
   throw new Error(`d4 actor entrance decision failed after 3 attempts: ${lastError}`);
 }
 
-async function callD4Actor({ members, member, isLeader, ownActText, privateState, screenText, transcript, phaseTurnNumber, triggerContext, performanceMode, temperature, outputDir, eventIndex, operateRetryNote = "", r1PublicMemory = "" }) {
+async function callD4Actor({ members, member, isLeader, ownActText, privateState, screenText, transcript, phaseTurnNumber, triggerContext, performanceMode, temperature, outputDir, eventIndex, operateRetryNote = "", r1PublicMemory = "", pageRules = D4_ACTOR_PAGE_RULES, sharedMemory = "" }) {
   const ownPublicHistory = clipText(transcript
     .filter((entry) => entry.speaker === member.profile_id)
     .map((entry, index) => `${index + 1}. ${entry.text}`)
@@ -10011,8 +10035,7 @@ async function callD4Actor({ members, member, isLeader, ownActText, privateState
         "不要替其他成员写台词，不要当主持人，不要总结整场会议，不要追求一个漂亮完整的答案。",
         "别人讲过的家庭、客户和工作经历属于别人；你可以回应，但绝不能改写成自己的回忆。",
         "不要每次复述刚才所有观点，也不要重复自己已经讲过的完整理由。每次只推进眼前一个很小的反应。",
-        "屏幕上的总数大家都看见了，别人刚念过的数字不用再念一遍；开口直接接刚才那句话，或说你自己在意的那张卡。",
-        "这一页只谈卡留不留、加不加、档位升降；不展开售价和渠道，那是下一页。",
+        pageRules,
         modeInstruction,
         operateRetryNote
       ].filter(Boolean).join("\n")
@@ -10027,6 +10050,7 @@ async function callD4Actor({ members, member, isLeader, ownActText, privateState
         ownActText,
         "",
         r1PublicMemory ? `【上一轮 R1 页面上大家公开说过的话（你都在场，节选）】\n${r1PublicMemory}` : "",
+        sharedMemory ? `【刚才这间屋里大家已经说过的话（节选）】\n${sharedMemory}` : "",
         "【当前页面】",
         screenText,
         "",
@@ -10122,6 +10146,110 @@ function d4EventText(event, members, leaderIdx) {
   return "";
 }
 
+function d5OwnActForMember(member, index, proposals, individualSelections) {
+  const parts = [];
+  const proposal = proposals?.[index]?.parsed;
+  if (proposal?.grid_id) parts.push(`他在 R1 的个人初选：${proposal.grid_id}/${proposal.architecture || ""}`);
+  const cards = individualSelections?.[index]?.parsed?.cards || [];
+  if (cards.length) parts.push(`他刚才在选卡页自己点的：${cards.map((card) => `${capMetaById(card.cap_id).cap_name}@${card.tier}`).join("、")}`);
+  return parts.join("\n");
+}
+
+function buildRoomPublicMemory(entries, members, chars = 1400) {
+  const byId = new Map(members.map((m) => [m.profile_id, m.surface?.name || m.profile_id]));
+  const lines = (entries || [])
+    .filter((entry) => byId.has(entry.speaker))
+    .map((entry) => `${byId.get(entry.speaker)}：${String(entry.text || "").replace(/\s+/g, " ").trim().slice(0, 200)}`);
+  let out = [];
+  let total = 0;
+  for (let i = lines.length - 1; i >= 0; i -= 1) {
+    if (total + lines[i].length > chars) break;
+    out.unshift(lines[i]);
+    total += lines[i].length;
+  }
+  return out.join("\n");
+}
+
+// D5 stage scene on the same actor engine: private state at page open, event-driven entrance,
+// natural takes, quiet-beat fallback; no page operations (the leader submits at stage end).
+async function runD5ActorScene({ members, leaderIdx, screenEntries, stageTopic, ownActTexts, r1PublicMemory, roomMemory, temperature, seed, outputDir, maxEvents = 12 }) {
+  const rng = makeRng(`d5_actor_scene:${seed}:${stageTopic}`);
+  const transcript = screenEntries.slice();
+  const turns = [];
+  const screenText = screenEntries.map((e) => String(e.text)).join("\n");
+  const privateStates = await Promise.all(members.map((member, index) => createR2ActorPrivateState({
+    member,
+    isLeader: index === leaderIdx,
+    ownActText: ownActTexts[index],
+    screenText,
+    heardTranscript: roomMemory ? `（刚才合并页上，节选）\n${roomMemory}` : "",
+    ask: `页面刚切到售价页这一步：${stageTopic}。写 80-180 字的私有主人公状态：他先看见什么、想不想开口、想起了哪段真实经历、哪里没把握。不要替他说出小组最后的选择。`,
+    phase: `d5:${stageTopic}`,
+    temperature,
+    outputDir
+  })));
+  const nonLeaders = members.map((_, i) => i).filter((i) => i !== leaderIdx);
+  const shuffled = (indices) => { const arr = indices.slice(); for (let i = arr.length - 1; i > 0; i -= 1) { const j = Math.floor(rng() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
+  let queue = shuffled(members.map((_, i) => i));
+  let currentTrigger = { mode: "phase_open", trigger: null };
+  let quietBeatStreak = 0, quietCycles = 0, eventIndex = 0, entranceCheckIndex = 0, fallbackUsed = false;
+  const turnsByMember = {};
+  let termination = "quiet";
+  while (true) {
+    if (eventIndex >= maxEvents) { termination = "event_cap"; break; }
+    if (!queue.length) {
+      quietCycles += 1;
+      if (quietCycles >= 2 && !fallbackUsed && eventIndex === 0) {
+        const pick = nonLeaders[Math.floor(rng() * nonLeaders.length)];
+        fallbackUsed = true;
+        currentTrigger = { mode: "system_selected_speaker", trigger: null };
+        queue = [pick];
+        continue;
+      }
+      if (quietCycles >= 2) { termination = "quiet"; break; }
+      transcript.push({ speaker: "narrator", text: "几秒钟没人接着往下说，屏幕还停在这一步。" });
+      currentTrigger = { mode: "leader_operation", trigger: null };
+      queue = shuffled(members.map((_, i) => i));
+      continue;
+    }
+    const memberIndex = queue.shift();
+    const member = members[memberIndex];
+    const isLeader = memberIndex === leaderIdx;
+    entranceCheckIndex += 1;
+    turnsByMember[member.profile_id] = (turnsByMember[member.profile_id] || 0) + 1;
+    const phaseTurnNumber = turnsByMember[member.profile_id];
+    const triggerContext = currentTrigger.mode === "phase_open"
+      ? `页面刚切到售价页这一步：${stageTopic}。`
+      : currentTrigger.mode === "system_selected_speaker"
+        ? "现场安静了一阵，镜头扫到你。"
+        : currentTrigger.trigger
+          ? `刚才 ${members.find((m) => m.profile_id === currentTrigger.trigger.speaker)?.surface?.name || currentTrigger.trigger.speaker} 说：${String(currentTrigger.trigger.text).slice(0, 200)}`
+          : "几秒钟没人说话。";
+    const forced = currentTrigger.mode === "system_selected_speaker";
+    const entrance = forced
+      ? { decision: "speak", raw: "【后台选角】" }
+      : await callD4ActorEntrance({
+          members, member, isLeader, ownActText: ownActTexts[memberIndex], privateState: privateStates[memberIndex],
+          screenText, transcript, phaseTurnNumber, quietBeatStreak, triggerContext, allowOperate: false, temperature, outputDir,
+          eventIndex: entranceCheckIndex, r1PublicMemory, pageRules: D5_ACTOR_PAGE_RULES, sharedMemory: roomMemory
+        });
+    if (entrance.decision === "silent") { quietBeatStreak += 1; continue; }
+    eventIndex += 1; quietBeatStreak = 0; quietCycles = 0;
+    const raw = await callD4Actor({
+      members, member, isLeader, ownActText: ownActTexts[memberIndex], privateState: privateStates[memberIndex],
+      screenText, transcript, phaseTurnNumber, triggerContext, performanceMode: "speak", temperature, outputDir, eventIndex,
+      r1PublicMemory, pageRules: D5_ACTOR_PAGE_RULES, sharedMemory: roomMemory
+    });
+    transcript.push({ speaker: member.profile_id, text: raw });
+    turns.push({ event: eventIndex, member_id: member.profile_id, text: raw });
+    const others = shuffled(members.map((_, i) => i).filter((i) => i !== memberIndex));
+    const addressed = others.filter((i) => { const nm = String(members[i].surface?.name || ""); const short = nm.length >= 2 ? nm.slice(-2) : nm; return (nm && raw.includes(nm)) || (short.length === 2 && raw.includes(short)); });
+    queue = addressed.concat(others.filter((i) => !addressed.includes(i)));
+    currentTrigger = { mode: "response", trigger: { speaker: member.profile_id, text: raw } };
+  }
+  return { transcript, turns, termination };
+}
+
 async function runD4ActorReview({ members, leaderIdx, deck: deck0, individualSelections, materials, r1Frozen, priceConfig, r1PublicMemory = "", temperature, seed, outputDir, maxEvents = 24, minCards = 6 }) {
   let deck = deck0.map((card) => ({ cap_id: card.cap_id, tier: card.tier }));
   const rng = makeRng(`d4_actor_review:${seed}`);
@@ -10139,7 +10267,7 @@ async function runD4ActorReview({ members, leaderIdx, deck: deck0, individualSel
     ownActText: ownAct[index],
     screenText,
     heardTranscript: r1PublicMemory ? `（上一轮 R1 页面上，节选）\n${r1PublicMemory}` : "",
-    ask: "页面刚切到团队合并页。写 80-180 字的私有主人公状态：他先看见什么（自己点的卡还在不在、被合并成什么样、成本数字扎不扎眼）、想不想开口、想起了哪段真实经历、哪里没把握。不要替他决定团队最后保留什么。",
+    ask: "页面刚切到团队合并页。写 80-180 字的私有主人公状态：他先看见什么、是否在意自己点的卡被别人看见、想不想开口、想起了哪段真实经历、哪里没把握。不要替他决定团队最后保留什么。",
     phase: "d4_review",
     temperature,
     outputDir
@@ -10791,7 +10919,11 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
       config,
       temperature,
       seed,
-      arm
+      arm,
+      individualSelections,
+      r1PublicMemory: buildR1PublicMemory(r1PublicTranscript, members),
+      d4RoomTranscript: actorReview ? actorReview.transcript : [],
+      outputDir
     });
     priceSubmit = d5.priceSubmit;
     checkpoints.push(...d5.checkpoints);
