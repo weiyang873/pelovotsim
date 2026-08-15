@@ -434,6 +434,18 @@ function loadRandom42ProfilePool(poolPath = RANDOM42_POOL_PATH) {
       if (!String(record.persona_id || "").trim()) throw new Error(`task_blind record #${index} missing persona_id`);
       if (!String(record.biography || "").trim()) throw new Error(`task_blind persona ${record.persona_id} missing biography`);
       const actionOrientation = Number(fp.action_orientation);
+      const teamRole = actionOrientation >= 0.67
+        ? "主导"
+        : Number(fp.actively_open_minded_thinking) >= 0.6
+          ? "质疑"
+          : Number(fp.actively_open_minded_thinking) <= 0.4 && Number(fp.ambiguity_tolerance) >= 0.5
+            ? "调停"
+            : "跟随";
+      const effortStyle = Number(fp.need_for_cognition) >= 0.55
+        ? "认真打磨"
+        : Number(fp.need_for_cognition) < 0.35
+          ? "先交差后面改"
+          : actionOrientation <= 0.4 ? "依赖队友" : "先交差后面改";
       return {
         profile_id: record.persona_id,
         archetype_id: "task_blind_narrative",
@@ -441,15 +453,16 @@ function loadRandom42ProfilePool(poolPath = RANDOM42_POOL_PATH) {
         desc: "由冻结事实卡和八维行为特征写成的任务盲人物小传",
         role: requireFact("career_context"),
         background: record.biography,
-        industry: "",
+        industry: requireFact("product_and_technology_familiarity"),
         decisionStyle: requireFact("quality_convenience_tradeoffs"),
         riskPreference: requireFact("economic_resources_and_pressure"),
         expressionStyle: requireFact("communication_and_participation"),
-        blindSpots: "",
+        blindSpots: taskBlindInferBlindSpots(fp),
+        classroomProfile: { team_role: teamRole, effort_style: effortStyle },
         pricingBias: requireFact("price_reference_history"),
         consumption_habits: requireFact("personal_consumption_habits"),
         speaking_tendency: actionOrientation >= 0.67 ? "high" : actionOrientation <= 0.33 ? "low" : "mid",
-        surface,
+        surface: { ...surface, expression_style: requireFact("communication_and_participation") },
         behavioral_fingerprint: record.behavioral_fingerprint,
         task_blind_biography: record.biography,
         persona_pool_record: record
@@ -851,6 +864,24 @@ function isCareerGeneralProfileMember(member) {
   return Boolean(member?.career_general_profile && member?.current_position);
 }
 
+function taskBlindInferBlindSpots(fp) {
+  const traits = [
+    { dev: 0.5 - Number(fp.actively_open_minded_thinking), text: "听到反对意见时容易先守住自己原来的判断" },
+    { dev: 0.5 - Number(fp.need_for_cognition), text: "不耐烦啃长材料，抽象细节容易跳过" },
+    { dev: 0.5 - Number(fp.consideration_future_consequences), text: "容易盯着眼前效果，低估长期投入和维护" },
+    { dev: 0.5 - Number(fp.maximizing_satisficing), text: "觉得差不多就行，容易漏掉更优的选项" },
+    { dev: Number(fp.risk_propensity_business) - 0.5, text: "对下行风险容易估计不足" },
+    { dev: Number(fp.action_orientation) - 0.5, text: "拍板快，容易略过复核环节" },
+    { dev: 0.5 - Number(fp.ambiguity_tolerance), text: "信息不全时容易急着要一个确定说法" },
+    { dev: Number(fp.regulatory_focus_promotion) - 0.5, text: "被机会点吸引时容易忽略执行成本" }
+  ];
+  for (const t of traits) {
+    if (!Number.isFinite(t.dev)) throw new Error("taskBlindInferBlindSpots: missing fingerprint dim; refusing fallback");
+  }
+  traits.sort((a, b) => b.dev - a.dev);
+  return `${traits[0].text}；${traits[1].text}。`;
+}
+
 function isTaskBlindNarrativeMember(member) {
   return Boolean(String(member?.task_blind_biography || "").trim());
 }
@@ -1048,60 +1079,7 @@ function scoreBand(value, labels) {
   return labels[2];
 }
 
-function requireFingerprintDim(fingerprint, dim, memberId) {
-  const value = Number(fingerprint?.[dim]);
-  if (!Number.isFinite(value)) {
-    throw new Error(`task_blind member ${memberId} missing behavioral_fingerprint.${dim}; refusing fallback`);
-  }
-  return value;
-}
-
-function taskBlindClassroomBehaviorProfile(member, isLeader) {
-  const fp = member.behavioral_fingerprint;
-  const id = member.profile_id;
-  const act = requireFingerprintDim(fp, "action_orientation", id);
-  const promo = requireFingerprintDim(fp, "regulatory_focus_promotion", id);
-  const nfc = requireFingerprintDim(fp, "need_for_cognition", id);
-  const maxi = requireFingerprintDim(fp, "maximizing_satisficing", id);
-  const aot = requireFingerprintDim(fp, "actively_open_minded_thinking", id);
-  requireFingerprintDim(fp, "ambiguity_tolerance", id);
-  const cfc = requireFingerprintDim(fp, "consideration_future_consequences", id);
-  requireFingerprintDim(fp, "risk_propensity_business", id);
-  // 1:1 design-native mapping: each knob is the semantically matching fingerprint dim,
-  // no invented composite weights, no rng. Dims are the persona design.
-  const talkativeness = act;
-  const dominance = clamp(act + (isLeader ? 0.15 : 0), 0, 1);
-  const statusMotive = promo;
-  const engagement = nfc;
-  const relevanceControl = cfc;
-  const agreeability = clamp(1 - aot, 0, 1);
-  const calculationImpulse = maxi;
-  const taskSkepticism = aot;
-  return {
-    talkativeness,
-    dominance,
-    statusMotive,
-    engagement,
-    relevanceControl,
-    agreeability,
-    calculationImpulse,
-    taskSkepticism,
-    labels: {
-      talkativeness: scoreBand(talkativeness, ["话少", "正常发言", "话多"]),
-      relevance: scoreBand(relevanceControl, ["容易跑题或讲自己行业", "偶尔发散", "比较聚焦"]),
-      status: scoreBand(statusMotive, ["不太在意表现", "正常参与", "想显得自己懂"]),
-      engagement: scoreBand(engagement, ["有点敷衍", "正常完成任务", "认真投入"]),
-      dominance: scoreBand(dominance, ["被点到才说", "看时机插话", "容易抢主导"]),
-      agreeability: scoreBand(agreeability, ["爱质疑", "正常回应", "喜欢调停/附和"]),
-      calculation: scoreBand(calculationImpulse, ["凭感觉", "会看数字", "忍不住算账"])
-    }
-  };
-}
-
 function classroomBehaviorProfile(member, isLeader = false) {
-  if (isTaskBlindNarrativeMember(member)) {
-    return taskBlindClassroomBehaviorProfile(member, isLeader);
-  }
   if (isCareerGeneralProfileMember(member)) {
     const profile = member.career_general_profile || {};
     const communication = String(profile.communication_style || "");
@@ -1574,8 +1552,39 @@ function updateBehavioralStateAfterUtterance(member, { topic, beat, text, isLead
   return state;
 }
 
+function formatTaskBlindRoomProfile(member, isLeader) {
+  const required = {
+    "角色": member.role,
+    "行业经验": member.industry,
+    "决策风格": member.decisionStyle,
+    "表达风格": member.expressionStyle,
+    "盲区": member.blindSpots,
+    "定价倾向": member.pricingBias,
+    "发言倾向": member.speaking_tendency
+  };
+  for (const [label, value] of Object.entries(required)) {
+    if (!String(value || "").trim()) throw new Error(`task_blind member ${member.profile_id} missing ${label}; refusing empty injection`);
+  }
+  return [
+    `姓名代号：${member.profile_id}`,
+    "【人物小传】",
+    member.task_blind_biography,
+    `角色：${member.role}`,
+    `行业经验：${member.industry}`,
+    `决策风格：${member.decisionStyle}`,
+    `表达风格：${splitExpressionStyle(member.expressionStyle).display || member.expressionStyle}`,
+    `盲区：${member.blindSpots}`,
+    `定价倾向：${member.pricingBias}`,
+    `发言倾向：${member.speaking_tendency}`,
+    isLeader ? "你是组长，负责推进讨论、总结共识并代表全队提交。" : "你是普通队员。",
+    "你现在就是小传中的这个人。像本人临场一样看界面、说话和行动，不要复述或分析小传，不要把自己变成顾问。",
+    "你正在使用课堂界面。只根据界面上看得到的信息、共享讨论和你自己的经验发言；不要输出隐藏模型分析。"
+  ].filter(Boolean).join("\n");
+}
+
 function formatProfile(member, isLeader, arm = "legacy") {
   if (isTaskBlindNarrativeMember(member)) {
+    if (isRoomRoleplayArm(arm)) return formatTaskBlindRoomProfile(member, isLeader);
     return formatTaskBlindNarrativePersona(member, isLeader);
   }
   if (arm === "simple") {
@@ -4523,9 +4532,7 @@ async function speak(member, isLeader, draw, privateProposal, transcript, topic,
   const noSubmitDirectPricing = usesD5TranscriptPriceParser(arm) && /D5 直接定价|产品售价滑块/u.test(topicText);
   const stateContext = isStatefulRoomRoleplayArm(arm)
     ? `\n\n${formatBehavioralState(member, topic, isLeader, arm)}`
-    : isRoomRoleplayArm(arm) && isTaskBlindNarrativeMember(member)
-      ? `\n\n【行为倾向】${behaviorFingerprintForPrompt(member.behavioral_fingerprint)}`
-      : "";
+    : "";
   const roomInstruction = isRoomRoleplayArm(arm)
     ? [
 	        beat ? roomBeatInstruction(beat) : "请像讨论室里的真人接话 1-3 句：可以短、可以不完整、可以回应某个队友、可以犹豫或改口。",
@@ -4712,7 +4719,7 @@ async function runActorStageDiscussion({ members, leaderIdx, draws, proposals, i
       let decision = "silent";
       try {
         const raw = await callText([
-          { role: "system", content: `${formatProfile(member, idx === leaderIdx, arm)}\n【行为倾向】${behaviorFingerprintForPrompt(member.behavioral_fingerprint)}\n你在小组定价讨论现场。只判断此刻这个人会不会自然开口，不写台词。` },
+          { role: "system", content: `${formatProfile(member, idx === leaderIdx, arm)}\n你在小组定价讨论现场。只判断此刻这个人会不会自然开口，不写台词。` },
           { role: "user", content: `当前环节：${topic}\n最近现场：\n${recent || "（刚开始，还没人说话）"}\n\n此刻你会开口吗？只输出 JSON：{"speak": true|false}` }
         ], { temperature: 0.3, maxTokens: 30 });
         const parsed = parseJsonLoose(raw);
@@ -4721,7 +4728,16 @@ async function runActorStageDiscussion({ members, leaderIdx, draws, proposals, i
         decision = "silent";
       }
       if (decision !== "speak") continue;
-      const utterance = await speak(member, idx === leaderIdx, draws[idx], proposals[idx], transcript, topic, temperature, arm);
+      const behavior = classroomBehaviorProfile(member, idx === leaderIdx);
+      const beatKind = chooseRoomBeatKind(behavior, idx === leaderIdx, topic, round, rng, null);
+      const beat = {
+        index: idx,
+        kind: beatKind,
+        label: roomBeatLabel(beatKind),
+        generated: true,
+        note: behavior.labels ? `你的课堂状态：${behavior.labels.engagement}，${behavior.labels.status}，${behavior.labels.relevance}。` : ""
+      };
+      const utterance = await speak(member, idx === leaderIdx, draws[idx], proposals[idx], transcript, topic, temperature, arm, beat);
       transcript.push({ speaker: member.profile_id, text: utterance });
       turns.push({ round, member_id: member.profile_id, entrance: "self", text: utterance });
       spokeThisRound += 1;
@@ -8247,41 +8263,6 @@ function normalizeStoryActionKind(value) {
   return "hesitate";
 }
 
-function taskBlindD4Salience(member) {
-  const fp = member.behavioral_fingerprint;
-  const id = member.profile_id;
-  const risk = requireFingerprintDim(fp, "risk_propensity_business", id);
-  const promo = requireFingerprintDim(fp, "regulatory_focus_promotion", id);
-  const cfc = requireFingerprintDim(fp, "consideration_future_consequences", id);
-  const amb = requireFingerprintDim(fp, "ambiguity_tolerance", id);
-  const options = [
-    { score: 0.5 - risk, text: "更容易被安全、可靠、少惹麻烦的卡吸引" },
-    { score: 0.5 - promo, text: "更容易被成本低、看起来不出错的卡吸引" },
-    { score: promo - 0.5, text: "更容易被能直接讲给客户听的卡吸引" },
-    { score: cfc - 0.5, text: "更容易被自己行业里熟悉的系统/运维/渠道逻辑吸引" },
-    { score: amb - 0.5, text: "更容易被情感陪伴、互动感、外显体验吸引" }
-  ];
-  options.sort((a, b) => b.score - a.score);
-  return options[0].text;
-}
-
-function taskBlindD4Flaw(member) {
-  const fp = member.behavioral_fingerprint;
-  const id = member.profile_id;
-  const nfc = requireFingerprintDim(fp, "need_for_cognition", id);
-  const maxi = requireFingerprintDim(fp, "maximizing_satisficing", id);
-  const cfc = requireFingerprintDim(fp, "consideration_future_consequences", id);
-  const promo = requireFingerprintDim(fp, "regulatory_focus_promotion", id);
-  const options = [
-    { score: 0.5 - nfc, text: "至少有一张看起来合理的底座卡你会低估、误读或暂时跳过" },
-    { score: 0.5 - maxi, text: "至少有一张你会因为名字直观而顺手点，但信心不一定高" },
-    { score: cfc - 0.5, text: "至少有一张你会因为成本/研发投入而降档或犹豫" },
-    { score: 0.5 - promo, text: "至少有一张你觉得客户未必感知得到，所以不想强推" }
-  ];
-  options.sort((a, b) => b.score - a.score);
-  return options[0].text;
-}
-
 function d4StoryLens(member, isLeader, assignment) {
   const behavior = classroomBehaviorProfile(member, isLeader);
   const rng = makeRng(`d4_story_lens:${member.profile_id}:${assignment.groups.join(",")}`);
@@ -8296,23 +8277,19 @@ function d4StoryLens(member, isLeader, assignment) {
     : behavior.calculationImpulse > 0.58
       ? "会看成本和负载，但技术含义不一定都懂"
       : "对抽象基础设施卡容易低估或误解";
-  const salience = isTaskBlindNarrativeMember(member)
-    ? taskBlindD4Salience(member)
-    : seededPick([
-        "更容易被能直接讲给客户听的卡吸引",
-        "更容易被成本低、看起来不出错的卡吸引",
-        "更容易被情感陪伴、互动感、外显体验吸引",
-        "更容易被安全、可靠、少惹麻烦的卡吸引",
-        "更容易被自己行业里熟悉的系统/运维/渠道逻辑吸引"
-      ], `${member.profile_id}:${assignment.groups.join(",")}:d4_story_salience`);
-  const flaw = isTaskBlindNarrativeMember(member)
-    ? taskBlindD4Flaw(member)
-    : seededPick([
-        "至少有一张看起来合理的底座卡你会低估、误读或暂时跳过",
-        "至少有一张你会因为名字直观而顺手点，但信心不一定高",
-        "至少有一张你会因为成本/研发投入而降档或犹豫",
-        "至少有一张你觉得客户未必感知得到，所以不想强推"
-      ], `${member.profile_id}:${assignment.groups.join(",")}:d4_story_flaw:${Math.floor(rng() * 1000)}`);
+  const salience = seededPick([
+    "更容易被能直接讲给客户听的卡吸引",
+    "更容易被成本低、看起来不出错的卡吸引",
+    "更容易被情感陪伴、互动感、外显体验吸引",
+    "更容易被安全、可靠、少惹麻烦的卡吸引",
+    "更容易被自己行业里熟悉的系统/运维/渠道逻辑吸引"
+  ], `${member.profile_id}:${assignment.groups.join(",")}:d4_story_salience`);
+  const flaw = seededPick([
+    "至少有一张看起来合理的底座卡你会低估、误读或暂时跳过",
+    "至少有一张你会因为名字直观而顺手点，但信心不一定高",
+    "至少有一张你会因为成本/研发投入而降档或犹豫",
+    "至少有一张你觉得客户未必感知得到，所以不想强推"
+  ], `${member.profile_id}:${assignment.groups.join(",")}:d4_story_flaw:${Math.floor(rng() * 1000)}`);
   return [
     `注意力预算：${attentionBudget}`,
     `理解方式：${comprehension}`,
