@@ -1586,40 +1586,10 @@ function updateBehavioralStateAfterUtterance(member, { topic, beat, text, isLead
   return state;
 }
 
-function formatTaskBlindRoomProfile(member, isLeader) {
-  const required = {
-    "角色": member.role,
-    "行业经验": member.industry,
-    "决策风格": member.decisionStyle,
-    "表达风格": member.expressionStyle,
-    "盲区": member.blindSpots,
-    "定价倾向": member.pricingBias,
-    "发言倾向": member.speaking_tendency
-  };
-  for (const [label, value] of Object.entries(required)) {
-    if (!String(value || "").trim()) throw new Error(`task_blind member ${member.profile_id} missing ${label}; refusing empty injection`);
-  }
-  return [
-    `姓名代号：${member.profile_id}`,
-    "【人物小传】",
-    member.task_blind_biography,
-    `角色：${member.role}`,
-    `行业经验：${member.industry}`,
-    `决策风格：${member.decisionStyle}`,
-    `表达风格：${splitExpressionStyle(member.expressionStyle).display || member.expressionStyle}`,
-    `盲区：${member.blindSpots}`,
-    `功能观：${taskBlindInferFeatureDoctrine(member.behavioral_fingerprint, member.role)}`,
-    `定价倾向：${member.pricingBias}`,
-    `发言倾向：${member.speaking_tendency}`,
-    isLeader ? "你是组长，负责推进讨论、总结共识并代表全队提交。" : "你是普通队员。",
-    "你现在就是小传中的这个人。像本人临场一样看界面、说话和行动，不要复述或分析小传，不要把自己变成顾问。",
-    "你正在使用课堂界面。只根据界面上看得到的信息、共享讨论和你自己的经验发言；不要输出隐藏模型分析。"
-  ].filter(Boolean).join("\n");
-}
-
 function formatProfile(member, isLeader, arm = "legacy") {
   if (isTaskBlindNarrativeMember(member)) {
-    if (isRoomRoleplayArm(arm)) return formatTaskBlindRoomProfile(member, isLeader);
+    // Same injection level as R1 actor-isolated and solo: biography + two lines. No field block,
+    // no derived labels/doctrines - the eight dims already live inside the biography.
     return formatTaskBlindNarrativePersona(member, isLeader);
   }
   if (arm === "simple") {
@@ -6183,7 +6153,7 @@ async function chooseLegacyPrototype({ members, leaderIdx, draws, proposals, r1F
       text: `我们队 Round 1 的正式结论如下：\n${JSON.stringify(r1Frozen, null, 2)}\n\n请选择一个 R2 客户原型。\n\n${archetypes.map(summarizePrototype).join("\n\n")}`
     }
   ];
-  const prototypeDiscussion = await runDiscussion({
+  const prototypeDiscussion = await (isPricingActionActorArm(arm) ? runActorStageDiscussion : runDiscussion)({
     members,
     leaderIdx,
     draws,
@@ -6223,7 +6193,7 @@ async function chooseR1MatchedPrototype({ members, leaderIdx, draws, proposals, 
         : `我们队 Round 1 的市场已经冻结为 ${r1Frozen.grid_label || r1Frozen.grid_id}。R2 客户画像必须继承这个市场，不允许切换 ToB/ToC、年龄段或策略口径。\n\n已匹配的 R2 客户画像如下：\n\n${summarizePrototype(chosenPrototype)}\n\n请讨论这个客户在界面里的需求证据，以及它对后续六个功能区选卡和定价的影响。`
     }
   ];
-  const prototypeDiscussion = await runDiscussion({
+  const prototypeDiscussion = await (isPricingActionActorArm(arm) ? runActorStageDiscussion : runDiscussion)({
     members,
     leaderIdx,
     draws,
@@ -6517,8 +6487,15 @@ function buildR2PricingActionPersonaPanel(r1Frozen, selectedCards, pricingContex
     `PAIN：${r1Frozen.vp_summary?.pain || ""}`,
     `HOW：${r1Frozen.vp_summary?.how || ""}`,
     `已选能力卡：${summary.selected.join("、") || "无"}`,
-    `成本区可见：基础成本 ${formatYuan(summary.base_unit_cost)}，能力增量成本 ${formatYuan(summary.dCOGS)}，研发投入 ${formatWan(summary.nre_wan)}。这些只是界面信息，不要求逐项复述。`,
+    `成本区可见：基础成本 ${formatYuan(summary.base_unit_cost)}，能力增量成本 ${formatYuan(summary.dCOGS)}，研发投入 ${formatWan(summary.nre_wan)}；总固定成本 ${formatWan(summary.fixed_total_wan)}（基础 ${formatWan(summary.fixed_base_wan)} + 研发 ${formatWan(summary.nre_wan)}）。这些只是界面信息，不要求逐项复述。`,
     `界面显示的价格滑块范围：${formatYuan(pricingContext.price_min)} 到 ${formatYuan(pricingContext.price_max)}；步长不作为决策提示。`,
+    (() => {
+      const defaultPrice = Number(pricingContext.default_price || pricingContext.price_min || 0);
+      const unitMargin = Math.round(defaultPrice * (1 - summary.channel_fee) - summary.unit_cost_total);
+      const beq = unitMargin > 0 ? Math.ceil(summary.fixed_total / unitMargin) : null;
+      const gm = calcGmPct(summary.dCOGS, defaultPrice, summary.channel_fee, summary.base_unit_cost);
+      return `滑块当前停在 ${formatYuan(defaultPrice)}，页面随滑块实时显示：预期毛利率 ${Number.isFinite(gm) ? `${gm.toFixed(0)}%` : "—"}、单台毛利 ${formatSignedCurrency(unitMargin)}、盈亏平衡销量 ${beq ? `${beq.toLocaleString("zh-CN")} 台` : "无法回本"}；提交按钮要求毛利率 ≥ 20%。`;
+    })(),
     "请只按这个界面能看到的信息、前面团队已确定的市场和选卡来定价；不要使用界面外的隐藏公式，也不要把讨论变成财务报告。"
   ].join("\n");
 }
@@ -6836,26 +6813,53 @@ async function runPricingActionPersonaD5({
     seed: `${seed}:price:final`,
     arm
   });
-  const priceSubmit = await leaderSubmit({
-    members,
-    leaderIdx,
-        draws,
-        proposals,
-    transcript: priceDiscussion.transcript,
-    topic: "提交最终定价",
-    decisionType: "price",
-    context: {
-      priceMin: Number(priceConfig.price_min),
-      priceMax: Number(priceConfig.price_max),
-      priceStep: Number(priceConfig.price_step),
-      pricingAction: actionSubmit.parsed.pricing_action,
-      pricingTier: tierSubmit.parsed.tier,
-      submitParseRetries
-    },
-    temperature,
-    arm
-  });
-  const finalTranscript = priceDiscussion.transcript.concat([{
+  const costSummary = selectedCardsCostSummary(selectedCards, r1Frozen, priceConfig);
+  let priceSubmit = null;
+  let gateTranscript = priceDiscussion.transcript;
+  for (let gateRound = 0; gateRound <= 2; gateRound += 1) {
+    priceSubmit = await leaderSubmit({
+      members,
+      leaderIdx,
+      draws,
+      proposals,
+      transcript: gateTranscript,
+      topic: "提交最终定价",
+      decisionType: "price",
+      context: {
+        priceMin: Number(priceConfig.price_min),
+        priceMax: Number(priceConfig.price_max),
+        priceStep: Number(priceConfig.price_step),
+        pricingAction: actionSubmit.parsed.pricing_action,
+        pricingTier: tierSubmit.parsed.tier,
+        submitParseRetries
+      },
+      temperature,
+      arm
+    });
+    const submittedPrice = Number(priceSubmit.parsed?.price);
+    const gm = calcGmPct(costSummary.dCOGS, submittedPrice, costSummary.channel_fee, costSummary.base_unit_cost);
+    if (!Number.isFinite(gm) || gm >= 20 || gateRound >= 2) break;
+    // Real UI: submit button disabled with "毛利率需 ≥ 20% 才可提交"; the slider stays live.
+    const unitMargin = Math.round(submittedPrice * (1 - costSummary.channel_fee) - costSummary.unit_cost_total);
+    gateTranscript = gateTranscript.concat([
+      { speaker: "screen", text: `页面提示：${formatYuan(submittedPrice)} 下预期毛利率 ${gm.toFixed(0)}%，单台毛利 ${formatSignedCurrency(unitMargin)}；毛利率需 ≥ 20% 才可提交。滑块仍可拖动。` }
+    ]);
+    const regate = await discussFn({
+      members,
+      leaderIdx,
+      draws,
+      proposals,
+      initialTranscript: gateTranscript,
+      topic: "D5 第三步：最终价格（提交被页面拦下）",
+      maxTurns: Math.max(1, Math.min(2, maxTurns)),
+      config,
+      temperature,
+      seed: `${seed}:price:final:gate:${gateRound}`,
+      arm
+    });
+    gateTranscript = regate.transcript;
+  }
+  const finalTranscript = gateTranscript.concat([{
     speaker: members[leaderIdx].profile_id,
     text: `【组长提交｜最终价格】${priceSubmit.text}`
   }]);
@@ -8164,8 +8168,8 @@ function selectedCardsNreWan(cards) {
   }, 0);
 }
 
-function overTwelveSelectionHint(cards) {
-  if (cards.length <= 12) return null;
+function overTwelveSelectionHint(cards, arm = "legacy") {
+  if (!isPricingActionActorArm(arm) && cards.length <= 12) return null;
   return `当前共选 ${cards.length} 张卡，研发投入 ${formatWan(selectedCardsNreWan(cards))}。`;
 }
 
@@ -8214,12 +8218,12 @@ function buildR2ContextPanel(r1Frozen, chosenPrototype, options = {}) {
     `R1 HOW：${r1Frozen.vp_summary?.how || ""}`,
     "【客户调研 / 痛点提醒】",
     `客户画像：${chosenPrototype.label}`,
-    options.omitResearchDetail ? "" : (seed.person ? `人物/机构：${seed.person}` : ""),
-    options.omitResearchDetail ? "" : (seed.routine ? `情境：${seed.routine}` : ""),
-    options.omitResearchDetail ? "" : (prototypeSceneText(chosenPrototype) ? `关键场景：${prototypeSceneText(chosenPrototype)}` : ""),
-    options.omitResearchDetail ? "" : (prototypePainText(chosenPrototype) ? `主要痛点：${prototypePainText(chosenPrototype)}` : ""),
-    options.omitResearchDetail ? "" : (Array.isArray(chosenPrototype.tags) && chosenPrototype.tags.length ? `需求标签：${chosenPrototype.tags.join("、")}` : ""),
-    !options.omitResearchDetail && options.includeReportExcerpt && seed.report_excerpt ? `调研报告摘录：${seed.report_excerpt}` : "",
+    (options.omitResearchDetail || options.omitStructuredResearch) ? "" : (seed.person ? `人物/机构：${seed.person}` : ""),
+    (options.omitResearchDetail || options.omitStructuredResearch) ? "" : (seed.routine ? `情境：${seed.routine}` : ""),
+    (options.omitResearchDetail || options.omitStructuredResearch) ? "" : (prototypeSceneText(chosenPrototype) ? `关键场景：${prototypeSceneText(chosenPrototype)}` : ""),
+    (options.omitResearchDetail || options.omitStructuredResearch) ? "" : (prototypePainText(chosenPrototype) ? `主要痛点：${prototypePainText(chosenPrototype)}` : ""),
+    (options.omitResearchDetail || options.omitStructuredResearch) ? "" : (Array.isArray(chosenPrototype.tags) && chosenPrototype.tags.length ? `需求标签：${chosenPrototype.tags.join("、")}` : ""),
+    !options.omitResearchDetail && options.includeReportExcerpt && seed.report_excerpt ? `已冻结调研报告摘录：${seed.report_excerpt}` : "",
     "讨论和选卡必须围绕以上冻结市场、客户画像和痛点，不要切换 ToB/ToC、年龄段或策略口径。"
   ];
   return lines.filter(Boolean).join("\n");
@@ -9075,7 +9079,9 @@ async function individualCardSelection({ member, isLeader, draw, proposal, assig
       content: [
         formatJinang(draw),
         "",
-        buildR2ContextPanel(r1Frozen, chosenPrototype, { includeReportExcerpt: true }),
+        buildR2ContextPanel(r1Frozen, chosenPrototype, isPricingActionActorArm(arm)
+          ? { includeReportExcerpt: true, omitStructuredResearch: true }
+          : { includeReportExcerpt: true }),
         "",
         "【界面：个人选卡】",
         `你负责的维度：${formatGroupNames(assignment.groups, groupMap)}。`,
@@ -9935,8 +9941,8 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
           "",
           `【团队合并草案】所有成员个人选卡已合并。当前团队草案：${cardsToText(selectedCards)}。`,
           `当前功能区合并草案：${cardsToText(cardsForGroups(selectedCards, segmentSet, capGroupById))}。`,
-          "【当前功能区的个人意见】",
-          formatMemberSelectionSummary(individualSelections, groupMap, segment) || "（无）",
+          isPricingActionActorArm(arm) ? "" : "【当前功能区的个人意见】",
+          isPricingActionActorArm(arm) ? "" : (formatMemberSelectionSummary(individualSelections, groupMap, segment) || "（无）"),
           hasD4HumanPickArm(arm)
             ? [
                 "",
@@ -9955,7 +9961,7 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
         ].join("\n")
       }
     ];
-	    const existingSelectionHint = overTwelveSelectionHint(selectedCards);
+	    const existingSelectionHint = overTwelveSelectionHint(selectedCards, arm);
 	    if (existingSelectionHint) {
 	      transcript.push({ speaker: "moderator", text: existingSelectionHint });
 	    }
@@ -9998,7 +10004,7 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
 	        const actionable = actionableCompatibilityViolations(validation, capGroupById, futureGroups);
 	        if (actionable.length === 0) {
 	          selectedCards = candidateCards;
-	          const acceptedSelectionHint = overTwelveSelectionHint(selectedCards);
+	          const acceptedSelectionHint = overTwelveSelectionHint(selectedCards, arm);
 	          if (acceptedSelectionHint) {
 	            segmentTranscript = segmentTranscript.concat([{ speaker: "moderator", text: acceptedSelectionHint }]);
 	          }
@@ -10104,7 +10110,7 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
       const actionable = actionableCompatibilityViolations(validation, capGroupById, futureGroups);
       if (actionable.length === 0) {
         selectedCards = candidateCards;
-        const acceptedSelectionHint = overTwelveSelectionHint(selectedCards);
+        const acceptedSelectionHint = overTwelveSelectionHint(selectedCards, arm);
         if (acceptedSelectionHint) {
           segmentTranscript = segmentTranscript.concat([{ speaker: "moderator", text: acceptedSelectionHint }]);
         }
