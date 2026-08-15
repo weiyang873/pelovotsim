@@ -34,7 +34,7 @@ const DATA_DIR = path.join(ROOT, "data");
 const OUTPUT_ROOT = path.join(DATA_DIR, "synthetic", "team_sim");
 const RANDOM42_POOL_PATH = path.join(DATA_DIR, "persona_pool_random42_interface_v1", "persona_pool_v2.json");
 const LAYERED_NOMAP_GENERATION_SEED = 20260806;
-const TEAM_ARMS = new Set(["legacy", "simple", "layered", "layered_nomap", "team_layered_nomap", "team_room_roleplay_ui", "team_room_pricing_action_actor_v1", "team_room_roleplay_stateful_v1", "team_room_roleplay_stateful_review_v1", "team_room_d4_human_pick_v1", "team_room_d4_stateful_pick_v1", "team_room_d4_stateful_d5_nosubmit_v1", "team_room_story_d4_v1", "team_room_story_d4d5_v1", "team_room_story_d4d5_narrator_d5_v1", "team_room_story_r1_d4d5_narrator_v1", "team_room_r1_private_trace_v1", "team_room_r1_story_process_v1", "team_room_r1_reading_story_v1", "team_room_r1_screenplay_v1", "team_room_r1_actor_isolated_v1"]);
+const TEAM_ARMS = new Set(["legacy", "simple", "layered", "layered_nomap", "team_layered_nomap", "team_room_roleplay_ui", "team_room_pricing_action_actor_v1", "team_room_story_d4_pa_d5_v1", "team_room_roleplay_stateful_v1", "team_room_roleplay_stateful_review_v1", "team_room_d4_human_pick_v1", "team_room_d4_stateful_pick_v1", "team_room_d4_stateful_d5_nosubmit_v1", "team_room_story_d4_v1", "team_room_story_d4d5_v1", "team_room_story_d4d5_narrator_d5_v1", "team_room_story_r1_d4d5_narrator_v1", "team_room_r1_private_trace_v1", "team_room_r1_story_process_v1", "team_room_r1_reading_story_v1", "team_room_r1_screenplay_v1", "team_room_r1_actor_isolated_v1"]);
 let round2RoutesModule = null;
 let round2RouteTestHelpers = null;
 
@@ -1035,7 +1035,7 @@ function isPricingActionActorArm(arm) {
 }
 
 function isStatefulRoomRoleplayArm(arm) {
-  return arm === "team_room_roleplay_stateful_v1" || arm === "team_room_roleplay_stateful_review_v1" || arm === "team_room_d4_human_pick_v1" || arm === "team_room_d4_stateful_pick_v1" || arm === "team_room_d4_stateful_d5_nosubmit_v1" || arm === "team_room_story_d4_v1" || arm === "team_room_story_d4d5_v1" || arm === "team_room_story_d4d5_narrator_d5_v1" || arm === "team_room_story_r1_d4d5_narrator_v1" || arm === "team_room_r1_private_trace_v1" || arm === "team_room_r1_story_process_v1" || hasR1UiNarrativeArm(arm);
+  return arm === "team_room_story_d4_pa_d5_v1" || arm === "team_room_roleplay_stateful_v1" || arm === "team_room_roleplay_stateful_review_v1" || arm === "team_room_d4_human_pick_v1" || arm === "team_room_d4_stateful_pick_v1" || arm === "team_room_d4_stateful_d5_nosubmit_v1" || arm === "team_room_story_d4_v1" || arm === "team_room_story_d4d5_v1" || arm === "team_room_story_d4d5_narrator_d5_v1" || arm === "team_room_story_r1_d4d5_narrator_v1" || arm === "team_room_r1_private_trace_v1" || arm === "team_room_r1_story_process_v1" || hasR1UiNarrativeArm(arm);
 }
 
 function hasD5CardReviewState(arm) {
@@ -1047,7 +1047,7 @@ function hasD4HumanPickArm(arm) {
 }
 
 function hasD4StatefulPickArm(arm) {
-  return arm === "team_room_d4_stateful_pick_v1" || arm === "team_room_d4_stateful_d5_nosubmit_v1" || arm === "team_room_story_d4_v1" || arm === "team_room_story_d4d5_v1" || arm === "team_room_story_d4d5_narrator_d5_v1" || arm === "team_room_story_r1_d4d5_narrator_v1" || arm === "team_room_r1_private_trace_v1" || arm === "team_room_r1_story_process_v1" || hasR1UiNarrativeArm(arm);
+  return arm === "team_room_story_d4_pa_d5_v1" || arm === "team_room_d4_stateful_pick_v1" || arm === "team_room_d4_stateful_d5_nosubmit_v1" || arm === "team_room_story_d4_v1" || arm === "team_room_story_d4d5_v1" || arm === "team_room_story_d4d5_narrator_d5_v1" || arm === "team_room_story_r1_d4d5_narrator_v1" || arm === "team_room_r1_private_trace_v1" || arm === "team_room_r1_story_process_v1" || hasR1UiNarrativeArm(arm);
 }
 
 function hasD5D4ResidueArm(arm) {
@@ -1059,7 +1059,7 @@ function usesD5TranscriptPriceParser(arm) {
 }
 
 function hasD4StoryPickArm(arm) {
-  return arm === "team_room_story_d4_v1" || arm === "team_room_story_d4d5_v1" || arm === "team_room_story_d4d5_narrator_d5_v1" || arm === "team_room_story_r1_d4d5_narrator_v1" || arm === "team_room_r1_private_trace_v1" || arm === "team_room_r1_story_process_v1" || hasR1UiNarrativeArm(arm);
+  return arm === "team_room_story_d4_pa_d5_v1" || arm === "team_room_story_d4_v1" || arm === "team_room_story_d4d5_v1" || arm === "team_room_story_d4d5_narrator_d5_v1" || arm === "team_room_story_r1_d4d5_narrator_v1" || arm === "team_room_r1_private_trace_v1" || arm === "team_room_r1_story_process_v1" || hasR1UiNarrativeArm(arm);
 }
 
 function hasD5ScreenplayArm(arm) {
@@ -1067,7 +1067,7 @@ function hasD5ScreenplayArm(arm) {
 }
 
 function hasD4ScreenplayArm(arm) {
-  return arm === "team_room_story_d4d5_v1" || arm === "team_room_story_d4d5_narrator_d5_v1" || arm === "team_room_story_r1_d4d5_narrator_v1" || arm === "team_room_r1_private_trace_v1" || arm === "team_room_r1_story_process_v1" || hasR1UiNarrativeArm(arm);
+  return arm === "team_room_story_d4_pa_d5_v1" || arm === "team_room_story_d4d5_v1" || arm === "team_room_story_d4d5_narrator_d5_v1" || arm === "team_room_story_r1_d4d5_narrator_v1" || arm === "team_room_r1_private_trace_v1" || arm === "team_room_r1_story_process_v1" || hasR1UiNarrativeArm(arm);
 }
 
 function hasD5NarratorActorArm(arm) {
@@ -10957,7 +10957,25 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
     writeJson(path.join(outputDir, "r2_checkpoints.json"), { checkpoints });
   }
   let priceSubmit = null;
-  if (hasD5NarratorActorArm(arm)) {
+  if (arm === "team_room_story_d4_pa_d5_v1") {
+    const d5 = await runPricingActionPersonaD5({
+      members,
+      leaderIdx,
+      draws,
+      proposals,
+      r1Frozen,
+      chosenPrototype,
+      selectedCards,
+      priceConfig,
+      config,
+      temperature,
+      seed,
+      arm
+    });
+    priceSubmit = d5.priceSubmit;
+    checkpoints.push(...d5.checkpoints);
+    r2Transcript.push(...d5.transcripts);
+  } else if (hasD5NarratorActorArm(arm)) {
     const d5 = await runD5NarratorActorPricing({
       members,
       leaderIdx,

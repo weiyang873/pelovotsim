@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.join(__dirname, "..", "..");
 const DEFAULT_OUTPUT_ROOT = path.join(ROOT, "runs_v4flash_0731", "team_r2_replay");
-const SUPPORTED_REPLAY_ARMS = new Set(["legacy", "simple", "layered", "team_room_roleplay_ui", "team_room_roleplay_stateful_v1", "team_room_roleplay_stateful_review_v1", "team_room_d4_human_pick_v1", "team_room_d4_stateful_pick_v1", "team_room_d4_stateful_d5_nosubmit_v1", "team_room_story_d4_v1", "team_room_story_d4d5_v1", "team_room_story_d4d5_narrator_d5_v1", "team_room_story_r1_d4d5_narrator_v1", "team_room_r1_private_trace_v1", "team_room_r1_story_process_v1", "team_room_r1_reading_story_v1", "team_room_r1_screenplay_v1", "team_room_r1_actor_isolated_v1", "team_room_pricing_action_actor_v1"]);
+const SUPPORTED_REPLAY_ARMS = new Set(["legacy", "simple", "layered", "team_room_roleplay_ui", "team_room_roleplay_stateful_v1", "team_room_roleplay_stateful_review_v1", "team_room_d4_human_pick_v1", "team_room_d4_stateful_pick_v1", "team_room_d4_stateful_d5_nosubmit_v1", "team_room_story_d4_v1", "team_room_story_d4d5_v1", "team_room_story_d4d5_narrator_d5_v1", "team_room_story_r1_d4d5_narrator_v1", "team_room_r1_private_trace_v1", "team_room_r1_story_process_v1", "team_room_r1_reading_story_v1", "team_room_r1_screenplay_v1", "team_room_r1_actor_isolated_v1", "team_room_pricing_action_actor_v1", "team_room_story_d4_pa_d5_v1"]);
 
 function loadLocalEnv() {
   const envPath = path.join(ROOT, ".env");
