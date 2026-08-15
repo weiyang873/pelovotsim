@@ -8658,7 +8658,7 @@ function d4StoryLens(member, isLeader, assignment) {
     `理解方式：${comprehension}`,
     featureDoctrine,
     `显著性偏好：${salience}`,
-    `本轮不完美要求：${flaw}`,
+
     isLeader ? "组长身份会让你更想给出能收口的选择，但不代表你看懂所有卡。" : "你不是组长，不需要替全队补齐完整产品方案。"
   ].join("\n");
 }
@@ -9255,7 +9255,7 @@ async function individualCardStorySelection({ member, isLeader, draw, proposal, 
         "",
         "你先写一段短剧式私有行动轨迹：你怎么扫界面、先注意到什么、误解或跳过什么、最后手上具体点了哪些卡。",
         "重要：这不是事后解释最优方案；你后面的个人选卡只会从 action_trace 里 action=select 的项确定。不要为了显得完整而补齐产品底座。",
-        "action_trace 至少 3 条，必须混合 select / skip / hesitate；至少 1 条 select。select 必须给 tier。",
+        "action_trace 至少 3 条；可以全是 select，也可以有 skip / hesitate；至少 1 条 select。select 必须给 tier。",
         "",
         "【你的 Round 1 会前提案】",
         `${proposal.parsed.grid_id}/${proposal.parsed.architecture}：${proposal.parsed.rationale}`,
@@ -9330,7 +9330,7 @@ async function individualCardStorySelection({ member, isLeader, draw, proposal, 
             `你负责的维度只能是：${assignment.groups.join(", ")}`,
             "合法 cap_id 只能从下面清单逐字选择，不能创造新 ID：",
             formatAllowedCardsForPrompt(allowedCards),
-            "action_trace 至少 3 条，必须混合 select / skip / hesitate；至少 1 条 select。select 的 tier 只能是 low/mid/high。",
+            "action_trace 至少 3 条；可以全是 select，也可以有 skip / hesitate；至少 1 条 select。select 的 tier 只能是 low/mid/high。",
             "请只输出 JSON，不要 Markdown，不要额外文字。schema：",
             '{"scene_state":"","attention_path":"","misread_or_skip":"","inner_line":"","action_trace":[{"action":"select|skip|hesitate","cap_id":"真实cap_id","tier":"low|mid|high|null","stance":"must|nice|impulse|unsure","confidence":0到1,"reason":"一句自然话"}],"public_stance":"","ignored_groups":[],"doubts":[],"rationale":""}',
             "",
