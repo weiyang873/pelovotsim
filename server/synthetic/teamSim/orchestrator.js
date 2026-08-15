@@ -9966,9 +9966,12 @@ async function callD4ActorEntrance({ members, member, isLeader, ownActText, priv
   ];
   let lastRaw = "";
   let lastError = "";
-  for (let attempt = 1; attempt <= 2; attempt += 1) {
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
-      lastRaw = await callText(messages, { temperature, maxTokens: 220 });
+      const attemptMessages = attempt === 1
+        ? messages
+        : messages.concat([{ role: "user", content: `上一次输出没有以单独一行结尾写出【行动】沉默 或 【行动】发言${isLeader && allowOperate ? " 或 【行动】操作界面" : ""}。请重新输出：一两句私下判断，然后最后单独一行写【行动】××。` }]);
+      lastRaw = await callText(attemptMessages, { temperature, maxTokens: 220 });
       const decision = parseR1ActorEntranceDecision(lastRaw, isLeader, allowOperate);
       if (outputDir) {
         appendJsonl(path.join(outputDir, "r2_d4_actor_entrance_decisions.jsonl"), {
@@ -9982,7 +9985,7 @@ async function callD4ActorEntrance({ members, member, isLeader, ownActText, priv
       lastError = error.message;
     }
   }
-  throw new Error(`d4 actor entrance decision failed after 2 attempts: ${lastError}`);
+  throw new Error(`d4 actor entrance decision failed after 3 attempts: ${lastError}`);
 }
 
 async function callD4Actor({ members, member, isLeader, ownActText, privateState, screenText, transcript, phaseTurnNumber, triggerContext, performanceMode, temperature, outputDir, eventIndex, operateRetryNote = "", r1PublicMemory = "" }) {
