@@ -7554,7 +7554,7 @@ async function runD5ScreenplayStagedPricing({ members, leaderIdx, draws, proposa
   const screen1 = [basePanel, "", "【D5 第一步：定价动作】", "现在小组站在产品售价滑块前，先讨论定价动作，不提交具体价格。", "A：压低售价抢量。意思是用相对更低的售价换更多用户愿意买，不追求单台高毛利。", "B：抬高售价守毛利。意思是接受销量可能少一些，用相对更高售价覆盖能力成本和渠道抽成，保护单台毛利。", "组长在这一步点选 A 或 B。"].join("\n");
   const scene1 = await runD5ScreenplayScene({
     members, leaderIdx, actorSheet, priorTranscriptText: "", screenText: screen1,
-    taskLines: ["写 D5 第一步这一幕：角色们围着同一台电脑，先说各自更偏压价抢量还是抬价守毛利；这一步不报具体价格，不复述成本金额。", "这一幕的收尾不是折中：最后被采纳的是其中一个人的主张——别人被说服了、或让步了、或组长就认他的；不要把几个人的说法取一个中间值。组长按被采纳的那个人的选择操作页面。", `幕末必须有组长的界面动作：ui_action={"type":"choose_action","value":"A|B"}。`],
+    taskLines: ["写 D5 第一步这一幕：角色们围着同一台电脑，先说各自更偏压价抢量还是抬价守毛利；这一步不报具体价格，不复述成本金额。", (d5ConvergeRuleEnabled() ? "这一幕的收尾不是折中：最后被采纳的是其中一个人的主张——别人被说服了、或让步了、或组长就认他的；不要把几个人的说法取一个中间值。组长按被采纳的那个人的选择操作页面。" : ""), `幕末必须有组长的界面动作：ui_action={"type":"choose_action","value":"A|B"}。`],
     schemaLine: '{"scene_state":"一句场景状态","beats":[{"actor":"Rxx","stage_direction":"动作/神情","line":"台词，可为空","ui_action":{"type":"choose_action","value":"A|B"}|null}]}',
     validate: (parsed) => validateD5ChoiceScene(parsed, { members, leaderId, actionType: "choose_action", allowed: ["A", "B"] }),
     temperature, seed: `${seed}:d5s3:action`, outputDir, sceneName: "action",
@@ -7567,7 +7567,7 @@ async function runD5ScreenplayStagedPricing({ members, leaderIdx, draws, proposa
   const screen2 = [basePanel, "", `【D5 第二步：相对档位】已选定价动作：${pricingAction}。`, "现在讨论相对档位：高 / 中 / 低。这一步仍不报具体价格。", "组长在这一步点选 高 / 中 / 低。"].join("\n");
   const scene2 = await runD5ScreenplayScene({
     members, leaderIdx, actorSheet, priorTranscriptText: formatTranscript(t1.slice(1)), screenText: screen2,
-    taskLines: ["写 D5 第二步这一幕：承接刚才定下的定价动作，说各自觉得该放在高、中、低哪个档位；不报具体价格。", "这一幕的收尾不是折中：最后被采纳的是其中一个人的主张——别人被说服了、或让步了、或组长就认他的；不要把几个人的说法取一个中间值。组长按被采纳的那个人的选择操作页面。", `幕末必须有组长的界面动作：ui_action={"type":"choose_tier","value":"high|mid|low"}。`],
+    taskLines: ["写 D5 第二步这一幕：承接刚才定下的定价动作，说各自觉得该放在高、中、低哪个档位；不报具体价格。", (d5ConvergeRuleEnabled() ? "这一幕的收尾不是折中：最后被采纳的是其中一个人的主张——别人被说服了、或让步了、或组长就认他的；不要把几个人的说法取一个中间值。组长按被采纳的那个人的选择操作页面。" : ""), `幕末必须有组长的界面动作：ui_action={"type":"choose_tier","value":"high|mid|low"}。`],
     schemaLine: '{"scene_state":"一句场景状态","beats":[{"actor":"Rxx","stage_direction":"动作/神情","line":"台词，可为空","ui_action":{"type":"choose_tier","value":"high|mid|low"}|null}]}',
     validate: (parsed) => validateD5ChoiceScene(parsed, { members, leaderId, actionType: "choose_tier", allowed: ["high", "mid", "low"] }),
     temperature, seed: `${seed}:d5s3:tier`, outputDir, sceneName: "tier",
@@ -7580,7 +7580,7 @@ async function runD5ScreenplayStagedPricing({ members, leaderIdx, draws, proposa
   const screen3 = [basePanel, "", `【D5 第三步：最终价格】已选定价动作：${pricingAction}；已选档位：${pricingTierText(tier)}。`, `价格滑块范围 ${formatYuan(priceConfig.price_min)} 到 ${formatYuan(priceConfig.price_max)}。组长拖动滑块并确认。`].join("\n");
   const scene3 = await runD5ScreenplayScene({
     members, leaderIdx, actorSheet, priorTranscriptText: formatTranscript(t1.slice(1).concat(t2.slice(1))), screenText: screen3,
-    taskLines: ["写 D5 第三步这一幕：承接前两步定下的动作和档位，角色们像真人一样说话和动手，最后落到一个具体售价。", "最后落的数不是折中出来的：是其中一个人报的数赢了——别人被说服、或让步、或组长就认他的；组长按那个人的数拖滑块并确认，不要在几个人的数之间取中间。", "滑块边界在界面上可见，但不要让角色在台词里复述上下限；也不要把中点、上下限当默认答案。", "如果某人动手拖价格，写 ui_action={\"type\":\"drag_slider\",\"price\":数字}；如果最终停住/确认，写 ui_action={\"type\":\"confirm_price\",\"price\":数字}。"],
+    taskLines: ["写 D5 第三步这一幕：承接前两步定下的动作和档位，角色们像真人一样说话和动手，最后落到一个具体售价。", (d5ConvergeRuleEnabled() ? "最后落的数不是折中出来的：是其中一个人报的数赢了——别人被说服、或让步、或组长就认他的；组长按那个人的数拖滑块并确认，不要在几个人的数之间取中间。" : ""), "滑块边界在界面上可见，但不要让角色在台词里复述上下限；也不要把中点、上下限当默认答案。", "如果某人动手拖价格，写 ui_action={\"type\":\"drag_slider\",\"price\":数字}；如果最终停住/确认，写 ui_action={\"type\":\"confirm_price\",\"price\":数字}。"],
     schemaLine: '{"scene_state":"一句场景状态","beats":[{"actor":"Rxx","stage_direction":"动作/神情","line":"台词，可为空","ui_action":{"type":"drag_slider|confirm_price","price":数字}|null}]}',
     validate: (parsed) => validateD5Screenplay(parsed, { members, priceConfig }),
     temperature, seed: `${seed}:d5s3:price`, outputDir, sceneName: "price",
@@ -7605,6 +7605,10 @@ async function runD5ScreenplayStagedPricing({ members, leaderIdx, draws, proposa
       { decision_point: "price", transcript: t3, turns: [{ turn: 1, screenplay: scene3 }] }
     ]
   };
+}
+
+function d5ConvergeRuleEnabled() {
+  return /^(1|true|yes|on)$/i.test(String(process.env.TEAM_SIM_D5_CONVERGE || "").trim());
 }
 
 function d5IdeologyEnabled() {
