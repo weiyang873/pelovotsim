@@ -9079,7 +9079,7 @@ async function individualCardSelection({ member, isLeader, draw, proposal, assig
           ? (humanPick ? "" : (isPricingActionActorArm(arm)
               ? [
                   privateState ? `【只给你自己看的此刻状态】\n${privateState}` : "",
-                  "带着上面这个状态，像本人此刻在自己屏幕前那样点卡：手上点了什么就是什么，可以漏看、可以顺手点、可以嫌麻烦不点。不需要解释。",
+                  "带着上面这个状态，像本人此刻在自己屏幕前那样点卡。不需要解释。",
                   "只写一行【我的个人选卡提交】，然后给出可索引 JSON：",
                   '{"cards":[{"cap_id":"真实cap_id","tier":"low|mid|high"}],"rationale":"顺嘴一句，可空"}'
                 ].filter(Boolean).join("\n")
@@ -10312,7 +10312,7 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
           `【个人选卡页】你负责的维度：${formatGroupNames(assignments[i].groups, groupMap)}。为你负责的维度选择能力卡。根据访谈结果和你的判断，把你认为产品应该具备的能力都选上，再选择合适的档次。每个档位会显示单位成本、研发投入和团队投入说明。`
         ].filter(Boolean).join("\n"),
         heardTranscript: "",
-        ask: "他一个人坐在自己的屏幕前，先看调研页，再切到自己负责维度的选卡页。写 80-180 字的私有主人公状态：他怎么读这页（认真逐条看还是扫一眼、哪句话进了心、哪些跳过了）、切到选卡页时先被什么吸引、想起了哪段真实经历、手上想点什么、哪里没把握。不要替他列出最终选择。",
+        ask: "他一个人坐在自己的屏幕前，先看调研页，再切到自己负责维度的选卡页。写 80-180 字的私有主人公状态：他怎么读这页、哪句话进了心、切到选卡页时先被哪些卡吸引、想起了哪段真实经历、手上会先点哪些。不要替他列出最终选择。",
         phase: "d4_individual",
         temperature,
         outputDir
