@@ -9787,6 +9787,24 @@ const D4_ACTOR_NARRATOR_SYSTEM = [
   "写的是这个人此刻身体和心里发生的具体状态，不是心理测评或决策标签。"
 ].join("\n");
 
+function buildR1PublicMemory(r1Transcript, members, chars = 1600) {
+  const byId = new Map(members.map((m) => [m.profile_id, m.surface?.name || m.profile_id]));
+  const lines = (r1Transcript || [])
+    .filter((entry) => byId.has(entry.speaker))
+    .map((entry) => `${byId.get(entry.speaker)}：${String(entry.text || "").replace(/\s+/g, " ").trim()}`);
+  if (!lines.length) return "";
+  // keep the tail: the most recent exchanges are what people carry into the next page
+  let out = [];
+  let total = 0;
+  for (let i = lines.length - 1; i >= 0; i -= 1) {
+    const clipped = lines[i].slice(0, 220);
+    if (total + clipped.length > chars) break;
+    out.unshift(clipped);
+    total += clipped.length;
+  }
+  return out.join("\n");
+}
+
 async function createR2ActorPrivateState({ member, isLeader, ownActText, screenText, heardTranscript, ask, phase, temperature, outputDir }) {
   const messages = [
     { role: "system", content: D4_ACTOR_NARRATOR_SYSTEM },
@@ -9856,6 +9874,11 @@ function buildD4ReviewScreen({ deck, materials, r1Frozen, priceConfig }) {
   ].filter((line) => line !== "").join("\n");
 }
 
+function formatD4ActorPersona(member, isLeader) {
+  const carry = formatR1ActorCarryoverForPrompt(member, 360);
+  return carry ? `${formatR1IsolatedActorPersona(member, isLeader)}\n\n${carry}` : formatR1IsolatedActorPersona(member, isLeader);
+}
+
 function d4OwnPicksText(selection) {
   const cards = selection?.parsed?.cards || [];
   if (!cards.length) return "（他刚才在自己屏幕上没有点任何卡。）";
@@ -9886,7 +9909,7 @@ const D4_ACTOR_COMMON_SYSTEM = [
   "一个具体疑问、半句话、没把握的反对、个人经历中的小片段都算真实发言动机；不要把‘还没形成完整方案’自动判成沉默。反过来，也不要为了参与而硬凑新案例。"
 ].join("\n");
 
-async function callD4ActorEntrance({ members, member, isLeader, ownActText, privateState, screenText, transcript, phaseTurnNumber, quietBeatStreak, triggerContext, allowOperate, temperature, outputDir, eventIndex }) {
+async function callD4ActorEntrance({ members, member, isLeader, ownActText, privateState, screenText, transcript, phaseTurnNumber, quietBeatStreak, triggerContext, allowOperate, temperature, outputDir, eventIndex, r1PublicMemory = "" }) {
   const publicName = member.surface?.name || "这名成员";
   const ownPublicHistory = clipText(transcript
     .filter((entry) => entry.speaker === member.profile_id)
@@ -9903,7 +9926,7 @@ async function callD4ActorEntrance({ members, member, isLeader, ownActText, priv
     {
       role: "system",
       content: [
-        formatR1IsolatedActorPersona(member, isLeader),
+        formatD4ActorPersona(member, isLeader),
         D4_ACTOR_COMMON_SYSTEM,
         isLeader && allowOperate
           ? [
@@ -9924,6 +9947,8 @@ async function callD4ActorEntrance({ members, member, isLeader, ownActText, priv
         "【他自己刚才做过的事】",
         ownActText,
         "",
+        r1PublicMemory ? `【上一轮 R1 页面上大家公开说过的话（你都在场，节选）】\n${r1PublicMemory}` : "",
+        r1PublicMemory ? "" : "",
         "【当前页面】",
         screenText,
         "",
@@ -9959,7 +9984,7 @@ async function callD4ActorEntrance({ members, member, isLeader, ownActText, priv
   throw new Error(`d4 actor entrance decision failed after 2 attempts: ${lastError}`);
 }
 
-async function callD4Actor({ members, member, isLeader, ownActText, privateState, screenText, transcript, phaseTurnNumber, triggerContext, performanceMode, temperature, outputDir, eventIndex, operateRetryNote = "" }) {
+async function callD4Actor({ members, member, isLeader, ownActText, privateState, screenText, transcript, phaseTurnNumber, triggerContext, performanceMode, temperature, outputDir, eventIndex, operateRetryNote = "", r1PublicMemory = "" }) {
   const ownPublicHistory = clipText(transcript
     .filter((entry) => entry.speaker === member.profile_id)
     .map((entry, index) => `${index + 1}. ${entry.text}`)
@@ -9976,7 +10001,7 @@ async function callD4Actor({ members, member, isLeader, ownActText, privateState
     {
       role: "system",
       content: [
-        formatR1IsolatedActorPersona(member, isLeader),
+        formatD4ActorPersona(member, isLeader),
         "",
         "你现在只扮演这一个人。你不知道别人心里在想什么，也不知道这场讨论最终会怎样。",
         "不要替其他成员写台词，不要当主持人，不要总结整场会议，不要追求一个漂亮完整的答案。",
@@ -9996,6 +10021,7 @@ async function callD4Actor({ members, member, isLeader, ownActText, privateState
         "【他自己刚才做过的事】",
         ownActText,
         "",
+        r1PublicMemory ? `【上一轮 R1 页面上大家公开说过的话（你都在场，节选）】\n${r1PublicMemory}` : "",
         "【当前页面】",
         screenText,
         "",
@@ -10091,7 +10117,7 @@ function d4EventText(event, members, leaderIdx) {
   return "";
 }
 
-async function runD4ActorReview({ members, leaderIdx, deck: deck0, individualSelections, materials, r1Frozen, priceConfig, temperature, seed, outputDir, maxEvents = 24, minCards = 6 }) {
+async function runD4ActorReview({ members, leaderIdx, deck: deck0, individualSelections, materials, r1Frozen, priceConfig, r1PublicMemory = "", temperature, seed, outputDir, maxEvents = 24, minCards = 6 }) {
   let deck = deck0.map((card) => ({ cap_id: card.cap_id, tier: card.tier }));
   const rng = makeRng(`d4_actor_review:${seed}`);
   const transcript = [];
@@ -10107,7 +10133,7 @@ async function runD4ActorReview({ members, leaderIdx, deck: deck0, individualSel
     isLeader: index === leaderIdx,
     ownActText: ownAct[index],
     screenText,
-    heardTranscript: "",
+    heardTranscript: r1PublicMemory ? `（上一轮 R1 页面上，节选）\n${r1PublicMemory}` : "",
     ask: "页面刚切到团队合并页。写 80-180 字的私有主人公状态：他先看见什么（自己点的卡还在不在、被合并成什么样、成本数字扎不扎眼）、想不想开口、想起了哪段真实经历、哪里没把握。不要替他决定团队最后保留什么。",
     phase: "d4_review",
     temperature,
@@ -10166,7 +10192,7 @@ async function runD4ActorReview({ members, leaderIdx, deck: deck0, individualSel
       : await callD4ActorEntrance({
           members, member, isLeader, ownActText: ownAct[memberIndex], privateState: privateStates[memberIndex],
           screenText, transcript, phaseTurnNumber, quietBeatStreak, triggerContext, allowOperate, temperature, outputDir,
-          eventIndex: entranceCheckIndex
+          eventIndex: entranceCheckIndex, r1PublicMemory
         });
     if (entrance.decision === "silent") {
       quietBeatStreak += 1;
@@ -10180,7 +10206,7 @@ async function runD4ActorReview({ members, leaderIdx, deck: deck0, individualSel
     quietCycles = 0;
     let raw = await callD4Actor({
       members, member, isLeader, ownActText: ownAct[memberIndex], privateState: privateStates[memberIndex],
-      screenText, transcript, phaseTurnNumber, triggerContext, performanceMode: entrance.decision, temperature, outputDir, eventIndex
+      screenText, transcript, phaseTurnNumber, triggerContext, performanceMode: entrance.decision, temperature, outputDir, eventIndex, r1PublicMemory
     });
     let event = { action: "none", cap_id: "", tier: "" };
     if (entrance.decision === "operate") {
@@ -10188,7 +10214,7 @@ async function runD4ActorReview({ members, leaderIdx, deck: deck0, individualSel
       if (event.action === "none") {
         raw = await callD4Actor({
           members, member, isLeader, ownActText: ownAct[memberIndex], privateState: privateStates[memberIndex],
-          screenText, transcript, phaseTurnNumber, triggerContext, performanceMode: "operate", temperature, outputDir, eventIndex,
+          screenText, transcript, phaseTurnNumber, triggerContext, performanceMode: "operate", temperature, outputDir, eventIndex, r1PublicMemory,
           operateRetryNote: "你刚才那一镜没有落下任何可索引的真实界面动作。重演这一刻，在括号动作里逐字写出：给哪张卡（卡名或 cap_id）加选/切到哪个档位（low/mid/high），或取消哪张卡，或点击“继续”。仍然只演这一个操作。"
         });
         event = await extractD4UiEvent({ raw, deck, materials, temperature, outputDir, eventIndex, memberId: member.profile_id });
@@ -10221,7 +10247,15 @@ async function runD4ActorReview({ members, leaderIdx, deck: deck0, individualSel
     // Everyone else may react to what just happened; the leader is queued last with operate rights.
     const lastEntry = transcript[transcript.length - 1];
     currentTrigger = { mode: "response", trigger: lastEntry.speaker === "narrator" ? lastEntry : { speaker: member.profile_id, text: raw } };
-    queue = shuffled(members.map((_, i) => i).filter((i) => i !== memberIndex && i !== leaderIdx)).concat(memberIndex === leaderIdx ? [] : [leaderIdx]);
+    const others = shuffled(members.map((_, i) => i).filter((i) => i !== memberIndex && i !== leaderIdx));
+    // Speech-driven turn order: whoever was addressed by name reacts first.
+    const addressed = others.filter((i) => {
+      const nm = String(members[i].surface?.name || "");
+      const short = nm.length >= 2 ? nm.slice(-2) : nm;
+      return (nm && raw.includes(nm)) || (short.length === 2 && raw.includes(short));
+    });
+    const rest = others.filter((i) => !addressed.includes(i));
+    queue = addressed.concat(rest).concat(memberIndex === leaderIdx ? [] : [leaderIdx]);
   }
   if (!ended) {
     transcript.push({ speaker: "narrator", text: termination === "timeout_forced_submit"
@@ -10234,7 +10268,7 @@ async function runD4ActorReview({ members, leaderIdx, deck: deck0, individualSel
   return { deck, transcript, turns, termination };
 }
 
-async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, config, materials, outputDir, seed, arm = "legacy" }) {
+async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, config, materials, outputDir, seed, arm = "legacy", r1PublicTranscript = [] }) {
   const temperature = requireConfigNumber(config, "temperature");
   const useMatchedPrototype = arm !== "legacy";
   const prototypeChoice = useMatchedPrototype
@@ -10394,6 +10428,7 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
         materials,
         r1Frozen,
         priceConfig: priceConfigForReview,
+        r1PublicMemory: buildR1PublicMemory(r1PublicTranscript, members),
         temperature,
         seed,
         outputDir,
@@ -11032,7 +11067,8 @@ async function runR2FromExistingR1({ sourceDir, batch, arm = null, poolPath = nu
     materials,
     outputDir,
     seed: sourceMeta.seed,
-    arm: effectiveArm
+    arm: effectiveArm,
+    r1PublicTranscript: Array.isArray(sourceTranscript?.transcript) ? sourceTranscript.transcript : []
   });
   writeJson(path.join(outputDir, "settlement.json"), {
     r1: sourceSettlement.r1 || null,
