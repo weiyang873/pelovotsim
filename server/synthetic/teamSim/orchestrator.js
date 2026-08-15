@@ -34,7 +34,7 @@ const DATA_DIR = path.join(ROOT, "data");
 const OUTPUT_ROOT = path.join(DATA_DIR, "synthetic", "team_sim");
 const RANDOM42_POOL_PATH = path.join(DATA_DIR, "persona_pool_random42_interface_v1", "persona_pool_v2.json");
 const LAYERED_NOMAP_GENERATION_SEED = 20260806;
-const TEAM_ARMS = new Set(["legacy", "simple", "layered", "layered_nomap", "team_layered_nomap", "team_room_roleplay_ui", "team_room_pricing_action_actor_v1", "team_room_story_d4_pa_d5_v1", "team_room_roleplay_stateful_v1", "team_room_roleplay_stateful_review_v1", "team_room_d4_human_pick_v1", "team_room_d4_stateful_pick_v1", "team_room_d4_stateful_d5_nosubmit_v1", "team_room_story_d4_v1", "team_room_story_d4d5_v1", "team_room_story_d4d5_narrator_d5_v1", "team_room_story_r1_d4d5_narrator_v1", "team_room_r1_private_trace_v1", "team_room_r1_story_process_v1", "team_room_r1_reading_story_v1", "team_room_r1_screenplay_v1", "team_room_r1_actor_isolated_v1"]);
+const TEAM_ARMS = new Set(["legacy", "simple", "layered", "layered_nomap", "team_layered_nomap", "team_room_roleplay_ui", "team_room_pricing_action_actor_v1", "team_room_story_d4_pa_d5_v1", "team_room_story_d4_screenplay3_d5_v1", "team_room_roleplay_stateful_v1", "team_room_roleplay_stateful_review_v1", "team_room_d4_human_pick_v1", "team_room_d4_stateful_pick_v1", "team_room_d4_stateful_d5_nosubmit_v1", "team_room_story_d4_v1", "team_room_story_d4d5_v1", "team_room_story_d4d5_narrator_d5_v1", "team_room_story_r1_d4d5_narrator_v1", "team_room_r1_private_trace_v1", "team_room_r1_story_process_v1", "team_room_r1_reading_story_v1", "team_room_r1_screenplay_v1", "team_room_r1_actor_isolated_v1"]);
 let round2RoutesModule = null;
 let round2RouteTestHelpers = null;
 
@@ -1035,11 +1035,11 @@ function isPricingActionActorArm(arm) {
 }
 
 function isStatefulRoomRoleplayArm(arm) {
-  return arm === "team_room_story_d4_pa_d5_v1" || arm === "team_room_roleplay_stateful_v1" || arm === "team_room_roleplay_stateful_review_v1" || arm === "team_room_d4_human_pick_v1" || arm === "team_room_d4_stateful_pick_v1" || arm === "team_room_d4_stateful_d5_nosubmit_v1" || arm === "team_room_story_d4_v1" || arm === "team_room_story_d4d5_v1" || arm === "team_room_story_d4d5_narrator_d5_v1" || arm === "team_room_story_r1_d4d5_narrator_v1" || arm === "team_room_r1_private_trace_v1" || arm === "team_room_r1_story_process_v1" || hasR1UiNarrativeArm(arm);
+  return arm === "team_room_story_d4_screenplay3_d5_v1" || arm === "team_room_story_d4_pa_d5_v1" || arm === "team_room_roleplay_stateful_v1" || arm === "team_room_roleplay_stateful_review_v1" || arm === "team_room_d4_human_pick_v1" || arm === "team_room_d4_stateful_pick_v1" || arm === "team_room_d4_stateful_d5_nosubmit_v1" || arm === "team_room_story_d4_v1" || arm === "team_room_story_d4d5_v1" || arm === "team_room_story_d4d5_narrator_d5_v1" || arm === "team_room_story_r1_d4d5_narrator_v1" || arm === "team_room_r1_private_trace_v1" || arm === "team_room_r1_story_process_v1" || hasR1UiNarrativeArm(arm);
 }
 
 function hasD5CardReviewState(arm) {
-  return arm === "team_room_roleplay_stateful_review_v1" || arm === "team_room_d4_human_pick_v1" || arm === "team_room_d4_stateful_pick_v1" || arm === "team_room_d4_stateful_d5_nosubmit_v1" || arm === "team_room_story_d4_v1" || arm === "team_room_story_d4d5_v1" || arm === "team_room_story_d4d5_narrator_d5_v1" || arm === "team_room_story_r1_d4d5_narrator_v1" || arm === "team_room_r1_private_trace_v1" || arm === "team_room_r1_story_process_v1" || hasR1UiNarrativeArm(arm);
+  return arm === "team_room_story_d4_screenplay3_d5_v1" || arm === "team_room_roleplay_stateful_review_v1" || arm === "team_room_d4_human_pick_v1" || arm === "team_room_d4_stateful_pick_v1" || arm === "team_room_d4_stateful_d5_nosubmit_v1" || arm === "team_room_story_d4_v1" || arm === "team_room_story_d4d5_v1" || arm === "team_room_story_d4d5_narrator_d5_v1" || arm === "team_room_story_r1_d4d5_narrator_v1" || arm === "team_room_r1_private_trace_v1" || arm === "team_room_r1_story_process_v1" || hasR1UiNarrativeArm(arm);
 }
 
 function hasD4HumanPickArm(arm) {
@@ -1047,11 +1047,11 @@ function hasD4HumanPickArm(arm) {
 }
 
 function hasD4StatefulPickArm(arm) {
-  return arm === "team_room_story_d4_pa_d5_v1" || arm === "team_room_d4_stateful_pick_v1" || arm === "team_room_d4_stateful_d5_nosubmit_v1" || arm === "team_room_story_d4_v1" || arm === "team_room_story_d4d5_v1" || arm === "team_room_story_d4d5_narrator_d5_v1" || arm === "team_room_story_r1_d4d5_narrator_v1" || arm === "team_room_r1_private_trace_v1" || arm === "team_room_r1_story_process_v1" || hasR1UiNarrativeArm(arm);
+  return arm === "team_room_story_d4_screenplay3_d5_v1" || arm === "team_room_story_d4_pa_d5_v1" || arm === "team_room_d4_stateful_pick_v1" || arm === "team_room_d4_stateful_d5_nosubmit_v1" || arm === "team_room_story_d4_v1" || arm === "team_room_story_d4d5_v1" || arm === "team_room_story_d4d5_narrator_d5_v1" || arm === "team_room_story_r1_d4d5_narrator_v1" || arm === "team_room_r1_private_trace_v1" || arm === "team_room_r1_story_process_v1" || hasR1UiNarrativeArm(arm);
 }
 
 function hasD5D4ResidueArm(arm) {
-  return arm === "team_room_d4_stateful_d5_nosubmit_v1" || arm === "team_room_story_d4_v1" || arm === "team_room_story_d4d5_v1" || arm === "team_room_story_d4d5_narrator_d5_v1" || arm === "team_room_story_r1_d4d5_narrator_v1" || arm === "team_room_r1_private_trace_v1" || arm === "team_room_r1_story_process_v1" || hasR1UiNarrativeArm(arm);
+  return arm === "team_room_story_d4_screenplay3_d5_v1" || arm === "team_room_d4_stateful_d5_nosubmit_v1" || arm === "team_room_story_d4_v1" || arm === "team_room_story_d4d5_v1" || arm === "team_room_story_d4d5_narrator_d5_v1" || arm === "team_room_story_r1_d4d5_narrator_v1" || arm === "team_room_r1_private_trace_v1" || arm === "team_room_r1_story_process_v1" || hasR1UiNarrativeArm(arm);
 }
 
 function usesD5TranscriptPriceParser(arm) {
@@ -1059,7 +1059,7 @@ function usesD5TranscriptPriceParser(arm) {
 }
 
 function hasD4StoryPickArm(arm) {
-  return arm === "team_room_story_d4_pa_d5_v1" || arm === "team_room_story_d4_v1" || arm === "team_room_story_d4d5_v1" || arm === "team_room_story_d4d5_narrator_d5_v1" || arm === "team_room_story_r1_d4d5_narrator_v1" || arm === "team_room_r1_private_trace_v1" || arm === "team_room_r1_story_process_v1" || hasR1UiNarrativeArm(arm);
+  return arm === "team_room_story_d4_screenplay3_d5_v1" || arm === "team_room_story_d4_pa_d5_v1" || arm === "team_room_story_d4_v1" || arm === "team_room_story_d4d5_v1" || arm === "team_room_story_d4d5_narrator_d5_v1" || arm === "team_room_story_r1_d4d5_narrator_v1" || arm === "team_room_r1_private_trace_v1" || arm === "team_room_r1_story_process_v1" || hasR1UiNarrativeArm(arm);
 }
 
 function hasD5ScreenplayArm(arm) {
@@ -1067,7 +1067,7 @@ function hasD5ScreenplayArm(arm) {
 }
 
 function hasD4ScreenplayArm(arm) {
-  return arm === "team_room_story_d4_pa_d5_v1" || arm === "team_room_story_d4d5_v1" || arm === "team_room_story_d4d5_narrator_d5_v1" || arm === "team_room_story_r1_d4d5_narrator_v1" || arm === "team_room_r1_private_trace_v1" || arm === "team_room_r1_story_process_v1" || hasR1UiNarrativeArm(arm);
+  return arm === "team_room_story_d4_screenplay3_d5_v1" || arm === "team_room_story_d4_pa_d5_v1" || arm === "team_room_story_d4d5_v1" || arm === "team_room_story_d4d5_narrator_d5_v1" || arm === "team_room_story_r1_d4d5_narrator_v1" || arm === "team_room_r1_private_trace_v1" || arm === "team_room_r1_story_process_v1" || hasR1UiNarrativeArm(arm);
 }
 
 function hasD5NarratorActorArm(arm) {
@@ -7165,6 +7165,7 @@ function formatD5ScreenplayActorSheet(members, leaderIdx) {
     return [
       `【演员 ${member.profile_id}${index === leaderIdx ? " / 组长" : ""}】`,
       formatProfile(member, index === leaderIdx, "team_room_story_d4d5_v1"),
+      member.r1_own_proposal ? `他自己在 R1 的个人初选（公开过）：${member.r1_own_proposal}` : "",
       d5IdeologyLine(member),
       formatR1ActorCarryoverForPrompt(member),
       review.value_feel ? `D5 私有复盘：${review.value_feel}；${review.cost_feel}；${review.speaking_angle}` : "",
@@ -7452,6 +7453,158 @@ async function runD5ScreenplayPricing({
     }
   }
   throw new Error(`d5_screenplay_parse_failure: ${lastError}`);
+}
+
+// ===== D5 as three D4-style screenplay scenes (pricing action -> tier -> price) =====
+// Same engine as the six-segment D4 screenplay: one screenwriter call per scene, the scene ends
+// with the leader's indexed UI action, the next scene inherits the commitment. Scenes 1-2 index a
+// choice; scene 3 reuses the slider validator (drag_slider / confirm_price).
+
+function d5StageActorLine(beat, uiText) {
+  const stage = beat.stage_direction ? `（${beat.stage_direction}）` : "";
+  const line = beat.line || "";
+  return `${stage}${line}${uiText ? `（界面动作：${uiText}）` : ""}`.trim() || "（没有说话）";
+}
+
+function validateD5ChoiceScene(parsed, { members, leaderId, actionType, allowed }) {
+  const source = parsed && typeof parsed === "object" ? parsed : {};
+  const rawBeats = ensureArray(source.beats || source.scene_beats || source["剧本"] || source["台词"]);
+  if (rawBeats.length < 3) throw new Error("screenplay beats must include at least 3 beats");
+  const beats = [];
+  let choice = null;
+  for (const rawBeat of rawBeats) {
+    const item = rawBeat && typeof rawBeat === "object" ? rawBeat : { line: rawBeat };
+    const actor = normalizeScreenplayActor(item.actor ?? item.speaker ?? item.member_id ?? item["角色"], members);
+    if (!actor) throw new Error("screenplay beat missing a valid actor");
+    let ui = null;
+    const rawUi = item.ui_action && typeof item.ui_action === "object" ? item.ui_action : null;
+    if (rawUi && String(rawUi.type || "").trim() === actionType) {
+      const value = String(rawUi.value ?? rawUi.choice ?? "").trim();
+      if (actor !== leaderId) throw new Error(`only the leader can operate the page: ${actor} tried ${actionType}`);
+      if (!allowed.includes(value)) throw new Error(`illegal ${actionType} value: ${value || "(empty)"}`);
+      ui = { type: actionType, value };
+      choice = value;
+    }
+    beats.push({ actor, stage_direction: String(item.stage_direction || item["动作"] || "").trim(), line: String(item.line || item["台词"] || "").trim(), ui_action: ui });
+  }
+  if (!choice) throw new Error(`screenplay must contain the leader's ${actionType} ui_action`);
+  return { scene_state: String(source.scene_state || "").trim(), beats, choice };
+}
+
+async function runD5ScreenplayScene({ members, leaderIdx, actorSheet, priorTranscriptText, screenText, taskLines, schemaLine, validate, temperature, seed, outputDir, sceneName, retryHint }) {
+  const r1Public = members.find((m) => m.r1_public_memory)?.r1_public_memory || "";
+  const baseMessages = [
+    {
+      role: "system",
+      content: [
+        "你是一个场记式编剧。你的任务不是给商业建议，而是按演员人设续写真实 EMBA 讨论室里的一幕。",
+        "每个角色只能按自己的人设、疲劳、面子、理解偏差和刚才选卡残留行动；可以沉默、敷衍、跑题、误会、临时改口。",
+        "不要写 moderator，不要写讲解，不要写优化分析。只输出可 JSON.parse 的 JSON。"
+      ].join("\n")
+    },
+    {
+      role: "user",
+      content: [
+        "【演员表】",
+        actorSheet,
+        "",
+        r1Public ? `【上一轮 R1 页面上这几个人公开说过的话（他们都在场，节选）】\n${r1Public}\n` : "",
+        priorTranscriptText ? `【这一页上此前已经发生的对话】\n${priorTranscriptText}\n` : "",
+        "【当前屏幕】",
+        screenText,
+        "",
+        "【编剧任务】",
+        ...taskLines,
+        "至少 3 个 beat，最多 8 个 beat；不是每个人都必须说话。可以有空台词或只做动作。",
+        "不要输出 Markdown，不要输出额外说明。schema：",
+        schemaLine
+      ].filter((line) => line !== "").join("\n")
+    }
+  ];
+  if (outputDir) writeJson(path.join(outputDir, `d5_screenplay3_${sceneName}_prompt.json`), { seed, messages: baseMessages });
+  let messages = baseMessages;
+  let lastRaw = "";
+  let lastError = "";
+  const attemptsPath = outputDir ? path.join(outputDir, "d5_screenplay3_attempts.jsonl") : null;
+  for (let attempt = 0; attempt <= 2; attempt += 1) {
+    try {
+      lastRaw = await callText(messages, { temperature, maxTokens: 2600 });
+      const scene = validate(parseJsonLoose(lastRaw));
+      if (attemptsPath) appendJsonl(attemptsPath, { ts: new Date().toISOString(), scene: sceneName, attempt: attempt + 1, status: "ok", raw: lastRaw });
+      return scene;
+    } catch (error) {
+      lastError = error.message;
+      if (attemptsPath) appendJsonl(attemptsPath, { ts: new Date().toISOString(), scene: sceneName, attempt: attempt + 1, status: "error", error: lastError, raw: lastRaw });
+      messages = [
+        baseMessages[0],
+        { role: "user", content: [`上一版这一幕没有被界面接受。`, `界面/解析提示：${lastError}`, retryHint || "", "请从这个界面提示后继续写一版完整的这一幕，仍然按演员人设，不要写商业分析；只输出 JSON。", "", "上一版 raw：", lastRaw].filter(Boolean).join("\n") }
+      ];
+    }
+  }
+  throw new Error(`d5_screenplay3_${sceneName}_parse_failure: ${lastError}`);
+}
+
+async function runD5ScreenplayStagedPricing({ members, leaderIdx, draws, proposals, r1Frozen, chosenPrototype, selectedCards, priceConfig, temperature, seed, arm, outputDir }) {
+  void draws; void proposals;
+  const leaderId = members[leaderIdx].profile_id;
+  const actorSheet = formatD5ScreenplayActorSheet(members, leaderIdx);
+  const basePanel = [buildR2PricingContextPanel(r1Frozen, chosenPrototype), "", buildR2PricingActionPersonaPanel(r1Frozen, selectedCards, priceConfig)].join("\n");
+
+  // Scene 1: pricing action
+  const screen1 = [basePanel, "", "【D5 第一步：定价动作】", "现在小组站在产品售价滑块前，先讨论定价动作，不提交具体价格。", "A：压低售价抢量。意思是用相对更低的售价换更多用户愿意买，不追求单台高毛利。", "B：抬高售价守毛利。意思是接受销量可能少一些，用相对更高售价覆盖能力成本和渠道抽成，保护单台毛利。", "组长在这一步点选 A 或 B。"].join("\n");
+  const scene1 = await runD5ScreenplayScene({
+    members, leaderIdx, actorSheet, priorTranscriptText: "", screenText: screen1,
+    taskLines: ["写 D5 第一步这一幕：角色们围着同一台电脑，先说各自更偏压价抢量还是抬价守毛利；这一步不报具体价格，不复述成本金额。", `幕末必须有组长的界面动作：ui_action={"type":"choose_action","value":"A|B"}。`],
+    schemaLine: '{"scene_state":"一句场景状态","beats":[{"actor":"Rxx","stage_direction":"动作/神情","line":"台词，可为空","ui_action":{"type":"choose_action","value":"A|B"}|null}]}',
+    validate: (parsed) => validateD5ChoiceScene(parsed, { members, leaderId, actionType: "choose_action", allowed: ["A", "B"] }),
+    temperature, seed: `${seed}:d5s3:action`, outputDir, sceneName: "action",
+    retryHint: "这一幕必须以组长点选 A 或 B 收尾（ui_action type=choose_action，value 只能是 A 或 B），其他人不能操作页面。"
+  });
+  const pricingAction = scene1.choice === "A" ? "压低售价抢量" : "抬高售价守毛利";
+  const t1 = [{ speaker: "screen", text: screen1 }].concat(scene1.beats.map((b) => ({ speaker: b.actor, text: d5StageActorLine(b, b.ui_action ? `点选 ${b.ui_action.value}（${pricingAction}）` : ""), ui_action: b.ui_action })));
+
+  // Scene 2: relative tier
+  const screen2 = [basePanel, "", `【D5 第二步：相对档位】已选定价动作：${pricingAction}。`, "现在讨论相对档位：高 / 中 / 低。这一步仍不报具体价格。", "组长在这一步点选 高 / 中 / 低。"].join("\n");
+  const scene2 = await runD5ScreenplayScene({
+    members, leaderIdx, actorSheet, priorTranscriptText: formatTranscript(t1.slice(1)), screenText: screen2,
+    taskLines: ["写 D5 第二步这一幕：承接刚才定下的定价动作，说各自觉得该放在高、中、低哪个档位；不报具体价格。", `幕末必须有组长的界面动作：ui_action={"type":"choose_tier","value":"high|mid|low"}。`],
+    schemaLine: '{"scene_state":"一句场景状态","beats":[{"actor":"Rxx","stage_direction":"动作/神情","line":"台词，可为空","ui_action":{"type":"choose_tier","value":"high|mid|low"}|null}]}',
+    validate: (parsed) => validateD5ChoiceScene(parsed, { members, leaderId, actionType: "choose_tier", allowed: ["high", "mid", "low"] }),
+    temperature, seed: `${seed}:d5s3:tier`, outputDir, sceneName: "tier",
+    retryHint: "这一幕必须以组长点选 high / mid / low 收尾（ui_action type=choose_tier），其他人不能操作页面。"
+  });
+  const tier = scene2.choice;
+  const t2 = [{ speaker: "screen", text: screen2 }].concat(scene2.beats.map((b) => ({ speaker: b.actor, text: d5StageActorLine(b, b.ui_action ? `点选档位 ${pricingTierText(b.ui_action.value)}` : ""), ui_action: b.ui_action })));
+
+  // Scene 3: slider (reuse the existing D5 screenplay validator)
+  const screen3 = [basePanel, "", `【D5 第三步：最终价格】已选定价动作：${pricingAction}；已选档位：${pricingTierText(tier)}。`, `价格滑块范围 ${formatYuan(priceConfig.price_min)} 到 ${formatYuan(priceConfig.price_max)}。组长拖动滑块并确认。`].join("\n");
+  const scene3 = await runD5ScreenplayScene({
+    members, leaderIdx, actorSheet, priorTranscriptText: formatTranscript(t1.slice(1).concat(t2.slice(1))), screenText: screen3,
+    taskLines: ["写 D5 第三步这一幕：承接前两步定下的动作和档位，角色们像真人一样说话和动手，最后落到一个具体售价。", "滑块边界在界面上可见，但不要让角色在台词里复述上下限；也不要把中点、上下限当默认答案。", "如果某人动手拖价格，写 ui_action={\"type\":\"drag_slider\",\"price\":数字}；如果最终停住/确认，写 ui_action={\"type\":\"confirm_price\",\"price\":数字}。"],
+    schemaLine: '{"scene_state":"一句场景状态","beats":[{"actor":"Rxx","stage_direction":"动作/神情","line":"台词，可为空","ui_action":{"type":"drag_slider|confirm_price","price":数字}|null}]}',
+    validate: (parsed) => validateD5Screenplay(parsed, { members, priceConfig }),
+    temperature, seed: `${seed}:d5s3:price`, outputDir, sceneName: "price",
+    retryHint: `必须包含至少一个合法 drag_slider 或 confirm_price（滑块范围 ${formatYuan(priceConfig.price_min)} 到 ${formatYuan(priceConfig.price_max)}）。`
+  });
+  const t3 = d5ScreenplayTranscript(screen3, scene3);
+  const priceSubmit = {
+    text: `${scene3.final_action.actor}: ${scene3.final_action.line || ""}`,
+    parsed: { price: scene3.price, rationale: `deterministically indexed from ${scene3.final_action.actor}/${scene3.final_action.type}` },
+    parse_raw: scene3, attempts: 0, parse_method: "deterministic_screenplay_ui_action"
+  };
+  return {
+    priceSubmit,
+    checkpoints: [
+      { decision_point: "price_action", termination: "screenplay_confirmed", turns: scene1.beats.length, frozen: { pricing_action: pricingAction }, submission_mode: "deterministic_screenplay_ui_action" },
+      { decision_point: "price_tier", termination: "screenplay_confirmed", turns: scene2.beats.length, pricing_action: pricingAction, frozen: { tier }, submission_mode: "deterministic_screenplay_ui_action" },
+      { decision_point: "price", termination: "screenplay_confirmed", turns: scene3.beats.length, pricing_action: pricingAction, pricing_tier: tier, frozen: priceSubmit.parsed, price_parse: scene3, submission_mode: "deterministic_screenplay_ui_action" }
+    ],
+    transcripts: [
+      { decision_point: "price_action", transcript: t1, turns: [{ turn: 1, screenplay: scene1 }] },
+      { decision_point: "price_tier", transcript: t2, turns: [{ turn: 1, screenplay: scene2 }] },
+      { decision_point: "price", transcript: t3, turns: [{ turn: 1, screenplay: scene3 }] }
+    ]
+  };
 }
 
 function d5IdeologyEnabled() {
@@ -11010,7 +11163,14 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
   }
   let priceSubmit = null;
   await prepareD5PersonaLayer({ members, r1Frozen, selectedCards, priceConfig, temperature, outputDir });
-  if (arm === "team_room_story_d4_pa_d5_v1") {
+  if (arm === "team_room_story_d4_screenplay3_d5_v1") {
+    const d5 = await runD5ScreenplayStagedPricing({
+      members, leaderIdx, draws, proposals, r1Frozen, chosenPrototype, selectedCards, priceConfig, temperature, seed, arm, outputDir
+    });
+    priceSubmit = d5.priceSubmit;
+    checkpoints.push(...d5.checkpoints);
+    r2Transcript.push(...d5.transcripts);
+  } else if (arm === "team_room_story_d4_pa_d5_v1") {
     const d5 = await runPricingActionPersonaD5({
       members,
       leaderIdx,
@@ -11354,6 +11514,10 @@ async function runR2FromExistingR1({ sourceDir, batch, arm = null, poolPath = nu
 
   const r1PublicMemoryText = buildR1PublicMemory(Array.isArray(sourceTranscript?.transcript) ? sourceTranscript.transcript : [], sampled.members);
   for (const member of sampled.members) member.r1_public_memory = r1PublicMemoryText;
+  sampled.members.forEach((member, index) => {
+    const own = proposals[index]?.parsed;
+    if (own?.grid_id) member.r1_own_proposal = `${own.grid_id}/${own.architecture || ""}${own.rationale ? `：${String(own.rationale).slice(0, 80)}` : ""}`;
+  });
   const r2 = await runR2Decision({
     members: sampled.members,
     leaderIdx: sampled.leaderIdx,
