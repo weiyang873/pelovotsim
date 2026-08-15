@@ -426,15 +426,19 @@ function loadRandom42ProfilePool(poolPath = RANDOM42_POOL_PATH) {
         archetype_id: "task_blind_narrative",
         label: "高管项目学员",
         desc: "由冻结事实卡和八维行为特征写成的任务盲人物小传",
-        role: facts.current_role || "企业管理者",
+        // Wiring fix: the pool's frozen fact cards ARE the persona's legitimate attributes;
+        // map them verbatim instead of blanking the pricing/role/expression channels.
+        role: facts.career_context || facts.current_role || "企业管理者",
         background: record.biography,
         industry: facts.industry || "",
-        decisionStyle: "",
-        riskPreference: "",
-        expressionStyle: facts.communication_texture || "自然表达",
+        decisionStyle: facts.quality_convenience_tradeoffs || "",
+        riskPreference: facts.economic_resources_and_pressure || "",
+        expressionStyle: facts.communication_and_participation || facts.communication_texture || "自然表达",
         blindSpots: "",
-        pricingBias: "",
-        speaking_tendency: "mid",
+        pricingBias: facts.price_reference_history || "",
+        speaking_tendency: Number(record.behavioral_fingerprint?.action_orientation) >= 0.67
+          ? "high"
+          : Number(record.behavioral_fingerprint?.action_orientation) <= 0.33 ? "low" : "mid",
         surface,
         behavioral_fingerprint: record.behavioral_fingerprint,
         task_blind_biography: record.biography,
