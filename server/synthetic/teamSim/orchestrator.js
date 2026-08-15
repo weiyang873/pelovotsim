@@ -34,7 +34,7 @@ const DATA_DIR = path.join(ROOT, "data");
 const OUTPUT_ROOT = path.join(DATA_DIR, "synthetic", "team_sim");
 const RANDOM42_POOL_PATH = path.join(DATA_DIR, "persona_pool_random42_interface_v1", "persona_pool_v2.json");
 const LAYERED_NOMAP_GENERATION_SEED = 20260806;
-const TEAM_ARMS = new Set(["legacy", "simple", "layered", "layered_nomap", "team_layered_nomap", "team_room_roleplay_ui", "team_room_roleplay_stateful_v1", "team_room_roleplay_stateful_review_v1", "team_room_d4_human_pick_v1", "team_room_d4_stateful_pick_v1", "team_room_d4_stateful_d5_nosubmit_v1", "team_room_story_d4_v1", "team_room_story_d4d5_v1", "team_room_story_d4d5_narrator_d5_v1", "team_room_story_r1_d4d5_narrator_v1", "team_room_r1_private_trace_v1", "team_room_r1_story_process_v1", "team_room_r1_reading_story_v1", "team_room_r1_screenplay_v1", "team_room_r1_actor_isolated_v1"]);
+const TEAM_ARMS = new Set(["legacy", "simple", "layered", "layered_nomap", "team_layered_nomap", "team_room_roleplay_ui", "team_room_pricing_action_actor_v1", "team_room_roleplay_stateful_v1", "team_room_roleplay_stateful_review_v1", "team_room_d4_human_pick_v1", "team_room_d4_stateful_pick_v1", "team_room_d4_stateful_d5_nosubmit_v1", "team_room_story_d4_v1", "team_room_story_d4d5_v1", "team_room_story_d4d5_narrator_d5_v1", "team_room_story_r1_d4d5_narrator_v1", "team_room_r1_private_trace_v1", "team_room_r1_story_process_v1", "team_room_r1_reading_story_v1", "team_room_r1_screenplay_v1", "team_room_r1_actor_isolated_v1"]);
 let round2RoutesModule = null;
 let round2RouteTestHelpers = null;
 
@@ -962,7 +962,11 @@ function isLayeredNoMapArm(arm) {
 }
 
 function isRoomRoleplayArm(arm) {
-  return arm === "team_room_roleplay_ui" || isStatefulRoomRoleplayArm(arm);
+  return arm === "team_room_roleplay_ui" || arm === "team_room_pricing_action_actor_v1" || isStatefulRoomRoleplayArm(arm);
+}
+
+function isPricingActionActorArm(arm) {
+  return arm === "team_room_pricing_action_actor_v1";
 }
 
 function isStatefulRoomRoleplayArm(arm) {
@@ -4631,6 +4635,49 @@ async function moderatorCheck(transcript, topic, temperature, arm = "legacy") {
   };
 }
 
+
+async function runActorStageDiscussion({ members, leaderIdx, draws, proposals, initialTranscript, topic, maxTurns, config, temperature, seed, arm = "legacy" }) {
+  // Fusion trial: PA's stage skeleton with actor-isolated stagecraft — members enter by their
+  // own entrance decision instead of scheduled rotation; silence is a legal round outcome.
+  const transcript = initialTranscript.slice();
+  const turns = [];
+  const rng = makeRng(`actor_stage:${seed}:${topic}`);
+  const maxRounds = Math.max(2, Math.min(3, maxTurns));
+  let totalSpeaks = 0;
+  for (let round = 1; round <= maxRounds; round += 1) {
+    const order = members.map((_, i) => i);
+    for (let i = order.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(rng() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    let spokeThisRound = 0;
+    for (const idx of order) {
+      const member = members[idx];
+      const recent = transcript.slice(-4).map((e) => `${e.speaker === "moderator" || e.speaker === "screen" ? "屏幕" : e.speaker}: ${String(e.text).slice(0, 120)}`).join("\n");
+      let decision = "silent";
+      try {
+        const raw = await callText([
+          { role: "system", content: `${formatProfile(member, idx === leaderIdx, arm)}\n你在小组定价讨论现场。只判断此刻这个人会不会自然开口，不写台词。` },
+          { role: "user", content: `当前环节：${topic}\n最近现场：\n${recent || "（刚开始，还没人说话）"}\n\n此刻你会开口吗？只输出 JSON：{"speak": true|false}` }
+        ], { temperature: 0.3, maxTokens: 30 });
+        const parsed = parseJsonLoose(raw);
+        decision = parsed && parsed.speak === true ? "speak" : "silent";
+      } catch (error) {
+        decision = "silent";
+      }
+      if (decision !== "speak") continue;
+      const utterance = await speak(member, idx === leaderIdx, draws[idx], proposals[idx].parsed, transcript, topic, temperature, arm);
+      transcript.push({ speaker: member.profile_id, text: utterance });
+      turns.push({ round, member_id: member.profile_id, entrance: "self", text: utterance });
+      spokeThisRound += 1;
+      totalSpeaks += 1;
+    }
+    if (spokeThisRound === 0 && totalSpeaks > 0) break;
+    if (spokeThisRound === 0 && round >= 2) break;
+  }
+  return { transcript, turns, termination: "leader_decision" };
+}
+
 async function runDiscussion({ members, leaderIdx, draws, proposals, initialTranscript, topic, maxTurns, config, temperature, seed, arm = "legacy" }) {
   const transcript = initialTranscript.slice();
   const rng = makeRng(`discussion:${seed}:${topic}`);
@@ -6543,6 +6590,8 @@ async function runPricingActionPersonaD5({
   seed,
   arm
 }) {
+  const discussFn = isPricingActionActorArm(arm) ? runActorStageDiscussion : runDiscussion;
+  const stageVoice = isPricingActionActorArm(arm) ? "screen" : "moderator";
   const maxTurns = requireConfigNumber(config, "max_turns_r2_per_segment");
   const submitParseRetries = requireConfigNumber(config, "submit_parse_retries");
   const basePanel = [
@@ -6552,7 +6601,7 @@ async function runPricingActionPersonaD5({
   ].join("\n");
 
   const actionInitialTranscript = [{
-    speaker: "moderator",
+    speaker: stageVoice,
     text: [
       basePanel,
       "",
@@ -6565,7 +6614,7 @@ async function runPricingActionPersonaD5({
       "不要输出 JSON，不要 Markdown 表格。"
     ].join("\n")
   }];
-  const actionDiscussion = await runDiscussion({
+  const actionDiscussion = await discussFn({
     members,
     leaderIdx,
     draws,
@@ -6594,7 +6643,7 @@ async function runPricingActionPersonaD5({
   }]);
 
   const tierInitialTranscript = actionTranscript.concat([{
-    speaker: "moderator",
+    speaker: stageVoice,
     text: [
       `【已冻结定价动作】${pricingActionText(actionSubmit.parsed.pricing_action)}`,
       "",
@@ -6605,7 +6654,7 @@ async function runPricingActionPersonaD5({
       "这一段仍然不要提交具体价格，也不要复述成本金额。"
     ].join("\n")
   }]);
-  const tierDiscussion = await runDiscussion({
+  const tierDiscussion = await discussFn({
     members,
     leaderIdx,
     draws,
@@ -6634,7 +6683,7 @@ async function runPricingActionPersonaD5({
   }]);
 
   const finalInitialTranscript = tierTranscript.concat([{
-    speaker: "moderator",
+    speaker: stageVoice,
     text: [
       `【已冻结定价动作】${pricingActionText(actionSubmit.parsed.pricing_action)}`,
       `【已冻结相对档位】${pricingTierText(tierSubmit.parsed.tier)}`,
@@ -6647,7 +6696,7 @@ async function runPricingActionPersonaD5({
       "不要输出 JSON，不要 Markdown 表格。"
     ].join("\n")
   }]);
-  const priceDiscussion = await runDiscussion({
+  const priceDiscussion = await discussFn({
     members,
     leaderIdx,
     draws,
