@@ -7633,7 +7633,7 @@ async function prepareD4ReadingHabits({ members, temperature, outputDir }) {
   await Promise.all(members.map(async (member) => {
     if (!isTaskBlindNarrativeMember(member) || member.d4_reading_habit) return;
     const raw = await callText([
-      { role: "system", content: "你只根据下面这个人的小传，用一两句话说出：他在网页上看一排产品能力卡（每张卡旁边标着单位成本和研发投入）时，会怎么读——是逐项算成本再定档位，还是扫一眼数字主要看功能名，还是基本不看成本那一栏；以及他对技术/后台类功能是内行、半懂，还是外行。用他自己经历里的事说明为什么。不要分析，不要列点。" },
+      { role: "system", content: "你只根据下面这个人的小传，用一两句话说出：他在网页上看一排产品能力卡（每张卡旁边标着单位成本和研发投入）时，会怎么读——他更在意的是功能够不够全、有没有漏，还是花了多少钱；是逐项算成本再定档位，还是扫一眼数字主要看功能名，还是基本不看成本那一栏；以及他对技术/后台类功能是内行、半懂，还是外行。用他自己经历里的事说明为什么（比如做市场、做产品的人多半盯功能，做财务、做采购的人多半盯成本，但以他的小传为准）。不要分析，不要列点。" },
       { role: "user", content: `【人物小传】\n${member.task_blind_biography}` }
     ], { temperature: 0.4, maxTokens: 120 });
     member.d4_reading_habit = String(raw || "").trim().replace(/\s+/g, " ").slice(0, 160);
