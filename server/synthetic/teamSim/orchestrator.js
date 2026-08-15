@@ -5829,8 +5829,18 @@ async function runR1NarratorActorDiscussion({
   return { transcript, turns, termination, narration };
 }
 
-async function leaderSubmit({ members, leaderIdx, transcript, topic, decisionType, context, temperature, arm = "legacy" }) {
+async function leaderSubmit({ members, leaderIdx, transcript, topic, decisionType, context, temperature, arm = "legacy", draws = null, proposals = null }) {
   const leader = members[leaderIdx];
+  // The leader is a member with a submit button. For room arms, submission carries the same
+  // private context as their speech - own jinang, own R1 proposal, own inner line - so whether
+  // they play favorites or fold is a matter of persona, not of a scribe rule.
+  const leaderPrivateContext = isRoomRoleplayArm(arm)
+    ? [
+        draws && draws[leaderIdx] ? `私有 context：\n${formatJinang(draws[leaderIdx])}` : "",
+        proposals && proposals[leaderIdx]?.parsed ? `你的会前提案：${proposals[leaderIdx].parsed.grid_id}/${proposals[leaderIdx].parsed.architecture}，${proposals[leaderIdx].parsed.rationale}` : "",
+        decisionType === "cards" && leader.d4_own_selection_note ? `你刚才自己选卡时心里那句话：“${leader.d4_own_selection_note}”` : ""
+      ].filter(Boolean).join("\n")
+    : "";
   const r1WritingAssist = decisionType === "r1"
     ? (isRoomRoleplayArm(arm)
         ? "\n\n像课堂界面里组长准备点提交一样，把大家说过的话整理成能交的 WHO/PAIN/HOW；不要新增 transcript 没有支持的市场或用户。最终提交必须显式写出 WHO、PAIN、HOW 三项，每项至少一句。"
@@ -5847,13 +5857,13 @@ async function leaderSubmit({ members, leaderIdx, transcript, topic, decisionTyp
         decisionType === "pricing_action" ? "最后只提交定价动作：压低售价抢量 或 抬高售价守毛利；不要提交具体价格、成本金额或公式。" : "",
         decisionType === "pricing_tier" ? "最后只提交相对档位：高 / 中 / 低；不要提交具体价格、成本金额或公式。" : "",
         decisionType === "price" ? "定价提交只需要给出最后滑块价格和一句人话理由，不要展开新的公式计算或成本拆账。" : "",
-        "不要用自己的姓名/编号开头。只能基于共享 transcript 已经说出口的内容，不要引用私人 context。",
+        "不要用自己的姓名/编号开头。别人没说出口的东西你不知道，不能当论据；你自己的想法和偏心可以带进这次提交，像这个人自己在界面前点提交一样。",
         r1WritingAssist
       ].filter(Boolean).join("\n")
     : `当前要提交：${topic}\n请基于共享 transcript 已经说出口的论据代表全队提交。不要引用私人 context。自然语言总结，必须给出明确最终选择。${r1WritingAssist}`;
   const constraints = submitConstraintText(decisionType, context);
   const messages = [
-    { role: "system", content: formatProfile(leader, true, arm) },
+    { role: "system", content: leaderPrivateContext ? `${formatProfile(leader, true, arm)}\n\n${leaderPrivateContext}` : formatProfile(leader, true, arm) },
     {
       role: "user",
       content: [
@@ -6189,6 +6199,8 @@ async function chooseLegacyPrototype({ members, leaderIdx, draws, proposals, r1F
   const prototypeSubmit = await leaderSubmit({
     members,
     leaderIdx,
+        draws,
+        proposals,
     transcript: prototypeDiscussion.transcript,
     topic: "提交 R2 客户原型",
     decisionType: "prototype",
@@ -6741,6 +6753,8 @@ async function runPricingActionPersonaD5({
   const actionSubmit = await leaderSubmit({
     members,
     leaderIdx,
+        draws,
+        proposals,
     transcript: actionDiscussion.transcript,
     topic: "提交 D5 定价动作",
     decisionType: "pricing_action",
@@ -6781,6 +6795,8 @@ async function runPricingActionPersonaD5({
   const tierSubmit = await leaderSubmit({
     members,
     leaderIdx,
+        draws,
+        proposals,
     transcript: tierDiscussion.transcript,
     topic: "提交 D5 相对档位",
     decisionType: "pricing_tier",
@@ -6823,6 +6839,8 @@ async function runPricingActionPersonaD5({
   const priceSubmit = await leaderSubmit({
     members,
     leaderIdx,
+        draws,
+        proposals,
     transcript: priceDiscussion.transcript,
     topic: "提交最终定价",
     decisionType: "price",
@@ -8075,6 +8093,8 @@ async function runStatefulDirectPriceD5({
 	    : await leaderSubmit({
 	        members,
 	        leaderIdx,
+        draws,
+        proposals,
 	        transcript: discussion.transcript,
 	        topic: "提交最终定价",
 	        decisionType: "price",
@@ -10063,6 +10083,8 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
       cardsSubmit = await leaderSubmit({
         members,
         leaderIdx,
+        draws,
+        proposals,
         transcript: segmentTranscript,
         topic: `提交当前功能段最终选卡：${segment.join(", ")}；本次提交会替换该功能段草案；${selectionRules}`,
         decisionType: "cards",
@@ -10281,6 +10303,8 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
     priceSubmit = await leaderSubmit({
       members,
       leaderIdx,
+        draws,
+        proposals,
       transcript: priceDiscussion.transcript,
       topic: "提交最终定价",
       decisionType: "price",
