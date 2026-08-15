@@ -8637,6 +8637,11 @@ function d4StoryLens(member, isLeader, assignment) {
     : behavior.calculationImpulse > 0.58
       ? "会看成本和负载，但技术含义不一定都懂"
       : "对抽象基础设施卡容易低估或误解";
+  const costAttention = behavior.calculationImpulse >= 0.62
+    ? "成本栏：你会逐项看单位成本和研发投入，再决定档位"
+    : behavior.calculationImpulse >= 0.4
+      ? "成本栏：你会扫一眼，主要还是看功能名和覆盖"
+      : "成本栏：你基本不看那一栏，先看卡名和覆盖，成本是别人操心的事";
   const salience = seededPick([
     "更容易被能直接讲给客户听的卡吸引",
     "更容易被成本低、看起来不出错的卡吸引",
@@ -8656,6 +8661,7 @@ function d4StoryLens(member, isLeader, assignment) {
   return [
     `注意力预算：${attentionBudget}`,
     `理解方式：${comprehension}`,
+    costAttention,
     featureDoctrine,
     `显著性偏好：${salience}`,
 
