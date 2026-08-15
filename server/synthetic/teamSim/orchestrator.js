@@ -1209,7 +1209,12 @@ function personaVoiceCue(member, isLeader = false) {
 function initBehavioralState(member, isLeader = false) {
   const behavior = classroomBehaviorProfile(member, isLeader);
   const rng = makeRng(`behavioral_state:${member.profile_id}`);
-  const pricingText = `${member.pricingBias || ""} ${member.decisionStyle || ""} ${member.riskPreference || ""}`;
+  // The keyword scan is a consumer of the OLD pools' authored pricing labels ("保守定价" etc.).
+  // Task-blind members have no labels — their fact narratives are the wrong genre for this
+  // scan (measured: 12:1 cost-word skew shifts the whole team price level toward the floor).
+  // Their numeric heterogeneity comes solely from the zero-mean fingerprint term below.
+  const isTaskBlindMember = member.archetype_id === "task_blind_narrative";
+  const pricingText = isTaskBlindMember ? "" : `${member.pricingBias || ""} ${member.decisionStyle || ""} ${member.riskPreference || ""}`;
   const costLean = /成本|低价|走量|保守|谨慎|风险/u.test(pricingText) ? 0.16 : 0;
   const valueLean = /高端|溢价|差异|品牌|价值/u.test(pricingText) ? -0.12 : 0;
   // Symmetric numeric lean from the pool's 8-dim behavioral fingerprint (centered at 0.5):
