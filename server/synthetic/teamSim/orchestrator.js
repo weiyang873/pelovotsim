@@ -864,6 +864,23 @@ function isCareerGeneralProfileMember(member) {
   return Boolean(member?.career_general_profile && member?.current_position);
 }
 
+function taskBlindInferFeatureDoctrine(fp, careerText) {
+  const t = String(careerText || "");
+  const promo = Number(fp.regulatory_focus_promotion);
+  const maxi = Number(fp.maximizing_satisficing);
+  const amb = Number(fp.ambiguity_tolerance);
+  const nfc = Number(fp.need_for_cognition);
+  const risk = Number(fp.risk_propensity_business);
+  for (const v of [promo, maxi, amb, nfc, risk]) {
+    if (!Number.isFinite(v)) throw new Error("taskBlindInferFeatureDoctrine: missing fingerprint dim; refusing fallback");
+  }
+  if (/技术|工程|研发|产品|IT|软件|制造|硬件/u.test(t) && nfc >= 0.5) return "相信产品好自然有人买：把你自己看重、觉得厉害的功能配足，成本以后再说";
+  if (amb <= 0.4) return "怕漏配被客户挑刺：选卡宁多勿少，拿不准的也先占上";
+  if (promo >= 0.55 && maxi <= 0.5) return "觉得配置表全才显得有竞争力：亮点能占就占，不细算每张卡值不值";
+  if (risk <= 0.35 && maxi >= 0.55) return "抠成本：觉得够用就行，能不加就不加";
+  return "跟着卡片名字和直觉走，看着顺眼、听着有用就点";
+}
+
 function taskBlindInferPricingDoctrine(fp, careerText) {
   const t = String(careerText || "");
   const promo = Number(fp.regulatory_focus_promotion);
@@ -8307,9 +8324,13 @@ function d4StoryLens(member, isLeader, assignment) {
     "至少有一张你会因为成本/研发投入而降档或犹豫",
     "至少有一张你觉得客户未必感知得到，所以不想强推"
   ], `${member.profile_id}:${assignment.groups.join(",")}:d4_story_flaw:${Math.floor(rng() * 1000)}`);
+  const featureDoctrine = isTaskBlindNarrativeMember(member)
+    ? `功能观：${taskBlindInferFeatureDoctrine(member.behavioral_fingerprint, member.role)}`
+    : "";
   return [
     `注意力预算：${attentionBudget}`,
     `理解方式：${comprehension}`,
+    featureDoctrine,
     `显著性偏好：${salience}`,
     `本轮不完美要求：${flaw}`,
     isLeader ? "组长身份会让你更想给出能收口的选择，但不代表你看懂所有卡。" : "你不是组长，不需要替全队补齐完整产品方案。"
