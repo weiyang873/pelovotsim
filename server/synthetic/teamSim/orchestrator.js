@@ -10932,11 +10932,7 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
       config,
       temperature,
       seed,
-      arm,
-      individualSelections,
-      r1PublicMemory: buildR1PublicMemory(r1PublicTranscript, members),
-      d4RoomTranscript: actorReview ? actorReview.transcript : [],
-      outputDir
+      arm
     });
     priceSubmit = d5.priceSubmit;
     checkpoints.push(...d5.checkpoints);
@@ -10954,7 +10950,11 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
       config,
       temperature,
       seed,
-      arm
+      arm,
+      individualSelections,
+      r1PublicMemory: buildR1PublicMemory(r1PublicTranscript, members),
+      d4RoomTranscript: actorReview ? actorReview.transcript : [],
+      outputDir
     });
     priceSubmit = d5.priceSubmit;
     checkpoints.push(...d5.checkpoints);
