@@ -9882,16 +9882,6 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
 	  }
 	  writeJson(path.join(outputDir, "r2_checkpoints.json"), { checkpoints });
 
-  // Real UI (Round2Flow): individual picks -> merge reveals cost -> collective discussion
-  // has only the price slider; no card add/remove/tier controls. Merge IS final.
-  const mergedDeckLocked = isPricingActionActorArm(arm);
-  if (mergedDeckLocked) {
-    const mergedValidation = RD.validateSelections(selectedCards);
-    const mergedHard = hardCompatibilityViolations(mergedValidation);
-    if (mergedHard.length > 0) {
-      throw new Error(`merged_deck_hard_compat_violation (merge is final in real UI): ${mergedHard.map((item) => item.message).join("; ")}`);
-    }
-  }
   const segments = expandCardSegmentsToSingletons(requireConfigArray(config, "r2_card_segments"));
   for (let segmentIndex = 0; segmentIndex < segments.length; segmentIndex += 1) {
     const segment = segments[segmentIndex];
@@ -9926,9 +9916,7 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
             : "",
           "",
           `当前只复核这些功能区：${formatGroupNames(segment, groupMap)}。${selectionRules}`,
-          mergedDeckLocked
-            ? "合并即定卡：界面在合并后没有加卡、删卡或调档的操作，本段只揭示该功能区的成本结构；讨论用于同步认知，不会改变卡组。"
-            : "可以保留个人合并草案，也可以基于讨论砍卡、补卡或调整档位；本段提交会替换该功能区的团队草案。",
+          "可以保留个人合并草案，也可以基于讨论砍卡、补卡或调整档位；本段提交会替换该功能区的团队草案。",
           "",
           groupText
         ].join("\n")
@@ -9937,34 +9925,6 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
 	    const existingSelectionHint = overTwelveSelectionHint(selectedCards);
 	    if (existingSelectionHint) {
 	      transcript.push({ speaker: "moderator", text: existingSelectionHint });
-	    }
-	    if (mergedDeckLocked) {
-	      const lockedDiscussFn = isPricingActionActorArm(arm) ? runActorStageDiscussion : runDiscussion;
-	      const lockedDiscussion = await lockedDiscussFn({
-	        members,
-	        leaderIdx,
-	        draws,
-	        proposals,
-	        initialTranscript: transcript,
-	        topic: `R2 选卡段 ${segmentIndex + 1}（成本揭示，卡组已定）: ${segment.join(", ")}`,
-	        maxTurns: requireConfigNumber(config, "max_turns_r2_per_segment"),
-	        config,
-	        temperature,
-	        seed: `${seed}:cards:${segmentIndex}`,
-	        arm
-	      });
-	      checkpoints.push({
-	        decision_point: segmentPoint,
-	        termination: lockedDiscussion.termination,
-	        turns: lockedDiscussion.turns.length,
-	        cards: cardsForGroups(selectedCards, segmentSet, capGroupById),
-	        cumulative_cards: selectedCards.slice(),
-	        compatibility: RD.validateSelections(selectedCards),
-	        submission_mode: "merged_deck_locked_real_ui"
-	      });
-	      r2Transcript.push({ decision_point: segmentPoint, transcript: lockedDiscussion.transcript, turns: lockedDiscussion.turns });
-	      writeJson(path.join(outputDir, "r2_checkpoints.json"), { checkpoints });
-	      continue;
 	    }
 	    if (hasD4ScreenplayArm(arm)) {
 	      let cardsSubmit = null;
