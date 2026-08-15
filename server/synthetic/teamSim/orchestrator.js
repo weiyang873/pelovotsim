@@ -6693,19 +6693,25 @@ async function runPricingActionPersonaD5({
   const d5OwnActTexts = members.map((member, index) => [
     d5OwnActForMember(member, index, proposals, individualSelections),
   ].filter(Boolean).join("\n"));
+  let d5PageStates = null;
   const discussFn = isPricingActionActorArm(arm)
-    ? async ({ initialTranscript, topic, seed: sceneSeed }) => runD5ActorScene({
-        members,
-        leaderIdx,
-        screenEntries: initialTranscript.filter((e) => e.speaker === "screen" || e.speaker === "moderator" || e.speaker === "narrator"),
-        stageTopic: topic,
-        ownActTexts: d5OwnActTexts,
-        r1PublicMemory: r1PublicMemory || "",
-        roomMemory: buildRoomPublicMemory(d4RoomTranscript || [], members),
-        temperature,
-        seed: sceneSeed,
-        outputDir
-      })
+    ? async ({ initialTranscript, topic, seed: sceneSeed }) => {
+        const scene = await runD5ActorScene({
+          members,
+          leaderIdx,
+          screenEntries: initialTranscript.filter((e) => e.speaker === "screen" || e.speaker === "moderator" || e.speaker === "narrator"),
+          stageTopic: topic,
+          ownActTexts: d5OwnActTexts,
+          r1PublicMemory: r1PublicMemory || "",
+          roomMemory: buildRoomPublicMemory(d4RoomTranscript || [], members),
+          temperature,
+          seed: sceneSeed,
+          outputDir,
+          privateStates: d5PageStates
+        });
+        d5PageStates = scene.privateStates;
+        return scene;
+      }
     : runDiscussion;
   const maxTurns = requireConfigNumber(config, "max_turns_r2_per_segment");
   const submitParseRetries = requireConfigNumber(config, "submit_parse_retries");
@@ -10172,19 +10178,20 @@ function buildRoomPublicMemory(entries, members, chars = 1400) {
 
 // D5 stage scene on the same actor engine: private state at page open, event-driven entrance,
 // natural takes, quiet-beat fallback; no page operations (the leader submits at stage end).
-async function runD5ActorScene({ members, leaderIdx, screenEntries, stageTopic, ownActTexts, r1PublicMemory, roomMemory, temperature, seed, outputDir, maxEvents = 12 }) {
+async function runD5ActorScene({ members, leaderIdx, screenEntries, stageTopic, ownActTexts, r1PublicMemory, roomMemory, temperature, seed, outputDir, maxEvents = 12, privateStates: givenStates = null, pageOpen = false }) {
   const rng = makeRng(`d5_actor_scene:${seed}:${stageTopic}`);
   const transcript = screenEntries.slice();
   const turns = [];
   const screenText = screenEntries.map((e) => String(e.text)).join("\n");
-  const privateStates = await Promise.all(members.map((member, index) => createR2ActorPrivateState({
+  // One private state per real page (the pricing page), not per protocol step.
+  const privateStates = givenStates || await Promise.all(members.map((member, index) => createR2ActorPrivateState({
     member,
     isLeader: index === leaderIdx,
     ownActText: ownActTexts[index],
     screenText,
     heardTranscript: roomMemory ? `（刚才合并页上，节选）\n${roomMemory}` : "",
-    ask: `页面刚切到售价页这一步：${stageTopic}。写 80-180 字的私有主人公状态：他先看见什么、想不想开口、想起了哪段真实经历、哪里没把握。不要替他说出小组最后的选择。`,
-    phase: `d5:${stageTopic}`,
+    ask: "页面刚切到产品售价页。写 40-100 字：他此刻在想什么。想不到什么，就写他在干什么。不要替他说出小组最后的选择。",
+    phase: "d5_page",
     temperature,
     outputDir
   })));
@@ -10247,7 +10254,7 @@ async function runD5ActorScene({ members, leaderIdx, screenEntries, stageTopic, 
     queue = addressed.concat(others.filter((i) => !addressed.includes(i)));
     currentTrigger = { mode: "response", trigger: { speaker: member.profile_id, text: raw } };
   }
-  return { transcript, turns, termination };
+  return { transcript, turns, termination, privateStates };
 }
 
 async function runD4ActorReview({ members, leaderIdx, deck: deck0, individualSelections, materials, r1Frozen, priceConfig, r1PublicMemory = "", temperature, seed, outputDir, maxEvents = 24, minCards = 6 }) {
@@ -10267,7 +10274,7 @@ async function runD4ActorReview({ members, leaderIdx, deck: deck0, individualSel
     ownActText: ownAct[index],
     screenText,
     heardTranscript: r1PublicMemory ? `（上一轮 R1 页面上，节选）\n${r1PublicMemory}` : "",
-    ask: "页面刚切到团队合并页。写 80-180 字的私有主人公状态：他先看见什么、是否在意自己点的卡被别人看见、想不想开口、想起了哪段真实经历、哪里没把握。不要替他决定团队最后保留什么。",
+    ask: "页面刚切到团队合并页。写 40-100 字：他此刻在想什么。想不到什么，就写他在干什么。不要替他决定团队最后保留什么。",
     phase: "d4_review",
     temperature,
     outputDir
@@ -10453,7 +10460,7 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
           `【个人选卡页】你负责的维度：${formatGroupNames(assignments[i].groups, groupMap)}。为你负责的维度选择能力卡。根据访谈结果和你的判断，把你认为产品应该具备的能力都选上，再选择合适的档次。每个档位会显示单位成本、研发投入和团队投入说明。`
         ].filter(Boolean).join("\n"),
         heardTranscript: "",
-        ask: "他一个人坐在自己的屏幕前，先看调研页，再切到自己负责维度的选卡页。写 80-180 字的私有主人公状态：他怎么读这页、哪句话进了心、切到选卡页时先被哪些卡吸引、想起了哪段真实经历、手上会先点哪些。不要替他列出最终选择。",
+        ask: "他一个人坐在自己的屏幕前，先看调研页，再切到自己负责维度的选卡页。写 40-100 字：他此刻在想什么。想不到什么，就写他在干什么。不要替他列出最终选择。",
         phase: "d4_individual",
         temperature,
         outputDir
