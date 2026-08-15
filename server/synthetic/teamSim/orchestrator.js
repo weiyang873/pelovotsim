@@ -7628,6 +7628,19 @@ function d5IdeologyLine(member) {
 
 // Per-member D5 persona deepening (env-gated): (1) pricing view inferred from the biography by the
 // model itself (no threshold rules), (2) an inner price the person has in mind before anyone speaks.
+async function prepareD4ReadingHabits({ members, temperature, outputDir }) {
+  if (!d5IdeologyEnabled()) return;
+  await Promise.all(members.map(async (member) => {
+    if (!isTaskBlindNarrativeMember(member) || member.d4_reading_habit) return;
+    const raw = await callText([
+      { role: "system", content: "你只根据下面这个人的小传，用一两句话说出：他在网页上看一排产品能力卡（每张卡旁边标着单位成本和研发投入）时，会怎么读——是逐项算成本再定档位，还是扫一眼数字主要看功能名，还是基本不看成本那一栏；以及他对技术/后台类功能是内行、半懂，还是外行。用他自己经历里的事说明为什么。不要分析，不要列点。" },
+      { role: "user", content: `【人物小传】\n${member.task_blind_biography}` }
+    ], { temperature: 0.4, maxTokens: 120 });
+    member.d4_reading_habit = String(raw || "").trim().replace(/\s+/g, " ").slice(0, 160);
+    if (outputDir) appendJsonl(path.join(outputDir, "d4_reading_habits.jsonl"), { ts: new Date().toISOString(), member_id: member.profile_id, reading_habit: member.d4_reading_habit });
+  }));
+}
+
 async function prepareD5PersonaLayer({ members, r1Frozen, selectedCards, priceConfig, temperature, outputDir }) {
   if (!d5IdeologyEnabled()) return;
   const costPanel = buildR2PricingActionPersonaPanel(r1Frozen, selectedCards, priceConfig);
@@ -8637,11 +8650,7 @@ function d4StoryLens(member, isLeader, assignment) {
     : behavior.calculationImpulse > 0.58
       ? "会看成本和负载，但技术含义不一定都懂"
       : "对抽象基础设施卡容易低估或误解";
-  const costAttention = behavior.calculationImpulse >= 0.62
-    ? "成本栏：你会逐项看单位成本和研发投入，再决定档位"
-    : behavior.calculationImpulse >= 0.4
-      ? "成本栏：你会扫一眼，主要还是看功能名和覆盖"
-      : "成本栏：你基本不看那一栏，先看卡名和覆盖，成本是别人操心的事";
+  const costAttention = member.d4_reading_habit ? `你读这页的习惯（从你的经历看）：${member.d4_reading_habit}` : "";
   const salience = seededPick([
     "更容易被能直接讲给客户听的卡吸引",
     "更容易被成本低、看起来不出错的卡吸引",
@@ -8659,8 +8668,8 @@ function d4StoryLens(member, isLeader, assignment) {
     ? `功能观：${taskBlindInferFeatureDoctrine(member.behavioral_fingerprint, member.role)}`
     : "";
   return [
-    `注意力预算：${attentionBudget}`,
-    `理解方式：${comprehension}`,
+    member.d4_reading_habit ? "" : `注意力预算：${attentionBudget}`,
+    member.d4_reading_habit ? "" : `理解方式：${comprehension}`,
     costAttention,
     featureDoctrine,
     `显著性偏好：${salience}`,
@@ -10761,6 +10770,7 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
   const selectionConstraints = readSelectionConstraints(materials.compatibilityRules);
   const selectionRules = selectionRulesText(selectionConstraints);
   const assignments = buildAssignmentsForMembers(members);
+  await prepareD4ReadingHabits({ members, temperature, outputDir });
   const individualSelections = [];
   for (let i = 0; i < members.length; i += 1) {
     let readingState = "";
