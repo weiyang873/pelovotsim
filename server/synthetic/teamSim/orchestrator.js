@@ -8188,12 +8188,12 @@ function buildR2ContextPanel(r1Frozen, chosenPrototype, options = {}) {
     `R1 HOW：${r1Frozen.vp_summary?.how || ""}`,
     "【客户调研 / 痛点提醒】",
     `客户画像：${chosenPrototype.label}`,
-    seed.person ? `人物/机构：${seed.person}` : "",
-    seed.routine ? `情境：${seed.routine}` : "",
-    prototypeSceneText(chosenPrototype) ? `关键场景：${prototypeSceneText(chosenPrototype)}` : "",
-    prototypePainText(chosenPrototype) ? `主要痛点：${prototypePainText(chosenPrototype)}` : "",
-    Array.isArray(chosenPrototype.tags) && chosenPrototype.tags.length ? `需求标签：${chosenPrototype.tags.join("、")}` : "",
-    options.includeReportExcerpt && seed.report_excerpt ? `调研报告摘录：${seed.report_excerpt}` : "",
+    options.omitResearchDetail ? "" : (seed.person ? `人物/机构：${seed.person}` : ""),
+    options.omitResearchDetail ? "" : (seed.routine ? `情境：${seed.routine}` : ""),
+    options.omitResearchDetail ? "" : (prototypeSceneText(chosenPrototype) ? `关键场景：${prototypeSceneText(chosenPrototype)}` : ""),
+    options.omitResearchDetail ? "" : (prototypePainText(chosenPrototype) ? `主要痛点：${prototypePainText(chosenPrototype)}` : ""),
+    options.omitResearchDetail ? "" : (Array.isArray(chosenPrototype.tags) && chosenPrototype.tags.length ? `需求标签：${chosenPrototype.tags.join("、")}` : ""),
+    !options.omitResearchDetail && options.includeReportExcerpt && seed.report_excerpt ? `调研报告摘录：${seed.report_excerpt}` : "",
     "讨论和选卡必须围绕以上冻结市场、客户画像和痛点，不要切换 ToB/ToC、年龄段或策略口径。"
   ];
   return lines.filter(Boolean).join("\n");
@@ -8921,7 +8921,7 @@ async function individualCardStorySelection({ member, isLeader, draw, proposal, 
       content: [
         formatJinang(draw),
         "",
-        buildR2ContextPanel(r1Frozen, chosenPrototype, { includeReportExcerpt: true }),
+        buildR2ContextPanel(r1Frozen, chosenPrototype, { omitResearchDetail: true }),
         "",
         "【界面：个人选卡前的短剧本】",
         `你负责的维度：${formatGroupNames(assignment.groups, groupMap)}。`,
