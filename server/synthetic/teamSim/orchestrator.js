@@ -421,24 +421,35 @@ function loadRandom42ProfilePool(poolPath = RANDOM42_POOL_PATH) {
     if (isTaskBlindNarrativeRecord(record)) {
       const surface = record.surface || {};
       const facts = record.frozen_facts || {};
+      // NO SILENT FALLBACKS: a task-blind persona missing any required attribute is a data
+      // error to be fixed at the pool, never papered over with a default that flattens 42
+      // people into one. Fail loudly with the persona id and field name.
+      const requireFact = (key) => {
+        const value = String(facts[key] ?? "").trim();
+        if (!value) throw new Error(`task_blind persona ${record.persona_id || `#${index}`} missing frozen_facts.${key}; refusing fallback`);
+        return value;
+      };
+      const fp = record.behavioral_fingerprint || {};
+      for (const dim of ["maximizing_satisficing", "need_for_cognition", "actively_open_minded_thinking", "risk_propensity_business", "ambiguity_tolerance", "regulatory_focus_promotion", "consideration_future_consequences", "action_orientation"]) {
+        if (!Number.isFinite(Number(fp[dim]))) throw new Error(`task_blind persona ${record.persona_id || `#${index}`} missing behavioral_fingerprint.${dim}; refusing fallback`);
+      }
+      if (!String(record.persona_id || "").trim()) throw new Error(`task_blind record #${index} missing persona_id`);
+      if (!String(record.biography || "").trim()) throw new Error(`task_blind persona ${record.persona_id} missing biography`);
+      const actionOrientation = Number(fp.action_orientation);
       return {
-        profile_id: record.persona_id || `TBN${String(index + 1).padStart(2, "0")}`,
+        profile_id: record.persona_id,
         archetype_id: "task_blind_narrative",
         label: "高管项目学员",
         desc: "由冻结事实卡和八维行为特征写成的任务盲人物小传",
-        // Wiring fix: the pool's frozen fact cards ARE the persona's legitimate attributes;
-        // map them verbatim instead of blanking the pricing/role/expression channels.
-        role: facts.career_context || facts.current_role || "企业管理者",
+        role: requireFact("career_context"),
         background: record.biography,
-        industry: facts.industry || "",
-        decisionStyle: facts.quality_convenience_tradeoffs || "",
-        riskPreference: facts.economic_resources_and_pressure || "",
-        expressionStyle: facts.communication_and_participation || facts.communication_texture || "自然表达",
+        industry: "",
+        decisionStyle: requireFact("quality_convenience_tradeoffs"),
+        riskPreference: requireFact("economic_resources_and_pressure"),
+        expressionStyle: requireFact("communication_and_participation"),
         blindSpots: "",
-        pricingBias: facts.price_reference_history || "",
-        speaking_tendency: Number(record.behavioral_fingerprint?.action_orientation) >= 0.67
-          ? "high"
-          : Number(record.behavioral_fingerprint?.action_orientation) <= 0.33 ? "low" : "mid",
+        pricingBias: requireFact("price_reference_history"),
+        speaking_tendency: actionOrientation >= 0.67 ? "high" : actionOrientation <= 0.33 ? "low" : "mid",
         surface,
         behavioral_fingerprint: record.behavioral_fingerprint,
         task_blind_biography: record.biography,
@@ -845,11 +856,33 @@ function isTaskBlindNarrativeMember(member) {
   return Boolean(String(member?.task_blind_biography || "").trim());
 }
 
+function formatTaskBlindFingerprintScale(member) {
+  const fp = member.behavioral_fingerprint || {};
+  const DIMS = [
+    ["risk_propensity_business", "经营风险偏好"],
+    ["regulatory_focus_promotion", "进取导向"],
+    ["maximizing_satisficing", "追求最优而非够用"],
+    ["consideration_future_consequences", "看重长远后果"],
+    ["need_for_cognition", "爱琢磨复杂问题"],
+    ["actively_open_minded_thinking", "愿意听反面意见"],
+    ["ambiguity_tolerance", "对模糊情况的容忍"],
+    ["action_orientation", "行动派程度"]
+  ];
+  const parts = DIMS
+    .map(([key, name]) => {
+      const label = behaviorValueLabel(fp[key]);
+      return label ? `${name}${label}` : "";
+    })
+    .filter(Boolean);
+  return parts.length ? `【自我认知量表（本人历年测评，非他人评价）】${parts.join("；")}` : "";
+}
+
 function formatTaskBlindNarrativePersona(member, isLeader) {
   return [
     `姓名代号：${member.profile_id}`,
     "【人物小传】",
     member.task_blind_biography,
+    formatTaskBlindFingerprintScale(member),
     isLeader ? "你是组长，负责推进讨论并代表全队提交。" : "你是普通队员。",
     "你现在就是小传中的这个人。像本人临场一样看界面、说话和行动，不要复述或分析小传，不要把自己变成顾问。",
     "人物小传可能没有覆盖眼前问题；遇到没有经历支撑的地方，就按这个人当下会有的直觉、犹豫或误解处理。"
@@ -1201,13 +1234,24 @@ function initBehavioralState(member, isLeader = false) {
   const pricingText = `${member.pricingBias || ""} ${member.decisionStyle || ""} ${member.riskPreference || ""}`;
   const costLean = /成本|低价|走量|保守|谨慎|风险/u.test(pricingText) ? 0.16 : 0;
   const valueLean = /高端|溢价|差异|品牌|价值/u.test(pricingText) ? -0.12 : 0;
+  // Symmetric numeric lean from the pool's 8-dim behavioral fingerprint (centered at 0.5):
+  // counterweights the cost-prudent skew of fact-card language without authored labels.
+  const fp = member.behavioral_fingerprint || {};
+  const fpDim = (key) => {
+    const value = Number(fp[key]);
+    return Number.isFinite(value) ? value - 0.5 : 0;
+  };
+  const fingerprintLean = fpDim("consideration_future_consequences") * 0.12
+    + fpDim("maximizing_satisficing") * 0.08
+    - fpDim("risk_propensity_business") * 0.16
+    - fpDim("regulatory_focus_promotion") * 0.12;
   return {
     attention_focus: "先看市场和用户是否说得通",
     confidence: clamp(0.48 + behavior.dominance * 0.2 + behavior.statusMotive * 0.08 - behavior.taskSkepticism * 0.12 + (rng() - 0.5) * 0.2, 0, 1),
     confusion: clamp(0.34 + (1 - behavior.relevanceControl) * 0.2 + behavior.taskSkepticism * 0.1 + (rng() - 0.5) * 0.2, 0, 1),
     fatigue: clamp(0.18 + (1 - behavior.engagement) * 0.22 + (rng() - 0.5) * 0.16, 0, 1),
     social_commitment: 0,
-	    price_sensitivity: clamp(0.48 + costLean + valueLean + (1 - behavior.dominance) * 0.04 + (rng() - 0.5) * 0.3, 0, 1),
+	    price_sensitivity: clamp(0.48 + costLean + valueLean + fingerprintLean + (1 - behavior.dominance) * 0.04 + (rng() - 0.5) * 0.3, 0, 1),
 	    status_pressure: clamp(behavior.statusMotive + (isLeader ? 0.12 : 0), 0, 1),
 	    last_public_position: "",
 	    d4_group_state: {},
