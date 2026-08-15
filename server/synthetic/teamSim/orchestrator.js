@@ -7633,7 +7633,7 @@ async function prepareD5PersonaLayer({ members, r1Frozen, selectedCards, priceCo
     if (!isTaskBlindNarrativeMember(member)) return;
     if (!member.d5_pricing_view) {
       const raw = await callText([
-        { role: "system", content: "你只根据下面这个人的小传，用一句话说出：这个人对“给自己经手的产品定价”一贯怎么看（是敢定高价、怕定贵、只认性价比、跟着参照走，还是别的）。只写这一句人话，不要分析，不要列点。" },
+        { role: "system", content: "你只根据下面这个人的小传，用一句话说出：这个人经手产品定价时，一贯是哪一种人——往低了定、先卖出去再说的人；往高了定、保证利润的人；还是跟着身边参照走的人。先明确说是哪一种，再用一句他自己经历里的事说明为什么。不要分析，不要列点。" },
         { role: "user", content: `【人物小传】\n${member.task_blind_biography}` }
       ], { temperature: 0.4, maxTokens: 80 });
       member.d5_pricing_view = String(raw || "").trim().replace(/\s+/g, " ").slice(0, 80);
