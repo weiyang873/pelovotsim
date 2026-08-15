@@ -7165,6 +7165,7 @@ function formatD5ScreenplayActorSheet(members, leaderIdx) {
     return [
       `【演员 ${member.profile_id}${index === leaderIdx ? " / 组长" : ""}】`,
       formatProfile(member, index === leaderIdx, "team_room_story_d4d5_v1"),
+      d5IdeologyLine(member),
       formatR1ActorCarryoverForPrompt(member),
       review.value_feel ? `D5 私有复盘：${review.value_feel}；${review.cost_feel}；${review.speaking_angle}` : "",
       review.own_cards ? `自己原先点过的卡：${review.own_cards.join("、") || "无"}；最终保留：${(review.own_retained_cards || []).join("、") || "无"}` : "",
@@ -7456,8 +7457,43 @@ function d5IdeologyEnabled() {
 
 function d5IdeologyLine(member) {
   if (!d5IdeologyEnabled() || !isTaskBlindNarrativeMember(member)) return "";
-  const doctrine = String(member.pricingBias || "").split("。价格参照")[0].trim();
-  return doctrine ? `定价上你一贯的看法：${doctrine}` : "";
+  // Biography-derived view (LLM, cached per member) when available; falls back to nothing, never to a rule.
+  const view = String(member.d5_pricing_view || "").trim();
+  const facts = String(member.persona_pool_record?.frozen_facts?.price_reference_history || "").trim();
+  const inner = Number(member.d5_inner_price);
+  return [
+    view ? `定价上你一贯的看法（从你的经历看）：${view}` : "",
+    facts ? `你自己的价格参照（真实经历）：${facts}` : "",
+    Number.isFinite(inner) ? `此刻只有你自己知道的心里价位：大约 ${inner} 元（说不说、说多少，看你自己）` : ""
+  ].filter(Boolean).join("\n");
+}
+
+// Per-member D5 persona deepening (env-gated): (1) pricing view inferred from the biography by the
+// model itself (no threshold rules), (2) an inner price the person has in mind before anyone speaks.
+async function prepareD5PersonaLayer({ members, r1Frozen, selectedCards, priceConfig, temperature, outputDir }) {
+  if (!d5IdeologyEnabled()) return;
+  const costPanel = buildR2PricingActionPersonaPanel(r1Frozen, selectedCards, priceConfig);
+  await Promise.all(members.map(async (member) => {
+    if (!isTaskBlindNarrativeMember(member)) return;
+    if (!member.d5_pricing_view) {
+      const raw = await callText([
+        { role: "system", content: "你只根据下面这个人的小传，用一句话说出：这个人对“给自己经手的产品定价”一贯怎么看（是敢定高价、怕定贵、只认性价比、跟着参照走，还是别的）。只写这一句人话，不要分析，不要列点。" },
+        { role: "user", content: `【人物小传】\n${member.task_blind_biography}` }
+      ], { temperature: 0.4, maxTokens: 80 });
+      member.d5_pricing_view = String(raw || "").trim().replace(/\s+/g, " ").slice(0, 80);
+    }
+    const priceRaw = await callText([
+      { role: "system", content: [formatTaskBlindNarrativePersona(member, false), member.d5_pricing_view ? `定价上你一贯的看法：${member.d5_pricing_view}` : ""].filter(Boolean).join("\n") },
+      { role: "user", content: [
+        "【眼前页面】", costPanel, "",
+        "讨论还没开始，没有人说话。凭你这个人自己的直觉：如果此刻只由你一个人定，你心里的售价大概是多少？",
+        `只输出一行：心里价位：<${Math.round(priceConfig.price_min)} 到 ${Math.round(priceConfig.price_max)} 之间的整数>`
+      ].join("\n") }
+    ], { temperature: 0.6, maxTokens: 30 });
+    const m = String(priceRaw || "").match(/心里价位[：:]\s*([0-9]{4,5})/u) || String(priceRaw || "").match(/([1-9][0-9]{3})/u);
+    if (m) member.d5_inner_price = Number(m[1]);
+    if (outputDir) appendJsonl(path.join(outputDir, "d5_persona_layer.jsonl"), { ts: new Date().toISOString(), member_id: member.profile_id, pricing_view: member.d5_pricing_view, inner_price_raw: priceRaw, inner_price: member.d5_inner_price ?? null });
+  }));
 }
 
 function formatD5NarratorActorSheet(members, leaderIdx, arm) {
@@ -10970,6 +11006,7 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
     writeJson(path.join(outputDir, "r2_checkpoints.json"), { checkpoints });
   }
   let priceSubmit = null;
+  await prepareD5PersonaLayer({ members, r1Frozen, selectedCards, priceConfig, temperature, outputDir });
   if (arm === "team_room_story_d4_pa_d5_v1") {
     const d5 = await runPricingActionPersonaD5({
       members,
