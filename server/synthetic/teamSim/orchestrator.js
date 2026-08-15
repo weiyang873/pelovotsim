@@ -449,6 +449,7 @@ function loadRandom42ProfilePool(poolPath = RANDOM42_POOL_PATH) {
         expressionStyle: requireFact("communication_and_participation"),
         blindSpots: "",
         pricingBias: requireFact("price_reference_history"),
+        consumption_habits: requireFact("personal_consumption_habits"),
         speaking_tendency: actionOrientation >= 0.67 ? "high" : actionOrientation <= 0.33 ? "low" : "mid",
         surface,
         behavioral_fingerprint: record.behavioral_fingerprint,
@@ -6768,6 +6769,9 @@ function formatD5NarratorActorSheet(members, leaderIdx, arm) {
     return [
       `【成员 ${member.profile_id}${index === leaderIdx ? " / 组长" : ""}】`,
       formatProfile(member, index === leaderIdx, arm),
+      hasTaskBlindBiography(member)
+        ? `个人消费与取舍（本人真实经历，定性）：${member.decisionStyle}；${member.consumption_habits}`
+        : "",
       `课堂行为：${formatClassroomBehavior(member, index === leaderIdx)}`,
       review.value_feel ? `刚才选卡后的私有复盘：${review.value_feel}；${review.cost_feel}；${review.speaking_angle}` : "",
       review.own_cards ? `自己原先点过的卡：${review.own_cards.join("、") || "无"}；最终保留：${(review.own_retained_cards || []).join("、") || "无"}` : "",
@@ -7118,6 +7122,7 @@ async function runD5NarratorActorPricing({
         "【旁白任务】",
         "写 D5 定价页刚打开时的公开场景，以及每个成员只给自己看的主人公状态。",
         "actor_states 每个成员一条；状态可以包含注意到什么、想表现/想躲开、哪里没看懂、想压价/撑价的冲动，但不要给具体数字。",
+        "每个成员的 pricing_impulse 必须从他素材里【个人消费与取舍】的真实经历中长出来：不同经历的人自然会有不同方向的冲动（有人觉得好东西就该体现价值，有人先想别人掏不掏得起，有人纠结），不要让全组同调，也不要替任何人虚构经历。",
         "turn_order 可以是不完整自然顺序；不是每个人都必须积极发言。",
         "schema：",
         '{"public_scene":"公开旁白","actor_states":[{"actor":"Rxx","protagonist_state":"私有主人公状态","what_catches_eye":"...","social_pressure":"...","pricing_impulse":"..."}],"turn_order":["Rxx"]}'
