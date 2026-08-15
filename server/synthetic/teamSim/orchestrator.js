@@ -4614,14 +4614,18 @@ async function speak(member, isLeader, draw, privateProposal, transcript, topic,
   const cardStakeContext = /选卡|功能段|功能区/.test(topicText) && member.d4_own_selection_note
     ? `\n${member.d4_own_selection_note}`
     : "";
+  const r1Carry = isRoomRoleplayArm(arm) && isTaskBlindNarrativeMember(member) ? formatR1ActorCarryoverForPrompt(member, 360) : "";
+  const r1Public = isRoomRoleplayArm(arm) && isTaskBlindNarrativeMember(member) && member.r1_public_memory
+    ? `【上一轮 R1 页面上大家公开说过的话（你都在场，节选）】\n${member.r1_public_memory}\n\n`
+    : "";
   const messages = [
     {
       role: "system",
-      content: `${formatProfile(member, isLeader, arm)}\n\n私有 context：\n${formatJinang(draw)}\n你的会前提案：${privateProposal.parsed.grid_id}/${privateProposal.parsed.architecture}，${privateProposal.parsed.rationale}${cardStakeContext}${stateContext}`
+      content: `${formatProfile(member, isLeader, arm)}${r1Carry ? `\n\n${r1Carry}` : ""}\n\n私有 context：\n${formatJinang(draw)}\n你的会前提案：${privateProposal.parsed.grid_id}/${privateProposal.parsed.architecture}，${privateProposal.parsed.rationale}${cardStakeContext}${stateContext}`
     },
     {
       role: "user",
-      content: `共享 transcript：\n${formatTranscript(transcript)}\n\n当前议题：${topic}\n${roomInstruction}`
+      content: `${r1Public}共享 transcript：\n${formatTranscript(transcript)}\n\n当前议题：${topic}\n${roomInstruction}`
     }
   ];
   const raw = await callText(messages, { temperature, maxTokens: isRoomRoleplayArm(arm) ? roomBeatMaxTokens(beat) : 500 });
@@ -5859,6 +5863,8 @@ async function leaderSubmit({ members, leaderIdx, transcript, topic, decisionTyp
   // else - no instruction on how to use it; what they do with it is the person's own.
   const leaderPrivateContext = isRoomRoleplayArm(arm)
     ? [
+        isTaskBlindNarrativeMember(leader) ? formatR1ActorCarryoverForPrompt(leader, 360) : "",
+        isTaskBlindNarrativeMember(leader) && leader.r1_public_memory ? `【上一轮 R1 页面上大家公开说过的话（节选）】\n${leader.r1_public_memory}` : "",
         draws && draws[leaderIdx] ? `私有 context：\n${formatJinang(draws[leaderIdx])}` : "",
         proposals && proposals[leaderIdx]?.parsed ? `你的会前提案：${proposals[leaderIdx].parsed.grid_id}/${proposals[leaderIdx].parsed.architecture}，${proposals[leaderIdx].parsed.rationale}` : "",
         decisionType === "cards" && leader.d4_own_selection_note ? leader.d4_own_selection_note : ""
@@ -11267,6 +11273,8 @@ async function runR2FromExistingR1({ sourceDir, batch, arm = null, poolPath = nu
     replay_from: path.relative(ROOT, resolvedSourceDir)
   });
 
+  const r1PublicMemoryText = buildR1PublicMemory(Array.isArray(sourceTranscript?.transcript) ? sourceTranscript.transcript : [], sampled.members);
+  for (const member of sampled.members) member.r1_public_memory = r1PublicMemoryText;
   const r2 = await runR2Decision({
     members: sampled.members,
     leaderIdx: sampled.leaderIdx,
