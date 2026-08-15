@@ -6487,15 +6487,8 @@ function buildR2PricingActionPersonaPanel(r1Frozen, selectedCards, pricingContex
     `PAIN：${r1Frozen.vp_summary?.pain || ""}`,
     `HOW：${r1Frozen.vp_summary?.how || ""}`,
     `已选能力卡：${summary.selected.join("、") || "无"}`,
-    `成本区可见：基础成本 ${formatYuan(summary.base_unit_cost)}，能力增量成本 ${formatYuan(summary.dCOGS)}，研发投入 ${formatWan(summary.nre_wan)}；总固定成本 ${formatWan(summary.fixed_total_wan)}（基础 ${formatWan(summary.fixed_base_wan)} + 研发 ${formatWan(summary.nre_wan)}）。这些只是界面信息，不要求逐项复述。`,
+    `成本区可见：基础成本 ${formatYuan(summary.base_unit_cost)}，能力增量成本 ${formatYuan(summary.dCOGS)}，研发投入 ${formatWan(summary.nre_wan)}。这些只是界面信息，不要求逐项复述。`,
     `界面显示的价格滑块范围：${formatYuan(pricingContext.price_min)} 到 ${formatYuan(pricingContext.price_max)}；步长不作为决策提示。`,
-    (() => {
-      const defaultPrice = Number(pricingContext.default_price || pricingContext.price_min || 0);
-      const unitMargin = Math.round(defaultPrice * (1 - summary.channel_fee) - summary.unit_cost_total);
-      const beq = unitMargin > 0 ? Math.ceil(summary.fixed_total / unitMargin) : null;
-      const gm = calcGmPct(summary.dCOGS, defaultPrice, summary.channel_fee, summary.base_unit_cost);
-      return `滑块当前停在 ${formatYuan(defaultPrice)}，页面随滑块实时显示：预期毛利率 ${Number.isFinite(gm) ? `${gm.toFixed(0)}%` : "—"}、单台毛利 ${formatSignedCurrency(unitMargin)}、盈亏平衡销量 ${beq ? `${beq.toLocaleString("zh-CN")} 台` : "无法回本"}；提交按钮要求毛利率 ≥ 20%。`;
-    })(),
     "请只按这个界面能看到的信息、前面团队已确定的市场和选卡来定价；不要使用界面外的隐藏公式，也不要把讨论变成财务报告。"
   ].join("\n");
 }
@@ -6813,53 +6806,26 @@ async function runPricingActionPersonaD5({
     seed: `${seed}:price:final`,
     arm
   });
-  const costSummary = selectedCardsCostSummary(selectedCards, r1Frozen, priceConfig);
-  let priceSubmit = null;
-  let gateTranscript = priceDiscussion.transcript;
-  for (let gateRound = 0; gateRound <= 2; gateRound += 1) {
-    priceSubmit = await leaderSubmit({
-      members,
-      leaderIdx,
-      draws,
-      proposals,
-      transcript: gateTranscript,
-      topic: "提交最终定价",
-      decisionType: "price",
-      context: {
-        priceMin: Number(priceConfig.price_min),
-        priceMax: Number(priceConfig.price_max),
-        priceStep: Number(priceConfig.price_step),
-        pricingAction: actionSubmit.parsed.pricing_action,
-        pricingTier: tierSubmit.parsed.tier,
-        submitParseRetries
-      },
-      temperature,
-      arm
-    });
-    const submittedPrice = Number(priceSubmit.parsed?.price);
-    const gm = calcGmPct(costSummary.dCOGS, submittedPrice, costSummary.channel_fee, costSummary.base_unit_cost);
-    if (!Number.isFinite(gm) || gm >= 20 || gateRound >= 2) break;
-    // Real UI: submit button disabled with "毛利率需 ≥ 20% 才可提交"; the slider stays live.
-    const unitMargin = Math.round(submittedPrice * (1 - costSummary.channel_fee) - costSummary.unit_cost_total);
-    gateTranscript = gateTranscript.concat([
-      { speaker: "screen", text: `页面提示：${formatYuan(submittedPrice)} 下预期毛利率 ${gm.toFixed(0)}%，单台毛利 ${formatSignedCurrency(unitMargin)}；毛利率需 ≥ 20% 才可提交。滑块仍可拖动。` }
-    ]);
-    const regate = await discussFn({
-      members,
-      leaderIdx,
-      draws,
-      proposals,
-      initialTranscript: gateTranscript,
-      topic: "D5 第三步：最终价格（提交被页面拦下）",
-      maxTurns: Math.max(1, Math.min(2, maxTurns)),
-      config,
-      temperature,
-      seed: `${seed}:price:final:gate:${gateRound}`,
-      arm
-    });
-    gateTranscript = regate.transcript;
-  }
-  const finalTranscript = gateTranscript.concat([{
+  const priceSubmit = await leaderSubmit({
+    members,
+    leaderIdx,
+    draws,
+    proposals,
+    transcript: priceDiscussion.transcript,
+    topic: "提交最终定价",
+    decisionType: "price",
+    context: {
+      priceMin: Number(priceConfig.price_min),
+      priceMax: Number(priceConfig.price_max),
+      priceStep: Number(priceConfig.price_step),
+      pricingAction: actionSubmit.parsed.pricing_action,
+      pricingTier: tierSubmit.parsed.tier,
+      submitParseRetries
+    },
+    temperature,
+    arm
+  });
+  const finalTranscript = priceDiscussion.transcript.concat([{
     speaker: members[leaderIdx].profile_id,
     text: `【组长提交｜最终价格】${priceSubmit.text}`
   }]);
