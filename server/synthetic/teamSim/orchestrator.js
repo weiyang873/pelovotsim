@@ -10438,7 +10438,11 @@ async function runD4ActorReview({ members, leaderIdx, deck: deck0, individualSel
         }
       } else {
         const candidate = applyD4UiEvent(deck, event);
-        const violation = hardCompatibilityViolations(RD.validateSelections(candidate));
+        const candidateValidation = RD.validateSelections(candidate);
+        // The merge page is one global page (not a frozen segment): group minimums are page rules
+        // here too, so an operation that would empty a dimension is refused by the page like a conflict.
+        const violation = hardCompatibilityViolations(candidateValidation)
+          .concat((candidateValidation.violations || []).filter((item) => /至少选/.test(String(item.message))));
         if (violation.length) {
           transcript.push({ speaker: "narrator", text: `${d4EventText(event, members, leaderIdx)}页面弹出冲突提示：${violation.map((item) => item.message).join("；")}。这次改动没有生效。` });
         } else {
