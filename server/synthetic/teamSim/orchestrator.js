@@ -7620,7 +7620,9 @@ function d5IdeologyLine(member) {
   return [
     view ? `定价上你一贯的看法（从你的经历看）：${view}` : "",
     facts ? `你自己的价格参照（真实经历）：${facts}` : "",
-    Number.isFinite(inner) ? `此刻只有你自己知道的心里价位：大约 ${inner} 元（说不说、说多少，看你自己）` : ""
+    member.d5_private_stage
+      ? `你私下已经在纸上填好的：${member.d5_private_stage.action} / 档位${pricingTierText(member.d5_private_stage.tier)} / ${member.d5_private_stage.price} 元${member.d5_private_stage.why ? `（${member.d5_private_stage.why}）` : ""}——说不说、改不改，看你自己`
+      : (Number.isFinite(inner) ? `此刻只有你自己知道的心里价位：大约 ${inner} 元（说不说、说多少，看你自己）` : "")
   ].filter(Boolean).join("\n");
 }
 
@@ -7648,6 +7650,31 @@ async function prepareD5PersonaLayer({ members, r1Frozen, selectedCards, priceCo
         { role: "user", content: `【人物小传】\n${member.task_blind_biography}` }
       ], { temperature: 0.4, maxTokens: 80 });
       member.d5_pricing_view = String(raw || "").trim().replace(/\s+/g, " ").slice(0, 80);
+    }
+    if (/^(1|true|yes|on)$/i.test(String(process.env.TEAM_SIM_D5_PRIVATE_STAGE || "").trim())) {
+      // Each member first walks the three-stage pricing alone (like solo), then brings the
+      // committed position into the room. Own act, not a scaffold instruction.
+      const stagedRaw = await callText([
+        { role: "system", content: [formatTaskBlindNarrativePersona(member, false), member.d5_pricing_view ? `定价上你一贯的看法：${member.d5_pricing_view}` : ""].filter(Boolean).join("\n") },
+        { role: "user", content: [
+          "【眼前页面】", costPanel, "",
+          "小组还没开始讨论。你先自己在纸上把这三步走一遍：",
+          "第一步：定价动作——A 压低售价抢量，还是 B 抬高售价守毛利？",
+          "第二步：相对档位——高 / 中 / 低？",
+          `第三步：具体售价——${Math.round(priceConfig.price_min)} 到 ${Math.round(priceConfig.price_max)} 之间的一个整数。`,
+          "每步一句人话理由。最后只输出可 JSON.parse 的 JSON：{\"action\":\"A|B\",\"tier\":\"high|mid|low\",\"price\":整数,\"why\":\"一两句\"}"
+        ].join("\n") }
+      ], { temperature: 0.6, maxTokens: 220 });
+      const parsedStage = parseJsonLoose(stagedRaw) || {};
+      const act = String(parsedStage.action || "").trim().toUpperCase();
+      const tier = String(parsedStage.tier || "").trim().toLowerCase();
+      const price = Number(parsedStage.price);
+      if (["A", "B"].includes(act) && ["high", "mid", "low"].includes(tier) && Number.isFinite(price)) {
+        member.d5_private_stage = { action: act === "A" ? "压低售价抢量" : "抬高售价守毛利", tier, price: Math.round(price), why: String(parsedStage.why || "").slice(0, 80) };
+        member.d5_inner_price = Math.round(price);
+      }
+      if (outputDir) appendJsonl(path.join(outputDir, "d5_persona_layer.jsonl"), { ts: new Date().toISOString(), member_id: member.profile_id, pricing_view: member.d5_pricing_view, private_stage_raw: stagedRaw, private_stage: member.d5_private_stage || null, inner_price: member.d5_inner_price ?? null });
+      return;
     }
     const priceRaw = await callText([
       { role: "system", content: [formatTaskBlindNarrativePersona(member, false), member.d5_pricing_view ? `定价上你一贯的看法：${member.d5_pricing_view}` : ""].filter(Boolean).join("\n") },
