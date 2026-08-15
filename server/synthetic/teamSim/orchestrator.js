@@ -1608,6 +1608,7 @@ function formatTaskBlindRoomProfile(member, isLeader) {
     `决策风格：${member.decisionStyle}`,
     `表达风格：${splitExpressionStyle(member.expressionStyle).display || member.expressionStyle}`,
     `盲区：${member.blindSpots}`,
+    `功能观：${taskBlindInferFeatureDoctrine(member.behavioral_fingerprint, member.role)}`,
     `定价倾向：${member.pricingBias}`,
     `发言倾向：${member.speaking_tendency}`,
     isLeader ? "你是组长，负责推进讨论、总结共识并代表全队提交。" : "你是普通队员。",
