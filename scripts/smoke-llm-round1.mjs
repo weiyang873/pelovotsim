@@ -10,7 +10,20 @@ const {
 } = require("../server/llm/schemas");
 
 const useReasoner = process.argv.includes("--reasoning");
-const baseModel = process.env.DEEPSEEK_MODEL || "deepseek-chat";
+
+function argValue(name) {
+  const index = process.argv.indexOf(name);
+  if (index < 0) return "";
+  return String(process.argv[index + 1] || "").trim();
+}
+
+const baseModel = argValue("--model") ||
+  process.env.LLM_MODEL_OVERRIDE ||
+  process.env.LLM_MODEL ||
+  process.env.QWEN_MODEL ||
+  process.env.DASHSCOPE_MODEL ||
+  process.env.DEEPSEEK_MODEL ||
+  "deepseek-chat";
 const reasonerModel = process.env.DEEPSEEK_REASONER_MODEL || "deepseek-reasoner";
 
 function mustEnv(name) {

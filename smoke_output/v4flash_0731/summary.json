@@ -1,0 +1,18 @@
+{
+  "model": "deepseek-v4-flash-0731",
+  "provider": "qwen-ai-platform",
+  "enable_thinking": false,
+  "temperature": 0.55,
+  "concurrency": 10,
+  "personas_total": 20,
+  "personas_ok": 20,
+  "personas_failed": 0,
+  "calls_total": 323,
+  "count_429": 0,
+  "count_empty": 0,
+  "latency_p50_ms": 2935,
+  "latency_p95_ms": 5321,
+  "wall_clock_total_ms": 109074,
+  "completion_tokens_mean": 232.00309597523218,
+  "output_chars_mean": 464.328173374613
+}

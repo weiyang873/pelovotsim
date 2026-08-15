@@ -1,0 +1,170 @@
+{
+  "schema": "task_background_schema_v1",
+  "task_id": "r1_personal_market_strategy_architecture_vp",
+  "task_text_sha256": "c488dbe97581b03bd17db725317cdf9c0fc0e77076d52be76669b2d1772110f5",
+  "trait_dimensions_always_present": [
+    "maximizing_satisficing",
+    "need_for_cognition",
+    "actively_open_minded_thinking",
+    "risk_propensity_business",
+    "ambiguity_tolerance",
+    "regulatory_focus_promotion",
+    "consideration_future_consequences",
+    "action_orientation"
+  ],
+  "selected_fields": [
+    {
+      "field_id": "customer_and_user_exposure",
+      "relevance_reason": "不同取值反映对消费者/企业、不同年龄段用户的实际了解程度，可能影响对市场格的选择和产品定位方向的理解。",
+      "relevant_stages": [
+        "market",
+        "strategy",
+        "value_proposition"
+      ]
+    },
+    {
+      "field_id": "product_and_technology_familiarity",
+      "relevance_reason": "对AI、机器人、智能设备的熟悉程度不同，可能影响对产品功能、体验型/功能型定位的可行性和吸引力的判断。",
+      "relevant_stages": [
+        "strategy",
+        "architecture",
+        "value_proposition"
+      ]
+    },
+    {
+      "field_id": "economic_resources_and_pressure",
+      "relevance_reason": "经济余量不同可能影响对价格敏感度、成本领先策略的认同，以及差异化高价格是否可接受的判断。",
+      "relevant_stages": [
+        "market",
+        "strategy"
+      ]
+    },
+    {
+      "field_id": "personal_consumption_habits",
+      "relevance_reason": "个人消费习惯（如比价、冲动购买）可能影响对成本领先和差异化策略的偏好，以及价值主张中强调性价比还是体验。",
+      "relevant_stages": [
+        "strategy",
+        "value_proposition"
+      ]
+    },
+    {
+      "field_id": "price_reference_history",
+      "relevance_reason": "对类似产品（如宠物机器人、智能设备）的价格参照不同，可能影响对定价策略和成本领先/差异化选择的判断。",
+      "relevant_stages": [
+        "market",
+        "strategy"
+      ]
+    },
+    {
+      "field_id": "quality_convenience_tradeoffs",
+      "relevance_reason": "过去购买中质量、便利与花费的取舍经历不同，可能影响对产品定位（体验型/功能型）和策略的偏好。",
+      "relevant_stages": [
+        "strategy",
+        "architecture",
+        "value_proposition"
+      ]
+    },
+    {
+      "field_id": "intergenerational_contact",
+      "relevance_reason": "与儿童、老人等不同代际的实际接触频率和深度不同，可能影响对目标人群（儿童/成人/老人）的理解和选择。",
+      "relevant_stages": [
+        "market",
+        "value_proposition"
+      ]
+    },
+    {
+      "field_id": "caregiving_and_dependents",
+      "relevance_reason": "有照护经历的人可能更理解儿童或老人的需求，影响对目标人群和产品功能（如陪伴、安全）的重视。",
+      "relevant_stages": [
+        "market",
+        "architecture",
+        "value_proposition"
+      ]
+    },
+    {
+      "field_id": "social_influence_on_choices",
+      "relevance_reason": "他人影响程度不同可能影响对市场选择（如企业市场口碑重要性）和产品定位（如体验型依赖社交传播）的考虑。",
+      "relevant_stages": [
+        "market",
+        "strategy",
+        "value_proposition"
+      ]
+    },
+    {
+      "field_id": "communication_and_participation",
+      "relevance_reason": "表达和参与习惯不同可能影响在小组讨论中的贡献方式，但本任务为个人初选，此字段对个人选择影响较小，但可能影响价值主张的表述。",
+      "relevant_stages": [
+        "value_proposition"
+      ]
+    }
+  ],
+  "expanded_field_ids": [
+    "age_and_life_stage",
+    "education_and_learning",
+    "career_context",
+    "customer_and_user_exposure",
+    "product_and_technology_familiarity",
+    "household_structure",
+    "intergenerational_contact",
+    "caregiving_and_dependents",
+    "economic_resources_and_pressure",
+    "personal_consumption_habits",
+    "price_reference_history",
+    "quality_convenience_tradeoffs",
+    "social_influence_on_choices",
+    "communication_and_participation"
+  ],
+  "dependency_added_field_ids": [
+    "age_and_life_stage",
+    "education_and_learning",
+    "career_context",
+    "household_structure"
+  ],
+  "omitted_but_tempting": [
+    {
+      "field_id": "age_and_life_stage",
+      "reason": "虽然年龄可能影响对目标人群的偏好，但任务中已有儿童/成人/老人选项，且年龄本身不直接决定选择，其他字段如代际接触更能反映相关经验。"
+    },
+    {
+      "field_id": "gender",
+      "reason": "性别与任务行为差异无直接关联，除非有特定社会背景，但本任务中不必要。"
+    },
+    {
+      "field_id": "education_and_learning",
+      "reason": "教育背景可能影响对技术理解，但产品和技术熟悉度已涵盖，且教育程度不直接决定市场选择。"
+    },
+    {
+      "field_id": "region_and_mobility",
+      "reason": "地域可能影响市场认知，但任务为通用市场选择，且无地域相关线索，不必要。"
+    },
+    {
+      "field_id": "career_context",
+      "reason": "行业和职能可能影响对客户的理解，但客户接触字段已涵盖，且任务不特定于某行业。"
+    },
+    {
+      "field_id": "career_trajectory",
+      "reason": "职业路径与当前任务行为差异关联不大，除非有特殊经历，但客户接触已足够。"
+    },
+    {
+      "field_id": "managerial_scope",
+      "reason": "管理范围可能影响对成本领先的理解，但经济资源和预算经验已部分涵盖，且任务为个人选择，不必要。"
+    },
+    {
+      "field_id": "procurement_and_budget_exposure",
+      "reason": "采购经验可能影响对企业市场的理解，但客户接触已涵盖，且任务不特定于采购决策。"
+    },
+    {
+      "field_id": "household_structure",
+      "reason": "家庭结构可能影响对儿童/老人的关注，但代际接触和照护经历更直接，且家庭结构不直接决定选择。"
+    },
+    {
+      "field_id": "current_life_pressure",
+      "reason": "当前压力可能影响决策速度，但任务为模拟自然差异，且压力状态不稳定，不必要。"
+    }
+  ],
+  "field_catalog_sha256": "fb03ddaedb5331f89dc5843748db763539f9ce4e21769bcf622273b4c64f1117",
+  "inferred_at": "2026-08-12T14:47:03.907Z",
+  "provider": "deepseek",
+  "model": "deepseek-v4-flash",
+  "inference_latency_ms": 12530
+}

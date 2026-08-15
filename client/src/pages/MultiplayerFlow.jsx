@@ -2918,21 +2918,18 @@ export default function App() {
                     key: "Experience",
                     label: "体验型 ●",
                     desc: "用户买的是情感价值和陪伴体验，功能够用就行",
-                    example: "例：老人每天和有生命感的机器人说话解闷；孩子把它当宠物养",
                     color: "#8B5CF6"
                   },
                   {
                     key: "Hybrid",
                     label: "混合型 ▲",
                     desc: "体验和功能都是卖点，缺一不可",
-                    example: "例：既能陪伴老人，又能检测跌倒并通知家属",
                     color: "#D4A03C"
                   },
                   {
                     key: "Function",
                     label: "功能型 ■",
                     desc: "用户买的是实用功能，情感体验是锦上添花",
-                    example: "例：企业采购用于前台接待和导览；学校用于编程教育",
                     color: "#3B82C4"
                   }
                 ].map((item) => {
@@ -2952,9 +2949,6 @@ export default function App() {
                     }}>
                       <div style={{ fontSize: 15, fontWeight: 700, color: selected ? item.color : "#374151" }}>{item.label}</div>
                       <div style={{ fontSize: 13, color: "#555", marginTop: 6, lineHeight: 1.6 }}>{item.desc}</div>
-                      <div style={{ fontSize: 12, color: "#999", marginTop: 6, fontStyle: "italic", lineHeight: 1.5 }}>
-                        {item.example}
-                      </div>
                     </div>
                   );
                 })}
@@ -2972,7 +2966,7 @@ export default function App() {
                 data-testid="vp-draft-input"
                 value={vpDraft}
                 onChange={(e) => setVpDraft(e.target.value)}
-                placeholder="例：为独居年轻白领提供下班后的情感陪伴，通过主动感知情绪和多轮对话缓解孤独感……"
+                placeholder="描述目标客户、核心痛点和解决方式……"
                 readOnly={isReadOnlyReview}
                 style={{
                   width: "100%", minHeight: 64, borderRadius: 8,

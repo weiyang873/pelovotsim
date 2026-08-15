@@ -1,0 +1,3061 @@
+[
+  {
+    "schema": "career_general_profile_v2",
+    "persona_id": "CGP01",
+    "seed": "20260812-career-family-oos-16:1",
+    "demographic_seed": {
+      "name": "陈志远",
+      "gender": "male",
+      "age": 52,
+      "reference_year": 2026,
+      "birth_year": 1974,
+      "education": "硕士（国内）",
+      "estimated_career_start_age": 25,
+      "estimated_career_start_year": 1999,
+      "estimated_career_years": 27,
+      "overseas": "无",
+      "home_region": "陕西",
+      "current_region": "湖北",
+      "first_industry_hint": "智能制造",
+      "current_industry_hint": "工业自动化",
+      "first_function_hint": "销售与渠道",
+      "current_function_hint": "销售与渠道",
+      "current_role_hint": "销售与渠道负责人",
+      "management_scope_hint": "负责新业务孵化和老业务改造",
+      "family_life_seed": {
+        "partnership_status": "已婚或长期伴侣关系稳定",
+        "children": [
+          {
+            "relation": "女儿",
+            "age": 27,
+            "life_stage": "已成年独立生活",
+            "living_arrangement": "在外地或独立居住",
+            "everyday_contact": "联系不算频繁，但遇到事情会立刻介入"
+          }
+        ],
+        "elder_generation": {
+          "relation": "母亲",
+          "age": 80,
+          "living": true,
+          "proximity": "住在同一小区或车程半小时内",
+          "health_and_independence": "行动变慢，需要家人协助就医和安排生活",
+          "personal_involvement": "每周见面，并承担部分就医和事务安排"
+        },
+        "household_snapshot": "已婚或长期伴侣关系稳定；1个子女，其中0个未成年；主要牵挂的老人是母亲，住在同一小区或车程半小时内",
+        "current_region": "湖北"
+      },
+      "career_trajectory": {
+        "type": "adjacent_industry_move",
+        "core_industry": "智能制造",
+        "core_function": "销售与渠道",
+        "allowed_industries": [
+          "智能制造",
+          "工业自动化"
+        ],
+        "allowed_functions": [
+          "销售与渠道"
+        ],
+        "stage_count_min": 5,
+        "stage_count_max": 6,
+        "max_employer_changes": 3,
+        "max_function_changes": 0,
+        "max_industry_changes": 1,
+        "allow_entrepreneurship_or_family_business": false
+      },
+      "qualification_gate": "职业责任、组织规模和经营经历必须足以合理申请中欧或同级高管项目"
+    },
+    "behavioral_fingerprint": {
+      "maximizing_satisficing": 0.1,
+      "need_for_cognition": 0.45,
+      "actively_open_minded_thinking": 0.68,
+      "risk_propensity_business": 0.32,
+      "ambiguity_tolerance": 0.54,
+      "regulatory_focus_promotion": 0.89,
+      "consideration_future_consequences": 0.45,
+      "action_orientation": 0.76
+    },
+    "behavioral_directives": {
+      "maximizing_satisficing": "有一个能过线的方案便愿意停手，不会为了最优解持续扩展选项。",
+      "need_for_cognition": "既能分析也会凭经验，投入多少思考取决于责任和兴趣。",
+      "actively_open_minded_thinking": "会主动问自己可能错在哪里，遇到扎实反证时能明显调整。",
+      "risk_propensity_business": "愿意承担有限风险，但必须保留退出通道和可承受的最坏结果。",
+      "ambiguity_tolerance": "可以在部分未知下推进，但需要几个关键支点保持可解释性。",
+      "regulatory_focus_promotion": "强烈追求跃迁和突破，容易把没有前进体验为一种失败。",
+      "consideration_future_consequences": "短期兑现与长期积累大体并重，常寻找能兼顾两者的路径。",
+      "action_orientation": "拍板后会迅速拆任务推进，失败后通常能把注意力拉回下一步。"
+    },
+    "name": "陈志远",
+    "demographic_realization": {
+      "gender": "male",
+      "age": 52,
+      "highest_education": "硕士（国内）",
+      "education_detail": "1999年毕业于西安交通大学机械工程及自动化专业，获学士学位；2003年于西北工业大学获工业工程硕士学位（在职），研究方向为制造企业营销渠道管理。",
+      "regional_background": "成长于陕西西安，1999年毕业后进入西安本地一家大型国有智能制造设备企业，2010年因集团内部调动迁往湖北武汉，此后一直扎根在湖北，负责区域及全国销售业务。",
+      "overseas_detail": "无"
+    },
+    "career_history": [
+      {
+        "stage": 1,
+        "start_age": 25,
+        "end_age": 28,
+        "start_year": 1999,
+        "end_year": 2002,
+        "region": "陕西西安",
+        "industry": "智能制造",
+        "organization": "西北精密机械有限公司（虚构）",
+        "company_type": "国有大型装备制造企业，主营数控机床和智能产线，处于行业上升期",
+        "function": "销售与渠道",
+        "title": "销售工程师",
+        "transition_bridge": "大学机械工程专业毕业，经��企业半年技术培训和销售岗位轮训，进入销售部，从技术型销售做起。",
+        "responsibilities": "负责西北区域中小制造企业的数控机床销售，维护客户关系，参与招投标，跟单和回款。",
+        "major_events": "参与多个省级技改项目，积累了大量工业客户资源；个人年销售额从第一年的300万元增长到600万元。",
+        "skills_and_contacts_gained": "掌握了智能装备的产品知识、招投标流程和客户关系维护技巧，建立了西北地区一批稳定的客户关系。",
+        "reason_for_move": "因业绩突出，被提拔为区域销售经理，承担更大的管理责任。"
+      },
+      {
+        "stage": 2,
+        "start_age": 28,
+        "end_age": 35,
+        "start_year": 2002,
+        "end_year": 2009,
+        "region": "陕西西安",
+        "industry": "智能制造",
+        "organization": "西北精密机械有限公司（虚构）",
+        "company_type": "国有大型装备制造企业，市场份额稳定，开始布局智能产线整体方案",
+        "function": "销售与渠道",
+        "title": "区域销售经理",
+        "transition_bridge": "在第一阶段积累了丰富的客户资源和销售经验，被提升为区域销售经理，管理一个小型销售团队。",
+        "responsibilities": "负责西北五省销售团队管理，制定区域销售策略，完成年度销售指标，协调售后和技术支持。",
+        "major_events": "带领团队将区域销售额从3000万元提升至8000万元，开拓了汽车零部件和航空航天客户；搭建了区域渠道网络，发展多家经销商。",
+        "skills_and_contacts_gained": "从个人销售转向团队管理，学会了渠道管理、目标分解和绩效激励，积累了工业品渠道运营经验。",
+        "reason_for_move": "集团在湖北设立分公司，需要经验丰富的销售管理人才去开拓华中市场，主动请缨，获得机会。"
+      },
+      {
+        "stage": 3,
+        "start_age": 35,
+        "end_age": 42,
+        "start_year": 2009,
+        "end_year": 2016,
+        "region": "湖北武汉",
+        "industry": "智能制造",
+        "organization": "华中智能装备有限公司（虚构，原集团分公司）",
+        "company_type": "集团刚收购的民营企业，转型为智能装备系统集成商，规模约500人",
+        "function": "销售与渠道",
+        "title": "销售总监",
+        "transition_bridge": "凭借西北区域销售的渠道管理能力和行业知识，调任分公司后逐步承担更大销售管理职责，从区域销售经理升任销售总监。",
+        "responsibilities": "全面负责分公司销售工作，包括销售策略制定、渠道拓展和重点客户攻坚，管理约30人的销售团队。",
+        "major_events": "带领分公司实现销售额从5000万元增至3亿元，成功将产品从单机扩展到产线整体方案，进入汽车和3C电子行业；主导与多家大型制造企业的战略合作。",
+        "skills_and_contacts_gained": "积累了跨区域销售管理和复杂项目运作经验，熟悉智能制造系统集成业务，建立了华中地区广泛的客户高层人脉。",
+        "reason_for_move": "由于集团合并调整，分公司并入一家更大的工业自动化集团，职位和职责得以延续并进一步扩大。"
+      },
+      {
+        "stage": 4,
+        "start_age": 42,
+        "end_age": 47,
+        "start_year": 2016,
+        "end_year": 2021,
+        "region": "湖北武汉",
+        "industry": "工业自动化",
+        "organization": "华科工业自动化集团（虚构）",
+        "company_type": "大型民营工业自动化集团，业务涵盖运动控制、机器人和智能产线，年营收约80亿元",
+        "function": "销售与渠道",
+        "title": "大客户销售总经理",
+        "transition_bridge": "集团合并后，原有智能制造销售经验可直接迁移到工业自动化产品，被任命为大客户销售总经理，负责集团核心大客户。",
+        "responsibilities": "负责全国战略性大客户的销售和关系维护，制定大客户策略，协调产线、技术和交付团队，管理约50人的大客户销售团队。",
+        "major_events": "主导与国内领先新能源汽车和3C企业的深度合作，签订多个亿元级项目；推动集团从硬件销售向整体自动化解决方案转型。",
+        "skills_and_contacts_gained": "提升了复杂组织协同和战略客户管理能力，深入理解工业自动化技术趋势和客户需求，积累了行业高层人脉。",
+        "reason_for_move": "集团决定内部孵化新业务，需要资深销售负责人来开疆拓土，因此被任命为新业务单元的销售负责人。"
+      },
+      {
+        "stage": 5,
+        "start_age": 47,
+        "end_age": 52,
+        "start_year": 2021,
+        "end_year": 2026,
+        "region": "湖北武汉",
+        "industry": "工业自动化",
+        "organization": "华科工业自动化集团（虚构）",
+        "company_type": "大型民营工业自动化集团，业务涵盖运动控制、机器人和智能产线，年营收约80亿元",
+        "function": "销售与渠道",
+        "title": "销售与渠道负责人",
+        "transition_bridge": "基于前几个阶段积累的销售团队管理、大客户攻坚和渠道整合能力，被集团委以重任，负责新业务孵化及原有业务的改造。",
+        "responsibilities": "全面负责集团新业务单元的销售和渠道工作，包括新市场开拓、渠道体系搭建，同时负责老业务销售模式的数字化改造，管理约80人销售团队和全国渠道网络。",
+        "major_events": "带领团队孵化工业物联网和智能运维服务业务，签订多个标杆订单；完成老业务渠道从代理向直销+伙伴模式转型，实现销售额年均增长20%。",
+        "skills_and_contacts_gained": "具备从0到1开拓新业务的经验，掌握数字化营销和渠道变革方法，拥有跨团队协调和集团级战略管理能力。",
+        "reason_for_move": "继续留任，因为业务处于关键成长期，需要稳定且有能力的负责人，个人也愿意迎接新的挑战。"
+      }
+    ],
+    "current_position": {
+      "role": "销售与渠道负责人",
+      "industry": "工业自动化",
+      "primary_function": "销售与渠道",
+      "company_context": "大型民营工业自动化集团，年营收约80亿元，业务覆盖运动控制、机器人和智能产线，正处于数字化转型和新业务孵化阶段，组织规模约5000人。",
+      "management_scope": "管理约80人销售团队，负责全国区域销售与渠道网络，直接对集团新业务营收指标负责，同时参与老业务改造，覆盖营收约10亿元。",
+      "customers_and_stakeholders": "日常主要面对集团副总裁、产品研发负责人、生产交付团队，以及下游制造业客户（如汽车、3C、新能源等）的采购和高层决策者。",
+      "operating_metrics": "新业务销售额、渠道增长率、老业务改造后的利润率、客户回款周期和客户满意度。"
+    },
+    "family_life": {
+      "partnership_status": "已婚或长期伴侣关系稳定",
+      "children": [
+        {
+          "relation": "女儿",
+          "age": 27,
+          "life_stage": "已成年独立生活",
+          "living_arrangement": "在外地或独立居住",
+          "everyday_contact": "联系不算频繁，但遇到事情会立刻介入"
+        }
+      ],
+      "elder_generation": {
+        "relation": "母亲",
+        "age": 80,
+        "living": true,
+        "proximity": "住在同一小区或车程半小时内",
+        "health_and_independence": "行动变慢，需要家人协助就医和安排生活",
+        "personal_involvement": "每周见面，并承担部分就医和事务安排"
+      },
+      "household_snapshot": "已婚或长期伴侣关系稳定；1个子女，其中0个未成年；主要牵挂的老人是母亲，住在同一小区或车程半小时内",
+      "current_region": "湖北",
+      "household_rhythm": "工作日繁忙，经常出差拜访客户，但尽量保证周末在武汉家中度过。妻子退休后承担了更多家务，女儿已在外地成家，每周通话一两次，遇到大事会立即赶过去。母亲住在同一个小区，每周至少去看望两三次，协助安排就医和日常所需。",
+      "concrete_experiences": "女儿27岁，在上海工作并定居，平时联系不算频繁，但女儿遇到搬家、换工作或生病时，他会第一时间请假去帮忙。母亲80岁，行动不便，他承担了每月带母亲去医院复诊的任务，并协调社区护工为母亲提供日常照料。每次出差前，他会提前安排好母亲的用药和就诊事宜，确保妻子能协助。",
+      "family_experience_narrative": "陈志远和妻子结婚多年，女儿大学毕业后留在了上海，家里一下子冷清了不少。妻子退休后喜欢上园艺，把阳台种满了花，他有时出差回来，看着满眼绿色，会感到一丝放松。女儿工作忙，平时视频也多是在节假日，但父女俩有个默契：只要女儿开口，他立刻会放下手头的事情飞过去。去年女儿搬家，他休了两天年假，帮她打包、整理，累得腰酸背痛，却觉得值。最让他牵挂的是住在同一小区的母亲。母亲年纪大了，膝盖不好，去医院需要人陪。每周他至少去母亲家两三次，带上妻子炖的汤，或是替她调试药品。母亲总是说'你忙就别来了'，但他知道，母亲看到他来是很开心的。每个月他都会安排一天专门陪母亲去复诊，等在候诊区时，他会和母亲聊聊以前的事情。这种日常的照料让他更体会到平衡工作和家庭的不易，但也让他更坚定地要守护好这个家。"
+    },
+    "career_narrative": "陈志远1999年从西安交通大学机械工程专业毕业后，进入西北精密机械有限公司，成为一名销售工程师。凭借过硬的技术功底和吃苦耐劳的精神，他迅速在西北市场站稳脚跟，个人业绩连续三年翻番。2002年，他被提拔为区域销售经理，开始管理一个小团队。那几年，他跑遍了西北五省的工业区，积累了大量的客户资源和渠道运营经验。2009年，集团在湖北设立分公司，他主动请缨，带着一家老小迁居武汉，担任销售总监，负责华中市场的开拓。面对新的市场环境，他调整策略，将销售重心从单机设备转向产线整体方案，成功打入汽车和3C行业，分公司销售额从5000万元做到3亿元。2016年，集团与华科工业自动化集团合并，他的职责范围进一步扩大，被任命为大客户销售总经理，负责全国战略性客户。他主导了多个亿元级项目，推动了集团从硬件销售向整体自动化解决方案转型。2021年，集团决定孵化新业务，他被委以重任，担任销售与渠道负责人，既要开创新市场，又要改造老渠道。他带领团队搭建了新的渠道体系，推动老业务向数字化营销转型，实现了新业务从0到1的突破。27年来，他始终深耕智能制造和工业自动化领域的销售与渠道工作，从基层销售成长为集团销售负责人，亲历了中国制造业的升级换代，也完成了从个人贡献者到战略管理者的转变。",
+    "why_executive_program_qualified": "陈志远拥有27年工业自动化领域的销售与渠道经验，目前担任集团销售与渠道负责人，管理80人团队，负责新业务孵化和老业务改造，直接承担10亿元营收目标。他经历了企业并购、业务转型和新业务开拓，具备战略规划、组织变革和跨部门协同能力。他的责任规模、管理复杂度和行业影响力已���到高管级别，但缺乏系统的商科理论学习，中欧高管项目将帮助他总结实践经验，提升战略思维，以应对行业数字化转型的挑战。",
+    "general_profile": {
+      "professional_identity": "他习惯从制造装备和渠道网络的视角看问题，关注客户需求、交付周期和回款风险。职业经历让他熟悉招投标、渠道管理和大型项目运作，常用行业术语如“产线方案”“渠道伙伴”“客户高层”来思考。",
+      "core_motives": "他长期驱动力是追求业务跃迁和突破，不甘于平稳，容易把没有前进体验为失败。他想证明自己能在新领域开疆拓土，最不愿失去的是对局面的掌控和职业声誉。",
+      "self_concept_and_status": "他自视为务实的技术型销售管理者，靠业绩和结果赢得尊重。他看重他人对他“能搞定事”的评价，也认为自己有足够的行业经验来应对复杂局面。",
+      "information_search_and_stopping": "他搜索信息时聚焦关键支点，如客户预算、竞争者动向和内部资源，不会无限扩展选项。一旦方案能过线，他就愿意停手，因为更看重推进效率而非最优解。",
+      "cognitive_effort": "他投入思考的深度取决于责任和兴趣：对重大客户或新业务会深入分析，对日常事务则凭经验快速决策。他既会做数据推演，也依赖多年积累的直觉。",
+      "belief_updating": "他会主动问自己可能错在哪里，尤其在听到不同声音时。若遇到扎实的反证，他能明显调整方向，但也可能先为自己的判断辩护，除非证据足够有力。",
+      "risk_posture": "他愿意承担有限风险，但必须保留退出通道和可承受的最坏结果。他评估风险时关注损失上限，如果最坏情况可控，他就敢出手，否则会犹豫。",
+      "ambiguity_response": "他能在部分未知下推进，但需要几个关键支点保持可解释性。若信息不足，他会先搭建假设框架，然后边做边补，但会确保核心逻辑不失控。",
+      "goal_regulation": "他更受进步获得驱动，追求跃迁和突破，但也受责任避损影响，尤其在涉及团队和家庭时。压力下，他会更聚焦短期目标，但长期追求不会消失。",
+      "time_orientation": "他短期兑现与长期积累大体并重，常寻找能兼顾两者的路径。比如在推进季度销售目标时，也会注意维护客户关系以利长期合作。",
+      "action_and_recovery": "拍板后他会迅速拆任务推进，给团队明确目标和期限。失败后他通常能较快把注意力拉回下一步，不会沉溺于自责，而是视为学习机会。",
+      "interpersonal_and_power_style": "在同级和下属面前，他直接务实，喜欢用数据和业绩说话；对老板，他会主动汇报进展和风险；对外部伙伴，他重信誉和长期关系。他有时强势，但也会听取专业意见。",
+      "communication_style": "他说话节奏快，常用数据和案例论证，话不少但切中要点。被挑战时，他会先倾听，如果对方有理，他会调整；如果没理，他会坚持并给出理由。",
+      "stress_pattern": "压力升高时，他会更急于求成，可能忽略细节；同时他对控制感的需求放大，容易对不确定因素不耐烦。但他也会更专注，执行力增强。",
+      "internal_contradictions": "他既追求跃迁突破，又谨慎保留退出通道，这使他在冒险和保守间摇摆；他既依赖经验快速决策，又主动寻找反证，导致有时果断有时犹豫。他重视长期积累，但短期压力可能让他牺牲长远。",
+      "blind_spots": "他可能低估组织变革中的软性因素，如员工情绪和跨部门磨合，因为他的经验更多在销售和渠道，对研发或生产细节关注不足。",
+      "profile_narrative": "陈志远是典型的工业自动化领域销售老兵，职业经历塑造了他务实、结果导向的视角。他熟悉制造企业的决策链和渠道生态，开口常是“客户预算”“交付节点”“渠道伙伴”这类词。他的核心动机是追求业务跃迁，不甘于平庸，常把“没有前进”视为失败。这让他不断寻求新市场、新模式，但也让他对风险和不确定性格外敏感。他愿意承担有限风险，但必须保留退出通道，这使他既敢押注新业务，又会在关键节点设置止损线。在信息处理上，他搜索范围聚焦关键支点，不追求穷尽；一旦方案能过线，他就停手推进。他的思考投入取决于责任和兴趣：对重大客户或新业务，他会深入分析，甚至主动寻找反证；对常规事务，他依赖经验快速判断。这种风格让他既能果断决策，又能在证据面前调整。他拍板后行动迅速，拆解任务、分派责任，失败后也能较快恢复。但压力升高时，他可能更急于求成，忽略软性因素。他重视长期积累，也看重短期兑现，常寻找兼顾两者的路径，例如维护客户关系以利长期合作。人际上，他直接务实，用数据说话，对下属要求高，对老板主动汇报，对外部伙伴重信誉。他内心存在矛盾：既追求突破，又谨慎保守；既依赖经验，又寻求反证。这些张力使他并非简单粗暴的销售领导，而是一个在复杂环境中不断权衡的实践者。"
+    },
+    "task_context_term_hits": [],
+    "synthetic": true
+  },
+  {
+    "schema": "career_general_profile_v2",
+    "persona_id": "CGP02",
+    "seed": "20260812-career-family-oos-16:2",
+    "demographic_seed": {
+      "name": "林弘毅",
+      "gender": "male",
+      "age": 41,
+      "reference_year": 2026,
+      "birth_year": 1985,
+      "education": "硕士（国内）",
+      "estimated_career_start_age": 25,
+      "estimated_career_start_year": 2010,
+      "estimated_career_years": 16,
+      "overseas": "无",
+      "home_region": "陕西",
+      "current_region": "长三角",
+      "first_industry_hint": "智能制造",
+      "current_industry_hint": "智能制造",
+      "first_function_hint": "财务与投资",
+      "current_function_hint": "财务与投资",
+      "current_role_hint": "并购后整合负责人",
+      "management_scope_hint": "直接背销售、利润和现金流指标",
+      "family_life_seed": {
+        "partnership_status": "离异，目前单身",
+        "children": [
+          {
+            "relation": "女儿",
+            "age": 8,
+            "life_stage": "小学阶段",
+            "living_arrangement": "同住或经常回家",
+            "everyday_contact": "平日主要参与接送和作业陪伴"
+          }
+        ],
+        "elder_generation": {
+          "relation": "母亲",
+          "age": 74,
+          "living": true,
+          "proximity": "异地居住",
+          "health_and_independence": "身体基本健康，仍能独立生活",
+          "personal_involvement": "照护多由其他家人承担，自己负责费用和重大决定"
+        },
+        "household_snapshot": "离异，目前单身；1个子女，其中1个未成年；主要牵挂的老人是母亲，异地居住",
+        "current_region": "长三角"
+      },
+      "career_trajectory": {
+        "type": "stable_specialist",
+        "core_industry": "智能制造",
+        "core_function": "财务与投资",
+        "allowed_industries": [
+          "智能制造"
+        ],
+        "allowed_functions": [
+          "财务与投资"
+        ],
+        "stage_count_min": 4,
+        "stage_count_max": 5,
+        "max_employer_changes": 2,
+        "max_function_changes": 0,
+        "max_industry_changes": 0,
+        "allow_entrepreneurship_or_family_business": false
+      },
+      "qualification_gate": "职业责任、组织规模和经营经历必须足以合理申请中欧或同级高管项目"
+    },
+    "behavioral_fingerprint": {
+      "maximizing_satisficing": 0.3,
+      "need_for_cognition": 0.62,
+      "actively_open_minded_thinking": 0.94,
+      "risk_propensity_business": 0.45,
+      "ambiguity_tolerance": 0.76,
+      "regulatory_focus_promotion": 0.14,
+      "consideration_future_consequences": 0.56,
+      "action_orientation": 0.93
+    },
+    "behavioral_directives": {
+      "maximizing_satisficing": "通常先看少数熟悉方案，达到基本要求后就倾向结束比较。",
+      "need_for_cognition": "愿意拆解复杂问题，常追问机制、数据口径和因果关系。",
+      "actively_open_minded_thinking": "习惯邀请最强反对意见，并愿意推翻自己已经投入很多的判断。",
+      "risk_propensity_business": "风险取向随资源余量和熟悉程度变化，不固定冒进或保守。",
+      "ambiguity_tolerance": "能在信息缺口中行动，并通过试探和反馈逐步形成判断。",
+      "regulatory_focus_promotion": "主要以避免损失、履行责任和不出差错来判断自己是否做对。",
+      "consideration_future_consequences": "短期兑现与长期积累大体并重，常寻找能兼顾两者的路径。",
+      "action_orientation": "有很强的启动和恢复能力，越有阻力越容易进入持续行动状态。"
+    },
+    "name": "林弘毅",
+    "demographic_realization": {
+      "gender": "male",
+      "age": 41,
+      "highest_education": "硕士（国内）",
+      "education_detail": "国内重点大学会计学本科，后在职攻读同校工商管理硕士，2010年硕士毕业",
+      "regional_background": "生于陕西，赴东部沿海城市读大学，毕业后留长三角发展，目前定居长三角",
+      "overseas_detail": "无"
+    },
+    "career_history": [
+      {
+        "stage": 1,
+        "start_age": 25,
+        "end_age": 28,
+        "start_year": 2010,
+        "end_year": 2013,
+        "region": "长三角",
+        "industry": "智能制造",
+        "organization": "华东精工集团（虚构）",
+        "company_type": "大型民营智能制造集团，主营工业自动化装备，年营收约50亿元",
+        "function": "财务与投资",
+        "title": "财务分析专员",
+        "transition_bridge": "硕士毕业通过校招进入，会计与财务管理专业背景扎实",
+        "responsibilities": "负责事业部财务预算编制、成本核算、月度经营分析，支持投资项目的财务尽调，接触生产、研发、销售一线数据",
+        "major_events": "参与集团ERP系统上线，负责财务模块数据清洗与流程优化；参与两个自动化生产线项目的前期财务测算",
+        "skills_and_contacts_gained": "熟悉制造业成本结构，掌握财务分析工具，建立跨部门协作习惯",
+        "reason_for_move": "因工作表现突出，被提拔为财务主管，承担更全面的财务管理职责"
+      },
+      {
+        "stage": 2,
+        "start_age": 28,
+        "end_age": 33,
+        "start_year": 2013,
+        "end_year": 2018,
+        "region": "长三角",
+        "industry": "智能制造",
+        "organization": "华东精工集团",
+        "company_type": "大型民营智能制造集团，规模持续扩张，年营收增至80亿元",
+        "function": "财务与投资",
+        "title": "财务主管",
+        "transition_bridge": "在财务分析专员岗位积累的预算、成本、尽调能力，直接支撑了主管岗位的职责扩大",
+        "responsibilities": "管理财务团队5人，负责全集团预算编制与执行监控，主导投资项目的财务模型搭建与风险评估，参与子公司业绩考核",
+        "major_events": "主导集团收购一家自动化零部件企业的财务尽调与交割；推动预算系统升级，提升预测准确性；参与集团IPO筹备中的财务规范化工作",
+        "skills_and_contacts_gained": "并购财务实操经验，团队管理能力，与投资银行、审计师、律师等外部机构建立合作网络",
+        "reason_for_move": "集团组织架构调整，设立投资管理部，他被任命为投资经理，转向投资管理方向"
+      },
+      {
+        "stage": 3,
+        "start_age": 33,
+        "end_age": 36,
+        "start_year": 2018,
+        "end_year": 2021,
+        "region": "长三角",
+        "industry": "智能制造",
+        "organization": "华东精工集团",
+        "company_type": "大型民营智能制造集团，年营收突破100亿元",
+        "function": "财务与投资",
+        "title": "投资经理",
+        "transition_bridge": "多年财务分析及并购尽调经验，加上在主管岗位积累的财务模型能力，使他能顺利承担投资经理角色",
+        "responsibilities": "负责集团对外投资项目的全流程管理，包括项目筛选、谈判、投后管理；管理投资团队3人；参与子公司投后整合方案的制定",
+        "major_events": "主导收购一家工业机器人核心部件企业，投后深度介入其财务与运营整合，帮助其扭亏为盈；参与多个智能制造领域基金的投资项目，积累行业洞察",
+        "skills_and_contacts_gained": "投资交易结构设计、投后整合方法论、行业人脉（被投企业创始人、基金合伙人）",
+        "reason_for_move": "集团业务重组，投资管理部与财务部合并，他因整合经验被任命为并购后整合负责人"
+      },
+      {
+        "stage": 4,
+        "start_age": 36,
+        "end_age": 41,
+        "start_year": 2021,
+        "end_year": 2026,
+        "region": "长三角",
+        "industry": "智能制造",
+        "organization": "华东精工集团",
+        "company_type": "大型民营智能制造集团，年营收超过150亿元，业务多元化",
+        "function": "财务与投资",
+        "title": "并购后整合负责人",
+        "transition_bridge": "在投资经理岗位上主导的投后整合项目，特别是并购企业的扭亏为盈经验，直接奠基了整合负责人的角色",
+        "responsibilities": "全面负责集团所有并购项目的整合工作，涵盖财务、运营、供应链、销售等各职能的协同；直接对并购子公司的销售、利润和现金流指标负责；管理跨职能整合团队15人，协调各事业部资源",
+        "major_events": "主导集团对三家智能制造企业（涉及工业软件、智能物流、传感器）的收购后整合，均实现业绩增长；建立标准化整合流程，成为集团并购战略的关键环节",
+        "skills_and_contacts_gained": "大型并购整合的项目管理能力、经营责任制下的盈利管理能力、跨文化（行业）团队领导力",
+        "reason_for_move": "继续留任，因整合成效显著，集团赋予更大责任，希望他能继续推动并购业务的协同与增长"
+      }
+    ],
+    "current_position": {
+      "role": "并购后整合负责人",
+      "industry": "智能制造",
+      "primary_function": "财务与投资",
+      "company_context": "大型民营智能制造集团，年营收150亿元，业务覆盖工业自动化、工业软件、智能物流，通过并购实现业务多元化",
+      "management_scope": "直接负责被并购子公司的经营，承担销售、利润和现金流指标；领导15人的跨职能整合团队，协调生产、研发、销售、供应链等",
+      "customers_and_stakeholders": "日常主要面对被并购子公司的管理团队、集团事业部负责人、财务与投资部门，以及外部客户（制造企业）和供应商",
+      "operating_metrics": "销售增长率、毛利率、净利润、现金流、整合进度与协同效应（如交叉销售、供应链优化）"
+    },
+    "family_life": {
+      "partnership_status": "离异，目前单身",
+      "children": [
+        {
+          "relation": "女儿",
+          "age": 8,
+          "life_stage": "小学阶段",
+          "living_arrangement": "同住或经常回家",
+          "everyday_contact": "平日主要参与接送和作业陪伴"
+        }
+      ],
+      "elder_generation": {
+        "relation": "母亲",
+        "age": 74,
+        "living": true,
+        "proximity": "异地居住",
+        "health_and_independence": "身体基本健康，仍能独立生活",
+        "personal_involvement": "照护多由其他家人承担，自己负责费用和重大决定"
+      },
+      "household_snapshot": "离异，目前单身；1个子女，其中1个未成年；主要牵挂的老人是母亲，异地居住",
+      "current_region": "长三角",
+      "household_rhythm": "工作日主要在公司或出差，晚上尽量回家陪女儿；周末常带女儿去上课、运动，偶尔安排与母亲视频通话",
+      "concrete_experiences": "女儿8岁，上小学，同住，他负责日常接送上下学和辅导作业，尤其对数学和英语的辅导很上心；参加过女儿学校的亲子运动会和家长会；节假日会带女儿回陕西看奶奶，平时母亲住在老家，由舅舅一家照应，他定期打电话，并承担主要赡养费用，重大医疗决策由他拍板",
+      "family_experience_narrative": "林弘毅的日常生活被工作和女儿填满。工作日他通常早出晚归，但无论多忙，都会在晚上抽出时间检查女儿的作业，周末则固定安排接送女儿参加兴趣班，有时带她去科技馆或公园。他离异后对女儿心存愧疚，尽力弥补陪伴的缺失，也会在出差时与女儿视频通话。对于在陕西独居的母亲，他每年至少回去探望两次，平时通过电话了解她的健康状况，并安排舅舅一家就近照应。去年母亲体检发现高血压，他专门请假回去陪同复诊，并调整了治疗方案。他承担母亲的全部医疗和生活费用，大事由他决策。这种既要在职场上独当一面，又要兼顾家庭责任的节奏，让他养成了高效管理时间的习惯。"
+    },
+    "career_narrative": "林弘毅的职业生涯始终围绕智能制造行业的财务与投资展开。2010年硕士毕业后，他进入华东精工集团，从财务分析专员做起，凭借扎实的专业基础和勤勉的态度，迅速掌握了制造业的成本结构与财务体系。三年后升任财务主管，开始带团队，并深度参与并购尽调和交割，积累了宝贵的交易经验。2018年，集团成立投资管理部，他转任投资经理，主导了多起智能制造领域的投资与并购，尤其擅长投后整合，曾帮助一家亏损的机器人零部件企业扭亏为盈。2021年，集团业务重组，他被任命为并购后整合负责人，直接对并购子公司的销售、利润和现金流负责，领导跨职能团队，建立了标准化的整合流程。在他的推动下，集团先后整合了三家并购企业，都实现了业绩增长和协同效应。他的核心能力是把财务风险控制与业务运营改善相结合，在并购交易后通过精细化的整合管理释放企业价值。如今，41岁的林弘毅已经成为集团并购战略的关键人物，他的责任范围远超传统财务岗位，涵盖了经营管理的各个层面。",
+    "why_executive_program_qualified": "林弘毅具备申请高管项目的充分条件：他拥有16年深耕智能制造行业的经验，长期在财务与投资领域担任要职，目前作为并购后整合负责人，直接承担销售、利润和现金流指标，管理15人的跨职能团队，对集团营收超150亿元的并购整合结果负责。他操盘过多个千万级甚至亿级的并购整合项目，有切实的盈亏责任和战略决策经验，也面临技术变革、组织融合、跨文化管理等复杂挑战。他的职业成长路径体现了从专业岗位到综合经营管理的转型，兼具财务深度和业务广度。此外，他的工作经历中频繁涉及与集团高层、被投企业创始人、外部投资者的沟通协作，已经具备高管级的影响力。这样的责任规模和行业经验，完全符合中欧等高管MBA项目的入学要求。",
+    "general_profile": {
+      "professional_identity": "林弘毅以财务与投资视角审视经营，擅长从数据与成本结构切入，关注现金流、利润和风险控制。多年并购整合经验让他习惯跨职能协调，重视流程标准化与执行落地。他视自己为价值创造者，通过整合释放企业潜力。",
+      "core_motives": "他渴望证明自己能够驾驭复杂局面，实现扭亏为盈，并以此获得认可。他害怕失败，尤其是因决策失误导致损失，这会辜负信任。他最不愿失去的是专业声誉和家庭稳定，因此会尽力平衡工作与责任。",
+      "self_concept_and_status": "他认为自己是务实的问题解决者，既懂财务又懂运营，能扛起盈亏责任。他重视他人评价，尤其是上级和同行的认可，但不会刻意迎合。他视自己为可靠的责任人，对承诺之事必定全力以赴。",
+      "information_search_and_stopping": "他依赖熟悉的分析框架，先看少数几个关键方案，达到基本财务指标后便倾向停止比较，快速决策。他关注数据口径和因果关系，但不会无限搜集信息。当方案满足风险底线和预期回报时，即视为足够。",
+      "cognitive_effort": "他愿意投入大量思考，深入拆解复杂问题，追问机制和因果链条。他喜欢构建财务模型，模拟不同情景。但面对时间压力时，他会依赖过往经验，采用捷径，只要风险可控。",
+      "belief_updating": "他习惯主动邀请最强反对意见，尤其是来自不同背景的专家，以检验自己的判断。他愿意推翻已投入很多的决策，只要新证据足够有力。他通过小规模试点或数据验证来更新观点，不固执己见。",
+      "risk_posture": "他的风险取向随资源余量变化：资源充足时敢于冒险，资源紧张时趋于保守。他熟悉并购整合的风险，能承受一定波动，但会设置止损线。他更关注下行风险，而非上行机会。",
+      "ambiguity_response": "在信息不足时，他感到不安但会迅速行动，通过试探性步骤收集反馈。他制定假设，小步验证，逐步形成判断。他容忍不确定性，但会设定检查点，以便及时调整。",
+      "goal_regulation": "他主要受责任和避损驱动，而非追求卓越。他设定清晰目标，以是否避免损失、履行责任来衡量成功。压力下他更保守，倾向守住底线，但也会为了长期目标而承担可控风险。",
+      "time_orientation": "他短期与长期并重，常寻找兼顾两者的路径。他关注季度业绩，但会为长期协同效应投入资源。他愿意牺牲短期利润换取长期增长，但前提是不影响现金流安全。",
+      "action_and_recovery": "他启动迅速，一旦决定就立即执行。阻力越大，他越进入持续行动状态，展现很强的韧性。受挫后他能快速恢复，复盘原因，调整策略，继续推进。他不轻易放弃，但也懂得止损。",
+      "interpersonal_and_power_style": "他对同级保持合作但竞争，对下属要求严格但公正，对老板尊重并主动汇报，对外部伙伴专业且务实。他擅长建立跨职能联盟，推动整合。他避免正面冲突，但会坚持原则。",
+      "communication_style": "他说话简洁，多用数据和案例论证。他平时话不多，但被挑战时会变得健谈，引经据典。他倾听反对意见，但会用事实反击。他避免情绪化，保持理性。",
+      "stress_pattern": "压力升高时，他更注重细节，可能过度检查，决策速度下降。他会放大风险，倾向保守。但他也会更投入工作，以行动缓解焦虑。他可能忽略家庭，但会内疚。",
+      "internal_contradictions": "他既渴望冒��整合扭亏，又害怕失败导致损失，因此决策时犹豫。他既重视团队参与，又倾向于独自担责，不愿授权。他既追求长期协同，又迫于短期业绩压力，可能牺牲长期价值。",
+      "blind_spots": "他可能低估人的情感因素，过度依赖财务数据。他习惯用熟悉方案，可能忽视创新机会。他承担过多责任，容易过累。他的职业背景让他更关注硬性指标，忽略软性文化。",
+      "profile_narrative": "林弘毅的职业生涯始终围绕财务与投资展开，这塑造了他看待世界的方式。他习惯从数据入手，任何问题都先拆解为成本、利润和现金流。他熟悉制造业的成本结构，能快速识别关键指标。他追求效率，但不会盲目冒进。他视自己为价值创造者，通过并购整合释放企业潜力。他主导过多次扭亏为盈，这让他自信，但也让他对失败格外敏感。他决策时先看少数几个方案，达到基本要求就停止比较，这源于他多年的财务训练——时间就是成本。他愿意深入分析，但不会无限投入。他喜欢邀请反对意见，因为并购整合中，一个盲点可能造成巨额损失。他愿意推翻自己的判断，只要证据足够。他的风险取向随资源变化，资源充足时敢赌，紧张时保守。他能在信息不全时行动，通过试验调整。他衡量对错的标准是是否避免损失、履行责任。他短期与长期并重，常寻找兼顾路径。他启动迅速，阻力越大越坚持，有很强的恢复力。他与他人互动时，显得专业而务实，但有时过于严肃。他沟通简洁，但被挑战时能言善辩。压力下他更保守，但也会更投入。他内心矛盾：既想冒险创造，又怕失败；既想授权，又怕失控。他的盲区是忽视人的因素，过于依赖数据。总体而言，他是一个以财务视角驱动经营，在风险与责任间平衡的整合者。"
+    },
+    "task_context_term_hits": [],
+    "synthetic": true
+  },
+  {
+    "schema": "career_general_profile_v2",
+    "persona_id": "CGP03",
+    "seed": "20260812-career-family-oos-16:3",
+    "demographic_seed": {
+      "name": "张丹青",
+      "gender": "female",
+      "age": 36,
+      "reference_year": 2026,
+      "birth_year": 1990,
+      "education": "本科（985/211）",
+      "estimated_career_start_age": 22,
+      "estimated_career_start_year": 2012,
+      "estimated_career_years": 14,
+      "overseas": "无",
+      "home_region": "山东",
+      "current_region": "山东",
+      "first_industry_hint": "物流仓配",
+      "current_industry_hint": "物流仓配",
+      "first_function_hint": "销售与渠道",
+      "current_function_hint": "客户服务与交付",
+      "current_role_hint": "交付中心负责人",
+      "management_scope_hint": "负责 3-8 亿年营收业务",
+      "family_life_seed": {
+        "partnership_status": "已婚或长期伴侣关系稳定",
+        "children": [
+          {
+            "relation": "儿子",
+            "age": 11,
+            "life_stage": "小学阶段",
+            "living_arrangement": "同住或经常回家",
+            "everyday_contact": "主要由伴侣或长辈照料，自己在关键事务上参与"
+          }
+        ],
+        "elder_generation": {
+          "relation": "父亲",
+          "age": 63,
+          "living": true,
+          "proximity": "同城但不同住",
+          "health_and_independence": "身体基本健康，生活独立",
+          "personal_involvement": "平时保持联系，需要时到场处理"
+        },
+        "household_snapshot": "已婚或长期伴侣关系稳定；1个子女，其中1个未成年；主要牵挂的老人是父亲，同城但不同住",
+        "current_region": "山东"
+      },
+      "career_trajectory": {
+        "type": "function_expansion",
+        "core_industry": "物流仓配",
+        "core_function": "销售与渠道",
+        "allowed_industries": [
+          "物流仓配"
+        ],
+        "allowed_functions": [
+          "销售与渠道",
+          "客户服务与交付"
+        ],
+        "stage_count_min": 4,
+        "stage_count_max": 5,
+        "max_employer_changes": 2,
+        "max_function_changes": 1,
+        "max_industry_changes": 0,
+        "allow_entrepreneurship_or_family_business": false
+      },
+      "qualification_gate": "职业责任、组织规模和经营经历必须足以合理申请中欧或同级高管项目"
+    },
+    "behavioral_fingerprint": {
+      "maximizing_satisficing": 0.42,
+      "need_for_cognition": 0.67,
+      "actively_open_minded_thinking": 0.04,
+      "risk_propensity_business": 0.61,
+      "ambiguity_tolerance": 0.88,
+      "regulatory_focus_promotion": 0.22,
+      "consideration_future_consequences": 0.7,
+      "action_orientation": 0.21
+    },
+    "behavioral_directives": {
+      "maximizing_satisficing": "会比较几条主要路径，但搜索深度随事情重要性而变化。",
+      "need_for_cognition": "愿意拆解复杂问题，常追问机制、数据口径和因果关系。",
+      "actively_open_minded_thinking": "形成看法后很少主动找反证，异议容易被理解成不懂现场。",
+      "risk_propensity_business": "能够接受较大结果波动，只要机会值得且责任边界清楚。",
+      "ambiguity_tolerance": "对开放、无标准答案的问题感到兴奋，愿意边行动边定义问题。",
+      "regulatory_focus_promotion": "更在意守住已有成果和保护相关人的安全感。",
+      "consideration_future_consequences": "愿意牺牲部分近期结果来换取能力、关系或组织基础。",
+      "action_orientation": "可以启动熟悉事项，但遇到阻力会反复回看决定并放慢执行。"
+    },
+    "name": "张丹青",
+    "demographic_realization": {
+      "gender": "female",
+      "age": 36,
+      "highest_education": "本科（985/211）",
+      "education_detail": "2012年毕业于山东一所985/211高校，物流管理专业，本科学历",
+      "regional_background": "山东人，大学在山东就读，毕业后留在山东发展，未曾长期离开山东，熟悉本地商业环境和物流网络",
+      "overseas_detail": "无"
+    },
+    "career_history": [
+      {
+        "stage": 1,
+        "start_age": 22,
+        "end_age": 26,
+        "start_year": 2012,
+        "end_year": 2016,
+        "region": "山东",
+        "industry": "物流仓配",
+        "organization": "鲁中物流有限公司",
+        "company_type": "中型民营物流企业，以省内仓配一体化服务为主，处于扩张期",
+        "function": "销售与渠道",
+        "title": "销售专员",
+        "transition_bridge": "大学物流管理专业毕业，通过校招进入鲁中物流，依托实习和课程知识进入销售岗位",
+        "responsibilities": "负责新客户开发，电话销售和上门拜访，维护客户关系，完成个人销售指标，参与仓储和配送方案的初步沟通",
+        "major_events": "在鲁中物流工作的四年里，个人年销售额从80万增长到220万，连续两年获得公司‘最佳新人’和‘销售之星’奖项",
+        "skills_and_contacts_gained": "掌握了面向制造业和零售业的仓配需求挖掘、报价谈判和客户关系维护，建立了第一批稳定的客户资源",
+        "reason_for_move": "因公司内部结构调整，销售团队与运营团队协作不顺畅，为寻求更规范的管理体系和更大发展空间，决定跳槽到规模更大的平台"
+      },
+      {
+        "stage": 2,
+        "start_age": 26,
+        "end_age": 30,
+        "start_year": 2016,
+        "end_year": 2020,
+        "region": "山东",
+        "industry": "物流仓配",
+        "organization": "山东海纳供应链有限公司",
+        "company_type": "大型民营供应链公司，业务覆盖山东省及周边，员工超过2000人",
+        "function": "销售与渠道",
+        "title": "大客户经理",
+        "transition_bridge": "前一段工作积累了客户开发和谈判经验，加上对仓配业务的深入理解，通过社招进入海纳供应链，负责更大型的客户",
+        "responsibilities": "重点开拓和服务年合同额500万以上的大客户，主导招投标，协调仓储、运输、客服等部门确保服务落地，跟进回款和客户满意度",
+        "major_events": "成功拿下两个大型制造企业客户，合同总额超过3000万；参与公司CRM系统上线，优化客户分级流程",
+        "skills_and_contacts_gained": "锻炼了跨部门协调能力，熟悉大客户决策流程，积累了制造业供应链管理者和采购负责人的高层人脉",
+        "reason_for_move": "在海纳供应链晋升为销售主管后，发现个人更擅长从全局视角解决客户交付问题，而不是单纯拓展新客户，因此转向客户服务与交付方向"
+      },
+      {
+        "stage": 3,
+        "start_age": 30,
+        "end_age": 33,
+        "start_year": 2020,
+        "end_year": 2023,
+        "region": "山东",
+        "industry": "物流仓配",
+        "organization": "山东海纳供应链有限公司",
+        "company_type": "大型民营供应链公司，业务覆盖山东省及周边，员工超过2000人",
+        "function": "客户服务与交付",
+        "title": "客户服务部主管",
+        "transition_bridge": "在大客户经理期间多次参与客户投诉处理和交付协调，公司内部有内部转岗机制，主动申请转为客户服务主管，并获得部门总监的指导",
+        "responsibilities": "管理客户服务团队（10人），负责客户合同执行、订单跟踪、异常处理、客户满意度调查，定期向管理层汇报服务质量",
+        "major_events": "主导搭建客户服务标准化流程，将客户投诉处理时长从48小时缩短到24小时；推动公司上线客户自助查询系统",
+        "skills_and_contacts_gained": "掌握了团队管理技能，深入理解配送和仓储环节的质量控制，建立了与运营部门的紧密协作关系",
+        "reason_for_move": "因表现出色，被公司任命为交付中心副总监，进一步负责整个交付链条的统筹"
+      },
+      {
+        "stage": 4,
+        "start_age": 33,
+        "end_age": 36,
+        "start_year": 2023,
+        "end_year": 2026,
+        "region": "山东",
+        "industry": "物流仓配",
+        "organization": "山东海纳供应链有限公司",
+        "company_type": "大型民营供应链公司，业务覆盖山东省及周边，员工超过2000人，正筹备上市",
+        "function": "客户服务与交付",
+        "title": "交付中心负责人",
+        "transition_bridge": "在客户服务主管期间积累了团队管理和流程优化经验，公司业务扩张，任命为交付中心负责人，统管仓储、运输和客户服务三大板块的协同",
+        "responsibilities": "全面负责交付中心运营，管理200人团队，涵盖仓储、运输、客户服务各环节，负责交付质量、成本控制和客户满意度，年营收负责规模约4亿元",
+        "major_events": "推动交付中心数字化升级，引入WMS/TMS系统，优化配送网络，客户满意度提升至95%，运营成本降低12%",
+        "skills_and_contacts_gained": "培养了全局运营视野，精通仓配全链条管理，与多个大客户建立了战略合作关系",
+        "reason_for_move": "继续留任，因为公司处于上升期，个人仍有成长空间，且能参与公司战略决策"
+      }
+    ],
+    "current_position": {
+      "role": "交付中心负责人",
+      "industry": "物流仓配",
+      "primary_function": "客户服务与交付",
+      "company_context": "大型民营供应链公司，山东区域龙头，员工超2000人，正筹备上市，业务以仓配一体化和供应链解决方案为主",
+      "management_scope": "管理200人的交付团队，包括仓储、运输和客服团队，负责年营收约4亿元的业务交付，覆盖山东全省及周边区域",
+      "customers_and_stakeholders": "日常面对大客户供应链负责人、公司管理层、运营团队和一线员工；主要客户为制造业和零售业企业；决策影响者包括客户采购和运营总监",
+      "operating_metrics": "客户满意度、准时交付率、运营成本率、库存准确率、异常处理时效"
+    },
+    "family_life": {
+      "partnership_status": "已婚或长期伴侣关系稳定",
+      "children": [
+        {
+          "relation": "儿子",
+          "age": 11,
+          "life_stage": "小学阶段",
+          "living_arrangement": "同住或经常回家",
+          "everyday_contact": "主要由伴侣或长辈照料，自己在关键事务上参与"
+        }
+      ],
+      "elder_generation": {
+        "relation": "父亲",
+        "age": 63,
+        "living": true,
+        "proximity": "同城但不同住",
+        "health_and_independence": "身体基本健康，生活独立",
+        "personal_involvement": "平时保持联系，需要时到场处理"
+      },
+      "household_snapshot": "已婚或长期伴侣关系稳定；1个子女，其中1个未成年；主要牵挂的老人是父亲，同城但不同住",
+      "current_region": "山东",
+      "household_rhythm": "工作日通常早出晚归，早会前处理邮件，晚上有时加班但尽量保证周末陪伴家人；伴侣承担更多日常接送和照护，自己参与儿子周末的辅导和活动",
+      "concrete_experiences": "儿子小学五年级，平时由丈夫和公婆接送，自己周末常带儿子去参加篮球课和科技馆；父亲住在同城，每周至少一次电话问候，每两周去看望一次，去年父亲体检时陪同并跟进复查",
+      "family_experience_narrative": "张丹青的生活节奏紧凑而有序。工作日她通常在七点前出门，晚上七点后到家，但周末会尽量留出家庭时间。儿子今年11岁，读小学五年级，丈夫是一名工程师，工作时间相对灵活，因此承担了较多接送和辅导作业的任务。张丹青负责儿子的周末活动规划，比如篮球课和科学展览，有时也会辅导数学。她的父亲63岁，独自住在同城，身体尚好，生活自理。她每周会通两三次电话，每两周去父亲家吃顿饭，陪他聊聊近况。去年父亲��检发现血压偏高，她专门陪同复查，并调整了他的饮食建议。家庭责任虽然分散，但她会安排在重要项目间隙处理，比如学校家长会或父亲复诊，她都会提前调开会议。"
+    },
+    "career_narrative": "张丹青，1990年出生于山东，2012年从山东一所985/211高校物流管理专业本科毕业，随后进入鲁中物流有限公司担任销售专员，开启了在物流仓配行业的职业生涯。在鲁中物流的四年里，她积累了扎实的销售基本功，从开发新客户到维护关系，个人销售额稳步增长，连续两年获得公司销售奖项。2016年，为了寻求更大的平台，她跳槽到山东海纳供应链有限公司，担任大客户经理。在这里，她负责年合同额500万以上的大客户，主导招投标和跨部门协调，成功拿下多个大型制造企业客户，合同总额超过3000万元，也积累了宝贵的高层客户关系。2020年，张丹青主动申请转岗至客户服务部，担任主管，因为她意识到自己更擅长解决客户交付中的复杂问题，而不是单纯开拓新客户。在她的带领下，客户服务团队建立了标准化流程，投诉处理时长缩短一半，并推动了客户自助查询系统的上线。2023年，她被任命为交付中心负责人，全面管理仓储、运输和客服团队，年营收责任规模达4亿元。她主导了数字化升级，引入WMS/TMS系统，优化配送网络，将客户满意度提升至95%，运营成本降低12%。如今，她正带领团队应对公司上市前的挑战，同时与多个战略客户建立深度合作。她的职业路径始终围绕物流仓配行业，从销售到交付，职能扩展但主线清晰，一步步成长为区域型供应链公司的核心管理者。",
+    "why_executive_program_qualified": "张丹青拥有14年物流仓配行业经验，从一线销售到交付中心负责人，管理200人团队，负责4亿元年营收业务，主导过数字化升级和流程优化，具备跨部门协调和战略决策能力。她的公司正处于上市筹备期，她需要更广阔的视野和管理方法论来应对公司全国化扩张的挑战。她的责任规模和行业经验已达到高管项目的入学要求，且具备明确的职业发展诉求。",
+    "general_profile": {
+      "professional_identity": "张丹青以物流仓配行业14年经验为底色，从销售一线到交付中心负责人，始终围绕客户交付质量、运营效率和跨部门协同。她习惯用行业术语思考，关注数据、流程和责任边界，将复杂供应链问题拆解为可操作的环节，对仓配全链条有全局视角。",
+      "core_motives": "她长期驱动力是证明自己能从全局解决复杂交付问题，而不仅仅是完成销售指标。她希望守住已建立的客户信任和团队稳定，不愿因决策失误损害公司上市前景或下属安全感。最不愿失去的是在行业内的专业声誉和多年积累的战略客户关系。",
+      "self_concept_and_status": "她自视为务实的问题解决者，擅长在压力下协调资源、推动结果。他人评价她为可靠、有担当的领导者。她对自己的能力自信，尤其在交付管理和客户关系方面，但有时因经验丰富而低估外部新视角的价值。",
+      "information_search_and_stopping": "面对重要决策，她会比较两三条主要路径，深入搜索数据、案例和内部反馈；对次要事项则快速凭经验处理。搜索深度随重要性变化，一旦形成初步判断，若信息符合预期便停止搜索，很少主动寻求反证。",
+      "cognitive_effort": "她愿意投入大量思考拆解复杂问题，常追问机制、数据口径和因果关系，直到逻辑闭环。但在熟悉领域，她会快速调用经验捷径，比如客户投诉处理或常规交付异常，直接套用已验证的解决方案。",
+      "belief_updating": "形成看法后，她很少主动寻找反证，异议若来自一线或数据清晰者，她可能重新考虑；但若对方缺乏现场经验，她容易将异议理解为不懂现场，从而坚持原判断。只有在重大失败或权威数据面前，她才会认真更新认知。",
+      "risk_posture": "她能接受较大结果波动，只要机会值得且责任边界清楚。她曾主导数字化升级，虽有成本超支风险，但责任归属明确，她愿意承担。她更在意守住已有成果，对可能危及客户满意度或团队稳定的风险极度敏感。",
+      "ambiguity_response": "面对开放、无标准答案的问题，她感到兴奋，愿意边行动边定义问题。在信息不足时，她会快速搭建框架，先做起来，边做边收集反馈，但若涉及重大责任，她会谨慎放慢，直到责任边界清晰。",
+      "goal_regulation": "她更受责任避损驱动，优先保护已有成果和关键关系，而非追求新成就。压力下，她可能过度关注风险而放缓执行，但若目标明确且责任划分清楚，她会果断推进。长期目标中，她愿意牺牲短期结果换取能力和组织基础。",
+      "time_orientation": "她重视长期发展，愿意投入资源建设团队和系统，即使短期成本上升。她也会平衡近期交付指标，但不会为短期利益损害客户关系或团队士气。在职业选择上，她曾为长远发展转岗，牺牲了销售提成。",
+      "action_and_recovery": "决定后她通常能快速启动熟悉事项，但遇到阻力会反复回看决定，放慢执行，尤其在受到质疑时。她恢复较慢，需要确认方向正确或获得关键支持后才重新加速。她靠复盘和团队协作恢复信心。",
+      "interpersonal_and_power_style": "对下属，她注重授权但保持监督，常问细节，要求数据支撑。对同级，她以结果为导向，积极协调但可能因直接而引发摩擦。对老板，她汇报清晰，主动承担，但较少主动暴露不确定性。对客户，她建立专业可信的形象，善于倾听需求，但坚持己见。",
+      "communication_style": "她说话直接、简洁，常用数据和案例支撑观点，论证时偏好逻辑链条。话不多，但关键场合能表达清晰。被挑战时，她可能提高音量或引用过往经验，但若对方有数据，她会冷静下来。",
+      "stress_pattern": "压力升高时，她更依赖熟悉的流程和团队，对异议的容忍度降低，可能更固执。她也会加速行动，但容易忽略细节。长期压力下，她可能过度检查工作，导致效率下降，但不会轻易放弃责任。",
+      "internal_contradictions": "她既享受解决开放问题的兴奋，又害怕责任不清带来的风险，导致在模糊地带时而激进时而保守。她自信于经验，却也会因过度自信而忽视反证，但一旦意识到错误，又会彻底调整。她追求稳定，却愿意为长期目标冒险。",
+      "blind_spots": "她可能忽视非数据驱动的反馈，如员工情绪或隐性文化问题，因为过于依赖可量化指标。她的经验优势也导致对新兴模式或外部视角不够敏感，尤其在行业变化时可能反应滞后。",
+      "profile_narrative": "张丹青的职业生涯横跨销售、客户服务和交付管理，但始终围绕物流仓配的核心。她从一个电话销售成长为掌管200人团队的交付中心负责人，每一步都体现着她对复杂问题的拆解能力和对责任边界的敏感。她习惯用数据说话，在决策前会比较几条主要路径，但搜索深度随事情重要性而变：对重大客户或战略项目，她会深入调研，甚至亲自拜访；而对日常运营，她依赖经验快速判断。她热衷于解决开放性问题，比如当年推动客户自助查询系统，在没有先例的情况下，她边定义需求边推进，最终成功。然而，一旦形成看法，她很少主动找反证，异议若来自缺乏现场经验的人，她容易视为干扰。她能够接受较大结果波动，只要机会值得且责任边界清楚，比如主导数字化升级时，她接受短期成本超支，但前提是公司明确授权。她更在意守住已有成果和保护团队安全感，因此对可能影响客户满意度或员工稳定性的决策格外谨慎。她愿意牺牲部分近期结果来换取能力或组织基础，如主动转岗到客户服务，虽然当时收入下降，但为后来的管理角色铺路。在行动上，她启动熟悉事项很快，但遇到阻力会反复回看决定，放慢执行，直到确认方向无误。她的人际风格直接，以结果为导向，但也会因坚持己见而忽略他人感受。她的核心矛盾在于：既享受模糊中的探索，又恐惧责任不清；既自信于经验，又难以接受反证。这些张力让她在稳定中保持警觉，但也可能成为她进一步成长的瓶颈。"
+    },
+    "task_context_term_hits": [],
+    "synthetic": true
+  },
+  {
+    "schema": "career_general_profile_v2",
+    "persona_id": "CGP04",
+    "seed": "20260812-career-family-oos-16:4",
+    "demographic_seed": {
+      "name": "王建平",
+      "gender": "male",
+      "age": 40,
+      "reference_year": 2026,
+      "birth_year": 1986,
+      "education": "博士",
+      "estimated_career_start_age": 29,
+      "estimated_career_start_year": 2015,
+      "estimated_career_years": 11,
+      "overseas": "无",
+      "home_region": "京津冀",
+      "current_region": "京津冀",
+      "first_industry_hint": "物业服务",
+      "current_industry_hint": "物业服务",
+      "first_function_hint": "销售与渠道",
+      "current_function_hint": "销售与渠道",
+      "current_role_hint": "首席商业官",
+      "management_scope_hint": "负责 3-8 亿年营收业务",
+      "family_life_seed": {
+        "partnership_status": "未婚，目前单身",
+        "children": [
+          {
+            "relation": "女儿",
+            "age": 9,
+            "life_stage": "小学阶段",
+            "living_arrangement": "同住或经常回家",
+            "everyday_contact": "平日主要参与接送和作业陪伴"
+          }
+        ],
+        "elder_generation": {
+          "relation": "父亲",
+          "age": 66,
+          "living": true,
+          "proximity": "住在同一小区或车程半小时内",
+          "health_and_independence": "有慢性病但能独立生活",
+          "personal_involvement": "平时保持联系，需要时到场处理"
+        },
+        "household_snapshot": "未婚，目前单身；1个子女，其中1个未成年；主要牵挂的老人是父亲，住在同一小区或车程半小时内",
+        "current_region": "京津冀"
+      },
+      "career_trajectory": {
+        "type": "stable_specialist",
+        "core_industry": "物业服务",
+        "core_function": "销售与渠道",
+        "allowed_industries": [
+          "物业服务"
+        ],
+        "allowed_functions": [
+          "销售与渠道"
+        ],
+        "stage_count_min": 3,
+        "stage_count_max": 4,
+        "max_employer_changes": 1,
+        "max_function_changes": 0,
+        "max_industry_changes": 0,
+        "allow_entrepreneurship_or_family_business": false
+      },
+      "qualification_gate": "职业责任、组织规模和经营经历必须足以合理申请中欧或同级高管项目"
+    },
+    "behavioral_fingerprint": {
+      "maximizing_satisficing": 0.61,
+      "need_for_cognition": 0.91,
+      "actively_open_minded_thinking": 0.32,
+      "risk_propensity_business": 0.78,
+      "ambiguity_tolerance": 0.07,
+      "regulatory_focus_promotion": 0.42,
+      "consideration_future_consequences": 0.08,
+      "action_orientation": 0.46
+    },
+    "behavioral_directives": {
+      "maximizing_satisficing": "会主动扩大备选范围，担心过早停手漏掉更好的可能。",
+      "need_for_cognition": "把深度思考本身当成乐趣，会自发建框架、查细节并检验逻辑。",
+      "actively_open_minded_thinking": "会听不同意见，但主要用来修补原方案而非改变基本判断。",
+      "risk_propensity_business": "能够接受较大结果波动，只要机会值得且责任边界清楚。",
+      "ambiguity_tolerance": "信息不完整会显著不安，倾向等待规则、责任和结果范围更清楚。",
+      "regulatory_focus_promotion": "既看增长机会也看失误代价，两种目标会随压力切换。",
+      "consideration_future_consequences": "当前结果和即时压力权重极高，远期收益很难抵消眼前成本。",
+      "action_orientation": "执行状态受团队响应和个人精力影响，顺时推进、逆时停顿。"
+    },
+    "name": "王建平",
+    "demographic_realization": {
+      "gender": "male",
+      "age": 40,
+      "highest_education": "博士",
+      "education_detail": "管理学博士，2014年毕业于京津冀地区一所重点大学，研究方向为服务运营与渠道管理",
+      "regional_background": "成长于京津冀地区，本科、硕士、博士均在该地区完成，职业发展也一直扎根于此，对本地市场有深入了解",
+      "overseas_detail": "无"
+    },
+    "career_history": [
+      {
+        "stage": 1,
+        "start_age": 29,
+        "end_age": 32,
+        "start_year": 2015,
+        "end_year": 2018,
+        "region": "京津冀",
+        "industry": "物业服务",
+        "organization": "北京慧居物业服务有限公司",
+        "company_type": "民营中型物业服务公司，管理约500万平米住宅和写字楼，处于快速扩张期",
+        "function": "销售与渠道",
+        "title": "市场拓展经理",
+        "transition_bridge": "博士毕业前通过实习和项目合作进入物业行业，熟悉服务运营和客户需求，凭借渠道管理知识进入市场拓展岗位",
+        "responsibilities": "负责新项目拓展和渠道维护，包括开发商关系、业主委员会沟通、投标管理和合同谈判，年新增管理面积约50万平米，年合同额约3000万元",
+        "major_events": "主导了公司首个高端写字楼项目的中标，拓展了与本地开发商的战略合作，建立了渠道管理流程",
+        "skills_and_contacts_gained": "积累了物业市场拓展经验，建立了与开发商、业委会、政府部门的联系，熟悉招投标和合同管理",
+        "reason_for_move": "为了承担更大责任，在公司内部晋升为销售总监，继续深耕物业销售领域"
+      },
+      {
+        "stage": 2,
+        "start_age": 32,
+        "end_age": 36,
+        "start_year": 2018,
+        "end_year": 2022,
+        "region": "京津冀",
+        "industry": "物业服务",
+        "organization": "北京慧居物业服务有限公司",
+        "company_type": "民营中型物业服务公司，管理面积增至800万平米，准备拓展增值服务",
+        "function": "销售与渠道",
+        "title": "销售总监",
+        "transition_bridge": "作为市场拓展经理期间积累了客户资源和谈判经验，被提升为销售总监，全面负责销售团队",
+        "responsibilities": "管理15人的销售团队，负责公司所有销售活动，包括新盘拓展、续约谈判、增值服务销售（如社区零售、家政等），年营收从8000万增长至1.5亿元",
+        "major_events": "推动公司从单一基础物业服务向增值服务销售转型，建立了社区商业渠道，与多个本地供应商合作，年增值服务收入占比从5%提升至20%",
+        "skills_and_contacts_gained": "增强了团队管理能力，深化了渠道建设经验，积累了社区商业和供应商资源，学习了大客户管理",
+        "reason_for_move": "追求更全面的商业管理职责，随着公司业务扩大，被任命为首席商业官"
+      },
+      {
+        "stage": 3,
+        "start_age": 36,
+        "end_age": 40,
+        "start_year": 2022,
+        "end_year": 2026,
+        "region": "京津冀",
+        "industry": "物业服务",
+        "organization": "北京慧居物业服务有限公司",
+        "company_type": "民营中型物业服务公司，管理面积超1200万平米，年营收约4亿元，正在筹备上市",
+        "function": "销售与渠道",
+        "title": "首席商业官",
+        "transition_bridge": "在销售总监任上展现了商业规划和渠道整合能力，被董事会任命为首席商业官，全面负责商业运营",
+        "responsibilities": "统筹管理公司所有商业收入，包括基础物业费、增值服务销售、空间运营（社区广告、场地租赁等），负责销售团队、市场推广和渠道合作，年营收从1.5亿元增长至约3.5亿元",
+        "major_events": "主导了社区新零售渠道的建设，与本地电商平台合作，推出社区团购服务；优化了销售激励制度，提升了团队效率；参与公司上市筹备，负责商业计划书中的市场部分",
+        "skills_and_contacts_gained": "深化了商业战略思维，拓展了电商和零售渠道资源，积累了公司治理和资本市场知识，管理了更复杂的利益相关者",
+        "reason_for_move": "继续留任，致力于推动公司商业模式的创新和上市后的持续增长"
+      }
+    ],
+    "current_position": {
+      "role": "首席商业官",
+      "industry": "物业服务",
+      "primary_function": "销售与渠道",
+      "company_context": "民营企业，管理面积超1200万平米，年营收约4亿元，员工超2000人，处于扩张期并筹备上市",
+      "management_scope": "直接管理商业运营部门，下辖销售、市场、渠道三个团队，共约80人；负责京津冀区域所有商业收入，年营收目标3.5亿元，利润目标约5000万元",
+      "customers_and_stakeholders": "日常面对开发商、业委会、政府监管部门、供应商和合作伙伴；付费方为业主和商户，使用者为居民和商户，影响决策的包括董事会、股东和监管机构",
+      "operating_metrics": "最常背的指标包括年度合同额、续约率、增值服务渗透率、客户满意度、营收增长率和利润率"
+    },
+    "family_life": {
+      "partnership_status": "未婚，目前单身",
+      "children": [
+        {
+          "relation": "女儿",
+          "age": 9,
+          "life_stage": "小学阶段",
+          "living_arrangement": "同住或经常回家",
+          "everyday_contact": "平日主要参与接送和作业陪伴"
+        }
+      ],
+      "elder_generation": {
+        "relation": "父亲",
+        "age": 66,
+        "living": true,
+        "proximity": "住在同一小区或车程半小时内",
+        "health_and_independence": "有慢性病但能独立生活",
+        "personal_involvement": "平时保持联系，需要时到场处理"
+      },
+      "household_snapshot": "未婚，目前单身；1个子女，其中1个未成年；主要牵挂的老人是父亲，住在同一小区或车程半小时内",
+      "current_region": "京津冀",
+      "household_rhythm": "工作日早出晚归，但每周有固定时间接送女儿上学和辅导作业；父亲住在同小区，每周至少探望两三次，遇有慢性病复诊会陪同前往",
+      "concrete_experiences": "女儿今年9岁，上小学三年级，我经常参加她的家长会和学校活动，每天晚饭后检查作业；父亲患有高血压和糖尿病，需要定期取药和复查，我会提前安排时间陪同，有时工作忙会电话叮嘱",
+      "family_experience_narrative": "我离婚后独自抚养女儿，她跟我住在一起，我尽量平衡工作与陪伴。每天早上送她上学，晚上如果不开会就接她回家，辅导功课。周末如果工作不忙，我会带她去公园或爷爷奶奶家。父亲身体不好，但能自己生活，住同一个小区，我每周至少去看他两三次，帮他拿药，陪他聊天。虽然工作压力大，但这些责任让我更注重效率，也学会了在家庭中承担角色。"
+    },
+    "career_narrative": "王建平，1986年生于京津冀地区，2015年取得管理学博士学位后进入物业服务行业，深耕销售与渠道领域。在慧居物业，他从市场拓展经理做起，凭借专业背景和勤奋，逐步打通开发商、业委会和渠道资源，主导了多个关键项目，推动公司业务扩张。2018年晋升为销售总监，带领团队开拓增值服务市场，为公司开辟新的收入来源。2022年，他被任命为首席商业官，全面负责商业运营，推动公司营收从1.5亿增长至近4亿，并参与公司上市筹备。十一年的职业生涯始终围绕物业服务和销售渠道，他积累了丰富的行业经验、管理能力和商业洞察力，成为公司商业战略的核心人物。未来，他计划继续推动公司业务创新和上市进程，同时考虑通过高管教育提升战略视野。",
+    "why_executive_program_qualified": "王建平拥有博士学位，且有11年物业服务行业销售与渠道领域的中高层管理经验。目前作为首席商业官，他直接管理近4亿年营收的业务，统筹销售、渠道、市场等多功能团队，参与公司上市筹备，与董事会、外部合作伙伴等高层利益相关者密切协作。他的责任规模、决策复杂度和战略影响力已达到中欧或同级高管项目的申请标准。",
+    "general_profile": {
+      "professional_identity": "深耕物业服务行业十一年，从市场拓展到销售总监再到首席商业官，始终围绕销售与渠道职能。他习惯以渠道视角看待商业问题，关注客户关系、合同额、续约率和增值服务渗透率，善于从开发商、业委会、供应商等利益相关者网络中寻找机会。",
+      "core_motives": "长期驱动力是证明自己能从运营细节中提炼商业战略，并推动公司持续增长。他渴望被董事会和行业认可为商业领袖，最不愿失去的是对业务全局的掌控感和在关键决策中的话语权。",
+      "self_concept_and_status": "他自视为务实且具有战略眼光的商业操盘手，相信自己的行业经验和分析能力。他重视他人对其专业性和执行力的评价，但内心也常因非科班出身（相对纯商业背景）而需要不断用业绩证明自己。",
+      "information_search_and_stopping": "他倾向于主动扩大备选范围，比如在拓展新项目时会同时考察多个楼盘、接触多个开发商，担心过早决定会漏掉潜在更优机会。但当他觉得信息足够充分、规则清晰时，会果断停手，通常以“合同额、续约率、利润率”等硬指标作为决策门槛。",
+      "cognitive_effort": "他享受深度思考，喜欢建立分析框架，比如将增值服务渗透率拆解为渠道、品类、客户分层等维度，并亲自查证细节、验证逻辑。但时间紧迫时，会依赖过往经验快速判断，尤其对熟悉的本地市场。",
+      "belief_updating": "他会听取不同意见，但主要用于修补原方案的漏洞，而非推翻基本判断。例如在社区团购项目上，他会接受供应商对物流的建议，但不会改变“必须做社区零售”的核心决定。只有当他看到数据持续反向或董事会明确反对时，才可能真正调整。",
+      "risk_posture": "他能够接受较大的结果波动，只要他认为机会值得且责任边界清楚。比如他愿意在增值服务上投入资源，即使短期利润不确定，但若董事会未明确授权，他会变得保守。他理解损失是商业的一部分，但厌恶因责任模糊导致的失控。",
+      "ambiguity_response": "信息不完整会让他显著不安。他倾向等待规则、责任和结果范围更清楚后再行动。例如在上市筹备中，若监管政策不明朗，他会暂缓部分扩张计划，直到合规细节明确。",
+      "goal_regulation": "他同时看重增长机会和失误代价，但压力增大时，避损动机占上风。在年度营收目标压力下，他会更关注续约率和现金流，而非激进创新；一旦压力缓解，他又会重新追求增长。",
+      "time_orientation": "当前结果和即时压力权重极高，远期收益很难抵消眼前成本。他常因季度指标而推迟长期战略项目，比如上市准备中的市场拓展工作可能因短期业绩波动而调整优先级。",
+      "action_and_recovery": "决定后，他行动迅速，尤其当团队响应积极时，会持续推进；若团队反馈慢或精力不济，他容易停顿。受挫后，他会先反思流程和团队执行，再调整策略，但恢复速度取决于他能否找到可控的改进点。",
+      "interpersonal_and_power_style": "在同级面前，他倾向于协商和交换资源；在下属面前，他要求高但会给予明确指导；对老板（董事会）他尊重但会坚持自己的商业判断；对外部伙伴（如开发商）他善于建立长期关系，但谈判时注重底线。",
+      "communication_style": "他语言节奏中等偏快，常用数据支撑论点，喜欢用案例和图表。话不多但逻辑清晰。被挑战时，他先倾听，然后逐条回应，若对方有理会采纳，但不会轻易改变核心观点。",
+      "stress_pattern": "压力升高时，他会更关注细节和风险，变得谨慎，可能放大对短期指标的重视，同时减少对团队授权的信任，更多亲自干预。原本开放的态度可能转为防御，听异议的耐心下降。",
+      "internal_contradictions": "他一方面渴望大胆创新，另一方面又因责任压力而趋于保守；他享受深度思考，但常因时间压力而依赖直觉；他希望授权团队，但又不放心放手，导致自己过度介入。",
+      "blind_spots": "他可能低估了非量化因素（如员工士气、文化冲突）对长期结果的影响，因为他的职业背景更重视数字和合同。同时，他习惯于本地市场思维，对跨区域或国际市场的差异可能敏感度不足。",
+      "profile_narrative": "王建平的职业轨迹塑造了他独特的商业视角。作为物业服务公司的首席商业官，他每天面对的是合同、渠道、续约率和增值服务渗透率。这些行业术语不仅是他的工作语言，更是他理解商业世界的基本框架。他看信息时，会下意识地将其分类为“可量化的机会”和“潜在的成本”，并主动扩大搜索范围，比如在评估一个新项目时，他会同时考察多个楼盘，比较开发商背景、业委会态度、周边竞争，甚至政策动向。他担心过早停手会漏掉更好的可能，因此常常在决策前反复权衡，但一旦他认为信息足够，规则明确，他会迅速拍板，并以合同额和利润率为准绳。\n他的深度思考习惯源于博士训练，他喜欢自己搭建分析模型，比如将增值服务渗透率拆解为渠道、品类、客户分层等维度，并亲自查证数据、验证逻辑。这种思考本身给他带来乐趣，但也会消耗时间，导致他在压力下偶尔依赖经验捷径。他愿意听取不同意见，但往往只用来修补原方案的细节，而非改变基本方向。例如在社区团购项目上，他会接受供应商对物流的建议，但不会动摇“必须做社区零售”的核心决定。\n风险方面，他能接受较大的结果波动，只要机会足够吸引人且责任边界清楚。他曾推动公司从基础物业向增值服务转型，当时利润并不稳定，但他认为值得。然而，如果董事会授权模糊，他会变得谨慎，甚至暂停推进。信息不完整会让他不安，他倾向等待规则和责任范围明确后再行动，这有时会错失窗口期，但他更怕失控。\n他的目标在增长和避损之间摇摆。在年度营收压力下，他会更关注续约率和现金流，而非长期创新；一旦压力缓解，他又会重新追求市场扩张。当前结果和即时压力权重极高，远期收益很难抵消眼前成本，因此他常因季度指标而推迟长期战略项目。执行时，他的状态受团队响应和个人精力影响：团队配合好，他推进迅速；若遇到阻力，他容易停顿，直到问题解决。受挫后，他会先反思流程和团队，再调整策略，恢复速度取决于他能否找到可控的改进点。\n在人际互动中，他对同级善于协商，对下属要求高但指导明确，对董事会尊重但坚持己见，对外部伙伴注重长期关系。沟通时，他用数据说话，逻辑清晰，但被挑战时也会防御。压力升高时，他更关注细节和风险，变得保守，对团队授权减少。他的内在矛盾在于：他想大胆创新，却又因责任而保守；他享受深度思考，却又常因时间压力而依赖直觉；他希望授权，却又不放心。这些矛盾源于他既要证明自己的战略能力，又必须对短期业绩负责。他的盲区在于低估非量化因素，如员工士气或文化冲突，因为他的职业背景更重视数字和合同；同时，他习惯本地市场，对跨区域差异的敏感度有待提高。总体而言，他是一个在数据与直觉、创新与稳健之间不断平衡的商业操盘手。"
+    },
+    "task_context_term_hits": [],
+    "synthetic": true
+  },
+  {
+    "schema": "career_general_profile_v2",
+    "persona_id": "CGP06",
+    "seed": "20260812-career-family-oos-16:6",
+    "demographic_seed": {
+      "name": "周振华",
+      "gender": "male",
+      "age": 45,
+      "reference_year": 2026,
+      "birth_year": 1981,
+      "education": "本科（非985）",
+      "estimated_career_start_age": 22,
+      "estimated_career_start_year": 2003,
+      "estimated_career_years": 23,
+      "overseas": "无",
+      "home_region": "福建",
+      "current_region": "福建",
+      "first_industry_hint": "建筑工程",
+      "current_industry_hint": "建筑工程",
+      "first_function_hint": "组织与人力资源",
+      "current_function_hint": "组织与人力资源",
+      "current_role_hint": "人力资源副总裁",
+      "management_scope_hint": "负责新业务孵化和老业务改造",
+      "family_life_seed": {
+        "partnership_status": "已婚或长期伴侣关系稳定",
+        "children": [
+          {
+            "relation": "儿子",
+            "age": 16,
+            "life_stage": "中学阶段",
+            "living_arrangement": "同住或经常回家",
+            "everyday_contact": "会过问学习和升学，但沟通并不总顺畅"
+          }
+        ],
+        "elder_generation": {
+          "relation": "母亲",
+          "age": 77,
+          "living": true,
+          "proximity": "异地居住",
+          "health_and_independence": "身体基本健康，仍能独立生活",
+          "personal_involvement": "联系频繁，但因异地无法参与多数日常事务"
+        },
+        "household_snapshot": "已婚或长期伴侣关系稳定；1个子女，其中1个未成年；主要牵挂的老人是母亲，异地居住",
+        "current_region": "福建"
+      },
+      "career_trajectory": {
+        "type": "stable_specialist",
+        "core_industry": "建筑工程",
+        "core_function": "组织与人力资源",
+        "allowed_industries": [
+          "建筑工程"
+        ],
+        "allowed_functions": [
+          "组织与人力资源"
+        ],
+        "stage_count_min": 5,
+        "stage_count_max": 6,
+        "max_employer_changes": 3,
+        "max_function_changes": 0,
+        "max_industry_changes": 0,
+        "allow_entrepreneurship_or_family_business": false
+      },
+      "qualification_gate": "职业责任、组织规模和经营经历必须足以合理申请中欧或同级高管项目"
+    },
+    "behavioral_fingerprint": {
+      "maximizing_satisficing": 0.91,
+      "need_for_cognition": 0.26,
+      "actively_open_minded_thinking": 0.62,
+      "risk_propensity_business": 0.15,
+      "ambiguity_tolerance": 0.43,
+      "regulatory_focus_promotion": 0.69,
+      "consideration_future_consequences": 0.48,
+      "action_orientation": 0.94
+    },
+    "behavioral_directives": {
+      "maximizing_satisficing": "很难接受只是够用，会持续搜索、反复比较并提高自己的停手门槛。",
+      "need_for_cognition": "只在必要处下功夫，信息一复杂就会先抓最直观的判断线索。",
+      "actively_open_minded_thinking": "会主动问自己可能错在哪里，遇到扎实反证时能明显调整。",
+      "risk_propensity_business": "强烈厌恶经营波动，宁可放弃上行空间也要降低失控概率。",
+      "ambiguity_tolerance": "可以在部分未知下推进，但需要几个关键支点保持可解释性。",
+      "regulatory_focus_promotion": "主要被进步、增长和证明潜力驱动，能容忍为机会暴露一点风险。",
+      "consideration_future_consequences": "短期兑现与长期积累大体并重，常寻找能兼顾两者的路径。",
+      "action_orientation": "有很强的启动和恢复能力，越有阻力越容易进入持续行动状态。"
+    },
+    "name": "周振华",
+    "demographic_realization": {
+      "gender": "male",
+      "age": 45,
+      "highest_education": "本科（非985）",
+      "education_detail": "2003年毕业于福建本地一所非985高校，土木工程专业，辅修管理学",
+      "regional_background": "生于福建，长于福建，大学毕业后即进入福建本地建筑企业工作，职业生涯始终未离开福建，熟悉本地建筑行业生态和人情网络",
+      "overseas_detail": "无"
+    },
+    "career_history": [
+      {
+        "stage": 1,
+        "start_age": 22,
+        "end_age": 26,
+        "start_year": 2003,
+        "end_year": 2007,
+        "region": "福建泉州",
+        "industry": "建筑工程",
+        "organization": "闽南建设集团（虚构）",
+        "company_type": "民营建筑集团，主营房建和市政工程，年产值约5亿元，员工约800人",
+        "function": "组织与人力资源",
+        "title": "人力资源专员",
+        "transition_bridge": "大学期间辅修管理学，毕业时通过校园招聘进入闽南建设集团，起初在项目工地做行政兼人事，因表现踏实被调入总部人力资源部",
+        "responsibilities": "负��员工入职离职手续、考勤统计、工资表制作，协助招聘一线工人和初级技术人员；每月整理项目人员流动报表",
+        "major_events": "参与公司首次引入绩效考核制度，负责数据收集和基础文档工作；跟随人力资源经理处理过两次工伤纠纷",
+        "skills_and_contacts_gained": "熟悉建筑行业一线用工特点，了解劳务分包和农民工管理；与项目经理和班组长建立初步联系；掌握基础劳动法规",
+        "reason_for_move": "主动争取参与更核心的人力资源模块，为晋升做准备，代价是承担更多琐碎事务"
+      },
+      {
+        "stage": 2,
+        "start_age": 26,
+        "end_age": 32,
+        "start_year": 2007,
+        "end_year": 2013,
+        "region": "福建泉州",
+        "industry": "建筑工程",
+        "organization": "闽南建设集团",
+        "company_type": "中型民营建筑集团，年产值约15亿元，员工约1500人，业务扩展至省内多个城市",
+        "function": "组织与人力资源",
+        "title": "人力资源主管",
+        "transition_bridge": "在专员岗位积累的招聘和员工关系经验，获得人力资源经理认可，晋升为主管；期间自费参加人力资源管理师培训并获得证书",
+        "responsibilities": "负责总部及三个分公司的招聘、培训、绩效考核；管理一支5人的招聘团队；参与制定年度人力资源规划；直接向人力资源经理汇报",
+        "major_events": "主导公司首个项目经理梯队培养项目，选拔并培养15名后备项目经理；协助公司获得省级劳动关系和谐企业称号；参与了公司ERP系统的人力资源模块上线",
+        "skills_and_contacts_gained": "深入理解建筑行业项目管理流程，熟悉项目经理的胜任力模型；与分公司经理建立良好关系；掌握了招聘渠道和培训体系搭建方法",
+        "reason_for_move": "希望承担更大区域或业务单元的HRBP角色，主动申请轮岗到业务部门；代价是离开熟悉的总部环境"
+      },
+      {
+        "stage": 3,
+        "start_age": 32,
+        "end_age": 36,
+        "start_year": 2013,
+        "end_year": 2017,
+        "region": "福建厦门",
+        "industry": "建筑工程",
+        "organization": "闽南建设集团（厦门分公司）",
+        "company_type": "集团直属区域分公司，负责福建南部市场，年产值约6亿元，员工约600人",
+        "function": "组织与人力资源",
+        "title": "人力资源经理",
+        "transition_bridge": "作为集团人力资源主管轮岗至厦门分公司担任人力资源经理，全面负责分公司的HR管理；此前积累的培训和组织发展经验得以应用",
+        "responsibilities": "全面负责分公司的人力资源管理，包括招聘、培训、绩效、薪酬、员工关系；管理4名HR下属；与分公司总经理及各部门负责人协作，支持业务目标达成；负责人力成本预算和控制",
+        "major_events": "主导分公司组织架构调整，将原有的职能制改为项目制，并重新设计岗位和薪酬体系；推行项目绩效考核，与项目利润挂钩；成功将分公司员工流失率降低20%",
+        "skills_and_contacts_gained": "学会从业务经营角度思考人力资源问题，理解项目利润和成本结构；与分公司总经理建立信任关系；积累了人力资源管理全盘经验",
+        "reason_for_move": "集团总部需要具有业务视角的HR参与战略转型，被调回总部；代价是离开熟悉的业务片区"
+      },
+      {
+        "stage": 4,
+        "start_age": 36,
+        "end_age": 41,
+        "start_year": 2017,
+        "end_year": 2022,
+        "region": "福建福州",
+        "industry": "建筑工程",
+        "organization": "闽南建设集团（总部）",
+        "company_type": "民营建筑集团，年产值约50亿元，员工约3000人，开始布局装配式建筑和城市更新业务",
+        "function": "组织与人力资源",
+        "title": "人力资源总监",
+        "transition_bridge": "基于在分公司担任人力资源经理期间积累的业务洞察和全面管理经验，晋升为集团人力资源总监；直接向董事长汇报",
+        "responsibilities": "负责集团整体人力资源战略，包括组织发展、人才梯队、薪酬绩效、企业文化；管理一支12人的总部HR团队，并间接管理各分公司HR；参与集团战略规划，负责组织能力建设",
+        "major_events": "主导集团组织变革，从传统的分公司制向事业部制过渡，重新划分业务板块；建立集团级领导力发展项目，培养内部高管；推出核心人才长期激励计划；在2020年疫情期间，主导远程办公和劳动用工调整，保证项目连续性",
+        "skills_and_contacts_gained": "掌握大型集团人力资源管理的最佳实践；熟悉股权激励设计；与董事长和业务条线高管密切合作；深入了解装配式建筑和城市更新业务的人才需求",
+        "reason_for_move": "集团决定成立新业务孵化事业部，需要HR负责人深度参与业务创建，被任命为集团人力资源副总裁兼新业务HR负责人"
+      },
+      {
+        "stage": 5,
+        "start_age": 41,
+        "end_age": 45,
+        "start_year": 2022,
+        "end_year": 2026,
+        "region": "福建福州",
+        "industry": "建筑工程",
+        "organization": "闽南建设集团（总部）",
+        "company_type": "民营建筑集团，年产值约80亿元，员工约5000人，业务包括传统房建、市政、装配式建筑和城市更新",
+        "function": "组织与人力资源",
+        "title": "人力资源副总裁",
+        "transition_bridge": "凭借多年在组织发展和业务变革中的经验，正式被任命为集团人力资源副总裁，同时负责新业务孵化和老业务改造项目",
+        "responsibilities": "作为集团HR最高负责人，制定并执行人力资源战略；负责新业务（装配式建筑和城市更新）的组织搭建、人才招募和激励体系；同时推动老业务（传统房建）的组织效率提升和人员结构优化；管理一支15人的总部HR团队，并统筹各事业部HRBP；直接向董事长汇报，并参与集团经营决策",
+        "major_events": "成功孵化新业务事业部，从零搭建团队，两年内招募200人并实现项目落地；主导老业务数字化改造，推动项目管理标准化；建立内部人才市场，促进跨事业部人才流动；完成子公司混改中的人力资源评估和人员安置",
+        "skills_and_contacts_gained": "具备从0到1组织搭建经验；熟悉创新业务人才吸引策略；掌握变革管理和企业文化重塑方法；与地方政府和行业协会建立联系；深刻理解建筑行业未来趋势",
+        "reason_for_move": "继续留任，因为集团正处于转型升级关键期，希望完成新老业务融合的组织整合"
+      }
+    ],
+    "current_position": {
+      "role": "人力资源副总裁",
+      "industry": "建筑工程",
+      "primary_function": "组织与人力资源",
+      "company_context": "民营建筑集团，年产值约80亿元，员工5000人，业务覆盖房建、市政、装配式建筑和城市更新，处于传统业务转型和新兴业务扩张阶段",
+      "management_scope": "集团人力资源全面管理，直接管理15人总部HR团队，间接管理约30名HRBP；负责新业务事业部（约200人）和老业务改造项目（涉及约3000人）的人力资源工作",
+      "customers_and_stakeholders": "日常汇报给董事长；与各事业部总经理、项目总监紧密合作；与员工、工会、地方政府劳动部门和行业协会沟通",
+      "operating_metrics": "员工流失率、招聘完成率、人均产值、人力成本率、培训覆盖率、关键岗位继任率"
+    },
+    "family_life": {
+      "partnership_status": "已婚或长期伴侣关系稳定",
+      "children": [
+        {
+          "relation": "儿子",
+          "age": 16,
+          "life_stage": "中学阶段",
+          "living_arrangement": "同住或经常回家",
+          "everyday_contact": "会过问学习和升学，但沟通并不总顺畅"
+        }
+      ],
+      "elder_generation": {
+        "relation": "母亲",
+        "age": 77,
+        "living": true,
+        "proximity": "异地居住",
+        "health_and_independence": "身体基本健康，仍能独立生活",
+        "personal_involvement": "联系频繁，但因异地无法参与多数日常事务"
+      },
+      "household_snapshot": "已婚或长期伴侣关系稳定；1个子女，其中1个未成年；主要牵挂的老人是母亲，异地居住",
+      "current_region": "福建",
+      "household_rhythm": "工作日通常早出晚归，周末尽量留出时间陪伴家人。由于母亲在异地，只能通过电话和视频联系，每年节假日和母亲身体不适时回去探望。儿子读高中，学业紧张，沟通不多，但每周会一起吃饭，偶尔过问学习。",
+      "concrete_experiences": "儿子进入高中后，成绩波动，他尝试辅导但发现效果不佳，转而请家教并鼓励儿子参加兴趣班。母亲今年77岁，独自在老家生活，他每隔几天打电话，每月至少回去一次，去年母亲体检发现高血压，他安排定期复查并叮嘱用药。",
+      "family_experience_narrative": "周振华的妻子在银行工作，两人共同承担家庭责任。儿子高中住校，周末回家，他会尽量陪儿子打篮球或聊天，但沟通并不总是顺畅，有时会因学习问题产生争执。母亲在泉州老家，身体尚可，但年龄渐长，他常常担心，却因工作无法常在身边，只能依靠亲戚帮忙照应。妻子工作也忙，但两人会互相协调，确保儿子教育有人过问。他常感叹，工作和家庭难以两全，特别是母亲生病时，他只能通过电话安慰。尽管如此，家庭始终是���努力工作的动力。"
+    },
+    "career_narrative": "周振华从2003年进入建筑行业，二十多年来始终专注于组织与人力资源领域。他最初在闽南建设集团做人力资源专员，处理考勤和招聘，逐步熟悉建筑业用工特点。凭借踏实和好学，他晋升为主管，开始接触培训和组织发展，并在一次项目经理培养项目中崭露头角。为了更懂业务，他主动申请到厦门分公司担任人力资源经理，全面负责当地人力工作，推动组织架构调整和绩效改革，降低员工流失率。由于表现出色，他被调回集团总部担任人力资源总监，主导集团事业部制变革，建立领导力项目，并在疫情期间灵活调整用工。2022年，集团转型加速，他升任人力资源副总裁，同时负责新业务孵化和老业务改造。他搭建新事业部团队，推动老业务数字化，建立内部人才市场，成为集团战略落地的关键人物。他的职业路径稳定而清晰：始终在建筑行业，始终在人力资源职能，从基层逐步成长为高管，积累了深厚的行业理解和组织变革经验。",
+    "why_executive_program_qualified": "周振华作为建筑集团人力资源副总裁，管理数千名员工，直接参与集团战略决策。他主导过组织变革、新业务孵化、人才激励等复杂项目，责任规模完全符合中欧高管项目对高级管理者的要求。他的行业经验和职能深度能够为同学提供独特视角。",
+    "general_profile": {
+      "professional_identity": "周振华作为建筑行业人力资源副总裁，二十余年经历塑造了从业务视角审视组织与人的习惯。他熟悉项目周期、成本结构和用工生态，习惯用经营语言与业务负责人对话，并将人力问题转化为可量化的管理议题。",
+      "core_motives": "他长期被进步和增长驱动，渴望证明自己能在复杂组织中创造可见成果。他重视职业成就和行业认可，最不愿失去的是对局面的掌控感和专业声誉。他追求持续改进，拒绝平庸，把挑战视为成长机会。",
+      "self_concept_and_status": "他自视为务实的问题解决者，兼具业务敏感和人力专业。他看重上级和同僚的评价，尤其在组织变革中希望被看作关键推动者。他自信但不过度张扬，倾向于用成果说话，同时在意自己在行业内的影响力。",
+      "information_search_and_stopping": "他很难接受“够用”，会持续搜索更优方案，在关键决策上反复比较，提高自己的停手门槛。但信息复杂时，他先抓最直观的线索，如成本、工期、人员流动率等硬指标，再决定是否深入。停手条件通常是找到足够支撑决策的逻辑闭环。",
+      "cognitive_effort": "他愿意投入大量思考在组织设计和人才激励上，会分析到细节，但也依赖经验捷径，尤其面对熟悉场景时快速判断。他偏好结构化思考，将复杂问题拆解为可管理模块，但不会无限深挖，注重效率。",
+      "belief_updating": "他会主动问自己可能错在哪里，在听到扎实反证时能明显调整。他尊重数据和事实，但也需要逻辑和实际案例支撑。他听取异议时保持开放，但会评估信息来源的可靠性，不会轻易被说服。",
+      "risk_posture": "他强烈厌恶经营波动，宁可放弃上行空间也要降低失控概率。在决策中，他优先考虑稳定性和可预测性，对高不确定性方案持谨慎态度，但若风险可控且回报明确，他愿意承担有限风险。",
+      "ambiguity_response": "面对信息不足或规则不明时，他情绪上会保持警惕，行动上则积极寻找关键支点，如核心数据、专家意见或小范围试点，以建立可解释性。他能在部分未知下推进，但需要确保有退路和监控机制。",
+      "goal_regulation": "他受进步和获得驱动，但也极重视责任和避损。压力下，他更倾向于保守和稳健，确保不出大错，同时仍会寻找改进空间。他的目标设定往往兼顾短期成效和长期积累，偏好双赢路径。",
+      "time_orientation": "他短期与长期大体并重，常寻找能兼顾两者的路径。他会为长期目标投入资源，但也会设定短期里程碑以维持动力。他警惕短视行为，但也避免过于长远而脱离现实。",
+      "action_and_recovery": "他有很强的启动能力，一旦决定就迅速行动，尤其在有阻力时反而更进入状态。受挫后，他能较快恢复，通过复盘调整策略，重新出发。他倾向于用行动化解焦虑，持续行动是他的应对机制。",
+      "interpersonal_and_power_style": "他对待上级尊重且主动汇报，善于管理预期；对下属既授权又监控，强调结果导向；对同级合作时保持专业，但也会为资源竞争；对外部伙伴则建立互信，注重长期关系。他在权力结构中不张扬，但会通过影响力推动事情。",
+      "communication_style": "他说话务实，节奏平稳，常用数据和案例论证，话不多但要点清晰。被挑战时，他会先倾听，再以事实回应，不会情绪化。他善于用通俗语言解释复杂问题，但在专业领域会使用行业术语。",
+      "stress_pattern": "压力升高时，他会更关注风险控制，决策趋于保守，可能过度分析。他也会更强调执行和纪律，对下属要求更严。但长期压力下，他可能变得急躁，偶尔忽视他人感受。",
+      "internal_contradictions": "他一方面追求完美和持续提升，另一方面又厌恶波动，导致在创新与稳定之间摇摆。他渴望被认可，但又不愿过度表现，在自我展示上显得克制。他信任数据，但关键时刻也依赖直觉。他重视家庭，却常因工作缺席。",
+      "blind_spots": "他可能低估非理性因素在决策中的作用，过于依赖量化指标。由于长期在建筑行业，他可能对行业外的新趋势反应较慢，且对技术驱动的变革敏感度不足。他习惯从人力视角看问题，有时忽略市场或财务的深层影响。",
+      "profile_narrative": "周振华是一位在建筑行业深耕二十余年的人力资源高管，他的职业路径清晰而稳定：从基层专员到集团副总裁，始终在组织与人力资源领域，但从未脱离业务。他熟悉建筑行业的项目周期、成本结构和用工生态，习惯用经营语言与业务负责人对话，并将人力问题转化为可量化的管理议题。他的职业经历塑造了他务实、稳健、注重结果的行为风格。\n他很难接受“够用”的状态，在关键决策上会持续搜索、反复比较，提高自己的停手门槛。但在信息复杂时，他会先抓最直观的判断线索，如成本、工期、人员流动率等硬指标。他主动寻求反证，听到扎实的反驳时会调整立场，但需要数据和逻辑支撑。他强烈厌恶经营波动，宁可放弃上行空间也要降低失控概率，因此在风险决策上偏向保守。不过，他也能在部分未知下推进，前提是找到几个关键支点来保持可解释性。\n他长期被进步和增长驱动，渴望证明自己能在复杂组织中创造可见成果，这使他在机会面前愿意暴露一点风险，但会仔细权衡。他短期与长期并重，常寻找兼顾两者的路径，例如在推动组织变革时，既设定短期里程碑，也投资长期人才梯队。他有很强的启动和恢复能力，越有阻力越能进入持续行动状态，受挫后能快速复盘并重新出发。\n在人际互动中，他对待上级尊重且主动汇报，对下属则授权与监控并重，强调结果导向。他沟通务实，话不多但要点清晰，被挑战时以事实回应。压力下，他会更关注风险控制，决策趋于保守，但长期压力也可能使他变得急躁。\n他的内心存在矛盾：一方面追求完美和持续提升，另一方面又厌恶波动，导致在创新与稳定间摇摆；他渴望被认可，但又不愿过度表现。他的盲区在于可能低估非理性因素，且对行业外的新趋势反应较慢。尽管如此，他始终以行动为导向，在变革中寻找平衡，是一位值得信赖的经营者伙伴。"
+    },
+    "task_context_term_hits": [],
+    "synthetic": true
+  },
+  {
+    "schema": "career_general_profile_v2",
+    "persona_id": "CGP07",
+    "seed": "20260812-career-family-oos-16:7",
+    "demographic_seed": {
+      "name": "吴明轩",
+      "gender": "male",
+      "age": 36,
+      "reference_year": 2026,
+      "birth_year": 1990,
+      "education": "本科（985/211）",
+      "estimated_career_start_age": 22,
+      "estimated_career_start_year": 2012,
+      "estimated_career_years": 14,
+      "overseas": "无",
+      "home_region": "湖南",
+      "current_region": "长三角",
+      "first_industry_hint": "智能制造",
+      "current_industry_hint": "智能制造",
+      "first_function_hint": "技术与研发",
+      "current_function_hint": "技术与研发",
+      "current_role_hint": "技术与研发负责人",
+      "management_scope_hint": "负责新业务孵化和老业务改造",
+      "family_life_seed": {
+        "partnership_status": "已婚或长期伴侣关系稳定",
+        "children": [
+          {
+            "relation": "女儿",
+            "age": 11,
+            "life_stage": "小学阶段",
+            "living_arrangement": "同住或经常回家",
+            "everyday_contact": "工作日参与有限，周末投入较多"
+          },
+          {
+            "relation": "女儿",
+            "age": 5,
+            "life_stage": "学龄前",
+            "living_arrangement": "同住或经常回家",
+            "everyday_contact": "工作日参与有限，周末投入较多"
+          }
+        ],
+        "elder_generation": {
+          "relation": "岳母",
+          "age": 62,
+          "living": true,
+          "proximity": "住在同一小区或车程半小时内",
+          "health_and_independence": "身体基本健康，生活独立",
+          "personal_involvement": "平时保持联系，需要时到场处理"
+        },
+        "household_snapshot": "已婚或长期伴侣关系稳定；2个子女，其中2个未成年；主要牵挂的老人是岳母，住在同一小区或车程半小时内",
+        "current_region": "长三角"
+      },
+      "career_trajectory": {
+        "type": "stable_specialist",
+        "core_industry": "智能制造",
+        "core_function": "技术与研发",
+        "allowed_industries": [
+          "智能制造"
+        ],
+        "allowed_functions": [
+          "技术与研发"
+        ],
+        "stage_count_min": 4,
+        "stage_count_max": 5,
+        "max_employer_changes": 2,
+        "max_function_changes": 0,
+        "max_industry_changes": 0,
+        "allow_entrepreneurship_or_family_business": false
+      },
+      "qualification_gate": "职业责任、组织规模和经营经历必须足以合理申请中欧或同级高管项目"
+    },
+    "behavioral_fingerprint": {
+      "maximizing_satisficing": 0.09,
+      "need_for_cognition": 0.37,
+      "actively_open_minded_thinking": 0.68,
+      "risk_propensity_business": 0.21,
+      "ambiguity_tolerance": 0.61,
+      "regulatory_focus_promotion": 0.96,
+      "consideration_future_consequences": 0.67,
+      "action_orientation": 0.21
+    },
+    "behavioral_directives": {
+      "maximizing_satisficing": "有一个能过线的方案便愿意停手，不会为了最优解持续扩展选项。",
+      "need_for_cognition": "只在必要处下功夫，信息一复杂就会先抓最直观的判断线索。",
+      "actively_open_minded_thinking": "会主动问自己可能错在哪里，遇到扎实反证时能明显调整。",
+      "risk_propensity_business": "愿意承担有限风险，但必须保留退出通道和可承受的最坏结果。",
+      "ambiguity_tolerance": "能在信息缺口中行动，并通过试探和反馈逐步形成判断。",
+      "regulatory_focus_promotion": "强烈追求跃迁和突破，容易把没有前进体验为一种失败。",
+      "consideration_future_consequences": "愿意牺牲部分近期结果来换取能力、关系或组织基础。",
+      "action_orientation": "可以启动熟悉事项，但遇到阻力会反复回看决定并放慢执行。"
+    },
+    "name": "吴明轩",
+    "demographic_realization": {
+      "gender": "male",
+      "age": 36,
+      "highest_education": "本科（985/211）",
+      "education_detail": "985/211高校机械工程专业，2012年本科毕业",
+      "regional_background": "湖南人，大学毕业后进入长三角智能制造行业，此后一直在此发展",
+      "overseas_detail": "无"
+    },
+    "career_history": [
+      {
+        "stage": 1,
+        "start_age": 22,
+        "end_age": 26,
+        "start_year": 2012,
+        "end_year": 2016,
+        "region": "长三角",
+        "industry": "智能制造",
+        "organization": "恒锐智能装备有限公司",
+        "company_type": "民营智能制造系统集成商，规模约200人，处于快速成长期",
+        "function": "技术与研发",
+        "title": "机械设计工程师",
+        "transition_bridge": "本科机械工程专业，通过校招进入智能制造行业，从基础机械设计岗开始积累经验",
+        "responsibilities": "负责自动化产线中的非标机械结构设计，包括3D建模、出图、BOM整理，并支持装配调试。参与客户现场需求调研，根据客户工艺要求进行方案设计。",
+        "major_events": "参与了多个汽车零部件装配线的设计项目，其中一条发动机装配线成功交付，成为公司标杆项目。",
+        "skills_and_contacts_gained": "掌握了非标自动化设备设计流程，熟悉机械加工工艺和装配规范，积累了与客户现场沟通的经验。",
+        "reason_for_move": "希望在技术深度上继续成长，对设备整体系统产生兴趣，主动申请转入研发部门，从事平台化产品开发。"
+      },
+      {
+        "stage": 2,
+        "start_age": 26,
+        "end_age": 30,
+        "start_year": 2016,
+        "end_year": 2020,
+        "region": "长三角",
+        "industry": "智能制造",
+        "organization": "恒锐智能装备有限公司",
+        "company_type": "同一公司，规模发展至600人，业务向标准化产品转型",
+        "function": "技术与研发",
+        "title": "研发项目经理",
+        "transition_bridge": "在机械设计工程师岗位积累的结构设计能力和客户现场经验，通过内部转岗和公司新项目机会，转入研发部门，开始负责项目整体规划",
+        "responsibilities": "负责公司新产品线的研发项目管理，从需求定义、方案设计到试制和量产导入。管理5-8人的跨职能团队，协调机械、电气、软件工程师，控制项目进度和预算。",
+        "major_events": "主导开发了公司首款标准化装配工作站，成功推向市场，成为公司主打产品之一，为公司带来约5000万元的年营收。",
+        "skills_and_contacts_gained": "积累了项目管理和团队协调经验，深入理解产品平台化开发方法，建立了与供应商和客户的紧密合作关系。",
+        "reason_for_move": "公司业务扩张，成立新的智能装配事业部，我被任命为技术负责人，负责新业务的技术研发和团队搭建。"
+      },
+      {
+        "stage": 3,
+        "start_age": 30,
+        "end_age": 33,
+        "start_year": 2020,
+        "end_year": 2023,
+        "region": "长三角",
+        "industry": "智能制造",
+        "organization": "恒锐智能装备有限公司（智能装配事业部）",
+        "company_type": "事业部独立核算，规模约150人，面向新能源行业提供智能化装配解决方案",
+        "function": "技术与研发",
+        "title": "技术经理",
+        "transition_bridge": "在研发项目经理岗位上积累的产品开发和管理能力，被公司任命为事业部技术经理，全面负责技术团队",
+        "responsibilities": "全面负责事业部技术团队（20余人）的管理，制定技术路线和产品规划。主导新产品的研发，包括数字化产线集成和工业软件应用。直接向事业部总经理汇报，参与事业部经营决策。",
+        "major_events": "带领团队成功交付某知名新能源电池厂商的智能装配线项目，合同金额过亿元，成为公司进入新能源领域的标志性项目。",
+        "skills_and_contacts_gained": "积累了技术团队建设和管理经验，深入理解新能源制造工艺，建立了与行业大客户的合作关系。",
+        "reason_for_move": "事业部发展需要，我被提升为事业部技术和研发负责人，同时公司要求我承担老业务改造的责任。"
+      },
+      {
+        "stage": 4,
+        "start_age": 33,
+        "end_age": 36,
+        "start_year": 2023,
+        "end_year": 2026,
+        "region": "长三角",
+        "industry": "智能制造",
+        "organization": "恒锐智能装备有限公司（智能装配事业部）",
+        "company_type": "事业部规模增至300人，公司整体计划上市，业务向数字化和整体解决方案转型",
+        "function": "技术与研发",
+        "title": "事业部技术与研发负责人",
+        "transition_bridge": "在技术经理岗位上全面负责事业部技术工作，积累了技术战略和管理经验，被正式任命为技术与研发负责人，并承担新业务孵化和老业务改造责任",
+        "responsibilities": "负责事业部技术战略规划、产品路线图、研发团队管理（50余人）。主导新业务孵化（如数字化运维服务）和老业务改造（传统装配线升级为智能制造单元）。参与公司级技术委员会，制定技术标准。",
+        "major_events": "成功孵化数字化运维产品，形成新的利润增长点；主导老客户产线改造项目，提升公司整体毛利率。",
+        "skills_and_contacts_gained": "提升了技术商业化能力和战略思维，建立了行业影响力，积累了与高层客户和合作伙伴的关系。",
+        "reason_for_move": "继续留任，当前责任和挑战符合个人职业发展目标，并计划通过高管教育进一步提升战略领导力。"
+      }
+    ],
+    "current_position": {
+      "role": "技术与研发负责人",
+      "industry": "智能制造",
+      "primary_function": "技术与研发",
+      "company_context": "恒锐智能装备有限公司，民营，规模约1500人，正处于上市准备期，业务涵盖自动化装备、智能产线、数字化服务，事业部独立核算，约300人",
+      "management_scope": "管理50余人的研发团队，负责事业部技术战略和产品规划，管辖地域为长三角，直接负责的营收超2亿元，对事业部利润负责",
+      "customers_and_stakeholders": "日常面对事业部总经理、公司技术委员会、直接下属团队、客户（如新能源电池、汽车零部件制造商）、供应商和合作伙伴",
+      "operating_metrics": "新产品研发周期、研发费用率、产品毛利率、客户项目交付及时率、技术方案中标率等"
+    },
+    "family_life": {
+      "partnership_status": "已婚或长期伴侣关系稳定",
+      "children": [
+        {
+          "relation": "女儿",
+          "age": 11,
+          "life_stage": "小学阶段",
+          "living_arrangement": "同住或经常回家",
+          "everyday_contact": "工作日参与有限，周末投入较多"
+        },
+        {
+          "relation": "女儿",
+          "age": 5,
+          "life_stage": "学龄前",
+          "living_arrangement": "同住或经常回家",
+          "everyday_contact": "工作日参与有限，周末投入较多"
+        }
+      ],
+      "elder_generation": {
+        "relation": "岳母",
+        "age": 62,
+        "living": true,
+        "proximity": "住在同一小区或车程半小时内",
+        "health_and_independence": "身体基本健康，生活独立",
+        "personal_involvement": "平时保持联系，需要时到场处理"
+      },
+      "household_snapshot": "已婚或长期伴侣关系稳定；2个子女，其中2个未成年；主要牵挂的老人是岳母，住在同一小区或车程半小时内",
+      "current_region": "长三角",
+      "household_rhythm": "工作日早出晚归，晚上偶尔加班或应酬，周末尽量留给孩子。岳母住在同一小区，平时帮忙接送孩子，周末家庭聚会。",
+      "concrete_experiences": "大女儿上小学，周末会辅导作业、带她去兴趣班；小女儿5岁，喜欢缠着爸爸讲故事。岳母身体不错，平时独立生活，但遇到孩子生病或突发情况，会及时过去帮忙。",
+      "family_experience_narrative": "吴明轩是湖南人，大学毕业后在长三角定居。妻子是本地人，两人结婚多年。大女儿11岁，上小学五年级，小女儿5岁，上幼儿园。妻子工作也忙，好在岳母住在同一个小区，平时能帮忙接送孩子，让夫妻俩安心工作。吴明轩工作日的节奏是早出晚归，早上送女儿上学，晚上有时加班，赶不上晚饭。但周末他尽量不安排工作，陪女儿去上兴趣班，带小女儿去公园，或者一家人在岳母家吃顿饭。岳母62岁，身体硬朗，平时不用操心，但遇到孩子生病或者学校临时有事，他总是第一个被叫到。去年岳母体检时发现血压有点高，他专门请了半天假带她去医院复查，之后叮嘱她按时吃药。虽然工作责任重，但家庭是他生活的重心，他也尽量平衡。"
+    },
+    "career_narrative": "吴明轩，1990年生于湖南，2012年从一所985/211高校机械工程专业本科毕业后，进入长三角一家民营智能制造企业——恒锐智能装备有限公司，担任机械设计工程师。起初四年，他埋头于非标自动化设备的结构设计，参与汽车零部件装配线项目，熟悉了从需求到交付的全流程。2016年，他主动转入研发部门，开始担任研发项目经理，负责公司首款标准化装配工作站的开发。这个项目让他从单一设计角色转变为跨职能团队的协调者，也让他意识到技术管理的重要性。项目成功后，公司成立智能装配事业部，他被任命为技术经理，负责20多人的技术团队，主导了新能源电池智能装配线的交付，合同金额过亿，帮助公司顺利切入新能源领域。2023年，他被提升为事业部技术与研发负责人，全面负责技术战略、产品规划以及团队管理。此时，他不仅要带领50余人的研发团队，还要承担新业务孵化和老业务改造的双重责任：一方面，他主导开发了数字化运维服务，为公司开辟新的利润增长点；另一方面，他推动传统装配线升级为智能制造单元，帮助老客���提质增效。十四年来，他始终扎根智能制造行业，从一名工程师成长为公司核心技术决策者。他熟悉产品从0到1的全过程，也经历了企业从小到大的扩张，对技术商业化、团队管理和战略规划都有深刻理解。如今，他正处于职业的关键期，希望进一步提升战略视野和领导力，以带领事业部乃至公司在智能化浪潮中持续领先。",
+    "why_executive_program_qualified": "",
+    "general_profile": {
+      "professional_identity": "以智能制造行业技术负责人视角看问题，习惯从产品全生命周期和项目交付角度评估信息，关注方案的工程可实现性、成本与交付周期，熟悉从设计到量产的技术细节，重视团队协作和客户需求。",
+      "core_motives": "长期驱动力是追求技术突破和职业跃迁，希望带领团队做出行业标杆项目，证明自己的战略和技术能力。最不愿失去行业影响力和团队信任，害怕停滞不前，被时代淘汰。",
+      "self_concept_and_status": "将自己视为从工程师成长起来的实干型技术管理者，自信于技术判断和项目交付能力，但也意识到在纯战略和财务方面有局限。重视在公司和行业内的口碑，希望被视为可靠、能扛事的人。",
+      "information_search_and_stopping": "搜索范围通常聚焦于直接相关的技术方案和案例，不会广泛扫描所有可能。比较时先看关键指标和风险，一旦有方案能通过基本门槛（如成本、周期、技术可行性），就愿意停手，不追求完美。",
+      "cognitive_effort": "愿意在关键决策上投入深度思考，但信息复杂时倾向用经验捷径，比如先看客户反馈和过往项目数据。分析到能支撑决策的程度就停止，不会过度分析。",
+      "belief_updating": "会主动问自己可能错在哪里，尤其在项目复盘时。遇到扎实反证（如客户数据不符、测试失败）能明显调整方案，但需要证据充分，否则会坚持原判断。",
+      "risk_posture": "愿意承担有限风险，但必须保留退出通道和可承受的最坏结果。比如在新业务孵化时，会设定小规模试点，确保失败损失可控。对风险有量化意识，权衡概率和影响。",
+      "ambiguity_response": "信息不足时能先行动，通过小步试探和反馈逐步形成判断。情绪上会有些焦虑，但行动上保持推进，不断收集信息调整方向。",
+      "goal_regulation": "更受进步获得驱动，追求跃迁和突破，容易把没有前进体验为失败。压力下会加倍努力，但可能忽视团队负荷，需要他人提醒。",
+      "time_orientation": "短期与长期结果加权时，愿意牺牲部分近期结果换取长期能力、关系或组织基础。例如花时间培养新人，虽然短期效率低，但长期收益大。",
+      "action_and_recovery": "决定后能快速启动熟悉事项，但遇到阻力会反复回看决定，放慢执行。受挫后需要时间反思，但能恢复并调整策略，不会一蹶不振。",
+      "interpersonal_and_power_style": "在下属面前是技术权威，但愿意倾听技术细节；对老板尊重但会坚持技术判断；对同级合作以目标导向，对客户和供应商保持专业距离。整体上务实、直接，但有时显得固执。",
+      "communication_style": "语言简洁，喜欢用数据和事实论证，话不多但切中要害。被挑战时，如果对方有数据支撑，会认真考虑；如果感觉是空谈，会不自觉地反驳。",
+      "stress_pattern": "压力升高时，会更聚焦于技术细节，减少沟通，可能显得急躁，但决策上会更保守，反复确认风险。",
+      "internal_contradictions": "一方面追求突破和跃迁，愿意冒险；另一方面对已有决策的坚持和阻力时的犹豫，显得保守。既想授权团队，又习惯亲自把控技术细节。既重视长期关系，又会在短期目标前牺牲人情。",
+      "blind_spots": "稳定盲区包括对非技术部门（如财务、市场）的视角理解不足，容易低估组织政治的影响；对团队情感需求关注不够，可能被视为冷漠。源于长期技术背景和项目导向。",
+      "profile_narrative": "吴明轩的职业轨迹深深烙印在智能制造行业，从机械设计工程师到技术与研发负责人，他始终在技术和管理之间寻找平衡。他看信息的方式带着工程师的务实：先看可行性、成本、周期，而不是理论最优。面对复杂信息，他习惯抓最直观的线索，比如客户反馈和项目数据，一旦有方案能过线，他就不再纠结于完美。这种风格在快速迭代的行业里有效，但也让他有时过早停手，错过更好的方案。\n他的核心驱动力是突破和跃迁，这源于他从基层一步步上来的经历。他渴望证明自己不仅能做技术，还能做战略，所以他会主动承担新业务孵化，哪怕有风险。但他对风险的态度是‘有限冒险’：必须保留退路。比如在数字化运维产品上，他先做小范围试点，确保失败可控。这种谨慎与他的突破欲形成张力，让他既敢闯又怕输。\n信息缺口时，他能行动，但会不断试探和反馈。他会在小范围试错中建立信心，而不是等待完美信息。他善于自我质疑，遇到扎实反证会调整，但需要证据足够硬。他尊重数据和事实，这让他能听进异议，但也可能忽视非技术因素。\n时间取向上，他愿意牺牲短期结果换取长期基础，比如花精力培养团队和客户关系。他看重能力、关系和组织的长期积累，这让他愿意投入可能短期不赚钱的项目。但这也意味着他有时会忽略短期业绩压力，需要平衡。\n在团队管理上，他是典型的‘技术型领导’：关注细节，喜欢亲自把关，有时会过度干预。他对下属要求高，但也会给予技术指导。对老板，他尊重但坚持己见，尤其在技术方向上。\n他的内部矛盾在于：既想授权，又怕失控；既想突破，又怕失败；既重视长期，又受短期压力。这些张力让他有时显得犹豫，但也是他不断反思和成长的基础。他的盲区在于对非技术视角的忽视，以及对自己团队情感需求的迟钝，这源于他长期的技术训练和项目导向。\n总体而言，吴明轩是一个务实、有野心、有自省力的技术管理者，他的行为模式深受职业经历影响，但也带着个人特质。他需要学会在追求突破的同时，更好地平衡风险、团队和长期目标。"
+    },
+    "task_context_term_hits": [],
+    "synthetic": true
+  },
+  {
+    "schema": "career_general_profile_v2",
+    "persona_id": "CGP08",
+    "seed": "20260812-career-family-oos-16:8",
+    "demographic_seed": {
+      "name": "郑承宇",
+      "gender": "male",
+      "age": 37,
+      "reference_year": 2026,
+      "birth_year": 1989,
+      "education": "本科（非985）",
+      "estimated_career_start_age": 22,
+      "estimated_career_start_year": 2011,
+      "estimated_career_years": 15,
+      "overseas": "无",
+      "home_region": "河南",
+      "current_region": "河南",
+      "first_industry_hint": "连锁零售",
+      "current_industry_hint": "连锁零售",
+      "first_function_hint": "财务与投资",
+      "current_function_hint": "财务与投资",
+      "current_role_hint": "财务负责人",
+      "management_scope_hint": "负责 3-8 亿年营收业务",
+      "family_life_seed": {
+        "partnership_status": "离异，目前单身",
+        "children": [
+          {
+            "relation": "女儿",
+            "age": 12,
+            "life_stage": "小学阶段",
+            "living_arrangement": "同住或经常回家",
+            "everyday_contact": "主要由伴侣或长辈照料，自己在关键事务上参与"
+          }
+        ],
+        "elder_generation": {
+          "relation": "母亲",
+          "age": 66,
+          "living": true,
+          "proximity": "住在同一小区或车程半小时内",
+          "health_and_independence": "有慢性病但能独立生活",
+          "personal_involvement": "每周见面，并承担部分就医和事务安排"
+        },
+        "household_snapshot": "离异，目前单身；1个子女，其中1个未成年；主要牵挂的老人是母亲，住在同一小区或车程半小时内",
+        "current_region": "河南"
+      },
+      "career_trajectory": {
+        "type": "stable_specialist",
+        "core_industry": "连锁零售",
+        "core_function": "财务与投资",
+        "allowed_industries": [
+          "连锁零售"
+        ],
+        "allowed_functions": [
+          "财务与投资"
+        ],
+        "stage_count_min": 4,
+        "stage_count_max": 5,
+        "max_employer_changes": 2,
+        "max_function_changes": 0,
+        "max_industry_changes": 0,
+        "allow_entrepreneurship_or_family_business": false
+      },
+      "qualification_gate": "职业责任、组织规模和经营经历必须足以合理申请中欧或同级高管项目"
+    },
+    "behavioral_fingerprint": {
+      "maximizing_satisficing": 0.19,
+      "need_for_cognition": 0.54,
+      "actively_open_minded_thinking": 0.92,
+      "risk_propensity_business": 0.35,
+      "ambiguity_tolerance": 0.8,
+      "regulatory_focus_promotion": 0.13,
+      "consideration_future_consequences": 0.91,
+      "action_orientation": 0.43
+    },
+    "behavioral_directives": {
+      "maximizing_satisficing": "有一个能过线的方案便愿意停手，不会为了最优解持续扩展选项。",
+      "need_for_cognition": "既能分析也会凭经验，投入多少思考取决于责任和兴趣。",
+      "actively_open_minded_thinking": "习惯邀请最强反对意见，并愿意推翻自己已经投入很多的判断。",
+      "risk_propensity_business": "愿意承担有限风险，但必须保留退出通道和可承受的最坏结果。",
+      "ambiguity_tolerance": "对开放、无标准答案的问题感到兴奋，愿意边行动边定义问题。",
+      "regulatory_focus_promotion": "主要以避免损失、履行责任和不出差错来判断自己是否做对。",
+      "consideration_future_consequences": "习惯按多年尺度衡量选择，容易低估当前人的耐心和现金压力。",
+      "action_orientation": "执行状态受团队响应和个人精力影响，顺时推进、逆时停顿。"
+    },
+    "name": "郑承宇",
+    "demographic_realization": {
+      "gender": "male",
+      "age": 37,
+      "highest_education": "本科（非985）",
+      "education_detail": "2007-2011年就读于河南财经政法大学会计学专业，获管理学学士学位，非985院校。",
+      "regional_background": "出生于河南，成长于河南，教育和工作均在河南，无海外经历，未跨省迁移。",
+      "overseas_detail": "无"
+    },
+    "career_history": [
+      {
+        "stage": 1,
+        "start_age": 22,
+        "end_age": 26,
+        "start_year": 2011,
+        "end_year": 2015,
+        "region": "郑州",
+        "industry": "连锁零售",
+        "organization": "河南家福连锁超市有限公司",
+        "company_type": "区域性民营连锁超市，门店数从20家发展到50家，年营收约3亿元，处于快速扩张期。",
+        "function": "财务与投资",
+        "title": "财务专员/总账会计",
+        "transition_bridge": "本科会计学专业，通过校招进入公司财务部，从基础核算岗位开始。",
+        "responsibilities": "负责门店日常账务处理、费用报销审核、编制单体财务报表，协助进行库存盘点和差异分析。",
+        "major_events": "参与公司ERP系统上线，负责财务模块的数据整理和流程测试。",
+        "skills_and_contacts_gained": "掌握零售企业财务核算流程，熟悉门店运营数据，与各门店店长及采购部门建立联系。",
+        "reason_for_move": "在基础岗位积累两年后，希望承担更大责任，主动申请参与公司扩张项目，获得领导认可。"
+      },
+      {
+        "stage": 2,
+        "start_age": 26,
+        "end_age": 30,
+        "start_year": 2015,
+        "end_year": 2019,
+        "region": "郑州",
+        "industry": "连锁零售",
+        "organization": "河南家福连锁超市有限公司",
+        "company_type": "区域性民营连锁超市，门店数达到80家，年营收约6亿元，筹备新区域拓展。",
+        "function": "财务与投资",
+        "title": "财务经理助理/门店拓展财务负责人",
+        "transition_bridge": "由于前期工作表现和熟悉门店业务流程，被调入新店拓展项目组，兼任财务经理助理，在财务经理指导下学习预算编制和投资分析。",
+        "responsibilities": "负责新店选址的财务测算、投资回报分析，编制新店筹备预算，跟踪新店开业后的业绩表现。",
+        "major_events": "主导了公司在豫南地区10家新店的选址财务评估，成功推动3家核心门店落地；参与了公司收购本地小型超市的尽职调查和财务整合。",
+        "skills_and_contacts_gained": "掌握了零售门店投资评估模型，熟悉区域市场租金、人工等成本结构，积累了与商业地产开发商的谈判经验。",
+        "reason_for_move": "公司财务经理离职，因熟悉业务且具备一定管理能力，被提拔为财务经理，职责范围扩大。"
+      },
+      {
+        "stage": 3,
+        "start_age": 30,
+        "end_age": 34,
+        "start_year": 2019,
+        "end_year": 2023,
+        "region": "郑州",
+        "industry": "连锁零售",
+        "organization": "河南家福连锁超市有限公司",
+        "company_type": "区域性民营连锁超市，门店数达到120家，年营收约8亿元，实施数字化转型。",
+        "function": "财务与投资",
+        "title": "财务经理",
+        "transition_bridge": "前阶段积累了门店拓展和财务管理的双重经验，被正式任命为财务经理，全面负责公司财务核算、预算和资金管理。",
+        "responsibilities": "管理财务团队12人，负责全公司预算编制、资金调度、税务筹划、财务报表分析，参与公司战略规划和新项目投资决策。",
+        "major_events": "主导公司财务共享中心建设，实现门店财务流程标准化；推进公司信息化系统升级，对接线上销售业务；疫情期间负责成本控制和现金流管理，确保公司平稳运营。",
+        "skills_and_contacts_gained": "提升团队管理和跨部门协调能力，深入了解零售行业盈利模式，与银行、税务等外部机构建立良好关系。",
+        "reason_for_move": "公司被省内一家大型零售集团并购，看好新的发展平台，选择留任并继续担任财务负责人相关职责。"
+      },
+      {
+        "stage": 4,
+        "start_age": 34,
+        "end_age": 37,
+        "start_year": 2023,
+        "end_year": 2026,
+        "region": "郑州",
+        "industry": "连锁零售",
+        "organization": "中原华联商业集团",
+        "company_type": "大型零售集团，旗下拥有多个业态，年营收超30亿元，处于整合期。",
+        "function": "财务与投资",
+        "title": "财务负责人",
+        "transition_bridge": "由于原公司被并购，因熟悉业务且业绩突出，被新集团任命为旗下连锁超市板块的财务负责人，职责进一步扩展到集团层面。",
+        "responsibilities": "负责超市板块（年营收约8亿元）的财务全面管理，包括预算、资金、税务、财务分析，参与集团并购整合和业务优化决策。",
+        "major_events": "主导了并购后财务系统整合，统一核算标准；推动供应链成本优化项目，提升毛利率2个百分点；参与集团新物流中心投资项目，负责财务可行性分析。",
+        "skills_and_contacts_gained": "积累了大型集团财务管理经验，提升了战略思维和资本运作能力，熟悉多业态协同管理。",
+        "reason_for_move": "继续留任，利用集团平台进一步深化财务与业务融合，推动企业价值提升。"
+      }
+    ],
+    "current_position": {
+      "role": "财务负责人",
+      "industry": "连锁零售",
+      "primary_function": "财务与投资",
+      "company_context": "民营大型零售集团，年营收超30亿元，业务涵盖超市、便利店、物流等，正处于并购整合和数字化转型阶段。",
+      "management_scope": "负责超市板块（年营收约8亿元）的财务团队，直接管理10人，间接管理30人，涉及预算、资金、税务、财务分析及投资决策。",
+      "customers_and_stakeholders": "日常面对集团CFO、业务部门负责人、门店店长，对外与银行、税务、审计等机构沟通，影响集团战略决策。",
+      "operating_metrics": "月度重点关注销售额、毛利率、库存周转率、费用率、现金流、投资回报率等指标。"
+    },
+    "family_life": {
+      "partnership_status": "离异，目前单身",
+      "children": [
+        {
+          "relation": "女儿",
+          "age": 12,
+          "life_stage": "小学阶段",
+          "living_arrangement": "同住或经常回家",
+          "everyday_contact": "主要由伴侣或长辈照料，自己在关键事务上参与"
+        }
+      ],
+      "elder_generation": {
+        "relation": "母亲",
+        "age": 66,
+        "living": true,
+        "proximity": "住在同一小区或车程半小时内",
+        "health_and_independence": "有慢性病但能独立生活",
+        "personal_involvement": "每周见面，并承担部分就医和事务安排"
+      },
+      "household_snapshot": "离异，目前单身；1个子女，其中1个未成年；主要牵挂的老人是母亲，住在同一小区或车程半小时内",
+      "current_region": "河南",
+      "household_rhythm": "工作日通常在办公室或门店，周末偶尔加班，但尽量保证周日休息。女儿随母亲生活，每周三和周末接来同住，日常照料主要由前妻和母亲协助，本人负责接送及辅导作业。母亲住在同一小区，每周至少见面两三次，带她去医院复查或配药。",
+      "concrete_experiences": "女儿12岁，小学六年级，周末会带她去公园或辅导功课，关注小升初择校。母亲66岁，有高血压和糖尿病，每月陪她复查，帮她调整饮食。",
+      "family_experience_narrative": "作为单亲父亲，我的生活围绕工作和女儿展开。工作日早起送女儿上学，然后去公司；晚上有时加班，但尽量在女儿睡前回家，周末会抽一天专门陪她。母亲就住隔壁小区，我常去她家吃饭，帮她处理手机缴费、网上挂号等琐事。前妻在本地，我们共同负责女儿的教育和活动。女儿懂事，学习成绩中上，我辅导她数学作业，也鼓励她参加绘画班。母亲身体时有小病，但能自理，住院时我全程陪护。这些家庭责任让我更懂得合理分配时间，也让我在管理团队时更注重效率。"
+    },
+    "career_narrative": "郑承宇出生于河南，2011年从河南财经政法大学会计学专业毕业，进入郑州一家区域性连锁超市做财务专员。他从基础核算开始，两年后参与公司ERP上线，熟悉了零售业务流程。2015年，他升任财务经理助理，负责新店选址的财务测算，参与收购项目，积累了投资分析经验。2019年成为财务经理，管理团队，推动财务共享中心建设，疫情期间保障现金流。2023年公司被大型集团并购，他因业绩突出被任命为集团旗下超市板块财务负责人，主导财务整合和成本优化。至今，他已在连锁零售行业深耕15年，从核算到管理，再到战略财务，始终聚焦财务与投资职能，熟悉门店运营，擅长预算、投资和资金管理。他性格沉稳，工作务实，在河南本地积累了丰富的人脉和行业经验，并继续深造学习，以应对集团化管理的挑战。",
+    "why_executive_program_qualified": "郑承宇拥有15年连锁零售行业财务与投资管理经验，从基层会计成长为核心业务板块财务负责人，管理年营收8亿元的业务，团队规模30人。他主导过并购整合、财务共享中心建设、供应链成本优化等多个重大项目，直接参与投资决策，具备战略思维和实际操盘能力。作为集团重点培养的高层管理人员，他需要提升宏观视野和领导力，以应对集团多元化发展的需求。中欧的高管项目能帮助他系统化梳理经验，对接国际最佳实践，且他的资历、职位和公司平台完全符合中欧高管项目的招生要求。",
+    "general_profile": {
+      "professional_identity": "以零售财务为镜，看穿数字背后的业务逻辑。习惯从门店运营、库存周转和现金流视角评估一切，对成本结构和投资回报有敏锐直觉。关注预算、资金和效率，视财务为业务决策的基石。",
+      "core_motives": "长期驱动力是避免失败和保住已有成果，不愿让公司或团队因自己判断失误而受损。想证明自己能从核算走向战略，能担当更大责任。最不愿失去的是信任——来自上级、同事和家人的信任，以及自己作为可靠财务人的声誉。",
+      "self_concept_and_status": "自视为务实、稳健的财务管理者，能平衡细节与全局。认为能力来自多年项目和业务积累，而非学历或头衔。在乎他人评价，尤其是上级和下属的认可，但不会刻意迎合。",
+      "information_search_and_stopping": "搜索信息时先看内部数据和历史经验，再参考外部行业报告。比较方案时设定一个可接受底线，一旦找到能过线的方案便停手，不追求最优解。停手规则是：满足核心财务指标、风险可控、团队能执行。",
+      "cognitive_effort": "思考深度取决于责任大小和兴趣。对重大项目会做详细分析和多方案推演，对常规事务则凭经验快速决策。分析时注重关键假设和敏感性测试，但不会无限细化。经验捷径常在时间紧迫或低风险场景使用。",
+      "belief_updating": "习惯主动邀请最强反对意见，尤其在关键决策前。会认真倾听那些挑战自己判断的人，即使意见可能推翻已投入很多的选择。但更新观点需要数据和逻辑支撑，不会因情绪或压力轻易改变。",
+      "risk_posture": "愿意承担有限风险，但必须保留退出通道和可承受的最坏结果。在投资或扩张前会测算最坏情景，并设置止损点。对损失敏感，偏好稳健方案，但机会明确时也敢下注。",
+      "ambiguity_response": "对开放、无标准答案的问题感到兴奋，会边行动边定义问题。信息不足时，先搭建框架，用假设和试点推进；规则不明时，会主动寻求原则性指导，避免盲目试错。",
+      "goal_regulation": "更受责任和避损驱动，而非追求进步或获得。压力下会强化对风险的控制，更保守、更细致，并可能过度关注负面因素。但团队响应积极时，也能激发进取心，推动更大目标。",
+      "time_orientation": "习惯按多年尺度衡量选择，重视长期稳定和可持续性。容易低估当前人的耐心和现金压力，有时会为长期利益忽视短期阵痛。但现在开始更注意短期现金流和团队士气。",
+      "action_and_recovery": "决定后行动果断，先定里程碑和责任人。执行中依赖团队响应，顺时推进快，逆时停顿，会停下来重新评估。受挫后先复盘原因，再调整方案，恢复期较短，但会记住教训。",
+      "interpersonal_and_power_style": "对上级尊重但不过分迎合，会提供数据支持的观点。对下属授权但保持监督，关心他们的成长。对外部伙伴如银行、税务，保持专业和诚信。冲突时以事实说话，避免情绪化。",
+      "communication_style": "语言简洁、逻辑清晰，常用数据和案例论证。话不多，但关键处会强调。被挑战时，先倾听再回应，不会立即反驳，但会坚持有依据的观点。",
+      "stress_pattern": "压力升高时，会更谨慎和保守，可能过度检查细节，决策速度变慢。同时会加强沟通，寻求团队支持。但压力过大时，也会变得急躁，对低效不耐烦。",
+      "internal_contradictions": "一方面追求稳健、避免风险，另一方面又对模糊问题感到兴奋，愿意尝试新路径。他在长期与短期之间摇摆：习惯按多年尺度规划，但实际中常因现金压力而妥协。此外，他重视团队意见，但关键决策时仍倾向独自承担。",
+      "blind_spots": "稳定盲区是低估短期执行中的现实阻力，如人的耐心和现金压力。这源于他长期在财务规划中关注长期回报，而较少直接面对一线员工的日常困难。",
+      "profile_narrative": "郑承宇是典型的零售财务人，十五年从基层会计做到集团板块财务负责人，数字早已融入他的血液。他看任何业务，第一反应是成本、毛利、现金流和回报周期。这套财务透镜让他擅长在复杂信息中快速提炼关键指标，也让他对风险格外敏感。他务实稳健，习惯设定一个可接受的底线，一旦有方案能过线便不再纠结于最优解。这种停手规则源于他多年在快速扩张的零售业中平衡速度与风险的经验——他深知过度追求完美可能错失时机。但他并非只靠经验，思考深度会随责任和兴趣调整；对重大项目，他会主动邀请最强反对意见，甚至愿意推翻自己投入很多的判断，因为他相信数据比面子更重要。这种开放心态让他能适应模糊情境，甚至对没有标准答案的问题感到兴奋，他相信边行动边定义问题，就像当年参与ERP上线时一样。然而，他骨子里是避损导向的，做对的标准是避免损失、履行责任和不出差错。这使他长期按多年尺度衡量选择，容易低估眼前人的耐心和现金压力。他的行动节奏也受团队响应和个人精力影响，顺时推进，逆时停顿。他自我定位是可靠、有战略眼光的财务负责人，但内心仍有矛盾：既想大胆创新，又怕失控；既重视团队，又习惯独自扛。压力下，他会更保守、更细致，甚至过度检查。他沟通简洁，以数据说话，但也会因压力而急躁。总的来说，郑承宇是一个在数字与人性、稳健与冒险之间不断平衡的实践者，他的职业经历塑造了他审慎而开放的财务思维，也留下了长期与短期、个人与团队之间的张力。"
+    },
+    "task_context_term_hits": [],
+    "synthetic": true
+  },
+  {
+    "schema": "career_general_profile_v2",
+    "persona_id": "CGP10",
+    "seed": "20260812-career-family-oos-16:10",
+    "demographic_seed": {
+      "name": "刘嘉诚",
+      "gender": "male",
+      "age": 45,
+      "reference_year": 2026,
+      "birth_year": 1981,
+      "education": "博士",
+      "estimated_career_start_age": 29,
+      "estimated_career_start_year": 2010,
+      "estimated_career_years": 16,
+      "overseas": "无",
+      "home_region": "陕西",
+      "current_region": "陕西",
+      "first_industry_hint": "新能源设备",
+      "current_industry_hint": "新能源设备",
+      "first_function_hint": "产品与业务",
+      "current_function_hint": "产品与业务",
+      "current_role_hint": "产品事业部负责人",
+      "management_scope_hint": "直接背销售、利润和现金流指标",
+      "family_life_seed": {
+        "partnership_status": "已婚或长期伴侣关系稳定",
+        "children": [
+          {
+            "relation": "儿子",
+            "age": 15,
+            "life_stage": "中学阶段",
+            "living_arrangement": "同住或经常回家",
+            "everyday_contact": "会过问学习和升学，但沟通并不总顺畅"
+          }
+        ],
+        "elder_generation": {
+          "relation": "岳父",
+          "age": 72,
+          "living": true,
+          "proximity": "异地居住",
+          "health_and_independence": "身体基本健康，仍能独立生活",
+          "personal_involvement": "联系频繁，但因异地无法参与多数日常事务"
+        },
+        "household_snapshot": "已婚或长期伴侣关系稳定；1个子女，其中1个未成年；主要牵挂的老人是岳父，异地居住",
+        "current_region": "陕西"
+      },
+      "career_trajectory": {
+        "type": "stable_specialist",
+        "core_industry": "新能源设备",
+        "core_function": "产品与业务",
+        "allowed_industries": [
+          "新能源设备"
+        ],
+        "allowed_functions": [
+          "产品与业务"
+        ],
+        "stage_count_min": 4,
+        "stage_count_max": 5,
+        "max_employer_changes": 2,
+        "max_function_changes": 0,
+        "max_industry_changes": 0,
+        "allow_entrepreneurship_or_family_business": false
+      },
+      "qualification_gate": "职业责任、组织规模和经营经历必须足以合理申请中欧或同级高管项目"
+    },
+    "behavioral_fingerprint": {
+      "maximizing_satisficing": 0.56,
+      "need_for_cognition": 0.89,
+      "actively_open_minded_thinking": 0.2,
+      "risk_propensity_business": 0.76,
+      "ambiguity_tolerance": 0.07,
+      "regulatory_focus_promotion": 0.39,
+      "consideration_future_consequences": 0.48,
+      "action_orientation": 0.94
+    },
+    "behavioral_directives": {
+      "maximizing_satisficing": "会比较几条主要路径，但搜索深度随事情重要性而变化。",
+      "need_for_cognition": "把深度思考本身当成乐趣，会自发建框架、查细节并检验逻辑。",
+      "actively_open_minded_thinking": "会听不同意见，但主要用来修补原方案而非改变基本判断。",
+      "risk_propensity_business": "能够接受较大结果波动，只要机会值得且责任边界清楚。",
+      "ambiguity_tolerance": "信息不完整会显著不安，倾向等待规则、责任和结果范围更清楚。",
+      "regulatory_focus_promotion": "更在意守住已有成果和保护相关人的安全感。",
+      "consideration_future_consequences": "短期兑现与长期积累大体并重，常寻找能兼顾两者的路径。",
+      "action_orientation": "有很强的启动和恢复能力，越有阻力越容易进入持续行动状态。"
+    },
+    "name": "刘嘉诚",
+    "demographic_realization": {
+      "gender": "male",
+      "age": 45,
+      "highest_education": "博士",
+      "education_detail": "2003年本科毕业于西安交通大学电气工程专业，2006年获西安交通大学电气工程硕士，2010年获西安交通大学电气工程博士，研究方向为电力电子与新能源发电技术。",
+      "regional_background": "出生于陕西，成长于西安，求学和工作均在陕西，未长期离开，对本地产业生态熟悉。",
+      "overseas_detail": "无"
+    },
+    "career_history": [
+      {
+        "stage": 1,
+        "start_age": 29,
+        "end_age": 33,
+        "start_year": 2010,
+        "end_year": 2014,
+        "region": "陕西",
+        "industry": "新能源设备",
+        "organization": "秦源新能源设备有限公司",
+        "company_type": "民营股份制企业，专注于光伏逆变器和风力发电变流器的研发与制造，员工约200人，处于成长期。",
+        "function": "产品与业务",
+        "title": "产品工程师",
+        "transition_bridge": "博士毕业进入公司，凭借博士期间在电力电子变流技术方面的研究积累，直接从事逆变器产品的研发和测试工作。",
+        "responsibilities": "负责光伏逆变器的电路设计、样机测试和现场调试；参与产品技术文档编写；支持销售团队进行技术投标和客户技术交流。",
+        "major_events": "主导完成了公司首款高效组串式逆变器产品的研发和并网认证，成功推向市场，为公司打开了分布式光伏市场。",
+        "skills_and_contacts_gained": "掌握了产品从需求到量产的全流程；积累了光伏电站开发商和EPC客户的初步联系；熟悉行业技术标准和认证流程。",
+        "reason_for_move": "因表现出色，被提升为产品经理，承担更大的产品规划责任。"
+      },
+      {
+        "stage": 2,
+        "start_age": 33,
+        "end_age": 38,
+        "start_year": 2014,
+        "end_year": 2019,
+        "region": "陕西",
+        "industry": "新能源设备",
+        "organization": "秦源新能源设备有限公司",
+        "company_type": "民营股份制企业，员工增至500人，年营收约5亿元，产品线扩展到储能变流器。",
+        "function": "产品与业务",
+        "title": "产品经理",
+        "transition_bridge": "由产品工程师晋升，基于在逆变器产品研发和客户现场积累的经验，开始负责单一产品线的全生命周期管理。",
+        "responsibilities": "负责组串式逆变器产品线的规划、定价、上市和退市；协调研发、生产、销售和售后团队；对产品线的毛利率和市场份额负责；定期走访重点客户，收集需求。",
+        "major_events": "推动逆变器产品从单机型向系列化平台发展，降低成本20%以上；主导开发了针对大型地面电站的集中式逆变器，成功进入国企集采名单。",
+        "skills_and_contacts_gained": "培养了跨部门协调能力；深入理解大型能源集团客户的采购流程；学习了产品线损益管理。",
+        "reason_for_move": "公司成立储能事业部，因在逆变器领域的经验，被任命为储能产品业务负责人，开启新的业务单元。"
+      },
+      {
+        "stage": 3,
+        "start_age": 38,
+        "end_age": 42,
+        "start_year": 2019,
+        "end_year": 2023,
+        "region": "陕西",
+        "industry": "新能源设备",
+        "organization": "秦源新能源设备有限公司",
+        "company_type": "公司被并入陕西地方能源集团，成为其下属子公司，员工增至1000人，年营收超20亿元。",
+        "function": "产品与业务",
+        "title": "储能产品业务负责人",
+        "transition_bridge": "由逆变器产品经理转任，利用在电力电子和电网接入方面的知识，以及原有客户关系，拓展储能业务。",
+        "responsibilities": "全面负责储能变流器及储能系统的产品规划、市场开拓和项目交付；组建并领导约30人的产品团队；负责储能业务的营收和利润指标。",
+        "major_events": "主导开发了适用于电网侧调频的储能系统，并在陕西多个风电场落地；带领团队实现储能业务年营收从0到3亿元的突破。",
+        "skills_and_contacts_gained": "积累了储能系统集成和项目管理的经验；建立了与电网公司、发电集团的合作关系；学会在集团架构下争取资源和协调。",
+        "reason_for_move": "因储能业务业绩突出，被集团任命为整个产品事业部的负责人，统管所有产品线。"
+      },
+      {
+        "stage": 4,
+        "start_age": 42,
+        "end_age": 45,
+        "start_year": 2023,
+        "end_year": 2026,
+        "region": "陕西",
+        "industry": "新能源设备",
+        "organization": "秦源新能源设备有限公司",
+        "company_type": "国有控股企业（隶属陕西地方能源集团），员工约1500人，年营收约40亿元，产品覆盖光伏、储能、风电变流器。",
+        "function": "产品与业务",
+        "title": "产品事业部负责人",
+        "transition_bridge": "基于长期的产品管理和储能业务领导经验，晋升至事业部负责人，管理多产品线。",
+        "responsibilities": "全面负责公司产品事业部的战略规划、产品研发、市场销售和交付；直接管理约80人的管理及专业团队；对事业部的销售收入、利润和现金流负直接责任。",
+        "major_events": "主导产品线整合，推动标准化和模块化，降低制造成本15%；成功中标多个省级新能源项目，使事业部营收增长30%；建立海外销售渠道，业务开始拓展至东南亚市场。",
+        "skills_and_contacts_gained": "战略规划能力、大团队管理能力；深化了与国内外主要能源集团的关系；熟悉集团化运营和国有企业管理流程。",
+        "reason_for_move": "继续留任，推动事业部数字化和国际化转型。"
+      }
+    ],
+    "current_position": {
+      "role": "产品事业部负责人",
+      "industry": "新能源设备",
+      "primary_function": "产品与业务",
+      "company_context": "国有控股企业，隶属于陕西地方能源集团，员工约1500人，年营收约40亿元，产品覆盖光伏逆变器、储能变流器、风电变流器及相关系统解决方案。",
+      "management_scope": "管理产品事业部，包括产品规划、研发、市场、销售和交付团队，总共约80人；负责事业部在国内外市场的营收、利润和现金流。",
+      "customers_and_stakeholders": "主要面对大型电力集团、发电企业、电网公司、EPC承包商以及政府能源主管部门；内部向集团管理层和董事会汇报。",
+      "operating_metrics": "销售收入、毛利率、净利润、现金流、订单储备、产品交付及时率、客户满意度。"
+    },
+    "family_life": {
+      "partnership_status": "已婚或长期伴侣关系稳定",
+      "children": [
+        {
+          "relation": "儿子",
+          "age": 15,
+          "life_stage": "中学阶段",
+          "living_arrangement": "同住或经常回家",
+          "everyday_contact": "会过问学习和升学，但沟通并不总顺畅"
+        }
+      ],
+      "elder_generation": {
+        "relation": "岳父",
+        "age": 72,
+        "living": true,
+        "proximity": "异地居住",
+        "health_and_independence": "身体基本健康，仍能独立生活",
+        "personal_involvement": "联系频繁，但因异地无法参与多数日常事务"
+      },
+      "household_snapshot": "已婚或长期伴侣关系稳定；1个子女，其中1个未成年；主要牵挂的老人是岳父，异地居住",
+      "current_region": "陕西",
+      "household_rhythm": "工作日节奏快，经常早出晚归，周末尽量陪伴家人；由于工作压力，有时会将工作带回家，但会努力平衡家庭时间。",
+      "concrete_experiences": "儿子15岁，正在读中学，平时会辅导儿子作业，但沟通并不总顺畅，有时因电子产品使用时间发生争执；岳父72岁，独自在异地生活，身体基本健康，每周会通电话问候，逢年过节回去探望，但无法参与日常照料。",
+      "family_experience_narrative": "刘嘉诚和妻子是大学同学，两人都来自陕西，结婚后定居西安。儿子出生后，妻子承担了大部分养育责任，刘嘉诚则忙于事业，儿子进入中学后，他开始更多地关注儿子的学习，但发现孩子逐渐独立，父子间有时因观念差异产生摩擦。他尽力在周末与儿子一起运动或聊天，但承认自己有时缺乏耐心。岳父在老家独自生活，虽身体尚可，但刘嘉诚总有些担忧，定期回去探望，平时通过电话保持联系。他感到在事业和家庭之间寻找平衡并不容易，但家人的支持让他得以专注工作。"
+    },
+    "career_narrative": "刘嘉诚，1981年生于陕西，自幼在西安成长。2003年进入西安交通大学电气工程专业，一路攻读到博士。2010年博士毕业后，他加入了位于西安的秦源新能源设备有限公司，这是一家专注于光伏逆变器的民营高新技术企业。他最初担任产品工程师，凭借扎实的电力电子技术，迅速成为公司骨干，主导开发了公司首款组串式逆变器，成功推向市场。2014年，他晋升为产品经理，负责整个逆变器产品线的规划和管理，推动产品系列化，降低成本，成功进入大型国企的采购体系。2019年，公司为拓展储能业务，刘嘉诚被任命为储能产品业务负责人，从零开始组建团队，开发储能变流器，并在风电、光伏项目中落地，使储能业务年营收达到3亿元。2023年，公司并入陕西地方能源集团，刘嘉诚因业绩突出被提升为产品事业部负责人，统管光伏、储能和风电变流器所有产品线。此时他直接对事业部的销售、利润和现金流负责，带领约80人的团队，推动产品标准化和海外市场拓展。在他的带领下，事业部营收增长30%，并开始国际化布局。如今，45岁的刘嘉诚已经成为新能源设备领域资深的产品和业务负责人，他亲历了行业从起步到快速发展的过程，积累了深厚的技术背景和经营管理经验。",
+    "why_executive_program_qualified": "刘嘉诚拥有16年的新能源设备行业经验，目前担任产品事业部负责人，直接管理约80人的团队，负责数十亿元的营收和利润指标，对事业部的销售、利润和现金流承担直接责任。他主导过多个里程碑项目，包括新产品开发、业务单元从0到1的建立、以及国际化拓展。他所处的国有控股企业环境要求他具备战略思维、资源整合和跨部门协调能力。他面临的挑战包括技术迭代、市场波动、国际化和组织变革，这些都需要高层管理教育和人脉支持。因此，他的责任规模、管理复杂度和战略视野完全符合中欧或同级高管项目的申请要求。",
+    "general_profile": {
+      "professional_identity": "刘嘉诚以电力电子工程师出身，在新能源设备行业深耕十六年，从产品研发到产品线管理再到事业部负责人，形成了以技术可行性为底座、以产品全生命周期为框架的观察视角。他习惯从系统集成和电网接入的角度审视业务，关注技术标准、认证流程和客户采购逻辑，对制造、交付和现金流有直接体感。",
+      "core_motives": "长期驱动力是证明自己能在技术和管理两个维度都站得住，并持续扩大对业务的实际掌控力。他希望通过打造可靠的产品和团队来获得行业认可，最不愿失去的是在集团和客户中积累的信誉，以及家人和核心团队的稳定感。",
+      "self_concept_and_status": "他自视为务实的技术型管理者，既懂电路也懂生意，能带领团队把事做成。他重视上级和客户的评价，但更在意自己是否对结果负责。在集团架构下，他清楚自己的位置，但相信自己比多数人更懂产品细节。",
+      "information_search_and_stopping": "他通常会对主要路径做平行比较，但搜索深度随事情重要性调整：重要决策会查技术细节、市场数据和财务模型，次要事项则凭经验快速判断。他设定明确的停手规则，比如当信息足以支撑决策且关键参数已验证时就会行动，避免过度分析。",
+      "cognitive_effort": "他享受深度思考，会自发构建分析框架，检查逻辑链条，并愿意花时间验证细节。但面对熟悉领域，他会直接调用经验捷径；只有在问题新颖或后果重大时，才会投入高强度的认知资源。",
+      "belief_updating": "他会听取不同意见，但主要用于修补原方案，而非改变基本判断。他寻找反证时更关注技术可行性和财务回报，若异议能指出具体漏洞，他会认真修正；若只是方向性反对，他往往坚持己见。",
+      "risk_posture": "他能够接受较大的结果波动，只要机会值得且责任边界清楚。他倾向于在明确授权下承担风险，对超出自己控制范围的波动会谨慎。他更看重守住已有成果，而非追求高额但不确定的回报。",
+      "ambiguity_response": "信息不完整时他会显著不安，倾向等待规则、责任和结果范围更清楚。在模糊情境下，他会主动收集信息、寻求上级或客户确认，避免在规则不明时冒进。若无法消除模糊，他会选择等待或准备多套方案。",
+      "goal_regulation": "他更受责任避损驱动，即保护已有成果和相关人安全感，但同时也追求进步和成长。压力下他会更倾向于保守，确保核心指标不滑坡，同时寻找能兼顾短期兑现和长期积累的路径。",
+      "time_orientation": "短期兑现与长期积累大体并重，他常寻找能兼顾两者的路径。例如，在推进新产品时，他会确保短期有订单和现金流，同时布局平台化技术以支持未来增长。他很少为长期目标牺牲短期生存，也不会因短期压力放弃长期竞争力。",
+      "action_and_recovery": "他有很强的启动和恢复能力，越有阻力越容易进入持续行动状态。一旦决定，他会迅速组织资源、布置任务，并亲自盯关键节点。遇到挫折时，他会短暂复盘，然后快速调整策略，重新投入，很少陷入情绪停滞。",
+      "interpersonal_and_power_style": "在同级面前，他保持合作但略带竞争，会主动分享技术见解以建立专业权威；在下属面前，他要求明确、反馈直接，但会为团队争取资源和成长机会；对老板，他尊重层级，但会以数据和技术逻辑争取支持；对外部伙伴，他专业、务实，注重长期关系。",
+      "communication_style": "他说话直接，喜欢用数据和事实论证，语言节奏平稳，不轻易打断别人。被挑战时，他会先倾听，然后逐点回应，若对方有理他会承认；若对方缺乏依据，他会坚持己见，但语气可能变得更强硬。",
+      "stress_pattern": "压力升高时，他会更加谨慎，倾向于控制信息流和决策权，对下属的容错度降低；同时，他的搜索行为会加剧，反复确认细节，可能显得过度控制。但压力也激发他的行动力，他会更频繁地检查进度，推动团队加速。",
+      "internal_contradictions": "他一方面追求深度思考，享受构建框架，但另一方面在时间压力下会快速依赖经验，可能忽视新信息；他重视团队安全感，但为了实现目标，他会要求团队高强度工作，甚至牺牲部分成员的舒适区。",
+      "blind_spots": "他可能低估非技术因素（如组织政治、文化差异）对项目的影响，因为他习惯用技术逻辑和财务数据解释世界；此外，他对自己熟悉领域外的创新机会反应较慢，容易固守已验证的路径。",
+      "profile_narrative": "刘嘉诚的职业生涯始于技术研发，这塑造了他以数据和逻辑为核心的行为模式。作为产品工程师时，他学会了对细节的执着；作为产品经理，他掌握了跨部门协调的复杂性；作为储能业务负责人，他体验了从零到一的创业感；如今作为事业部负责人，他必须在更大范围内平衡风险与收益。他的信息搜索习惯带有明显的工程师烙印：他会为关键技术参数或认证要求反复验证，但对于市场趋势或客户偏好，他可能更依赖销售团队的报告而非亲自深挖。他喜欢构建分析框架，例如用技术成熟度矩阵或产品生命周期模型来指导决策，这让他感到掌控感。然而，这种深度思考有时会与他的行动倾向冲突——他能在阻力下迅速启动，但若信息模糊，他会先停下来等待更清晰的规则。他倾听异议，但通常只在对方能提供具体数据或指出逻辑漏洞时才会调整方案，这使他显得固执，但也保证了他的决策一致性。在风险面前，他更愿意守住现有产品和客户，而非冒险进入全新市场，除非集团有明确授权和资源支持。他的时间观是平衡的，既关注季度营收，也投入平台化研发，因为他知道短期业绩是长期信任的基础。在团队管理中，他既想给下属安全感，又对结果有高要求，这造成他有时会亲自介入细节，让下属感到不被信任。他的沟通风格直接，喜欢用数据说话，但在高压下会变得更强硬。他的核心矛盾在于：他渴望通过理性分析掌控一切，但现实中的模糊性和人际因素常常超出他的框架，这让他感到不安。他最大的盲区可能是低估了组织政治和情感因素在决策中的权重，这源于他技术背景的惯性。总体而言，刘嘉诚是一个以技术为根基、以责任为驱动、在稳定与进取之间不断寻找平衡的务实管理者。"
+    },
+    "task_context_term_hits": [],
+    "synthetic": true
+  },
+  {
+    "schema": "career_general_profile_v2",
+    "persona_id": "CGP11",
+    "seed": "20260812-career-family-oos-16:11",
+    "demographic_seed": {
+      "name": "黄欣怡",
+      "gender": "female",
+      "age": 54,
+      "reference_year": 2026,
+      "birth_year": 1972,
+      "education": "大专",
+      "estimated_career_start_age": 21,
+      "estimated_career_start_year": 1993,
+      "estimated_career_years": 33,
+      "overseas": "无",
+      "home_region": "湖南",
+      "current_region": "湖南",
+      "first_industry_hint": "连锁零售",
+      "current_industry_hint": "物业服务",
+      "first_function_hint": "财务与投资",
+      "current_function_hint": "财务与投资",
+      "current_role_hint": "投资负责人",
+      "management_scope_hint": "负责 3-8 亿年营收业务",
+      "family_life_seed": {
+        "partnership_status": "已婚或长期伴侣关系稳定",
+        "children": [
+          {
+            "relation": "女儿",
+            "age": 22,
+            "life_stage": "大学或初入职场",
+            "living_arrangement": "同住或经常回家",
+            "everyday_contact": "每周联系，重要决定会交换意见"
+          },
+          {
+            "relation": "女儿",
+            "age": 18,
+            "life_stage": "中学阶段",
+            "living_arrangement": "同住或经常回家",
+            "everyday_contact": "保持频繁交流，也会因边界问题发生争执"
+          }
+        ],
+        "elder_generation": {
+          "relation": "公公",
+          "age": 85,
+          "living": true,
+          "proximity": "异地居住",
+          "health_and_independence": "有慢性病，需要定期复诊和用药管理",
+          "personal_involvement": "照护多由其他家人承担，自己负责费用和重大决定"
+        },
+        "household_snapshot": "已婚或长期伴侣关系稳定；2个子女，其中0个未成年；主要牵挂的老人是公公，异地居住",
+        "current_region": "湖南"
+      },
+      "career_trajectory": {
+        "type": "adjacent_industry_move",
+        "core_industry": "连锁零售",
+        "core_function": "财务与投资",
+        "allowed_industries": [
+          "连锁零售",
+          "物业服务"
+        ],
+        "allowed_functions": [
+          "财务与投资"
+        ],
+        "stage_count_min": 5,
+        "stage_count_max": 6,
+        "max_employer_changes": 3,
+        "max_function_changes": 0,
+        "max_industry_changes": 1,
+        "allow_entrepreneurship_or_family_business": false
+      },
+      "qualification_gate": "职业责任、组织规模和经营经历必须足以合理申请中欧或同级高管项目"
+    },
+    "behavioral_fingerprint": {
+      "maximizing_satisficing": 0.67,
+      "need_for_cognition": 0.09,
+      "actively_open_minded_thinking": 0.39,
+      "risk_propensity_business": 0.89,
+      "ambiguity_tolerance": 0.26,
+      "regulatory_focus_promotion": 0.57,
+      "consideration_future_consequences": 0.64,
+      "action_orientation": 0.23
+    },
+    "behavioral_directives": {
+      "maximizing_satisficing": "会主动扩大备选范围，担心过早停手漏掉更好的可能。",
+      "need_for_cognition": "抗拒长时间分析，偏好用经验捷径和可信人的判断减轻认知负担。",
+      "actively_open_minded_thinking": "会听不同意见，但主要用来修补原方案而非改变基本判断。",
+      "risk_propensity_business": "对高波动机会有明显吸引力，容易把可控损失视为换取跃迁的代价。",
+      "ambiguity_tolerance": "面对模糊问题会先缩小范围，用熟悉标准把不确定性压下来。",
+      "regulatory_focus_promotion": "既看增长机会也看失误代价，两种目标会随压力切换。",
+      "consideration_future_consequences": "愿意牺牲部分近期结果来换取能力、关系或组织基础。",
+      "action_orientation": "可以启动熟悉事项，但遇到阻力会反复回看决定并放慢执行。"
+    },
+    "name": "黄欣怡",
+    "demographic_realization": {
+      "gender": "female",
+      "age": 54,
+      "highest_education": "大专",
+      "education_detail": "1990年9月至1993年6月就读于湖南长沙一所商业专科学校的财务会计专业，获得大专学历。在校期间系统学习了会计学基础、财务管理、审计学等课程。",
+      "regional_background": "出生于湖南，成长于湖南，职业生涯一直在湖南。早期在长沙开始工作，后因公司业务发展需要，曾在湖南省内多个城市轮岗和负责区域业务，但始终以湖南为基地。",
+      "overseas_detail": "无"
+    },
+    "career_history": [
+      {
+        "stage": 1,
+        "start_age": 21,
+        "end_age": 26,
+        "start_year": 1993,
+        "end_year": 1998,
+        "region": "湖南长沙",
+        "industry": "连锁零售",
+        "organization": "湖南湘江百货股份有限公司",
+        "company_type": "地方性国有连锁百货企业，旗下有多家百货门店和超市，正处于快速扩张期",
+        "function": "财务与投资",
+        "title": "会计、财务主管",
+        "transition_bridge": "大专会计专业毕业，通过校园招聘进入企业，从基层会计做起",
+        "responsibilities": "负责门店的日常账务处理、费用报销、销售数据核对，编制财务报表；参与年度预算编制，协助财务经理进行成本控制",
+        "major_events": "参与了公司新开门店的财务筹备工作，包括建立账套、制定财务流程、培训新员工；见证了公司从单一门店向多门店扩张的过程",
+        "skills_and_contacts_gained": "掌握了零售业的财务核算特点，熟悉门店运营流程，建立了与业务部门的合作关系，积累了零售行业基础财务经验",
+        "reason_for_move": "在基层积累了一定经验后，希望承担更大的管理责任，主动申请到公司总部财务部工作"
+      },
+      {
+        "stage": 2,
+        "start_age": 26,
+        "end_age": 33,
+        "start_year": 1998,
+        "end_year": 2005,
+        "region": "湖南长沙",
+        "industry": "连锁零售",
+        "organization": "湖南湘江百货股份有限公司",
+        "company_type": "地方性国有连锁百货企业，区域市场占有率领先",
+        "function": "财务与投资",
+        "title": "财务经理",
+        "transition_bridge": "在门店财务工作中表现出色，晋升为公司总部财务经理；参加公司内部管理培训，学习财务分析和管理技能",
+        "responsibilities": "管理总部财务团队，负责合并报表编制、预算控制、资金调度；参与投资项目的财务可行性分析，包括新店选址评估和装修预算审核；协助财务总监进行年度审计",
+        "major_events": "主导了公司财务信息化系统的上线，提高了财务效率；参与了公司收购一家小型超市的尽职调查和财务整合",
+        "skills_and_contacts_gained": "提升了财务团队管理能力，积累了并购整合经验；与银行、税务部门建立了良好关系，熟悉融资和税务筹划",
+        "reason_for_move": "公司业务发展平稳，个人发展空间受限，希望到更有挑战性的平台，因此跳槽到一家民营连锁零售企业"
+      },
+      {
+        "stage": 3,
+        "start_age": 33,
+        "end_age": 40,
+        "start_year": 2005,
+        "end_year": 2012,
+        "region": "湖南长沙",
+        "industry": "连锁零售",
+        "organization": "湖南步步高连锁超市有限公司",
+        "company_type": "民营连锁超市企业，在湖南及周边省份有数十家门店，年营收约10亿元",
+        "function": "财务与投资",
+        "title": "财务总监",
+        "transition_bridge": "曾在国企担任财务经理，具备零售财务管理和并购经验，加入后直接担任财务总监，负责财务整体工作",
+        "responsibilities": "全面负责公司财务工作，包括财务核算、预算、资金、税务；参与公司扩张计划，负责新店投资测算和融资方案；管理财务团队，培养财务人才",
+        "major_events": "主导了公司ERP系统升级，实现了财务业务一体化；在2008年经济危机时，优化资金结构，确保公司现金流健康；参与了公司并购一家小型便利店连锁的项目",
+        "skills_and_contacts_gained": "积累了民营企业管理经验，提升了快速决策和跨部门协调能力；与多家银行建立了长期合作关系，具备较强的融资能力",
+        "reason_for_move": "公司创始人家族介入管理，决策机制复杂，希望有更规范、更有成长性的平台，因此考虑进入物业服务行业"
+      },
+      {
+        "stage": 4,
+        "start_age": 40,
+        "end_age": 47,
+        "start_year": 2012,
+        "end_year": 2019,
+        "region": "湖南长沙",
+        "industry": "物业服务",
+        "organization": "湖南中建物业服务有限公司",
+        "company_type": "国有背景的物业服务企业，管理多个住宅和商业项目，年营收约5亿元，正处于快速发展期",
+        "function": "财务与投资",
+        "title": "财务总监",
+        "transition_bridge": "从零售业转到物业服务，虽行业不同但财务职能相通；候选前已自学物业服务行业知识，参加行业财务培训，并迅速在面试中展示财务分析能力",
+        "responsibilities": "负责公司财务管理，包括预算、核算、资金管理；参与物业项目拓展的投资测算，评估新项目盈利能力；与业主委员会、开发商对接，处理费用结算",
+        "major_events": "主导建立了物业服务项目的财务模型，统一各项目核算标准；参与公司新接管商业综合体的投资测算，成功推动了项目落地；推动财务共享中心建设，提高效率",
+        "skills_and_contacts_gained": "熟悉了物业行业特有财务问题，如物业费收缴、维修基金使用、多种经营收入；建立了与开发商、业委会的合作关系；提升了投资测算和项目评估能力",
+        "reason_for_move": "公司被一家大型地产集团收购，管理架构调整，希望进入更有战略协同的平台，因此跳槽到集团旗下物业板块"
+      },
+      {
+        "stage": 5,
+        "start_age": 47,
+        "end_age": 54,
+        "start_year": 2019,
+        "end_year": 2026,
+        "region": "湖南长沙",
+        "industry": "物业服务",
+        "organization": "湖南振业物业服务集团",
+        "company_type": "大型地产集团旗下物业服务上市公司，管理面积超3000万平方米，年营收约8亿元，正在寻求外拓和并购",
+        "function": "财务与投资",
+        "title": "投资负责人",
+        "transition_bridge": "在物业公司担任财务总监期间，主导了多个收并购项目，积累了投资决策经验；随着公司战略调整，被任命为投资负责人，负责整体投资并购事务",
+        "responsibilities": "负责制定公司投资策略，主导收并购项目全流程，包括标的选择、尽职调查、估值谈判、交易结构和投后整合；管理投拓团队，对接资本市场，负责投资者关系",
+        "major_events": "主导收购了湖南省内三家小型物业公司，扩大了管理规模；参与了母公司对一家科技物业公司的投资，推动智慧物业建设；建立了公司投资管理制度和风控体系",
+        "skills_and_contacts_gained": "深化了投资并购能力，熟悉了资本市场规则；与券商、律师、评估机构建立了良好关系；培养了团队，积累了跨区域整合经验",
+        "reason_for_move": "在目前岗位上仍有发展潜力，希望进一步推动公司上市和战略扩张，同时获得更系统的管理知识和人脉资源，因此申请高管项目"
+      }
+    ],
+    "current_position": {
+      "role": "投资负责人",
+      "industry": "物业服务",
+      "primary_function": "财务与投资",
+      "company_context": "大型地产集团旗下物业服务上市公司，国资背景，管理面积超3000万平方米，年营收约8亿元，正推进市场化扩张和收并购",
+      "management_scope": "负责投资团队约10人，管理公司年度投资预算（约3亿元），主导收并购项目，直接向总经理汇报；对投资回报率和公司整体增长目标负责",
+      "customers_and_stakeholders": "日常面对公司管理层、母公司投资部门、标的企业创始人、券商、律师及评估机构；最终为股东和业主创造价值",
+      "operating_metrics": "投资回报率（ROI）、并购项目数量与规模、投后管理成效、管理面积增长率、预算执行率"
+    },
+    "family_life": {
+      "partnership_status": "已婚或长期伴侣关系稳定",
+      "children": [
+        {
+          "relation": "女儿",
+          "age": 22,
+          "life_stage": "大学或初入职场",
+          "living_arrangement": "同住或经常回家",
+          "everyday_contact": "每周联系，重要决定会交换意见"
+        },
+        {
+          "relation": "女儿",
+          "age": 18,
+          "life_stage": "中学阶段",
+          "living_arrangement": "同住或经常回家",
+          "everyday_contact": "保持频繁交流，也会因边界问题发生争执"
+        }
+      ],
+      "elder_generation": {
+        "relation": "公公",
+        "age": 85,
+        "living": true,
+        "proximity": "异地居住",
+        "health_and_independence": "有慢性病，需要定期复诊和用药管理",
+        "personal_involvement": "照护多由其他家人承担，自己负责费用和重大决定"
+      },
+      "household_snapshot": "已婚或长期伴侣关系稳定；2个子女，其中0个未成年；主要牵挂的老人是公公，异地居住",
+      "current_region": "湖南",
+      "household_rhythm": "工作繁忙但规律，白天处理公司事务，晚上尽量回家与家人共进晚餐；周末常需处理紧急工作，但会留出时间陪伴家人；每年会安排一次家庭旅行",
+      "concrete_experiences": "大女儿22岁，在长沙���大学，周末常回家，母女经常交流学业和职业规划；小女儿18岁，正值高三，面临高考，黄欣怡会关注其学习情况，但因工作繁忙，有时因教育理念不同发生争执；公公85岁，患有高血压和糖尿病，需定期复诊和用药，由婆婆和丈夫主要负责日常照护，黄欣怡承担医疗费用，并参与重大医疗决策；每周与公公一家通电话，节假日回去探望",
+      "family_experience_narrative": "黄欣怡和丈夫结婚多年，夫妻关系稳定。大女儿在外地大学就读，每周视频通话，聊天内容涉及学业和职业规划，黄欣怡会分享自己的职场经验。小女儿还在上高中，与父母同住，母女间常因学习和生活习惯产生摩擦，但总体关系亲密。黄欣怡作为职场女性，努力在工作和家庭间寻找平衡，虽然有时会感到内疚，但家人的支持让她能够专注于事业。对于公公的健康，她虽然不能时常在身边，但通过经济支持和关键决策参与来表达孝心。家庭生活让她更懂得如何与不同年龄的人沟通，也锻炼了她的耐心和统筹能力。"
+    },
+    "career_narrative": "黄欣怡，1972年出生于湖南，1993年从商业专科学校财务会计专业毕业后，进入湖南湘江百货股份有限公司担任会计。在国有企业工作的五年中，她从基层会计逐步晋升为财务主管，参与了新店筹备和财务流程建设，积累了零售业财务基础。1998年，她晋升为公司总部财务经理，负责管理团队、编制合并报表、参与投资分析，并主导了财务信息化上线和一项并购整合项目。这让她在财务管理和并购方面积累了宝贵经验。\n2005年，为了寻求更大平台，黄欣怡跳槽到湖南步步高连锁超市有限公司担任财务总监。在民营企业的快速扩张氛围中，她全面负责财务工作，管理数亿元资金，主导了ERP系统升级，并参与了多次新店投资测算和一次并购项目。她学会了在快速变化中做出决策，并与银行建立了牢固的合作关系。\n2012年，一个偶然的机会让她进入了物业服务行业。虽然行业不同，但财务职能相通。她凭借在零售业积累的财务分析、团队管理和并购经验，成功转型为湖南中建物业服务有限公司的财务总监。她很快熟悉了物业行业的财务特点，建立了项目财务模型，并参与了新项目的投资测算。2019年，随着公司被大型地产集团收购，她加入了湖南振业物业服务集团，被任命为投资负责人。在这个岗位上，她全面主导投资并购策略和落地，收购了三家物业公司，建立投资风控体系，并参与了科技物业公司的投资。\n黄欣怡的职业生涯始终围绕财务与投资这一核心职能，从零售到物业，她在行业转换中抓住了机会，不断深化的投资能力为她带来了新的发展空间。目前，她负责公司年营收8亿元规模下的投资事务，并希望进一步提升战略视野，以支持公司上市和扩张目标。",
+    "why_executive_program_qualified": "黄欣怡拥有33年财务与投资经验，在连锁零售和物业服务两大行业均有深厚积累。她曾担任财务总监和投资负责人，管理过数亿元资金，主导多项并购项目，涉及尽职调查、估值、谈判和投后整合。目前她负责的物业公司年营收约8亿元，投资决策直接影响公司战略。她参与过国企和民企的转型，具备跨行业适应力和领导力。这样的责任规模和管理经验，足以与高管项目的要求相匹配。",
+    "general_profile": {
+      "professional_identity": "以财务与投资为轴心，从零售到物业，始终用数字和回报率定义价值。习惯从报表和现金流切入，用行业对标和过往项目经验快速判断，将模糊的商业机会转化为可测算的模型。",
+      "core_motives": "长期驱动力是证明自己能在不同行业和平台上创造可见的增量，不愿失去对局面的掌控感。渴望被看作既懂财务又懂战略的操盘手，最怕被边缘化或被视为保守的账房先生。",
+      "self_concept_and_status": "自认为务实、有决断力的投资决策者，能跨行业迁移能力，在复杂交易中稳得住。在意上级和同行的认可，但更依赖自己内心的一套标准，对他人评价有选择性吸收。",
+      "information_search_and_stopping": "会主动扩大备选范围，常因担心错过更好标的而延长搜索，但一旦看到符合经验阈值的机会，会迅速用熟悉标准收窄，并以可信人（如券商、老关系）的背书作为停手信号。",
+      "cognitive_effort": "抗拒长时间分析，偏好用经验捷径和可信人的判断减轻认知负担。通常先凭直觉圈定几个关键指标，再让团队补细节，自己只在关键节点深入，避免陷入数据泥潭。",
+      "belief_updating": "会听不同意见，但主要用来修补原方案而非改变基本判断。若异议来自权威或数据硬伤，会调整细节；若只是观点分歧，通常用“再验证一下”来搁置，很少推翻初始结论。",
+      "risk_posture": "对高波动机会有明显吸引力，容易把可控损失视为换取跃迁的代价。在测算中会主动放大上行空间，对下行则用“止损线”来心理安慰，但实际执行时对亏损的容忍度比预想低。",
+      "ambiguity_response": "面对模糊问题会先缩小范围，用熟悉标准把不确定性压下来。例如用行业平均回报率、既往案例参数作为锚，快速搭建框架，不习惯长期停留在“不知道”的状态，会尽早给出方向。",
+      "goal_regulation": "既看增长机会也看失误代价，两种目标会随压力切换。平时更受进步获得驱动，主动追求扩张和突破；但一旦面临业绩压力或外部质疑，会迅速转向避损，强调风控和合规。",
+      "time_orientation": "愿意牺牲部分近期结果来换取能力、关系或组织基础。在投资决策上偏向长期布局，但对日常执行又要求短期可见的进展，两者冲突时通常优先保住长期承诺，但会因此焦虑。",
+      "action_and_recovery": "可以启动熟悉事项，但遇到阻力会反复回看决定并放慢执行。启动时果断，一旦碰壁或反馈不佳，会开始怀疑当初的假设，反复复盘数据和流程，导致推进速度明显下降。",
+      "interpersonal_and_power_style": "在同级面前保持合作但保留判断，对下属既授权又监控关键节点，对老板主动汇报但会过滤不利信息，对外部伙伴则展示专业和掌控力。习惯用数据和案例说服，不轻易暴露犹豫。",
+      "communication_style": "语言节奏偏快，常用财务术语和行业类比，论证时习惯先抛结论再补依据。被挑战时话会变少，语气更硬，倾向于重复自己的逻辑而非现场调整，但事后会私下修正。",
+      "stress_pattern": "压力升高时，原本的开放搜索会收缩，更依赖熟悉路径；风险偏好会下降，但表面仍维持敢闯形象；对异议的容忍度降低，容易对团队不耐烦，同时更频繁检查细节。",
+      "internal_contradictions": "一方面渴望抓住高波动机会实现跃迁，另一方面又对下行损失极度敏感，导致在决策临界点反复摇摆。既依赖经验捷径和可信人判断，又担心自己漏掉关键信息，因此会过度扩展备选但迟迟不定。",
+      "blind_spots": "稳定盲区是低估非量化因素（如团队文化、政策风向）对投资结果的影响，习惯用财务模型代替战略思考。源于长期财务训练和投资决策经验，容易将“可计算”等同于“可控制”。",
+      "profile_narrative": "黄欣怡的职业生涯始于零售财务，三十余年里她始终在数字和交易中寻找确定性。她习惯从报表和回报率切入任何新问题，这既是她的优势，也塑造了她的认知边界。在投资负责人的位置上，她面对的是物业行业的扩张与并购，但她处理信息的方式依然带着零售时代的印记：快速看坪效、周转、利润率，用行业对标和过往案例来压缩不确定性。\n她是一个矛盾体。一方面，她主动扩大备选范围，总担心停手太早会错过更好的标的；另一方面，她又抗拒长时间分析，依赖经验捷径和可信人的判断来减轻认知负担。她听取异议，但更多用于修补原方案，而非真正改变基本判断。她对高波动机会有天然吸引力，把可控损失视为跃迁的代价，但一旦压力上升，她又会迅速转向避损，反复回看决定，放慢执行。\n她既追求增长，又害怕失误。平时她愿意牺牲近期结果来换取能力和组织基础，但在业绩考核或外部质疑之下，她会变得保守，强调风控。她面对模糊信息时，会先缩小范围，用熟悉的标准把不确定性压下去，而不是忍受模糊。她启动熟悉事项很快，但遇到阻力就会陷入复盘循环，执行速度明显下降。\n在人际互动中，她善于用数据和案例说服他人，对下属既授权又监控，对老板汇报时倾向于过滤不利信息。压力之下，她的话语变少，语气变硬，更依赖既有逻辑，但事后会私下调整。她的盲区在于低估非量化因素，习惯用财务模型代替战略思考，这源于她长期以数字为安全感的职业轨迹。她是一个在确定性与机会之间不断拉扯的决策者，既有冒险的冲动，又有避险的本能，这种张力构成了她最真实的行为底色。"
+    },
+    "task_context_term_hits": [],
+    "synthetic": true
+  },
+  {
+    "schema": "career_general_profile_v2",
+    "persona_id": "CGP12",
+    "seed": "20260812-career-family-oos-16:12",
+    "demographic_seed": {
+      "name": "许敏仪",
+      "gender": "female",
+      "age": 47,
+      "reference_year": 2026,
+      "birth_year": 1979,
+      "education": "博士",
+      "estimated_career_start_age": 29,
+      "estimated_career_start_year": 2008,
+      "estimated_career_years": 18,
+      "overseas": "无",
+      "home_region": "福建",
+      "current_region": "福建",
+      "first_industry_hint": "连锁零售",
+      "current_industry_hint": "连锁零售",
+      "first_function_hint": "产品与业务",
+      "current_function_hint": "产品与业务",
+      "current_role_hint": "产品事业部负责人",
+      "management_scope_hint": "负责多城市/多门店运营",
+      "family_life_seed": {
+        "partnership_status": "已婚或长期伴侣关系稳定",
+        "children": [
+          {
+            "relation": "女儿",
+            "age": 13,
+            "life_stage": "中学阶段",
+            "living_arrangement": "同住或经常回家",
+            "everyday_contact": "日常交流不多，遇到重要选择会深度参与"
+          }
+        ],
+        "elder_generation": {
+          "relation": "父亲",
+          "age": 75,
+          "living": true,
+          "proximity": "同住",
+          "health_and_independence": "身体基本健康，仍能独立生活",
+          "personal_involvement": "日常直接参与吃药、就医或生活安排"
+        },
+        "household_snapshot": "已婚或长期伴侣关系稳定；1个子女，其中1个未成年；主要牵挂的老人是父亲，同住",
+        "current_region": "福建"
+      },
+      "career_trajectory": {
+        "type": "stable_specialist",
+        "core_industry": "连锁零售",
+        "core_function": "产品与业务",
+        "allowed_industries": [
+          "连锁零售"
+        ],
+        "allowed_functions": [
+          "产品与业务"
+        ],
+        "stage_count_min": 4,
+        "stage_count_max": 5,
+        "max_employer_changes": 2,
+        "max_function_changes": 0,
+        "max_industry_changes": 0,
+        "allow_entrepreneurship_or_family_business": false
+      },
+      "qualification_gate": "职业责任、组织规模和经营经历必须足以合理申请中欧或同级高管项目"
+    },
+    "behavioral_fingerprint": {
+      "maximizing_satisficing": 0.95,
+      "need_for_cognition": 0.21,
+      "actively_open_minded_thinking": 0.54,
+      "risk_propensity_business": 0.07,
+      "ambiguity_tolerance": 0.36,
+      "regulatory_focus_promotion": 0.69,
+      "consideration_future_consequences": 0.79,
+      "action_orientation": 0.46
+    },
+    "behavioral_directives": {
+      "maximizing_satisficing": "很难接受只是够用，会持续搜索、反复比较并提高自己的停手门槛。",
+      "need_for_cognition": "只在必要处下功夫，信息一复杂就会先抓最直观的判断线索。",
+      "actively_open_minded_thinking": "是否更新取决于反对者的可信度和证据是否贴近实际。",
+      "risk_propensity_business": "强烈厌恶经营波动，宁可放弃上行空间也要降低失控概率。",
+      "ambiguity_tolerance": "面对模糊问题会先缩小范围，用熟悉标准把不确定性压下来。",
+      "regulatory_focus_promotion": "主要被进步、增长和证明潜力驱动，能容忍为机会暴露一点风险。",
+      "consideration_future_consequences": "愿意牺牲部分近期结果来换取能力、关系或组织基础。",
+      "action_orientation": "执行状态受团队响应和个人精力影响，顺时推进、逆时停顿。"
+    },
+    "name": "许敏仪",
+    "demographic_realization": {
+      "gender": "female",
+      "age": 47,
+      "highest_education": "博士",
+      "education_detail": "厦门大学管理学博士，2008年毕业，研究方向为零售运营与供应链管理",
+      "regional_background": "福建，成长于福建，并在福建完成高等教育，职业生涯始终在福建，熟悉本地消费市场",
+      "overseas_detail": "无"
+    },
+    "career_history": [
+      {
+        "stage": 1,
+        "start_age": 29,
+        "end_age": 32,
+        "start_year": 2008,
+        "end_year": 2011,
+        "region": "福建厦门",
+        "industry": "连锁零售",
+        "organization": "福建华榕连锁超市有限公司",
+        "company_type": "区域性连锁超市，门店约20家，民营企业",
+        "function": "产品与业务",
+        "title": "商品部品类助理",
+        "transition_bridge": "博士期间研究零售供应链，通过校招进入，从基层品类管理做起",
+        "responsibilities": "协助品类经理进行商品采购、供应商对接、库存数据分析，参与促销活动策划",
+        "major_events": "参与公司ERP系统上线，学习数据化库存管理",
+        "skills_and_contacts_gained": "熟悉超市商品结构、供应商谈判技巧、基础数据分析能力",
+        "reason_for_move": "积累经验后希望承担更多责任"
+      },
+      {
+        "stage": 2,
+        "start_age": 32,
+        "end_age": 37,
+        "start_year": 2011,
+        "end_year": 2016,
+        "region": "福建厦门",
+        "industry": "连锁零售",
+        "organization": "福建华榕连锁超市有限公司",
+        "company_type": "区域性连锁超市，门店约20家，民营企业",
+        "function": "产品与业务",
+        "title": "商品部品类经理",
+        "transition_bridge": "因在品类助理岗位表现突出，获晋升，承担更大品类管理责任",
+        "responsibilities": "负责生鲜和日化品类，管理采购团队5人，制定品类策略，与供应商谈判，分析销售数据",
+        "major_events": "主导生鲜供应链优化，推动直采基地合作，降低损耗率5%",
+        "skills_and_contacts_gained": "深入了解生鲜供应链、团队管理经验、本地供应商网络",
+        "reason_for_move": "公司发展平稳，希望挑战更大规模平台"
+      },
+      {
+        "stage": 3,
+        "start_age": 37,
+        "end_age": 41,
+        "start_year": 2016,
+        "end_year": 2020,
+        "region": "福建福州",
+        "industry": "连锁零售",
+        "organization": "福建联盛商业集团",
+        "company_type": "跨区域连锁零售集团，门店超过100家，涉及超市、便利店业态，股份制",
+        "function": "产品与业务",
+        "title": "商品中心高级经理",
+        "transition_bridge": "通过猎头跳槽，凭借在供应链管理和品类运营的积累，获得集团商品中心高级经理职位",
+        "responsibilities": "管理全国商品采购团队15人，统筹品类规划、供应商管理、自有品牌开发，参与集团年度预算",
+        "major_events": "主导集团自有品牌'联盛优选'的开发与上市，覆盖食品和日用品，年销售额达2亿元",
+        "skills_and_contacts_gained": "大型组织跨部门协调能力、自有品牌开发经验、全国性供应商资源",
+        "reason_for_move": "寻求更广阔平台，积累全集团视野"
+      },
+      {
+        "stage": 4,
+        "start_age": 41,
+        "end_age": 45,
+        "start_year": 2020,
+        "end_year": 2024,
+        "region": "福建福州",
+        "industry": "连锁零售",
+        "organization": "福建联盛商业集团",
+        "company_type": "跨区域连锁零售集团，门店超过100家，涉及超市、便利店业态，股份制",
+        "function": "产品与业务",
+        "title": "商品中心总监",
+        "transition_bridge": "因自有品牌项目成功，晋升为商品中心总监，负责整个商品体系",
+        "responsibilities": "全面负责商品中心，管理团队30人，制定商品战略，管理年度采购额10亿元，与运营、营销部门协作",
+        "major_events": "经历疫情，主导线上业务商品供应，保障民生需求；推进数字化选品",
+        "skills_and_contacts_gained": "战略规划、危机管理、数字化转型经验",
+        "reason_for_move": "继续在职，寻求更大业务单元管理机会"
+      },
+      {
+        "stage": 5,
+        "start_age": 45,
+        "end_age": 47,
+        "start_year": 2024,
+        "end_year": 2026,
+        "region": "福建福州",
+        "industry": "连锁零售",
+        "organization": "福建联盛商业集团",
+        "company_type": "跨区域连锁零售集团，门店超过100家，涉及超市、便利店业态，股份制",
+        "function": "产品与业务",
+        "title": "产品事业部负责人（生鲜及食品产品事业部）",
+        "transition_bridge": "集团进行事业部制改革，因在商品中心期间积累了产品全链路管理经验，被任命为产品事业部负责人",
+        "responsibilities": "负责生鲜及食品产品事业部的整体运营，包括产品规划、采购、品控、门店陈列及销售，管理团队80人，直接对事业部利润负责",
+        "major_events": "推动生鲜标准化，建立源头直采基地，提升毛利率3个百分点",
+        "skills_and_contacts_gained": "全面业务管理能力、利润责任意识、多部门协同经验",
+        "reason_for_move": "继续留任，持续深耕产品与业务"
+      }
+    ],
+    "current_position": {
+      "role": "产品事业部负责人",
+      "industry": "连锁零售",
+      "primary_function": "产品与业务",
+      "company_context": "福建联盛商业集团，股份制，门店超100家，处于跨区域扩张和数字化转型阶段",
+      "management_scope": "管理生鲜及食品产品事业部，团队80人，覆盖福建及周边省份，直接管理采购、品控、运营，年度营收约15亿元，利润指标承担",
+      "customers_and_stakeholders": "日常面对内部：集团高层、采购、门店运营团队；外部：供应商、加盟商、消费者",
+      "operating_metrics": "毛利率、库存周转率、损耗率、顾客满意度、销售额及利润达成率"
+    },
+    "family_life": {
+      "partnership_status": "已婚或长期伴侣关系稳定",
+      "children": [
+        {
+          "relation": "女儿",
+          "age": 13,
+          "life_stage": "中学阶段",
+          "living_arrangement": "同住或经常回家",
+          "everyday_contact": "日常交流不多，遇到重要选择会深度参与"
+        }
+      ],
+      "elder_generation": {
+        "relation": "父亲",
+        "age": 75,
+        "living": true,
+        "proximity": "同住",
+        "health_and_independence": "身体基本健康，仍能独立生活",
+        "personal_involvement": "日常直接参与吃药、就医或生活安排"
+      },
+      "household_snapshot": "已婚或长期伴侣关系稳定；1个子女，其中1个未成年；主要牵挂的老人是父亲，同住",
+      "current_region": "福建",
+      "household_rhythm": "工作日常在福州，周末回厦门与家人团聚，与父亲同住，日常照护",
+      "concrete_experiences": "女儿13岁，就读中学，平时住校，周末回家；许敏仪会参与女儿重要选择，如选科、升学咨询，虽日常交流不多，但保持深度沟通。父亲75岁，同住，身体基本健康但有慢性病，需要协助日常服药和定期就医，许敏仪每周会督促并陪同复诊。",
+      "family_experience_narrative": "许敏仪的生活围绕工作和家庭展开。她在福州工作，周末回厦门照顾父亲和女儿。父亲虽然能自理，但高血压需要长期服药，她会提前备好一周的药，并叮嘱保姆提醒；每月一次的中医复诊，她会尽量赶回陪同。女儿上中学后，住校生活让她们日常交流变少，但许敏仪会保留周末时间，和女儿聊聊学习、朋友和兴趣爱好。当女儿面临选科或课外活动选择时，许敏仪会认真了解情况，给出建议，但尊重女儿的决定。这种模式让她在事业和家庭间找到平衡，她相信，高质量的陪伴比频繁的交流更重要。"
+    },
+    "career_narrative": "许敏仪出生于福建，在厦门大学完成管理学博士学业，专注于零售供应链。2008年，她加入福建华榕连锁超市，从品类助理做起，逐步积累采购、供应商管理和库存分析经验。凭借专业背景与勤奋，她晋升为品类经理，负责生鲜及日化，主导供应链优化，降低损耗率。出于对更大平台的追求，2016年她跳槽至福建联盛商业集团，担任商品中心高级经理，负责全国采购团队，主导自有品牌开发，成功推出'联盛优选'，销售额达2亿元，展现了产品全盘管理能力。2020年升任商品中心总监，全面管理商品体系，经历疫情挑战，推动数字化选品。2024年集团事业部改制，她凭借对产品与业务的深刻理解，被任命为生鲜及食品产品事业部负责人，直接对事业部利润负责，管理80人团队，涵盖采购、品控、门店运营，年度营收约15亿元。她始终扎根连锁零售行业，聚焦产品与业务职能，从基层到事业部负责人，每一步都是责任扩大和能力积累的结果，成为零售产品与运营领域的专家。",
+    "why_executive_program_qualified": "许敏仪拥有18年连锁零售行业产品与业务管理经验，从品类助理成长为产品事业部负责人，管理80人团队、15亿年营收，直接承担利润责任。她经历了企业数字化、自有品牌开发、供应链优化等重大项目，具备跨部门协调和战略决��能力。其组织规模和经营责任已达到中欧高管项目对候选人的要求，能够从高层视角反思和学习，并贡献自身实践。",
+    "general_profile": {
+      "professional_identity": "许敏仪是连锁零售行业的产品与业务管理者，18年深耕采购、供应链和品类管理。她的视角始终从商品流通效率和利润责任出发，熟悉生鲜、食品的损耗控制、供应商谈判和门店运营，习惯用数据化库存、周转率等零售指标来衡量任何业务的健康状况。",
+      "core_motives": "她长期被进步和增长驱动，渴望证明自己能在更大平台上创造价值，不愿失去对业务的控制感。她最怕的是因决策失误导致经营波动，因此即使在追求机会时也会本能地设置安全阀。",
+      "self_concept_and_status": "她自视为务实、有战略眼光的零售专家，靠专业积累而非运气走到今天。她重视他人对自己“靠谱”和“能扛事”的评价，但对过于理论化的空谈保持警惕。",
+      "information_search_and_stopping": "她很难接受“够用”的信息，会持续搜索、反复比较，不断抬高自己的停手门槛。她会同时考察多个供应商、对比历史数据，直到找到最稳妥的方案。但信息一复杂，她会先抓最直观的线索，比如毛利率、损耗率、交货准时率，���这些硬指标快速过滤。",
+      "cognitive_effort": "她愿意投入大量思考，尤其在关键决策上会分析到每个细节。但她也会使用经验捷径，尤其是面对熟悉品类时，会依赖过往成功模式快速判断。她讨厌模糊，会用熟悉的标准如“周转天数”来压住不确定性。",
+      "belief_updating": "她听取异议但很挑剔，只有反对者可信且证据贴近实际时才会更新判断。她不会轻易被情绪说服，但会认真验证数据。她保护原判断，除非有硬证据证明错误。",
+      "risk_posture": "她强烈厌恶经营波动，宁可放弃上行空间也要降低失控概率。她会为确定性支付溢价，比如选择稳定供应商而非低价新供应商。但她并非完全风险厌恶，当机会能证明潜力时，她愿意暴露一点风险，前提是风险可控。",
+      "ambiguity_response": "面对模糊问题，她会先缩小范围，用熟悉的标准把不确定性压下来。她会主动收集数据、咨询信任的人，把模糊转化为具体可操作的任务。她不喜欢悬而未决，会尽快做出临时决策来推动事情。",
+      "goal_regulation": "她主要被进步、增长和证明潜力驱动，但在压力下会转向责任避损。她愿意牺牲近期结果换取长期基础，但一旦感到失控，会立刻收紧目标，优先保证稳定。",
+      "time_orientation": "她长期导向明显，愿意为能力、关系和组织基础投资，即使短期业绩受损。但她也会权衡近期结果，确保不会因长期投入而危及当前生存。",
+      "action_and_recovery": "决定后她会快速启动，但执行状态受团队响应和个人精力影响。顺时她推进有力，逆时她会停顿、重新评估。受挫后她不会立即恢复，需要时间吸收教训，然后调整策略。",
+      "interpersonal_and_power_style": "在同级面前，她合作但保持主导，喜欢用数据和事实说服。在下属面前，她要求严格但公正，会给予明确指令和反馈。在老板面前，她主动汇报、展现稳健。在外部伙伴面前，她谈判强硬但守信，维护长期关系。",
+      "communication_style": "她说话简洁、直接，常用数据、案例和对比来论证。她话不多但每句都有分量。被挑战时她不会立刻反驳，而是先思考，然后给出更有力的证据。她不喜欢空谈，会引导对话到具体执行层面。",
+      "stress_pattern": "压力升高时，她的完美主义倾向会放大，更难接受“够用”，信息搜索和比较更频繁，停手门槛更高。同时她对风险的厌恶会加剧，可能过度保守，导致决策变慢。她也会更依赖熟悉团队，对异议容忍度降低。",
+      "internal_contradictions": "她既追求增长和潜力证明，又强烈厌恶波动，导致在机会面前常犹豫不决。她一方面相信数据，另一方面又依赖经验直觉，在两者冲突时她会焦虑。她希望授权给团队，但又难以放手，怕失控。",
+      "blind_spots": "她可能低估非量化因素，如团队士气、消费者情感等，因为这些难以用指标衡量。她的经验可能让她忽视新兴模式，比如线上创新，因为她的职业路径集中在传统零售。她也可能过度关注成本而错过战略机会。",
+      "profile_narrative": "许敏仪在连锁零售行业摸爬滚打18年，从品类助理到事业部负责人，每一步都踩在采购、供应链和利润的实地上。她的职业身份让她习惯用毛利率、损耗率、周转天数这些硬指标来观察世界，任何业务在她眼里都会自动拆解成成本和效率。这种视角让她在信息处理上表现出明显的双轨：一方面她很难接受‘够用’的方案，会像筛选供应商一样反复比较、持续搜索，把停手门槛抬得很高，直到找到最稳妥的选项；另一方面，当信息过于复杂时，她又会立刻抓住最直观的线索——比如那个数字最难看、哪个环节最可能出问题——用这些经验捷径快速缩小范围。她对模糊的容忍度很低，面对不确定的规则或数据，她会主动收集更多信息，用熟悉的标准把不确定性压下去。她厌恶经营波动，宁可放弃诱人的上行空间也不愿看到失控的苗头，这让她在决策中偏向保守，但并非完全不敢冒险——如果机会能证明潜力，且风险可控，她愿意暴露一点风险。她长期被进步和增长驱动，想证明自己能在更大平台上创造价值，所以她会牺牲部分近期结果去投资能力、关系和组织基础。但一旦压力升高，她的风险厌恶会盖过增长动机，决策变得更谨慎、更保守。在信念更新上，她不是固执的人，但只服可信的证据——反对者必须足够专业，数据必须贴近实际，否则她会坚持原判断。她听取异议但很挑剔，这让她在团队中显得强势，但也让人信服。执行上，她决定后行动迅速，但状态受团队响应和个人精力影响，顺时推进，逆时停顿，受挫后需要时间恢复。她的人际风格务实而直接，用数据和事实说话，在老板面前展现稳健，在下属面前要求严格，在伙伴面前谈判强硬但守信。她的盲区在于过度依赖可见指标，可能忽视士气、情感等软因素，也可能因经验而轻视新兴模式。她是一个在稳定与增长之间拉扯的人，追求进步却害怕波动，相信数据又依赖直觉，想授权却难放手，这些矛盾构成了她真实的职业人格。"
+    },
+    "task_context_term_hits": [],
+    "synthetic": true
+  },
+  {
+    "schema": "career_general_profile_v2",
+    "persona_id": "CGP13",
+    "seed": "20260812-career-family-oos-16:13",
+    "demographic_seed": {
+      "name": "郭嘉宁",
+      "gender": "female",
+      "age": 45,
+      "reference_year": 2026,
+      "birth_year": 1981,
+      "education": "硕士（海外）",
+      "estimated_career_start_age": 24,
+      "estimated_career_start_year": 2005,
+      "estimated_career_years": 21,
+      "overseas": "短期交换/考察",
+      "home_region": "湖南",
+      "current_region": "湖南",
+      "first_industry_hint": "连锁零售",
+      "current_industry_hint": "消费品",
+      "first_function_hint": "产品与业务",
+      "current_function_hint": "产品与业务",
+      "current_role_hint": "业务线负责人",
+      "management_scope_hint": "管理 40-80 人团队",
+      "family_life_seed": {
+        "partnership_status": "已婚或长期伴侣关系稳定",
+        "children": [
+          {
+            "relation": "儿子",
+            "age": 19,
+            "life_stage": "大学或初入职场",
+            "living_arrangement": "同住或经常回家",
+            "everyday_contact": "关系亲近，仍会讨论工作和生活选择"
+          },
+          {
+            "relation": "儿子",
+            "age": 13,
+            "life_stage": "中学阶段",
+            "living_arrangement": "同住或经常回家",
+            "everyday_contact": "保持频繁交流，也会因边界问题发生争执"
+          }
+        ],
+        "elder_generation": {
+          "relation": "婆婆",
+          "age": 75,
+          "living": true,
+          "proximity": "异地居住",
+          "health_and_independence": "身体基本健康，仍能独立生活",
+          "personal_involvement": "联系频繁，但因异地无法参与多数日常事务"
+        },
+        "household_snapshot": "已婚或长期伴侣关系稳定；2个子女，其中1个未成年；主要牵挂的老人是婆婆，异地居住",
+        "current_region": "湖南"
+      },
+      "career_trajectory": {
+        "type": "adjacent_industry_move",
+        "core_industry": "连锁零售",
+        "core_function": "产品与业务",
+        "allowed_industries": [
+          "连锁零售",
+          "消费品"
+        ],
+        "allowed_functions": [
+          "产品与业务"
+        ],
+        "stage_count_min": 5,
+        "stage_count_max": 6,
+        "max_employer_changes": 3,
+        "max_function_changes": 0,
+        "max_industry_changes": 1,
+        "allow_entrepreneurship_or_family_business": false
+      },
+      "qualification_gate": "职业责任、组织规模和经营经历必须足以合理申请中欧或同级高管项目"
+    },
+    "behavioral_fingerprint": {
+      "maximizing_satisficing": 0.04,
+      "need_for_cognition": 0.48,
+      "actively_open_minded_thinking": 0.79,
+      "risk_propensity_business": 0.21,
+      "ambiguity_tolerance": 0.53,
+      "regulatory_focus_promotion": 0.96,
+      "consideration_future_consequences": 0.15,
+      "action_orientation": 0.79
+    },
+    "behavioral_directives": {
+      "maximizing_satisficing": "有一个能过线的方案便愿意停手，不会为了最优解持续扩展选项。",
+      "need_for_cognition": "既能分析也会凭经验，投入多少思考取决于责任和兴趣。",
+      "actively_open_minded_thinking": "会主动问自己可能错在哪里，遇到扎实反证时能明显调整。",
+      "risk_propensity_business": "愿意承担有限风险，但必须保留退出通道和可承受的最坏结果。",
+      "ambiguity_tolerance": "可以在部分未知下推进，但需要几个关键支点保持可解释性。",
+      "regulatory_focus_promotion": "强烈追求跃迁和突破，容易把没有前进体验为一种失败。",
+      "consideration_future_consequences": "当前结果和即时压力权重极高，远期收益很难抵消眼前成本。",
+      "action_orientation": "拍板后会迅速拆任务推进，失败后通常能把注意力拉回下一步。"
+    },
+    "name": "郭嘉宁",
+    "demographic_realization": {
+      "gender": "female",
+      "age": 45,
+      "highest_education": "硕士（海外）",
+      "education_detail": "湖南大学工商管理学士，2002-2006年；2006-2008年赴英国华威大学攻读管理学硕士，期间短期交换考察，获硕士学位",
+      "regional_background": "湖南，长沙人，成长于湖南，硕士毕业后返回湖南发展，熟悉本地市场，长期在长沙及周边工作",
+      "overseas_detail": "英国华威大学硕士，期间有短期企业考察"
+    },
+    "career_history": [
+      {
+        "stage": 1,
+        "start_age": 24,
+        "end_age": 27,
+        "start_year": 2005,
+        "end_year": 2008,
+        "region": "湖南长沙",
+        "industry": "连锁零售",
+        "organization": "湘南连锁超市有限公司（虚构）",
+        "company_type": "区域性民营连锁超市，拥有30家门店，营收约5亿元，处于扩张期",
+        "function": "产品与业务",
+        "title": "产品助理",
+        "transition_bridge": "硕士毕业回国后，通过校园招聘进入公司，凭借海外学习背景和零售行业兴趣获得产品助理岗位，负责协助品类管理工作",
+        "responsibilities": "协助采购经理管理食品与非食品类商品的采购，负责供应商资料整理、订单跟踪、销售数据分析，参与门店促销活动策划",
+        "major_events": "参与公司首次引进自有品牌项目，协助完成市场调研和供应商筛选",
+        "skills_and_contacts_gained": "熟悉零售供应链基础流程，掌握Excel数据分析技能，积累与供应商沟通的经验",
+        "reason_for_move": "希望承担更多责任，在公司内部申请转岗至品类管理岗位"
+      },
+      {
+        "stage": 2,
+        "start_age": 27,
+        "end_age": 31,
+        "start_year": 2008,
+        "end_year": 2012,
+        "region": "湖南长沙",
+        "industry": "连锁零售",
+        "organization": "湘南连锁超市有限公司",
+        "company_type": "同上，已扩张至50家门店",
+        "function": "产品与业务",
+        "title": "品类经理",
+        "transition_bridge": "在公司内部晋升，凭借产品助理阶段积累的采购和数据分析能力，被提拔为品类经理，负责食品品类",
+        "responsibilities": "负责食品品类（零食、饮料、粮油）的采购策略制定，管理20多家供应商，制定品类销售目标和促销计划，与门店运营协调陈列和库存",
+        "major_events": "主导品类优化项目，将食品品类销售额年增长提升15%，毛利率提升2个百分点",
+        "skills_and_contacts_gained": "深入了解零售品类管理方法论，建立本地供应商网络，提升谈判技巧和团队协作能力",
+        "reason_for_move": "希望接触更广的业务面，参与公司整体商品规划，申请转岗至商品规划部门"
+      },
+      {
+        "stage": 3,
+        "start_age": 31,
+        "end_age": 35,
+        "start_year": 2012,
+        "end_year": 2016,
+        "region": "湖南长沙",
+        "industry": "连锁零售",
+        "organization": "湘南连锁超市有限公司",
+        "company_type": "公司被省内龙头零售集团收购，成为其子公司",
+        "function": "产品与业务",
+        "title": "商品规划经理",
+        "transition_bridge": "公司收购后，内部岗位调整，凭借品类管理经验被任命为商品规划经理，负责整体商品结构优化",
+        "responsibilities": "负责公司全部商品线的规划，包括品类组合、价格带设置、新品引入和淘汰机制；管理跨部门团队，与采购、运营、市场协作",
+        "major_events": "主导收购后的商品整合项目，将商品SKU从2万精简至1.5万，提升整体坪效；推动自有品牌开发，占比达到10%",
+        "skills_and_contacts_gained": "掌握商品组合管理和大数据分析，积累了并购整合经验，结识行业咨询专家",
+        "reason_for_move": "集团内部有更广阔的发展空间，但希望进入心仪的新公司，因此选择跳槽"
+      },
+      {
+        "stage": 4,
+        "start_age": 35,
+        "end_age": 40,
+        "start_year": 2016,
+        "end_year": 2021,
+        "region": "湖南长沙",
+        "industry": "消费品",
+        "organization": "湖南嘉禾食品有限公司（虚构）",
+        "company_type": "中型民营食品企业，主营酱料和调味品，年营收约8亿元，全国销售",
+        "function": "产品与业务",
+        "title": "产品总监",
+        "transition_bridge": "凭借在零售端积累的商品规划能力，跳槽至消费品企业，负责产品线管理；入职前接受了内部培训，并利用在零售端积累的消费者洞察知识",
+        "responsibilities": "负责公司产品线的战略规划、新品研发和上市，管理产品经理团队（5人），与销售、市场、供应链部门协同，制定产品定价和渠道策略",
+        "major_events": "推动产品升级，推出高端酱油系列，两年内销售额达1亿元；建立消费者调研机制，优化产品迭代流程",
+        "skills_and_contacts_gained": "从零售转向消费品制造端，学习产品研发流程、品牌管理，积累经销商渠道资源",
+        "reason_for_move": "公司业务发展平稳，希望承担更大的业务管理责任，恰逢公司设立业务线负责人岗位，内部晋升"
+      },
+      {
+        "stage": 5,
+        "start_age": 40,
+        "end_age": 45,
+        "start_year": 2021,
+        "end_year": 2026,
+        "region": "湖南长沙",
+        "industry": "消费品",
+        "organization": "湖南嘉禾食品有限公司",
+        "company_type": "公司已被大型食品集团收购，营收增至15亿元",
+        "function": "产品与业务",
+        "title": "业务线负责人",
+        "transition_bridge": "在担任产品总监期间表现出色，被任命为调味品业务线负责人，全面负责该业务线的经营，包括产品、销售和利润",
+        "responsibilities": "负责调味品业务线的整体战略和经营，管理45人团队（产品、销售、市场、供应链），制定年度预算和经营计划，对营收和利润负责",
+        "major_events": "主导公司被收购后的业务整合，协同集团资源，将业务线营收从6亿元增长至9亿元，利润提升20%；推动电商渠道拓展，线上销售占比达30%",
+        "skills_and_contacts_gained": "掌握业务线全面管理能力，包括财务预算、团队领导，积累集团内人脉，加深对食品行业理解",
+        "reason_for_move": "继续留任，希望带领业务线实现更大增长，同时也有进修提升管理理论的需求"
+      }
+    ],
+    "current_position": {
+      "role": "业务线负责人",
+      "industry": "消费品",
+      "primary_function": "产品与业务",
+      "company_context": "湖南嘉禾食品有限公司，已被大型食品集团收购，成为其全资子公司，属于中型企业，年营收15亿元，产品覆盖全国，主要渠道为商超和电商",
+      "management_scope": "管理45人团队，包括产品、销售、市场、供应链等部门；负责调味品业务线年营收9亿元，直接对利润和市场份额负责",
+      "customers_and_stakeholders": "日常面对总部管理层、下属团队、经销商和零售商客户，以及终端消费者；影响决策的包括集团战略、市场趋势和销售数据",
+      "operating_metrics": "业务线营收增长率、毛利率、净利润、市场份额、库存周转率、新品上市成功率"
+    },
+    "family_life": {
+      "partnership_status": "已婚或长期伴侣关系稳定",
+      "children": [
+        {
+          "relation": "儿子",
+          "age": 19,
+          "life_stage": "大学或初入职场",
+          "living_arrangement": "同住或经常回家",
+          "everyday_contact": "关系亲近，仍会讨论工作和生活选择"
+        },
+        {
+          "relation": "儿子",
+          "age": 13,
+          "life_stage": "中学阶段",
+          "living_arrangement": "同住或经常回家",
+          "everyday_contact": "保持频繁交流，也会因边界问题发生争执"
+        }
+      ],
+      "elder_generation": {
+        "relation": "婆婆",
+        "age": 75,
+        "living": true,
+        "proximity": "异地居住",
+        "health_and_independence": "身体基本健康，仍能独立生活",
+        "personal_involvement": "联系频繁，但因异地无法参与多数日常事务"
+      },
+      "household_snapshot": "已婚或长期伴侣关系稳定；2个子女，其中1个未成年；主要牵挂的老人是婆婆，异地居住",
+      "current_region": "湖南",
+      "household_rhythm": "工作日早出晚归，经常需要出差，周末尽量陪伴家人；丈夫工作稳定，承担部分接送孩子任务；与婆婆每周视频通话，节假日回乡探望",
+      "concrete_experiences": "大儿子19岁，在长沙读大学，周末回家；小儿子13岁，读中学，每天见面，有时因学习问题发生争执；婆婆75岁，住在益阳，身体尚可，每两个月回乡看望一次，近期因婆婆白内障手术，安排过陪护",
+      "family_experience_narrative": "郭嘉宁的生活长期处于工作与家庭的交错中。早晨七点出门，晚上七点多到家，与丈夫分工照顾小儿子，督促学习。大儿子已成年，但周末回家时仍会讨论未来的职业选择。婆婆住在益阳，身体尚可，但近年逐渐需要照料。郭嘉宁每两个月会抽出周末回乡探望，平时每周视频。婆婆的白内障手术时，她请假一周陪护，深感异地照护的艰难。小儿子正处于青春期，常常因玩游戏的时间产生争执，但郭嘉宁尽量在周末留出时间与他交流。虽然奔波，但她认为这些日常的牵挂是生活的意义。"
+    },
+    "career_narrative": "郭嘉宁1981年出生于湖南长沙，2005年从英国获得管理学硕士后，返乡进入连锁零售行业。在湘南连锁超市，她从产品助理起步，逐步晋升为品类经理，负责食品品类，积累了采购和数据分析能力。2012年公司被收购，她抓住机会转任商品规划经理，主导商品结构优化，将SKU精简，提升坪效，并推动了自有品牌的发展。这些经历让她从单品管理走向全局商品规划。2016年，她跳槽至消费品企业嘉禾食品，任产品总监。凭借对消费者需求的敏锐洞察和零售端的经验，她成功打造高端产品线，将销售额带至亿元规模。随着公司被收购，2021年她晋升为调味品业务线负责人，管理45人的团队，对9亿营收负责。她推动线上线下融合，使电商占比达30%，并成功整合集团资源。二十一年来，她始终专注于产品与业务，从零售到制造，从品类到业务线，稳步积累，成为行业老兵。",
+    "why_executive_program_qualified": "郭嘉宁拥有21年消费品和零售行业经验，担任业务线负责人，管理45人团队，年营收9亿，直接负责利润。她经历了行业并购整合、新品研发、渠道拓展等重大事项，具有丰富的实战经验。她的职业路径清晰，从基层到高管，具备跨部门协调和战略执行能力。作为女性管理者，她在家庭与事业间保持平衡，展现出韧性。她的管理瓶颈在于缺乏系统的理论框架，而中欧高管项目能提供这样的机会，她的资历也完全符合其入学标准。",
+    "general_profile": {
+      "professional_identity": "在连锁零售和消费品行业摸爬滚打二十一年，从产品助理到业务线负责人，郭嘉宁的视角始终带着零售和快消的烙印：她看问题先看货架、动销和毛利，习惯用数据说话，也深知渠道和消费者的分量。对她而言，产品不只是商品，更是连接市场与公司的桥梁。",
+      "core_motives": "她内心深处有一种强烈的不甘平庸的驱动力，渴望跃迁和突破，把停滞不前视为失败。她希望证明自己不只是能执行，更能驾驭全局。她最不愿失去的是对局面的掌控感和在行业中的专业声誉，那几乎是她的第二生命。",
+      "self_concept_and_status": "她自认是务实且能扛事的业务负责人，既有零售的细节敏感，又有制造端的全局观。她看重同行和下属对她“能打硬仗”的评价，但也会因知识体系不够理论化而自我怀疑，觉得在更高层级的管理者面前底气不足。",
+      "information_search_and_stopping": "她搜索信息时目标明确，通常围绕当前决策的关键变量，比如销量、成本和渠道反馈。她会比较几个主要选项，但一旦有方案能过线，就果断停手，不会为了最优解而无限扩展选项。她信奉“够好就行”，并把剩余精力留给执行。",
+      "cognitive_effort": "她的思考深度随责任和兴趣波动很大。对核心业务和利润指标，她会投入大量分析，拆解数据、推演后果；但对不感兴趣或责任较小的领域，则常凭经验快速判断，用行业直觉弥补分析不足。",
+      "belief_updating": "她习惯主动问自己“可能错在哪里”，并愿意听取不同意见。当遇到扎实的反证，比如数据或一线反馈明确指向错误时，她能较快调整立场，哪怕这意味着推翻自己之前的判断。但她不喜欢空洞的质疑，只对具体证据低头。",
+      "risk_posture": "她愿意承担有限风险，但前提是最坏结果可承受，且留有退出通道。在决定前，她会反复推演最坏情况，一旦确认不会伤及根本，就敢于下注。她厌恶那种无底洞式的风险，宁可错过机会也不愿失去退路。",
+      "ambiguity_response": "信息不足时，她不会停下，但会寻找几个关键支点来保持可解释性，比如锚定一个核心指标或对标一个成功案例。她能在部分未知中推进，但需要能向自己和团队说清楚“为什么这么做”的逻辑。",
+      "goal_regulation": "她受进步获得驱动远大于责任避损。一想到没有前进，就会感到焦虑和失败。压力下，她反而会提高目标、加速行动，但有时会因过于关注即时突破而忽略长期风险。",
+      "time_orientation": "当前结果和即时压力的权重极高。她做决策时，短期收益和眼前成本往往压倒远期利益。她很难为了一个遥远的回报而忍受长期的损失，除非那个远期目标能拆解成近期的里程碑。",
+      "action_and_recovery": "一旦拍板，她会迅速拆解任务、分派到人，并亲自盯关键节点。她行动力强，执行力快，即使失败，也能在短暂复盘后把注意力拉回下一步。她不允许自己沉浸在挫败中太久，因为那在她看来是浪费时间。",
+      "interpersonal_and_power_style": "对下属，她要求严格但给机会，喜欢直接沟通，讨厌拐弯抹角；对同级，她以结果为导向，讲究利益交换和合作共赢；对老板，她既服从又敢于表达不同意见，但最终会以行动证明；对外部伙伴，她保持专业和距离，强调双赢。",
+      "communication_style": "说话干脆，常用数据和事实支撑观点，逻辑清晰。她话不多，但每句都有分量。被挑战时，她不会立刻反驳，而是先听，再逐条回应。她的语气会因场合而变：对上恭敬，对下坚定，对外谈判时则带一点强势。",
+      "stress_pattern": "压力越大，她越聚焦于短期目标，行动加快，但耐心下降。平时能听的异议，在高压下可能被当成干扰；她也会变得更独断，同时更容易对下属发火。但她不会崩溃，反而会像拧紧的发条，直到任务完成。",
+      "internal_contradictions": "她既渴望突破又对风险敏感，常常在“大胆进攻”和“确保退路”之间摇摆。她一方面自认经验丰富，另一方面又因缺乏理论框架而自卑，在上级面前会不自觉地放低姿态。她追求效率，却有时因过度关注眼前而牺牲长远，事后又后悔。",
+      "blind_spots": "她的盲区在于对远期战略的系统性思考不够，容易因短期压力而忽略长期结构性问题。职业来源是多年的零售和快消经验，让她习惯于快速反应、季度考核，而缺乏对慢变量、大趋势的耐心。",
+      "profile_narrative": "郭嘉宁的职业生涯像一条从货架到决策室的直线，她始终在“产品与业务”这条跑道上加速。从湘南超市的产品助理开始，她学会了看数据、管供应商、盯促销；成为品类经理后，她掌握了如何从一堆SKU里挑出能打的，也学会了跟门店运营扯皮。这些经历让她对零售的每一个环节都了如指掌，但也让她习惯了“快”和“变”。当公司被收购，她抓住机会转向商品规划，开始从更宏观的角度思考品类组合和坪效。那时她第一次意识到，自己不仅能执行，还能做决策。2016年跳槽到嘉禾食品，是她职业生涯的转折点：从零售端转向制造端，从买手变成卖方。她必须重新学习产品研发、品牌和渠道，但她把零售端的消费者洞察带了过来，这对她后来成功推出高端酱油系列至关重要。现在，作为业务线负责人，她管理45人，对9亿营收负责。她享受这种掌控感，但也感受到瓶颈：她知道自己擅长在模糊中快速找到支点，却缺乏系统的理论框架来支撑更大的战略。她的行为风格始终带着零售的烙印：看短期、重结果、快速迭代。她愿意承担风险，但必须留退路；她能听异议，但只对证据低头；她追求突破，却难以忍受长期的投入而不见回报。这些特质让她在现有岗位上如鱼得水，但也可能成为她更上一层楼的阻碍。她内心渴望跃迁，却常常被眼前的压力拉回地面。她是一个矛盾体：既务实又野心勃勃，既谨慎又敢赌，既依赖经验又向往理论。但正是这些矛盾，让她在不断试错中保持着前进的动力。"
+    },
+    "task_context_term_hits": [],
+    "synthetic": true
+  },
+  {
+    "schema": "career_general_profile_v2",
+    "persona_id": "CGP14",
+    "seed": "20260812-career-family-oos-16:14",
+    "demographic_seed": {
+      "name": "孙伟民",
+      "gender": "male",
+      "age": 46,
+      "reference_year": 2026,
+      "birth_year": 1980,
+      "education": "博士",
+      "estimated_career_start_age": 29,
+      "estimated_career_start_year": 2009,
+      "estimated_career_years": 17,
+      "overseas": "无",
+      "home_region": "长三角",
+      "current_region": "湖北",
+      "first_industry_hint": "消费品",
+      "current_industry_hint": "消费品",
+      "first_function_hint": "市场与品牌",
+      "current_function_hint": "市场与品牌",
+      "current_role_hint": "市场与品牌负责人",
+      "management_scope_hint": "负责多城市/多门店运营",
+      "family_life_seed": {
+        "partnership_status": "再婚家庭",
+        "children": [],
+        "elder_generation": {
+          "relation": "岳母",
+          "age": 79,
+          "living": true,
+          "proximity": "同城但不同住",
+          "health_and_independence": "生活基本独立，但家人担心突发状况",
+          "personal_involvement": "由兄弟姐妹分担，自己负责关键决定"
+        },
+        "household_snapshot": "再婚家庭；没有子女；主要牵挂的老人是岳母，同城但不同住",
+        "current_region": "湖北"
+      },
+      "career_trajectory": {
+        "type": "stable_specialist",
+        "core_industry": "消费品",
+        "core_function": "市场与品牌",
+        "allowed_industries": [
+          "消费品"
+        ],
+        "allowed_functions": [
+          "市场与品牌"
+        ],
+        "stage_count_min": 4,
+        "stage_count_max": 5,
+        "max_employer_changes": 2,
+        "max_function_changes": 0,
+        "max_industry_changes": 0,
+        "allow_entrepreneurship_or_family_business": false
+      },
+      "qualification_gate": "职业责任、组织规模和经营经历必须足以合理申请中欧或同级高管项目"
+    },
+    "behavioral_fingerprint": {
+      "maximizing_satisficing": 0.3,
+      "need_for_cognition": 0.62,
+      "actively_open_minded_thinking": 0.89,
+      "risk_propensity_business": 0.43,
+      "ambiguity_tolerance": 0.78,
+      "regulatory_focus_promotion": 0.15,
+      "consideration_future_consequences": 0.25,
+      "action_orientation": 0.92
+    },
+    "behavioral_directives": {
+      "maximizing_satisficing": "通常先看少数熟悉方案，达到基本要求后就倾向结束比较。",
+      "need_for_cognition": "愿意拆解复杂问题，常追问机制、数据口径和因果关系。",
+      "actively_open_minded_thinking": "习惯邀请最强反对意见，并愿意推翻自己已经投入很多的判断。",
+      "risk_propensity_business": "风险取向随资源余量和熟悉程度变化，不固定冒进或保守。",
+      "ambiguity_tolerance": "能在信息缺口中行动，并通过试探和反馈逐步形成判断。",
+      "regulatory_focus_promotion": "主要以避免损失、履行责任和不出差错来判断自己是否做对。",
+      "consideration_future_consequences": "会考虑后续影响，但只要近期压力足够大就会明显折现未来。",
+      "action_orientation": "有很强的启动和恢复能力，越有阻力越容易进入持续行动状态。"
+    },
+    "name": "孙伟民",
+    "demographic_realization": {
+      "gender": "male",
+      "age": 46,
+      "highest_education": "博士",
+      "education_detail": "管理学博士（市场营销方向），2008年毕业于长三角地区一所知名高校（华东地区985/211大学），博士研究方向为消费者行为与品牌管理。本科和硕士均为市场营销专业，分别在2002年和2005年获得学士和硕士学位。毕业后进入外资快消企业工作。",
+      "regional_background": "出生于长三角地区（江苏苏州），成长于上海，本科至博士均在长三角地区就读。2009年因工作机会迁至湖北武汉，此后长期在湖北工作生活。长三角的商业氛围和快消行业的活跃度对其职业选择有直接影响，而湖北的制造业基础和区域市场特性也塑造了其后期职业视野。",
+      "overseas_detail": "无"
+    },
+    "career_history": [
+      {
+        "stage": 1,
+        "start_age": 29,
+        "end_age": 33,
+        "start_year": 2009,
+        "end_year": 2013,
+        "region": "湖北武汉",
+        "industry": "消费品",
+        "organization": "湖北楚天日化有限公司",
+        "company_type": "民营股份制，中大型日化企业，主要生产洗护发和身体清洁产品，年营收约8亿元，处于全国扩张阶段。",
+        "function": "市场与品牌",
+        "title": "市场部品牌经理",
+        "transition_bridge": "博士毕业后进入该企业市场部，凭借市场营销博士学位和对消费者行为的深入研究，直接担任品牌经理岗位。此前在博士期间参与过多个市场调研项目，为快速上手提供了基础。",
+        "responsibilities": "负责公司主力品牌“清润”洗发水的品牌管理，包括制定年度品牌计划、管理全国性广告投放（电视和平面）、协调新产品上市，并管理2名品牌助理。需要与销售大区经理频繁沟通，确保市场活动与渠道策略一致。主要考核指标为品牌市场份额、品牌认知度、新品上市成功率。",
+        "major_events": "主导了“清润”品牌焕新项目，更新产品包装和广告语，并推动在湖南卫视等媒体投放，品牌市场份额在两年内提升3个百分点。成功推出“清润”无硅油系列，填补公司高端产品线空白。",
+        "skills_and_contacts_gained": "深入掌握快消品品牌管理全流程，建立了与全国主要卫视广告代理、市场调研公司（如尼尔森）的合作关系；积累了区域经销商网络知识，了解湖北及周边市场。",
+        "reason_for_move": "为积累更全面的市场职能，主动申请转岗至市场部下的渠道市场科，以接触更多终端推广和渠道营销，为后续承担更大责任铺垫。"
+      },
+      {
+        "stage": 2,
+        "start_age": 33,
+        "end_age": 37,
+        "start_year": 2013,
+        "end_year": 2017,
+        "region": "湖北武汉",
+        "industry": "消费品",
+        "organization": "湖北楚天日化有限公司",
+        "company_type": "同上，正在筹备上市，市场部结构重整。",
+        "function": "市场与品牌",
+        "title": "市场部副经理（分管渠道市场）",
+        "transition_bridge": "此前作为品牌经理积累了品牌资产管理和新品上市经验，并多次参与全国经销商大会，熟悉渠道需求；通过内部竞聘转至新设的渠道市场岗位，属于职能内部的细微调整，无需额外培训。",
+        "responsibilities": "负责全国六大区的渠道促销活动规划，制定终端陈列标准，管理渠道费用预算（每年约5000万元），并带领5人的团队。协调销售部与品牌部，确保市场活动有效落地。主要考核指标为渠道促销投资回报率、终端执行率、经销商满意度。",
+        "major_events": "主导了全国KA渠道的“终端形象升级”项目，与华润万家、大润发等合作，统一陈列物料，使公司产品在重点商超的货架份额提升15%。推动渠道费用管理精细化，引入经销商费用核销系统，降低虚假报销。",
+        "skills_and_contacts_gained": "熟练掌控渠道营销预算和终端执行管理，与全国大型零售连锁的采购和营运负责人建立了良好关系；深入理解渠道利益链和经销商管理。",
+        "reason_for_move": "因公司组织调整，市场部副经理升任市场部经理，原副经理岗位空缺，主动承担更全面的市场部管理职责，同时希望整合品牌和渠道资源。"
+      },
+      {
+        "stage": 3,
+        "start_age": 37,
+        "end_age": 41,
+        "start_year": 2017,
+        "end_year": 2021,
+        "region": "湖北武汉",
+        "industry": "消费品",
+        "organization": "湖北楚天日化有限公司",
+        "company_type": "同上，已上市，营收增长至15亿元，成为中国中部地区知名日化企业。",
+        "function": "市场与品牌",
+        "title": "市场部经理",
+        "transition_bridge": "前面两个阶段分别积累了品牌和渠道经验，已具备全面管理市场部的资历，得到了前任经理的推荐；此次升职为组织内部认可，无职能跳跃。",
+        "responsibilities": "全面负责市场部工作，包括品牌管理、市场调研、广告投放、渠道市场、公关活动，领导团队15人。制定年度市场预算（1.2亿元），向营销副总汇报。参与公司战略规划，主导品牌矩阵梳理。主要考核指标为市场份额、品牌资产指数、市场费用效率。",
+        "major_events": "主导公司品牌架构调整，将原有5个品牌精简为3个核心品牌，集中资源打造“清润”和“净爽”两大品牌，使毛利率提升5个百分点。成功运作“清润”冠名湖北卫视综艺节目，品牌声量显著提升。疫情期间迅速调整营销策略，加大电商投入，线上销售增长80%。",
+        "skills_and_contacts_gained": "精于多品牌管理和资源分配，积累了媒体、广告公司、调研公司的高层人脉；熟悉资本市场对营销的要求，先后完成多次路演支持。",
+        "reason_for_move": "因公司总部战略调整，市场部经理岗位调任新设立的品牌中心总监，需要更系统地管理品牌组合，同时为晋升总监做准备；此次调职属于平级调动，但责任范围扩大至所有品牌。"
+      },
+      {
+        "stage": 4,
+        "start_age": 41,
+        "end_age": 46,
+        "start_year": 2021,
+        "end_year": 2026,
+        "region": "湖北武汉",
+        "industry": "消费品",
+        "organization": "湖北楚天日化有限公司",
+        "company_type": "同上，年营收已达25亿元，正拓展东南亚市场。",
+        "function": "市场与品牌",
+        "title": "市场与品牌负责人",
+        "transition_bridge": "从市场部经理调任新设品牌中心总监，虽然岗位名称变化，但实际职责仍是管理市场与品牌全盘，属于组织内晋升。",
+        "responsibilities": "统管品牌中心，下辖品牌管理部、市场调研部、广告投放部和渠道市场部，团队30人。负责公司整体品牌战略、年度市场计划，制定并监管约2亿元的市场预算，向公司总裁直接汇报。参与公司董事会战略会议，负责品牌资产管理和消费者洞察。主要考核指标为公司整体市场份额、品牌资产、NPS、投资回报率。",
+        "major_events": "成功推出高端子品牌“清润·臻选”，打入一二线城市高端洗护市场，三年内实现年营收3亿元。主导数字化转型，搭建消费者数据平台（CDP），实现精准营销，线上销售占比��10%提升至35%。带领团队获得“湖北省知名品牌”荣誉。",
+        "skills_and_contacts_gained": "具备全面的市场与品牌管理能力，熟练掌握数据驱动营销，拥有行业影响力，经常受邀参加行业论坛；建立了与国内外原料供应商、广告集团、电商平台的深度合作。",
+        "reason_for_move": "继续留任，因为在公司有长期发展空间，且正在推动品牌国际化，希望完成海外市场布局后再考虑下一步。"
+      }
+    ],
+    "current_position": {
+      "role": "市场与品牌负责人",
+      "industry": "消费品",
+      "primary_function": "市场与品牌",
+      "company_context": "民营上市日化企业，员工约3000人，年营收25亿元，产品销往全国并出口东南亚。公司正处于品牌升级和数字化转型的关键阶段。",
+      "management_scope": "领导30人的市场与品牌团队，包括品牌、调研、广告、渠道市场四个部门；负责全国多城市及海外市场的品牌运营，管辖市场预算约2亿元，直接对品牌市场份额、全年营收目标（约40亿元）和利润目标负责。",
+      "customers_and_stakeholders": "日常主要面对公司总裁及董事会（战略决策）、销售副总裁（协同）、各大区销售总监（市场活动落地）、品牌代理商和经销商（合作）、消费者（通过调研和用户社区），以及媒体和广告代理。",
+      "operating_metrics": "最为熟悉和常背的指标包括：品牌市场份额（尼尔森数据）、品牌资产指数、消费者NPS、市场费用ROI、新品上市成功率（12个月存活率）、终端铺货率、数字渠道销售占比等。"
+    },
+    "family_life": {
+      "partnership_status": "再婚家庭",
+      "children": [],
+      "elder_generation": {
+        "relation": "岳母",
+        "age": 79,
+        "living": true,
+        "proximity": "同城但不同住",
+        "health_and_independence": "生活基本独立，但家人担心突发状况",
+        "personal_involvement": "由兄弟姐妹分担，自己负责关键决定"
+      },
+      "household_snapshot": "再婚家庭；没有子女；主要牵挂的老人是岳母，同城但不同住",
+      "current_region": "湖北",
+      "household_rhythm": "工作日在公司或出差，周末尽量留出时间陪岳母。妻子也是职业女性，两人分担家务。由于没有子女，家庭重心主要放在双方父母健康上，尤其岳母因年事已高，需要定期关注。因为同城但不同住，每周至少两次探望，遇到体检或就医会陪同。",
+      "concrete_experiences": "岳母79岁，一直独自居住在武汉，虽生活基本自理，但最近两年记忆力下降，家人担心突发意外。孙伟民与妻子及妻子的兄弟姐妹商量，为岳母安装了紧急呼叫设备，并排班每周探望。去年岳母因肺炎住院，孙伟民负责协调医疗资源，并连续几晚在医院陪伴。由于工作忙，平时通过电话和家庭微信群了解岳母状况。",
+      "family_experience_narrative": "孙伟民是再婚家庭，妻子是武汉本地人，两人没有子女，婚后与妻子的家人关系紧密。岳母年近八旬，一直独居，虽然身体还算硬朗，但家人总担心万一有突发情况。孙伟民作为女婿，主动承担起关键决策的责任，比如安排岳母的体检、选择医院、决定是否需要请护工。他习惯每周末去岳母家坐坐，带上妻子做的菜，陪老人聊聊天。遇到岳母身体有不适，他会放下工作及时赶去。这几年，他学会了如何协调兄弟姐妹之间的照��安排，也体会到中年人面对长辈衰老的无奈。他有时会想，如果没有妻子的理解，自己很难平衡高管工作与家庭责任。这种对家庭责任的承担，也让他在管理中更能理解员工面临的生活压力。"
+    },
+    "career_narrative": "孙伟民1980年出生于江苏，在上海长大。从本科到博士，他一直在长三角地区求学，主修市场营销，2008年获得管理学博士学位。他的博士论文研究消费者品牌忠诚度，这为他日后进入消费品行业奠定了基础。2009年，他加入湖北楚天日化有限公司，担任市场部品牌经理。凭借扎实的品牌理论，他迅速上手，主导了主力品牌“清润”的焕新计划，成功推出无硅油系列，使品牌市场份额显著提升。2013年，为了拓宽市场职能，他申请转岗至渠道市场，成为市场部副经理，分管渠道促销和终端推广。在这一岗位上，他掌握了渠道管理技能，与全国大型零售商建立了关系，并主导了终端形象升级项目。2017年，他升任市场部经理，全面负责品牌、调研、广告和渠道市场，领导团队15人。期间，他推动品牌架构精简，聚焦核心品牌，并抓住直播电商风口，使线上销售大幅增长。2021年，公司设立品牌中心，他出任市场与品牌负责人，将团队扩充至30人，并成功推出高端子品牌，建设消费者数据平台，推动数字化营销。如今，他依然在湖北，继续深耕消费品市场与品牌领域。他的职业生涯始终围绕消费品市场与品牌职能，从品牌经理到市场部经理再到负责人，每一步都是责任范围的扩大和能力的深化。他的经历证明了一条稳定而专业的发展路径，积累了丰富的品牌管理、渠道营销和团队领导经验。",
+    "why_executive_program_qualified": "孙伟民拥有17年消费品行业市场与品牌管理经验，现任市场与品牌负责人，领导30人团队，管理约2亿元预算，直接对公司25亿元营收和整体市场份额负责。他经历过企业从区域品牌到全国知名品牌的发展，主导了品牌焕新、数字化转型、高端化等关键项目，具备战略思维和跨部门协调能力。他的责任规模、管理幅度和行业影响力足以申请中欧或同级高管项目。",
+    "general_profile": {
+      "professional_identity": "以快消行业市场与品牌负责人身份，习惯从消费者数据和渠道终端视角看问题，重视市场份额和品牌资产。职业史使其熟悉品牌管理、渠道营销和数字化，关注市场费用效率，常以行业术语思考，但行为指令独立于职业史。",
+      "core_motives": "长期驱动力是证明自己能够驾驭复杂市场环境，赢得专业认可。最不愿失去的是在行业中的声誉和影响力，以及家庭责任。通过稳定晋升和成功项目来确认自我价值，避免因决策失误而损害公司利益和个人信誉。",
+      "self_concept_and_status": "自视为务实、有战略眼光的市场专家，能平衡品牌理想与商业现实。重视他人评价，尤其在意上级和行业同行的认可，但不过分依赖。在团队中树立专业权威，同时保持开放。",
+      "information_search_and_stopping": "搜索信息时倾向于先看少数几个熟悉方案，比如参考过往成功案例或行业标准，一旦达到基本要求就停止比较。例如，评估新营销活动时，可能只看两三个类似案例，确认可行性后便推进，不追求全面比较。",
+      "cognitive_effort": "愿意深入拆解复杂问题，常追问机制、数据口径和因果关系，例如分析销售下滑时会要求查看不同渠道数据并询问原因。但时间紧张或问题熟悉时，会依赖经验捷径快速决策。",
+      "belief_updating": "习惯主动邀请最强反对意见，比如在内部会议中鼓励下属提出质疑。愿意在证据充分时推翻自己已投入很多的判断，例如曾放弃已投入资源的项目，但需数据或逻辑说服。",
+      "risk_posture": "风险取向随资源余量和熟悉程度变化。当预算充足或领域熟悉时，敢于尝试创新；若资源紧张或陌生领域，则偏向保守。例如，对成熟品牌敢投大钱，对新兴市场则小步试探。",
+      "ambiguity_response": "在信息不足时能行动，通过小规模试点或市场测试来试探，根据反馈逐步形成判断。情绪上保持适度紧张，但不过度焦虑，视模糊为常态，用行动减少不确定性。",
+      "goal_regulation": "主要以避免损失、履行责任和不出差错为驱动，但在压力下会更关注短期目标，可能牺牲长期规划。例如，季度销售压力大时，会加大促销力度，即使影响品牌溢价。",
+      "time_orientation": "会考虑长期品牌建设，但若近期压力够大，则明显折现未来。例如，为完成年度目标，可能推迟品牌升级项目，将资源投向短期销量提升。",
+      "action_and_recovery": "有很强的启动能力，决定后快速执行，越有阻力越容易进入持续行动状态。受挫后能迅速调整，比如项目失败后，会立即复盘并制定新方案，不长时间沉浸于负面情绪。",
+      "interpersonal_and_power_style": "对上级尊重且主动汇报，对下属授权但保持监督，对同级合作时善于协调。在外部伙伴前展现专业自信，但也会倾听。喜欢通过数据和事实说服，而非强压。",
+      "communication_style": "语言节奏平稳，常用行业术语和数据支撑论点。话量适中，讨论时先倾听后总结。被挑战时，会先要求提供证据，再调整观点，不会激烈反驳。",
+      "stress_pattern": "压力升高时，会更聚焦短期目标，风险偏好下降，决策速度加快，可能减少听取反对意见。同时，启动和恢复能力增强，但耐心降低，易对细节不耐烦。",
+      "internal_contradictions": "一方面追求完美和避免出错，另一方面又敢于在信息不足时冒险行动。既依赖经验捷径，又渴望深入分析。在团队中既开放听取异议，又可能因压力而独断。",
+      "blind_spots": "稳定盲区是低估非量化因素，如组织文化和员工情绪，因职业背景强调数据和市场份额。可能忽视基层执行中的细微问题，导致战略落地偏差。",
+      "profile_narrative": "孙伟民是一位在快消品行业深耕多年的市场与品牌负责人，他的职业经历塑造了以数据和市场表现为中心的思考方式。他习惯于从消费者洞察和渠道终端出发，看待问题总是带着市场份额、品牌资产和费用效率等指标。在决策时，他通常先快速筛选少数熟悉方案，一旦满足基本目标便停止比较，这源于他在快消领域积累的直觉。然而，当面对复杂问题时，他又会展现出极强的分析能力，追问机制和因果，要求数据口径一致，这与他博士研究背景有关。他并非固定冒险或保守，风险偏好随资源丰裕度和领域熟悉度变化。在信息不足时，他能通过小规模试点来行动，逐步形成判断。他的自我评价主要来自避免损失和履行责任，因此常常在压力下更关注短期目标，甚至折现长期品牌建设。他拥有很强的启动和恢复能力，阻力反而激发他的行动力。在人际互动中，他善于用数据说服，也愿意邀请反对意见，但在压力下可能变得独断。他的内在矛盾在于既想深入分析，又依赖经验；既追求完美，又敢于在模糊中行动。这些特质共同构成了一个务实、数据驱动、但有时矛盾的市场领导者形象。"
+    },
+    "task_context_term_hits": [],
+    "synthetic": true
+  },
+  {
+    "schema": "career_general_profile_v2",
+    "persona_id": "CGP15",
+    "seed": "20260812-career-family-oos-16:15",
+    "demographic_seed": {
+      "name": "何海川",
+      "gender": "male",
+      "age": 42,
+      "reference_year": 2026,
+      "birth_year": 1984,
+      "education": "本科（非985）",
+      "estimated_career_start_age": 22,
+      "estimated_career_start_year": 2006,
+      "estimated_career_years": 20,
+      "overseas": "无",
+      "home_region": "福建",
+      "current_region": "河南",
+      "first_industry_hint": "文旅运营",
+      "current_industry_hint": "文旅运营",
+      "first_function_hint": "财务与投资",
+      "current_function_hint": "财务与投资",
+      "current_role_hint": "财务负责人",
+      "management_scope_hint": "负责新业务孵化和老业务改造",
+      "family_life_seed": {
+        "partnership_status": "再婚家庭",
+        "children": [
+          {
+            "relation": "儿子",
+            "age": 12,
+            "life_stage": "小学阶段",
+            "living_arrangement": "同住或经常回家",
+            "everyday_contact": "主要由伴侣或长辈照料，自己在关键事务上参与"
+          },
+          {
+            "relation": "女儿",
+            "age": 6,
+            "life_stage": "学龄前",
+            "living_arrangement": "同住或经常回家",
+            "everyday_contact": "主要由伴侣或长辈照料，自己在关键事务上参与"
+          }
+        ],
+        "elder_generation": {
+          "relation": "母亲",
+          "age": 74,
+          "living": true,
+          "proximity": "住在同一小区或车程半小时内",
+          "health_and_independence": "有慢性病，需要定期复诊",
+          "personal_involvement": "由兄弟姐妹分担，自己负责关键决定"
+        },
+        "household_snapshot": "再婚家庭；2个子女，其中2个未成年；主要牵挂的老人是母亲，住在同一小区或车程半小时内",
+        "current_region": "河南"
+      },
+      "career_trajectory": {
+        "type": "stable_specialist",
+        "core_industry": "文旅运营",
+        "core_function": "财务与投资",
+        "allowed_industries": [
+          "文旅运营"
+        ],
+        "allowed_functions": [
+          "财务与投资"
+        ],
+        "stage_count_min": 5,
+        "stage_count_max": 6,
+        "max_employer_changes": 3,
+        "max_function_changes": 0,
+        "max_industry_changes": 0,
+        "allow_entrepreneurship_or_family_business": false
+      },
+      "qualification_gate": "职业责任、组织规模和经营经历必须足以合理申请中欧或同级高管项目"
+    },
+    "behavioral_fingerprint": {
+      "maximizing_satisficing": 0.49,
+      "need_for_cognition": 0.68,
+      "actively_open_minded_thinking": 0.07,
+      "risk_propensity_business": 0.65,
+      "ambiguity_tolerance": 0.86,
+      "regulatory_focus_promotion": 0.2,
+      "consideration_future_consequences": 0.42,
+      "action_orientation": 0.22
+    },
+    "behavioral_directives": {
+      "maximizing_satisficing": "会比较几条主要路径，但搜索深度随事情重要性而变化。",
+      "need_for_cognition": "愿意拆解复杂问题，常追问机制、数据口径和因果关系。",
+      "actively_open_minded_thinking": "形成看法后很少主动找反证，异议容易被理解成不懂现场。",
+      "risk_propensity_business": "能够接受较大结果波动，只要机会值得且责任边界清楚。",
+      "ambiguity_tolerance": "对开放、无标准答案的问题感到兴奋，愿意边行动边定义问题。",
+      "regulatory_focus_promotion": "更在意守住已有成果和保护相关人的安全感。",
+      "consideration_future_consequences": "短期兑现与长期积累大体并重，常寻找能兼顾两者的路径。",
+      "action_orientation": "可以启动熟悉事项，但遇到阻力会反复回看决定并放慢执行。"
+    },
+    "name": "何海川",
+    "demographic_realization": {
+      "gender": "male",
+      "age": 42,
+      "highest_education": "本科（非985）",
+      "education_detail": "2002-2006年就读于福建某省属财经类大学，会计学专业，获管理学学士学位。",
+      "regional_background": "福建成长，大学毕业后赴河南发展，长期在文旅运营行业积累财务与投资经验，闽商务实精神与中原文化结合。",
+      "overseas_detail": "无"
+    },
+    "career_history": [
+      {
+        "stage": 1,
+        "start_age": 22,
+        "end_age": 26,
+        "start_year": 2006,
+        "end_year": 2010,
+        "region": "河南",
+        "industry": "文旅运营",
+        "organization": "中原山水文旅投资有限公司",
+        "company_type": "民营文旅开发企业，拥有多个自然景区和度假区，处于快速扩张期",
+        "function": "财务与投资",
+        "title": "会计",
+        "transition_bridge": "本科会计学专业毕业，通过校招进入该公司财务部，从基础核算做起。",
+        "responsibilities": "负责景区门票收入、酒店餐饮业务的日常账务处理，编制月度财务报表，协助税务申报。",
+        "major_events": "参与公司首个大型度假区的财务筹备，熟悉景区运营的基本财务流程。",
+        "skills_and_contacts_gained": "掌握了文旅行业特有的收入确认和成本核算方法，与运营部门建立了初步合作关系。",
+        "reason_for_move": "积累基础财务能力，希望在专业上深入发展。"
+      },
+      {
+        "stage": 2,
+        "start_age": 26,
+        "end_age": 30,
+        "start_year": 2010,
+        "end_year": 2014,
+        "region": "河南",
+        "industry": "文旅运营",
+        "organization": "中原山水文旅投资有限公司",
+        "company_type": "民营文旅开发企业，逐步成为区域龙头",
+        "function": "财务与投资",
+        "title": "财务经理",
+        "transition_bridge": "凭借扎实的核算能力和对业务的熟悉，晋升为财务经理，开始负责团队管理和项目财务。",
+        "responsibilities": "管理5人财务团队，负责公司财务预算、资金调度、成本控制，参与新项目投资测算。",
+        "major_events": "主导公司财务信息化系统上线，提高核算效率；参与两个新景区的投资论证。",
+        "skills_and_contacts_gained": "培养了团队管理能力，熟悉文旅项目投资测算模型，与银行及股东方建立联系。",
+        "reason_for_move": "职业发展需要，承担更大责任，同时积累管理经验。"
+      },
+      {
+        "stage": 3,
+        "start_age": 30,
+        "end_age": 34,
+        "start_year": 2014,
+        "end_year": 2018,
+        "region": "河南",
+        "industry": "文旅运营",
+        "organization": "中原山水文旅投资有限公司",
+        "company_type": "民营文旅集团，涉及景区、酒店、演艺等多业态",
+        "function": "财务与投资",
+        "title": "财务总监助理",
+        "transition_bridge": "在财务经理岗位上表现出色，被提拔为财务总监助理，协助集团财务总监处理更复杂的财务与投资事务。",
+        "responsibilities": "协助财务总监管理集团整体预算、资金计划、投融资项目，对接审计与税务。",
+        "major_events": "参与公司收购周边小型景区的尽职调查和财务整合；负责发行首笔文旅产业基金。",
+        "skills_and_contacts_gained": "深化了并购整合经验，熟悉文旅产业融资渠道，与当地政府文旅部门建立关系。",
+        "reason_for_move": "公司组织架构调整，财务职能扩展，个人希望进一步接触集团层面战略。"
+      },
+      {
+        "stage": 4,
+        "start_age": 34,
+        "end_age": 38,
+        "start_year": 2018,
+        "end_year": 2022,
+        "region": "河南",
+        "industry": "文旅运营",
+        "organization": "中原山水文旅投资有限公司（后更名为中原文旅集团）",
+        "company_type": "民营文旅集团，经历股权变更，引入战略投资者",
+        "function": "财务与投资",
+        "title": "投资发展部总经理",
+        "transition_bridge": "在财务总监助理岗位上积累了投资与融资经验，调任投资发展部总经理，负责新项目拓展和投资管理。",
+        "responsibilities": "负责集团对外投资、新项目开发、政府合作项目谈判，管理投资团队。",
+        "major_events": "主导了多个文旅综合体项目的投资测算和落地；经历公司股权变更，协助财务团队完成财务交接。",
+        "skills_and_contacts_gained": "增强了投资决策能力，积累了地方政府资源和跨部门协调经验。",
+        "reason_for_move": "集团业务扩张，需要既懂财务又懂投资的高管负责新业务发展。"
+      },
+      {
+        "stage": 5,
+        "start_age": 38,
+        "end_age": 42,
+        "start_year": 2022,
+        "end_year": 2026,
+        "region": "河南",
+        "industry": "文旅运营",
+        "organization": "中原文旅集团",
+        "company_type": "民营文旅集团，拥有多个景区、度假区，年营收数十亿，正进行老业务改造和新业态孵化",
+        "function": "财务与投资",
+        "title": "财务负责人",
+        "transition_bridge": "在投资发展部总经理岗位上充分理解业务，被任命为集团财务负责人，统筹财务与投资职能。",
+        "responsibilities": "全面负责集团财务战略、融资、预算、成本管控、投资决策，推动老景区改造和新业务孵化。",
+        "major_events": "带领团队完成老景区资产盘点与改造财务方案；孵化演艺、研学等新业务，设立专项基金。",
+        "skills_and_contacts_gained": "综合管理能力提升，深入理解文旅行业转型；与金融机构、政府平台建立长期合作关系。",
+        "reason_for_move": "集团认可其兼具财务专业与业务视角，赋予新业务孵化责任，个人继续留任以完成战略目标。"
+      }
+    ],
+    "current_position": {
+      "role": "财务负责人",
+      "industry": "文旅运营",
+      "primary_function": "财务与投资",
+      "company_context": "中原文旅集团，民营文旅企业，拥有4个景区、3家度假酒店和多个新业态项目，年营收约20亿元。集团正从传统观光向休闲度假转型，重视投资回报和财务健康。",
+      "management_scope": "管理财务部、投资部共25人，负责集团所有业务单元的资金、预算、成本、投融资，直接向董事长汇报。年度预算约5亿元，负责新业务孵化投入和老业务改造的财务规划。",
+      "customers_and_stakeholders": "日常面对董事长、各业务总经理、政府文旅部门、银行、投资方以及景区运营团队。核心是平衡股东回报和业务发展需求。",
+      "operating_metrics": "熟悉营收、EBITDA、净利润、投资回收期、资产负债率、现金流等指标。"
+    },
+    "family_life": {
+      "partnership_status": "再婚家庭",
+      "children": [
+        {
+          "relation": "儿子",
+          "age": 12,
+          "life_stage": "小学阶段",
+          "living_arrangement": "同住或经常回家",
+          "everyday_contact": "主要由伴侣或长辈照料，自己在关键事务上参与"
+        },
+        {
+          "relation": "女儿",
+          "age": 6,
+          "life_stage": "学龄前",
+          "living_arrangement": "同住或经常回家",
+          "everyday_contact": "主要由伴侣或长辈照料，自己在关键事务上参与"
+        }
+      ],
+      "elder_generation": {
+        "relation": "母亲",
+        "age": 74,
+        "living": true,
+        "proximity": "住在同一小区或车程半小时内",
+        "health_and_independence": "有慢性病，需要定期复诊",
+        "personal_involvement": "由兄弟姐妹分担，自己负责关键决定"
+      },
+      "household_snapshot": "再婚家庭；2个子女，其中2个未成年；主要牵挂的老人是母亲，住在同一小区或车程半小时内",
+      "current_region": "河南",
+      "household_rhythm": "工作日在郑州集团总部上班，偶尔出差考察项目。周末尽可能返回洛阳家中，陪伴家人。",
+      "concrete_experiences": "儿子12岁，上小学六年级，平时由现任妻子和父母接送，何海川在周末参与儿子足球训练，偶尔辅导作业。女儿6岁，上幼儿园大班，何海川会接送她上美术课。母亲74岁，患有高血压和糖尿病，住在同一小区，何海川负责定期带母亲复诊，并与姐姐轮班照看。",
+      "family_experience_narrative": "何海川的生活围绕工作和家庭展开。他每天早晨七点出门，晚上七点左右回家，如果遇到项目投委会或季末结算，会加班到更晚。妻子是小学教师，工作时间固定，承担了大部分日常照料。何海川在关键事务上从不缺席：儿子的小升初择校、女儿的幼儿园毕业典礼、母亲的体检报告解读。他每周至少有三个晚上陪孩子做作业或聊天，周末会带孩子去景区度过，既让孩子了解自己的工作，也放松身心。母亲虽然住在同小区，何海川仍坚持每周至少探望两三次，即便只是说几句话。今年母亲血压波动住院时，他与姐姐协调排班，自己负责陪护夜班和医保结算。这样的家庭节奏让他感到责任，但也让他更珍惜相聚时光。"
+    },
+    "career_narrative": "何海川出生于福建一个普通家庭，2006年从福建一所财经类大学会计学专业毕业后，他没有留在东南沿海，而是选择来到河南，进入一家快速发展的民营文旅企业——中原山水文旅投资有限公司。他的职业起点是财务部会计，从景区门票收入的记账做起，逐步理解文旅运营的现金流特点。四年后，他晋升为财务经理，开始管理一个小团队，参与预算编制和投资测算，积累了景区投资的基本模型。2014年，公司扩张为集团，他被提拔为财务总监助理，开始接触并购和融资，参与收购周边景区和发行文旅基金。2018年，他调任投资发展部总经理，负责新项目拓展，主导了多个文旅综合体的投资决策。2022年，集团进行战略调整，他被任命为财务负责人，统筹财务与投资，同时负责新业务孵化和老业务改造。二十年来，他始终在文旅运营行业深耕财务与投资职能，经历了公司从小到大的过程，也陪伴了行业从观光到休闲度假的转型。他熟悉文旅企业从拿地、建设到运营的全周期财务问题，善于在投资热情和财务纪律之间找到平衡。如今，他正带领团队推动集团老景区升级改造，孵化演艺、研学等新业态，用财务专业支撑企业的持续增长。",
+    "why_executive_program_qualified": "",
+    "general_profile": {
+      "professional_identity": "何海川是文旅行业财务与投资出身的高管，习惯用财务视角审视业务：先看现金流、回收期、负债率，再看项目故事。他熟悉从景区门票到度假区投资的完整财务链条，深知文旅行业重资产、长周期、受政策影响大的特点，因此决策时既看数字也看现场，但核心锚点始终是财务安全。",
+      "core_motives": "他长期驱动力是守护并壮大集团资产，证明自己能同时驾驭财务纪律与业务创新。他希望在董事长和业务团队眼中是既懂财务又懂业务的综合型领导者。最不愿失去的是亲手参与建设的集团基业和家人的稳定生活，因此对可能动摇根基的风险格外警惕。",
+      "self_concept_and_status": "他自认是务实、能扛事的人，既不是纯粹财务保守派，也不是冒进业务派。他觉得自己能平衡投资热情与财务纪律，是集团转型的关键支撑。他看重董事长和核心团队的信任，也认可自己在专业上的判断力，但偶尔会因下属或业务方不理解财务逻辑而急躁。",
+      "information_search_and_stopping": "面对重要决策，他会主动比较三四条主要路径，详细测算每条路径的现金流和回收期，甚至下到项目现场查看运营细节。但若事情较小，他只看关键指标，凭经验快速决定。搜索深度随事项重要性调整，但他很少主动寻找反证，一旦形成方案，便倾向认为异议源于不懂现场。",
+      "cognitive_effort": "他愿意投入大量思考拆解复杂问题，常追问机制、数据口径和因果关系，例如“收入增长是客单价还是客流贡献的？”他会要求财务团队提供多版本测算，直到模型能解释过去数据。但遇到熟悉领域时，他会直接用经验捷径，快速套用类似项目模板。",
+      "belief_updating": "他形成看法后很少主动找反证，异议常被他理解为对方不了解现场。若有人用扎实数据和逻辑挑战，他会重新审视；但若对方只是泛泛而谈，他会坚持己见。他更愿意在内部小范围听取信任的人的意见，但公开场合很少让步。",
+      "risk_posture": "他能接受较大结果波动，只要项目机会足够大、责任边界清楚。例如他支持孵化演艺新业态，尽管短期亏损，但认为长期回报可期。但他对可能危及已有景区现金流或负债率的风险非常敏感，会坚决踩刹车。",
+      "ambiguity_response": "信息不足、规则不明时，他反而兴奋，喜欢边行动边定义问题。他��先设定财务框架，再逐步探索，过程中不断调整。但若模糊涉及责任归属不清，他会犹豫，反复推演，直到责任边界明确才推进。",
+      "goal_regulation": "他更受责任避损驱动，同时也有进步追求。压力下会变得更加保守，优先守住已有成果，减少新投资动作。平时他会寻找既稳定又有增长的路径，例如老景区改造中引入轻资产模式。",
+      "time_orientation": "他短期与长期并重，但偏向长期积累。他愿意为长期项目投入资源，但要求短期有里程碑可验证。例如新业务孵化，他会设定三年回收期，但每季度检查进度，若连续未达预期，会重新评估。",
+      "action_and_recovery": "决定后他能快速启动，尤其熟悉事项，会立刻分配任务。但若遇到阻力，他会反复回看决定，质疑初始假设，放慢执行。受挫后，他会先冷静分析数据，再调整方案，而不是冲动改变方向。",
+      "interpersonal_and_power_style": "在同级和下属面前，他务实直接，常以数据说话，但也愿意听一线运营意见。对老板，他尊重但保持专业判断，有时会据理力争。对外部伙伴，他注重长期关系，但谈判时坚守财务底线。他不太喜欢形式化汇报，更倾向用数字和逻辑说服。",
+      "communication_style": "他说话节奏偏快，常用财务术语和案例分析，论证注重因果链条。平时话不多，但涉及专业会滔滔不绝。被挑战时，他会提高音量，强调数据，并可能反问对方是否了解现场。",
+      "stress_pattern": "压力升高时，他更倾向于控制信息、缩小讨论范围，变得不耐烦。对模糊容忍度下降，更依赖财务模型。同时他会更频繁检查下属工作，甚至亲自复核数据，但这也可能让他陷入细节，忽略大局。",
+      "internal_contradictions": "他一方面追求创新和增长，另一方面极度谨慎，害怕动摇根基。他既相信数据，又迷信现场经验，在两者冲突时摇摆。他渴望授权，但又不完全信任下属，常陷入微观管理。他表面强硬，但内心对家人和团队有强烈保护欲，有时会因此回避必要风险。",
+      "blind_spots": "他容易忽视非财务指标，如员工士气、客户体验，因为这些难以量化。他过度依赖历史数据，在行业剧变时可能反应迟缓。他对一线运营的信任可能让他低估系统性风险。这些盲区源于他财务出身和长期在重资产行业积累的经验。",
+      "profile_narrative": "何海川的决策风格像一台精密的财务引擎，但引擎的燃料是现场经验。他习惯先看资产负债表，再看景区人流。他常说“数字不会说谎，但会说谎的人能造出数字”，因此他要求团队提供可追溯的数据口径。在文旅行业摸爬滚打二十年，他见过太多项目因现金流断裂而失败，也见过因过度保守错失机会。这让他形成一套独特的判断框架：先算保本点，再看天花板。他愿意为长期回报忍受短期波动，但前提是责任边界清晰。例如，他支持演艺项目，因为集团明确授权他负责新业务，他可以将亏损控制在预算内。但若涉及老景区改造，他会异常谨慎，反复推演，因为那关系到集团基本盘和数千员工。这种谨慎有时让下属觉得他优柔寡断，但何海川认为这是对股东和员工负责。他喜欢挑战，也享受在模糊中探索，但当模糊涉及责任归属时，他会退缩。他曾在一次投委会上，因一个数据口径问题与业务总监争论，最后拍桌子说“你懂财务还是我懂？”但事后他又主动道歉，因为他知道对方确实更懂游客心理。这种矛盾贯穿他的职业生涯：既想保持开放，又容易陷入防御。他深知自己的盲区，所以会刻意咨询外部专家，但内心仍更信任自己的判断。何海川的生活节奏也影响着他的决策风格。他每天早起，先看集团资金日报，再送女儿上学。周末带儿子去景区，既是陪伴，也是实地考察。他常说“家庭让我更谨慎，因为输不起”。这种责任感让他在大决策上保守，但也让他更有韧性。他相信只要现金流健康，就有机会东山再起。这种观念根植于他的财务训练，也源于他对家人的承诺。"
+    },
+    "task_context_term_hits": [],
+    "synthetic": true
+  }
+]

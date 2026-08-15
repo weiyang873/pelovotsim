@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const { CAP_GROUPS, GLOBAL_PARAMS, NRE_TIER_MULT, PRICE_SCALE, validateSelections } = require("../../server/llm/rdCalculator");
 const { toCalcGridId } = require("../../server/routes/round2Routes");
+const { loadRound2PricingContextConfig } = require("../../server/multiplayer/pricingContext");
 const { chatCompletion, hasAnyKey } = require("../../server/llm/deepseekClient");
 const { ApiError } = require("./api_client");
 const { DeepSeekStudent } = require("./deepseek_student");
@@ -61,35 +62,8 @@ const SAFE_GROUP_CARDS = {
   ops_maintenance: ["self_diag", "remote_monitor", "predictive_maint"]
 };
 
-const DEFAULT_PRICING_UI = {
-  price_min: 1000,
-  price_max: 6000,
-  price_step: 100,
-  default_price: 3500
-};
-
 function loadPricingUiConfig() {
-  const fp = path.join(__dirname, "..", "..", "game_config_v0.1", "round2_engine_params.json");
-  let raw = {};
-  try {
-    raw = JSON.parse(fs.readFileSync(fp, "utf8"));
-  } catch (_) {
-    raw = {};
-  }
-  const src = raw.pricing_ui && typeof raw.pricing_ui === "object" ? raw.pricing_ui : {};
-  const min = Number(src.price_min ?? DEFAULT_PRICING_UI.price_min);
-  const max = Number(src.price_max ?? DEFAULT_PRICING_UI.price_max);
-  const step = Number(src.price_step ?? DEFAULT_PRICING_UI.price_step);
-  const defaultPrice = Number(src.default_price ?? DEFAULT_PRICING_UI.default_price);
-  if (!Number.isFinite(min) || !Number.isFinite(max) || !Number.isFinite(step) || !Number.isFinite(defaultPrice) || min <= 0 || max <= min || step <= 0) {
-    throw new Error("round2 pricing_ui config invalid");
-  }
-  return {
-    price_min: min,
-    price_max: max,
-    price_step: step,
-    default_price: Math.max(min, Math.min(max, defaultPrice))
-  };
+  return loadRound2PricingContextConfig();
 }
 
 function roundMoney(value, digits = 0) {

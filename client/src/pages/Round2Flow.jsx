@@ -482,7 +482,7 @@ function normalizePricingContext(...sources) {
     const min = parsePositiveNumberOrNull(ctx.price_min);
     const max = parsePositiveNumberOrNull(ctx.price_max);
     if (min == null || max == null || max <= min) continue;
-    const step = parsePositiveNumberOrNull(ctx.price_step) || 100;
+    const step = parsePositiveNumberOrNull(ctx.price_step) || 1;
     const defaultPrice = parsePositiveNumberOrNull(ctx.default_price)
       || parsePositiveNumberOrNull(ctx.P)
       || Math.round((min + max) / 2 / step) * step;
@@ -1388,7 +1388,7 @@ export default function App() {
   );
   const priceMin = parsePositiveNumberOrNull(effectivePricingContext?.price_min) || 0;
   const priceMax = parsePositiveNumberOrNull(effectivePricingContext?.price_max) || 0;
-  const priceStep = parsePositiveNumberOrNull(effectivePricingContext?.price_step) || 100;
+  const priceStep = parsePositiveNumberOrNull(effectivePricingContext?.price_step) || 1;
   const fallbackPrice = parsePositiveNumberOrNull(effectivePricingContext?.default_price) || 0;
   const priceSliderReady = priceMin > 0 && priceMax > priceMin;
   const baseCost = Number(teamRecap?.COGSbase || effectivePricingContext?.COGSbase || 0);

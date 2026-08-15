@@ -1,0 +1,195 @@
+{
+  "schema": "emba_sim_freeze_manifest_v1",
+  "version_id": "random42_simple_layered_team5_v1_20260814_2356",
+  "scope": "random42_simple_layered",
+  "design": "individual42_and_team5_simple_vs_layered_free_persona_interface_deepseek_official",
+  "created_at": "2026-08-14T23:56:00+08:00",
+  "status": "frozen",
+  "git": {
+    "head": "0e9991a84ad3cdd560995d8a3f58e948e846f122",
+    "head_policy": "ancestor_ok_with_hashes",
+    "dirty_policy": "key_hash_locked_legacy",
+    "note": "Workspace was already dirty when this method was accepted; guard locks all mechanism/data/config files by sha256. New changes must use --fork-from and a new freeze id."
+  },
+  "references": {
+    "accepted_run_summary": "runs_v4flash_0731/team_pilot/random42_free_0731_interface_team5_simple_teamlayerednomap_deepseek_20260814/pilot_summary.json",
+    "accepted_persona_pool": "data/persona_pool_random42_free_0731_interface_20260814/persona_pool_v2.json",
+    "individual_comparison_simple": "runs_v4flash_0731/random42_free_0731_interface_simple_20260814/arm_summary.json",
+    "individual_comparison_layered": "runs_v4flash_0731/random42_free_0731_interface_layered_20260814/arm_summary.json"
+  },
+  "frozen_presets": [
+    "random42_simple_layered_team5_v1",
+    "random42_simple_layered_individual_v1"
+  ],
+  "runner": {
+    "command": "node scripts/analysis/run_team_simple_layered_v4flash_pilot.js --preset random42_simple_layered_team5_v1 --batch <rerun_batch>",
+    "individual_command": "node scripts/analysis/run_single_simple_layered_ui_parity_pilot.js --preset random42_simple_layered_individual_v1 --batch <rerun_batch>",
+    "team_command": "node scripts/analysis/run_team_simple_layered_v4flash_pilot.js --preset random42_simple_layered_team5_v1 --batch <rerun_batch>",
+    "fork_command_template": "node scripts/analysis/run_team_simple_layered_v4flash_pilot.js --fork-from random42_simple_layered_team5_v1 --batch <new_candidate_id> [changed args]",
+    "official_deepseek_env": {
+      "LLM_PROVIDER": "deepseek",
+      "LLM_BASE_URL": "https://api.deepseek.com",
+      "DEEPSEEK_MODEL": "deepseek-v4-flash",
+      "LLM_CONCURRENCY": "8",
+      "LLM_DISABLE_THINKING": "1",
+      "DEEPSEEK_DISABLE_THINKING": "1"
+    }
+  },
+  "design_contract": {
+    "individual_arm_pair": ["simple", "layered"],
+    "team_arm_pair": ["simple", "layered"],
+    "team_runtime_arm_aliases": {
+      "layered": "team_layered_nomap"
+    },
+    "team_size": 5,
+    "teams_per_arm": 42,
+    "seed": "20260814-random42-free-persona-team5-interface",
+    "prompt_mode": "interface",
+    "persona_policy": "random42 free persona pool; persona surface includes archetype, name, gender, age, edu, overseas, MBTI, expression_style; no fixed persona decision; paired arms share sampled members, leader, and jinang draws by seed.",
+    "grid_policy": "no fixed grid; Round 1 chooses from interface-visible 12-grid strategy buttons.",
+    "layered_policy": "individual layered uses the individual layered persona builder; team layered resolves internally to team_layered_nomap, which uses deterministic L0 seed_memory and L1 classroom_profile from the frozen random42 surface/archetype fields; cognitive maps are not injected."
+  },
+  "accepted_metrics": {
+    "simple": {
+      "n": 42,
+      "price_sd_sample": 448.218113591939,
+      "price_median": 4340,
+      "loss": 8,
+      "profit_median": 15530911.5,
+      "profit_mean": 16983530.64285714
+    },
+    "layered": {
+      "runtime_arm": "team_layered_nomap",
+      "n": 42,
+      "price_sd_sample": 499.78508737818646,
+      "price_median": 4500,
+      "loss": 4,
+      "profit_median": 29072244,
+      "profit_mean": 25447875.285714287
+    },
+    "paired_diff": {
+      "pairs": 42,
+      "layered_better": 26,
+      "layered_worse": 16,
+      "median_dProfit": 9462656.5,
+      "mean_dProfit": 8464344.642857144,
+      "median_dPrice": 300
+    }
+  },
+  "hashes": {
+    "runner": [
+      {
+        "path": "scripts/analysis/team_sim_presets.js",
+        "sha256": "4f326ed53c1ee7d35b6809b43b79e269c6eff6a36a1d76bce713f557d8d3327e"
+      },
+      {
+        "path": "scripts/analysis/run_team_simple_layered_v4flash_pilot.js",
+        "sha256": "0ce86af302e3f13b31582f1d53f310ab63afb04bd0581677ef7cfeac27f5cca8"
+      },
+      {
+        "path": "scripts/analysis/run_single_simple_layered_ui_parity_pilot.js",
+        "sha256": "e8cb8b376a0c7052f3d7505285c57c6119b3ad479eee401d3bb6a7bf9583c65f"
+      },
+      {
+        "path": "scripts/analysis/freeze_guard.js",
+        "sha256": "b5dbebc8d91b1a1ede6cc1cd02a1f6422e9078c3f105a5e56b4b2029743e211b"
+      }
+    ],
+    "code": [
+      {
+        "path": "server/synthetic/teamSim/orchestrator.js",
+        "sha256": "c6f415c6d6dd40778dcd643b39cddf6afcd1fec58d0379e0695ee849079ecf9a"
+      },
+      {
+        "path": "server/synthetic/teamSim/submitParser.js",
+        "sha256": "642a72cb9c1922c3b1a7816ede24d2cd3f415f59ced6f54afb7c31b7c75c7781"
+      },
+      {
+        "path": "server/llm/deepseekClient.js",
+        "sha256": "d2562f71093b20222a9f7c1eff83afee0d26c096e9bf9c38643ee259813001f3"
+      },
+      {
+        "path": "server/llm/modelRegistry.js",
+        "sha256": "999c1fb93366f3911c172823da8a31cfef4d3e6bd7b53c0fae006b5f726b0989"
+      },
+      {
+        "path": "scripts/sim/persona_student.js",
+        "sha256": "808c4375163e7130932b4f5f42456ce54b18b4f21006ce57a96d05e09d3bc67f"
+      },
+      {
+        "path": "scripts/sim/persona_pool.js",
+        "sha256": "c03994e62a6f17b0729251d0752743684d7146832e56a0d4d778496253f64503"
+      },
+      {
+        "path": "scripts/analysis/full_game_all_personas.js",
+        "sha256": "dcb144945e506863b3db1e73cc506d0a81d1c330968cd6f67f5e7d35f0f0b4b7"
+      }
+    ],
+    "data": [
+      {
+        "path": "data/persona_pool_random42_free_0731_interface_20260814/persona_pool_v2.json",
+        "sha256": "579bcf4aae618d0398225ae70fab778839226d6df5e5bbe249e7b2864df716bf"
+      },
+      {
+        "path": "client/render_manifest.json",
+        "sha256": "ed11a9b35114a49fba852b7a9f2bfe08ef7a4339c24f1988c4f74c4efdaddb15"
+      },
+      {
+        "path": "data/capability_groups_v2.json",
+        "sha256": "38eccff0c10efb8454fd25a8a05c3b925221f1f78d58608d3a5ea6bb35829182"
+      },
+      {
+        "path": "data/compatibility_rules_v2.json",
+        "sha256": "0c6cf08d59c2ae5d5d08cc5d625b059b495215a877d11718dc3aa027a1e26930"
+      }
+    ],
+    "config": [
+      {
+        "path": "game_config_v0.1/team_sim_config.json",
+        "sha256": "0105095744acb918544f706ff3336da71a9b23b6ab8398183f1acf2e6ef43c17"
+      },
+      {
+        "path": "game_config_v0.1/llm_models.json",
+        "sha256": "a45d15fc33a6ba51c7194e156ed59fed5bb61d0a437d2b8b6a9702289b51e1b6"
+      },
+      {
+        "path": "game_config_v0.1/jinang_cards_v2.json",
+        "sha256": "087060d0a3543fb013056d0456a375b802e1ea68a034fe675a7294ce8ffd89ef"
+      },
+      {
+        "path": "game_config_v0.1/round1_gm_model.json",
+        "sha256": "7bf19b3a4a0128de56574e74b15dcc0d5cb38f5c17921c71042b7779fdfa42e4"
+      },
+      {
+        "path": "game_config_v0.1/round2_engine_params.json",
+        "sha256": "918deac452bfffb1b759685e3303fae7db8b382fdf5bafffe769cdedd80f0d5a"
+      },
+      {
+        "path": "game_config_v0.1/persona_archetypes_v1.json",
+        "sha256": "ec228f14d127ae83f68b3e7ece2d5a306dbfe49ca2ce13f760ad7465f05ba42d"
+      },
+      {
+        "path": "game_config_v0.1/persona_briefs_v1.json",
+        "sha256": "c650e459ef59a55c96f07281537febbe3867f73eec053dd75f1d581d5c5e1e08"
+      },
+      {
+        "path": "game_config_v0.1/persona_reports_v1.3.json",
+        "sha256": "20cfc65de3a1d8c2fcbfc1257f993d135620c2816fe759919bdf5d510edb9754"
+      },
+      {
+        "path": "game_config_v0.1/grid_dimension_evidence_v2.json",
+        "sha256": "b84a5fdf50cac7eaecf5870c1c263497614e6e1ae3ab9f320c41ec5fd5ace8df"
+      }
+    ]
+  },
+  "forbidden_patterns": [
+    {
+      "path": "scripts/analysis/run_team_simple_layered_v4flash_pilot.js",
+      "patterns": [
+        "--preset.*team-size",
+        "--preset.*pool-path",
+        "--preset.*arms"
+      ]
+    }
+  ]
+}

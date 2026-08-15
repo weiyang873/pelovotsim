@@ -54,7 +54,7 @@ function configureBatchLlmDefaults() {
   } else if (provider === "deepseek") {
     process.env.LLM_MODEL_OVERRIDE = process.env.DEEPSEEK_MODEL || "deepseek-v4-flash";
   } else if (provider === "qwen") {
-    process.env.LLM_MODEL_OVERRIDE = process.env.QWEN_MODEL || process.env.DASHSCOPE_MODEL || "qwen-plus";
+    process.env.LLM_MODEL_OVERRIDE = process.env.QWEN_MODEL || process.env.DASHSCOPE_MODEL || "deepseek-v4-flash-0731";
   } else if (process.env.OPENAI_MODEL) {
     process.env.LLM_MODEL_OVERRIDE = process.env.OPENAI_MODEL;
   }

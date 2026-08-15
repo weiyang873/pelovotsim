@@ -1,0 +1,52 @@
+{
+  "schema": "career_general_profile_pool_manifest_v2",
+  "seed": "20260812-career-family-oos-supplement-38",
+  "generated_at": "2026-08-12T11:02:30.351Z",
+  "started_at": "2026-08-12T10:58:43.601Z",
+  "wall_clock_ms": 226749,
+  "provider": "deepseek",
+  "model": "deepseek-v4-flash",
+  "base_url_host": "api.deepseek.com",
+  "count_requested": 38,
+  "count_generated": 34,
+  "errors": [
+    {
+      "persona_id": "CGP01",
+      "error": "Error: career history has too many employer/organization changes\n    at normalizeCareer (/Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/scripts/analysis/generate_career_general_profile_pool.js:731:11)\n    at /Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/scripts/analysis/generate_career_general_profile_pool.js:877:20\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)"
+    },
+    {
+      "persona_id": "CGP11",
+      "error": "SyntaxError: Bad control character in string literal in JSON at position 5357\n    at JSON.parse (<anonymous>)\n    at parseJsonObject (/Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/scripts/analysis/generate_career_general_profile_pool.js:528:15)\n    at callStage (/Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/scripts/analysis/generate_career_general_profile_pool.js:840:22)\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\n    at async /Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/scripts/analysis/generate_career_general_profile_pool.js:875:27"
+    },
+    {
+      "persona_id": "CGP10",
+      "error": "Error: career history has too many employer/organization changes\n    at normalizeCareer (/Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/scripts/analysis/generate_career_general_profile_pool.js:731:11)\n    at /Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/scripts/analysis/generate_career_general_profile_pool.js:877:20\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)"
+    },
+    {
+      "persona_id": "CGP23",
+      "error": "SyntaxError: Expected ',' or '}' after property value in JSON at position 859\n    at JSON.parse (<anonymous>)\n    at parseJsonObject (/Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/scripts/analysis/generate_career_general_profile_pool.js:528:15)\n    at callStage (/Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/scripts/analysis/generate_career_general_profile_pool.js:840:22)\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\n    at async /Users/weiyang/Dropbox/Github_indiswyang/try/emba-ai-sim-v01/scripts/analysis/generate_career_general_profile_pool.js:875:27"
+    }
+  ],
+  "generation_order": [
+    "demographic_and_family_seed_to_career_and_life_history",
+    "career_history_plus_behavioral_directives_to_general_profile"
+  ],
+  "task_context_policy": "general profiling only; no simulation, product, classroom, market-choice, architecture-choice, or strategy-choice context",
+  "task_context_term_hits": [
+    {
+      "persona_id": "CGP12",
+      "terms": [
+        "差异化"
+      ]
+    },
+    {
+      "persona_id": "CGP15",
+      "terms": [
+        "差异化"
+      ]
+    }
+  ],
+  "script_path": "scripts/analysis/generate_career_general_profile_pool.js",
+  "script_sha256": "9ab5c6df0037279bde803d008b68d8291d30c8ad0327b21e66d223f7b9ead3b6",
+  "pool_path": "data/career_general_profile_pool_v2/family_r1_oos_supplement_38_20260812/persona_pool_career_general_profile_v2.json"
+}

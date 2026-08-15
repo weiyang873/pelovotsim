@@ -1,0 +1,126 @@
+{
+  "schema": "task_blind_narrative_pool_manifest_v1",
+  "seed": "20260812-task-blind-persona-v1",
+  "generated_at": "2026-08-12T15:16:32.164Z",
+  "started_at": "2026-08-12T15:00:21.687Z",
+  "wall_clock_ms": 423142,
+  "provider": "deepseek",
+  "model": "deepseek-v4-flash",
+  "base_url_host": "api.deepseek.com",
+  "count_requested": 42,
+  "count_generated": 42,
+  "errors": [],
+  "background_schema_path": "data/task_blind_persona_pipeline_v1/r1_pilot12_20260812/background_schema.json",
+  "background_schema_sha256": "14113cb532d864c6c04d4e3b66000d36d07dc2eb13210ae99bdc635a43e562d3",
+  "frozen_fact_cards_path": "data/task_blind_persona_pipeline_v1/r1_pool42_20260812/frozen_fact_cards.json",
+  "frozen_fact_cards_sha256": "cafaff4a722a7c91997a7c628a6742aab013ec321a009d0d07a66ba3ef4fba43",
+  "pool_path": "data/task_blind_persona_pipeline_v1/r1_pool42_20260812/persona_pool_task_blind_narrative_v1.json",
+  "pool_sha256": "3e79d106138e4f7ee57b02b142cd5e9ed3d37bedd815172313c564a1f945438e",
+  "information_firewall": {
+    "task_analyzer_sees": [
+      "task_text",
+      "generic_field_catalog",
+      "trait_dimension_names_only"
+    ],
+    "fact_sampler_sees": [
+      "expanded_field_ids",
+      "general_population_priors",
+      "seed"
+    ],
+    "biography_writer_sees": [
+      "frozen_fact_values",
+      "natural_language_trait_directives",
+      "name"
+    ],
+    "biography_writer_does_not_see": [
+      "task_text",
+      "task_id",
+      "task_options",
+      "schema_relevance_reasons",
+      "trait_numbers"
+    ]
+  },
+  "forbidden_biography_terms": [
+    "ToB",
+    "ToC",
+    "COST",
+    "DIFF",
+    "成本领先",
+    "差异化",
+    "体验型",
+    "混合型",
+    "功能型",
+    "AI宠物",
+    "AI 宠物",
+    "机器人",
+    "目标市场",
+    "市场格",
+    "grid_id",
+    "Round 1",
+    "R1",
+    "本次任务",
+    "这个任务",
+    "课堂选择",
+    "商业战略",
+    "战略偏好",
+    "应该选择",
+    "建议选择"
+  ],
+  "forbidden_biography_term_hits": [],
+  "script_path": "scripts/analysis/generate_task_blind_persona_pool.js",
+  "script_sha256": "fae34322ca75bffb2fe305be0d6616857f827edbcfc9ab3b8ec0fdefbd0db296",
+  "retry_batches": [
+    {
+      "attempted_persona_ids": [
+        "TBN02",
+        "TBN10",
+        "TBN11",
+        "TBN12",
+        "TBN19",
+        "TBN20",
+        "TBN22",
+        "TBN26",
+        "TBN28"
+      ],
+      "generated_after_batch": 39,
+      "errors": [
+        {
+          "persona_id": "TBN22",
+          "error": "biography too long: 2141"
+        },
+        {
+          "persona_id": "TBN10",
+          "error": "biography too long: 1872"
+        },
+        {
+          "persona_id": "TBN28",
+          "error": "biography too long: 1810"
+        }
+      ],
+      "retry_started_attempt": 4
+    },
+    {
+      "attempted_persona_ids": [
+        "TBN10",
+        "TBN22",
+        "TBN28"
+      ],
+      "generated_after_batch": 41,
+      "errors": [
+        {
+          "persona_id": "TBN22",
+          "error": "biography too long: 1916"
+        }
+      ],
+      "retry_started_attempt": 7
+    },
+    {
+      "attempted_persona_ids": [
+        "TBN22"
+      ],
+      "generated_after_batch": 42,
+      "errors": [],
+      "retry_started_attempt": 10
+    }
+  ]
+}

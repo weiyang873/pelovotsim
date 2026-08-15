@@ -1,0 +1,41 @@
+{
+  "synthetic": true,
+  "grid_id": "ToC_DIFF_ELDER",
+  "grid_label": "ToC / 老人 / 差异化",
+  "architecture": "Hybrid",
+  "vp_summary": {
+    "who": "孤独的老人",
+    "pain": "孤独是刚需，信任比价格重要",
+    "how": "模块化平台控硬件成本，软件服务按月收费，通过社群口碑传播冷启动"
+  },
+  "target_gm": 0.425,
+  "jinang_fit": {
+    "market": {
+      "match_strength": 0.6467,
+      "matched": true,
+      "bonus": 0.0129,
+      "member_strengths": [
+        0.7,
+        0.6667,
+        0.7,
+        0.6333,
+        0.5333
+      ]
+    },
+    "tech": {
+      "match_strength": 0.7067,
+      "matched": true,
+      "member_strengths": [
+        0.7667,
+        0.7333,
+        0.8,
+        0.6,
+        0.6333
+      ]
+    }
+  },
+  "WTPref_scaled": 5427,
+  "WTPadj_scaled": 3799,
+  "wtp_multiplier": 0.4378,
+  "VPscore": 3.2
+}

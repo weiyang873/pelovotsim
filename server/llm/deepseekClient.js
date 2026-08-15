@@ -196,9 +196,9 @@ function isThinkingDisabled(options = {}) {
 
 function providerRequestExtras(options = {}) {
   const provider = getProvider();
+  if (provider === "qwen") return { enable_thinking: false };
   if (!isThinkingDisabled(options)) return {};
   if (provider === "deepseek") return { thinking: { type: "disabled" } };
-  if (provider === "qwen") return { enable_thinking: false };
   return {};
 }
 
@@ -290,7 +290,8 @@ function performChatCompletionRequest(url, apiKey, body, role, timeoutMs = REQUE
  */
 async function _chatCompletionInner(messages, options = {}) {
   const role = String(options.role || DEFAULT_CHAT_ROLE).trim();
-  const model = getModel(role);
+  const explicitModel = String(options.model || "").trim();
+  const model = explicitModel || getModel(role);
   const baseUrl = getBaseUrl();
 
   if (API_KEY_POOL.length === 0) {

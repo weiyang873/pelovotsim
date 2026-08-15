@@ -1,0 +1,27 @@
+{
+  "schema": "behavioral_narrative_pool_manifest_v1",
+  "seed": "20260811-behavioral-narrative-r1pilot-v2",
+  "generated_at": "2026-08-11T15:23:46.763Z",
+  "started_at": "2026-08-11T15:22:23.439Z",
+  "wall_clock_ms": 83323,
+  "provider": "deepseek",
+  "model": "deepseek-v4-flash",
+  "base_url_host": "api.deepseek.com",
+  "count_requested": 30,
+  "count_generated": 30,
+  "errors": [],
+  "script_path": "scripts/analysis/generate_behavioral_narrative_pool.js",
+  "script_sha256": "a79453a211f454f133b42b162016d8f216fd0a79f6674d88d4349df292607f87",
+  "no_prototype_policy": "records are generated from behavioral_fingerprint + demographic seed; no A-G archetype labels are used",
+  "forbidden_strategy_terms": [
+    "成本领先",
+    "差异化",
+    "护城河",
+    "红海",
+    "用户心智",
+    "PMF",
+    "北极星指标"
+  ],
+  "forbidden_strategy_term_hits": [],
+  "pool_path": "data/behavioral_narrative_pool_v1/r1pilot_v2_20260811/persona_pool_behavioral_narrative_v1.json"
+}

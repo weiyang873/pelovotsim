@@ -14,7 +14,7 @@ const PROVIDER_DEFAULTS = {
   },
   qwen: {
     baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
-    defaultModel: "qwen-plus"
+    defaultModel: "deepseek-v4-flash-0731"
   },
   openai_compatible: {
     baseUrl: "",

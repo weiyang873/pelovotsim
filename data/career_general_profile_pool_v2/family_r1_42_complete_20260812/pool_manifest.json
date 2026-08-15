@@ -1,0 +1,17 @@
+{
+  "schema": "career_general_profile_pool_combined_manifest_v2",
+  "combined_at": "2026-08-12T10:25:35.480Z",
+  "count": 42,
+  "selection": "31 validated records from primary generation plus first 11 validated records from supplement A",
+  "sources": [
+    "data/career_general_profile_pool_v2/family_r1_42_20260812/persona_pool_career_general_profile_v2.json",
+    "data/career_general_profile_pool_v2/family_r1_42_supplement_a_20260812/persona_pool_career_general_profile_v2.json"
+  ],
+  "source_counts": [
+    31,
+    11
+  ],
+  "task_context_term_hits": [],
+  "pool_sha256": "66d665910ab9effa1fa4596dadb8cf7b53b192f49a542de02dae316c7d26bd3e",
+  "pool_path": "data/career_general_profile_pool_v2/family_r1_42_complete_20260812/persona_pool_career_general_profile_v2.json"
+}

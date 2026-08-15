@@ -432,13 +432,14 @@ test("hasAnyKey: returns true with pool-only config", { concurrency: false }, as
 
 test("qwen provider: uses Qwen key, compatible URL, and disables thinking", { concurrency: false }, async () => {
   const seen = [];
+  const qwenModel = "deepseek-v4-flash-0731";
 
   await withMockedTransport(({ options, body }) => {
     seen.push({ options, body: JSON.parse(body) });
     return {
       statusCode: 200,
       body: {
-        model: "qwen-plus",
+        model: qwenModel,
         choices: [{ message: { content: "ok" } }]
       }
     };
@@ -447,8 +448,7 @@ test("qwen provider: uses Qwen key, compatible URL, and disables thinking", { co
       LLM_PROVIDER: "qwen",
       QWEN_API_KEY: "qwen-key",
       QWEN_BASE_URL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
-      QWEN_MODEL: "qwen-plus",
-      QWEN_DISABLE_THINKING: "1",
+      QWEN_MODEL: qwenModel,
     });
 
     try {
@@ -465,7 +465,44 @@ test("qwen provider: uses Qwen key, compatible URL, and disables thinking", { co
   assert.equal(authHeaderToKey(seen[0].options.headers.Authorization), "qwen-key");
   assert.equal(seen[0].options.hostname, "dashscope.aliyuncs.com");
   assert.equal(seen[0].options.path, "/compatible-mode/v1/chat/completions");
-  assert.equal(seen[0].body.model, "qwen-plus");
+  assert.equal(seen[0].body.model, qwenModel);
   assert.equal(seen[0].body.enable_thinking, false);
   assert.equal(Object.prototype.hasOwnProperty.call(seen[0].body, "thinking"), false);
+});
+
+test("chatCompletion: explicit model option overrides configured model", { concurrency: false }, async () => {
+  const seen = [];
+  const configuredModel = "deepseek-v4-flash-0324";
+  const explicitModel = "deepseek-v4-flash-0731";
+
+  await withMockedTransport(({ options, body }) => {
+    seen.push({ options, body: JSON.parse(body) });
+    return {
+      statusCode: 200,
+      body: {
+        model: explicitModel,
+        choices: [{ message: { content: "ok" } }]
+      }
+    };
+  }, async () => {
+    const loaded = loadFreshClient({
+      LLM_PROVIDER: "qwen",
+      QWEN_API_KEY: "qwen-key",
+      QWEN_MODEL: configuredModel,
+      QWEN_DISABLE_THINKING: "1",
+    });
+
+    try {
+      const out = await loaded.client.chatCompletion(
+        [{ role: "user", content: "hello" }],
+        { model: explicitModel, maxRetries: 0 }
+      );
+      assert.equal(out, "ok");
+    } finally {
+      loaded.restore();
+    }
+  });
+
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0].body.model, explicitModel);
 });

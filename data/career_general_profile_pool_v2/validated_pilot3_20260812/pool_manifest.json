@@ -1,0 +1,22 @@
+{
+  "schema": "career_general_profile_pool_manifest_v2",
+  "seed": "20260812-career-general-profile-validated-pilot3",
+  "generated_at": "2026-08-12T06:18:46.035Z",
+  "started_at": "2026-08-12T06:18:07.461Z",
+  "wall_clock_ms": 38574,
+  "provider": "deepseek",
+  "model": "deepseek-v4-flash",
+  "base_url_host": "api.deepseek.com",
+  "count_requested": 3,
+  "count_generated": 3,
+  "errors": [],
+  "generation_order": [
+    "demographic_seed_to_career_history",
+    "career_history_plus_behavioral_directives_to_general_profile"
+  ],
+  "task_context_policy": "general profiling only; no simulation, product, classroom, market-choice, architecture-choice, or strategy-choice context",
+  "task_context_term_hits": [],
+  "script_path": "scripts/analysis/generate_career_general_profile_pool.js",
+  "script_sha256": "a53b597b283de9604ccb1f65666a4354441eec07f4da3a9baa6e8a68f92868e7",
+  "pool_path": "data/career_general_profile_pool_v2/validated_pilot3_20260812/persona_pool_career_general_profile_v2.json"
+}

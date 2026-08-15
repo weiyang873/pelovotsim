@@ -1,0 +1,27 @@
+{
+  "schema": "career_general_profile_pool_manifest_v2",
+  "seed": "20260812-career-general-profile-pilot3",
+  "generated_at": "2026-08-12T06:05:41.999Z",
+  "started_at": "2026-08-12T06:05:04.173Z",
+  "wall_clock_ms": 37826,
+  "provider": "deepseek",
+  "model": "deepseek-v4-flash",
+  "base_url_host": "api.deepseek.com",
+  "count_requested": 3,
+  "count_generated": 2,
+  "errors": [
+    {
+      "persona_id": "CGP02",
+      "error": "Error: getaddrinfo ENOTFOUND api.deepseek.com\n    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)"
+    }
+  ],
+  "generation_order": [
+    "demographic_seed_to_career_history",
+    "career_history_plus_behavioral_directives_to_general_profile"
+  ],
+  "task_context_policy": "general profiling only; no simulation, product, classroom, market-choice, architecture-choice, or strategy-choice context",
+  "task_context_term_hits": [],
+  "script_path": "scripts/analysis/generate_career_general_profile_pool.js",
+  "script_sha256": "4777a151578edcbeaaa90c8ed598144df74fa67e8057319bba1eaa53177cb260",
+  "pool_path": "data/career_general_profile_pool_v2/pilot3_20260812/persona_pool_career_general_profile_v2.json"
+}

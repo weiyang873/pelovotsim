@@ -447,11 +447,16 @@ class DeepSeekStudent {
 
   async generatePriceChoice(priceContext = {}) {
     const base = Number(priceContext.basePrice || priceContext.P || priceContext.Pmax || 4000);
+    const min = Number(priceContext.min || 2000);
+    const max = Number(priceContext.max || 6000);
+    const step = Number(priceContext.step || 1);
     const strategy = this.primaryStrategy;
     const isDiff = parseGrid(strategy.grid_id).strategy === "diff";
     const factor = isDiff ? 0.96 : 0.89;
     const offset = ((this.teamIndex % 3) - 1) * 0.02;
-    const price = Math.max(2000, Math.min(5000, Math.round(base * (factor + offset))));
+    const rawPrice = Math.max(min, Math.min(max, Math.round(base * (factor + offset))));
+    const steppedPrice = min + Math.round((rawPrice - min) / step) * step;
+    const price = Math.max(min, Math.min(max, steppedPrice));
     this.logStudentLLM({
       step: "R2.7_generate_price",
       prompt: [{ role: "system", content: "deterministic_price_rule" }, { role: "user", content: priceContext }],

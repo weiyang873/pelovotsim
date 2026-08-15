@@ -2,9 +2,9 @@
   "PRICE_SCALE": 0.3,
   "pricing_ui": {
     "_note": "TODO(WY): classroom pricing slider bounds; keep fixed across grids to avoid revealing relative WTPref.",
-    "price_min": 1000,
+    "price_min": 2000,
     "price_max": 6000,
-    "price_step": 100,
+    "price_step": 1,
     "default_price": 3500
   },
   "nre_tier_mult": {

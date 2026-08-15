@@ -1,0 +1,46 @@
+[
+  {
+    "persona_id": "CGP15",
+    "error": "life_history_narrative must contain at least one concrete monetary memory"
+  },
+  {
+    "persona_id": "CGP08",
+    "error": "life_history_narrative must contain at least one concrete monetary memory"
+  },
+  {
+    "persona_id": "CGP02",
+    "error": "life_history_narrative must contain at least one concrete monetary memory"
+  },
+  {
+    "persona_id": "CGP07",
+    "error": "life_history_narrative must contain at least one concrete monetary memory"
+  },
+  {
+    "persona_id": "CGP22",
+    "error": "Unexpected token ',', ...\"子自己挑，他出钱。\",\n  \"2021年\"... is not valid JSON"
+  },
+  {
+    "persona_id": "CGP28",
+    "error": "Unexpected token ',', ...\"攒钱买了台二手的。\",\n  \"2021年\"... is not valid JSON"
+  },
+  {
+    "persona_id": "CGP29",
+    "error": "life_history_narrative must contain at least one concrete monetary memory"
+  },
+  {
+    "persona_id": "CGP31",
+    "error": "life_history_narrative must contain at least one concrete monetary memory"
+  },
+  {
+    "persona_id": "CGP34",
+    "error": "life_history_narrative must contain at least one concrete monetary memory"
+  },
+  {
+    "persona_id": "CGP42",
+    "error": "life_history_narrative must contain at least one concrete monetary memory"
+  },
+  {
+    "persona_id": "CGP35",
+    "error": "life_history_narrative must contain at least one concrete monetary memory"
+  }
+]

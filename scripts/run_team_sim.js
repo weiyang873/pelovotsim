@@ -64,8 +64,14 @@ function writeFailureRecord({ batch, seed, error }) {
 
 async function main() {
   loadEnvFile();
-  configureBatchLlmDefaults();
   const args = parseArgs(process.argv);
+  if (args.model) {
+    process.env.LLM_MODEL_OVERRIDE = String(args.model).trim();
+    const provider = String(process.env.LLM_PROVIDER || "").trim().toLowerCase();
+    if (provider === "qwen") process.env.QWEN_MODEL = process.env.LLM_MODEL_OVERRIDE;
+    if (provider === "deepseek") process.env.DEEPSEEK_MODEL = process.env.LLM_MODEL_OVERRIDE;
+  }
+  configureBatchLlmDefaults();
   const seed = Number(args.seed);
   if (!Number.isInteger(seed)) throw new Error("--seed must be an integer");
   const batch = String(args.batch ?? "").trim();
