@@ -9958,6 +9958,7 @@ async function callD4ActorEntrance({ members, member, isLeader, ownActText, priv
         `【刚发生的事】${triggerContext || "（无）"}`,
         `【你自己已经公开说过的话】\n${ownPublicHistory}`,
         quietBeatStreak >= 2 ? "现场已经安静了一会儿。安静本身不是必须说话的理由。" : "",
+        isLeader && allowOperate && quietBeatStreak >= 2 ? "现在没人再说话，页面在等你这只握鼠标的手：刚才讨论里有人要留、要砍、要改档的卡，你接受的就落到页面上；都不打算动了，就点“继续”进入售价页。你不动，大家只能干等。" : "",
         "",
         `只输出：一两句私下判断，然后单独一行写【行动】沉默 或 【行动】发言${isLeader && allowOperate ? " 或 【行动】操作界面" : ""}。`
       ].filter((line) => line !== "").join("\n")
@@ -10007,6 +10008,7 @@ async function callD4Actor({ members, member, isLeader, ownActText, privateState
         "不要替其他成员写台词，不要当主持人，不要总结整场会议，不要追求一个漂亮完整的答案。",
         "别人讲过的家庭、客户和工作经历属于别人；你可以回应，但绝不能改写成自己的回忆。",
         "不要每次复述刚才所有观点，也不要重复自己已经讲过的完整理由。每次只推进眼前一个很小的反应。",
+        "屏幕上的总数大家都看见了，别人刚念过的数字不用再念一遍；开口直接接刚才那句话，或说你自己在意的那张卡。",
         "这一页只谈卡留不留、加不加、档位升降；不展开售价和渠道，那是下一页。",
         modeInstruction,
         operateRetryNote
