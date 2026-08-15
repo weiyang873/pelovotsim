@@ -4586,10 +4586,13 @@ async function speak(member, isLeader, draw, privateProposal, transcript, topic,
           : ""
       ].filter(Boolean).join("\n")
     : "请自然发言 2-4 句。只能说你愿意公开说出口的内容。若你改变立场，点名触发你的具体发言。";
+  const cardStakeContext = /选卡|功能段|功能区/.test(topicText) && member.d4_own_selection_note
+    ? `\n你自己刚才的选卡（只有你自己记得为什么选）：${member.d4_own_selection_note}\n讨论动到你选的卡时，按你的功能观和性格自然反应：可以护卡、可以坚持要补上你觉得该有的卡，也可以顺势让步。`
+    : "";
   const messages = [
     {
       role: "system",
-      content: `${formatProfile(member, isLeader, arm)}\n\n私有 context：\n${formatJinang(draw)}\n你的会前提案：${privateProposal.parsed.grid_id}/${privateProposal.parsed.architecture}，${privateProposal.parsed.rationale}${stateContext}`
+      content: `${formatProfile(member, isLeader, arm)}\n\n私有 context：\n${formatJinang(draw)}\n你的会前提案：${privateProposal.parsed.grid_id}/${privateProposal.parsed.architecture}，${privateProposal.parsed.rationale}${cardStakeContext}${stateContext}`
     },
     {
       role: "user",
@@ -9802,6 +9805,15 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
       arm,
       outputDir
     }));
+  }
+  for (let i = 0; i < members.length; i += 1) {
+    const ownCards = individualSelections[i]?.parsed?.cards || [];
+    if (!ownCards.length) continue;
+    members[i].d4_own_selection_note = ownCards.map((card) => {
+      const stance = String(card.stance || "").trim();
+      const reason = String(card.reason || "").trim().slice(0, 40);
+      return `${card.cap_id}@${card.tier}${stance ? `(${stance})` : ""}${reason ? `：${reason}` : ""}`;
+    }).join("；");
   }
   const teamMerged = mergeSelectionsWithSelectedBy(individualSelections);
   let selectedCards = teamMerged.selections.map((card) => ({ cap_id: card.cap_id, tier: card.tier }));
