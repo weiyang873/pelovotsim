@@ -1,15 +1,12 @@
 "use strict";
-// soloRoleplaySim.js — self-contained solo roleplay line: 单人 R1 (team_room_r1_screenplay_v1)
-// + 单人 R2 (team_room_roleplay_ui / D5 pricing-action-persona), team_size=1, task-blind pool.
-// Mechanically extracted from orchestrator.js at claude-fork-20260814; dead roleplay-team
-// helpers referenced by unreachable branches remain (never execute).
+// soloRoleplaySim.js — solo roleplay line REBUILT FROM THE 8/12 EVIDENCE CODE ITSELF
+// (Dropbox version history, tag frozen/code-0812-solo-evidence): 单人 R1 screenplay +
+// 单人 R2 roleplay_ui pricing-action, team_size=1, task-blind pool. Single documented
+// addition: code_git provenance recording in run_meta (zero behavior impact).
 
 
 const fs = require("node:fs");
-const path = require("node:path");
 
-// Which code produced a run must be recoverable later: run_meta records the commit hash of the
-// worktree the orchestrator ran from, plus whether tracked files had uncommitted edits.
 let cachedRepoGitState = null;
 function repoGitState() {
   if (cachedRepoGitState) return cachedRepoGitState;
@@ -20,10 +17,11 @@ function repoGitState() {
     const dirtyTracked = execSync("git status --porcelain -uno", opts).toString().trim().length > 0;
     cachedRepoGitState = { commit, dirty_tracked_files: dirtyTracked };
   } catch (error) {
-    cachedRepoGitState = { commit: null, dirty_tracked_files: null, error: String(error.message || error).slice(0, 120) };
+    cachedRepoGitState = { commit: null, dirty_tracked_files: null };
   }
   return cachedRepoGitState;
 }
+const path = require("node:path");
 const crypto = require("node:crypto");
 const RD = require("../../llm/rdCalculator");
 const TeamRoutes = require("../../routes/teamRoutes");
@@ -1016,12 +1014,8 @@ function hasR1ScreenplayArm(arm) {
   return arm === "team_room_r1_screenplay_v1";
 }
 
-function hasR1ActorIsolatedArm(arm) {
-  return arm === "team_room_r1_actor_isolated_v1";
-}
-
 function hasR1UiNarrativeArm(arm) {
-  return hasR1ReadingStoryArm(arm) || hasR1ScreenplayArm(arm) || hasR1ActorIsolatedArm(arm);
+  return hasR1ReadingStoryArm(arm) || hasR1ScreenplayArm(arm);
 }
 
 function clamp(value, min, max) {
@@ -1505,10 +1499,7 @@ function armDefinitionNote(arm) {
   if (arm === "simple") {
     return "simple: random42 surface identity + MBTI/expression style only; no archetype business fields, L0/L1, or cognitive map.";
   }
-				  if (isLayeredNoMapArm(arm)) {
-				    if (hasR1ActorIsolatedArm(arm)) {
-				      return "team_room_r1_actor_isolated_v1: R1 UI experiment with a public-environment narrator, one private protagonist state per member, and one isolated actor call at a time. Only spoken lines enter shared history; only explicit leader UI actions change deterministic page state; no moderator, omniscient screenplay writer, convergence classifier, or leader submitter creates the outcome.";
-				    }
+			  if (isLayeredNoMapArm(arm)) {
 			    if (hasR1ScreenplayArm(arm)) {
 			      return "team_room_r1_screenplay_v1: R1-only UI screenplay experiment. Members first make persona-native natural choices from the Round 1 personal UI only; the team then sees the same public group distribution, final-choice, and VP-writing UI surfaces and generates one classroom screenplay scene without iterative shared-transcript prompting or moderator convergence checks. No student-material summary is injected. The final R1 grid, architecture, and VP fields are deterministically validated from the screenplay final_submission.";
 			    }
@@ -1562,20 +1553,6 @@ function armDefinitionNote(arm) {
 function formatTranscript(transcript) {
   if (!transcript.length) return "（暂无共享发言）";
   return transcript.map((item) => `${item.speaker}: ${item.text}`).join("\n");
-}
-
-function formatRecentTranscript(transcript, count = 8) {
-  const recent = transcript.slice(-count);
-  return formatTranscript(recent);
-}
-
-function formatR1ActorPhaseTranscript(transcript, members, phase, chars = 12000) {
-  const nameById = new Map(members.map((member) => [member.profile_id, member.surface?.name || member.profile_id]));
-  const rendered = transcript
-    .filter((item) => item.phase === phase)
-    .map((item, index) => `${index + 1}. ${nameById.get(item.speaker) || item.speaker}: ${item.text}`)
-    .join("\n");
-  return clipText(rendered, chars) || "（本阶段还没有人公开说话）";
 }
 
 function clipText(value, chars = 500) {
@@ -2156,7 +2133,7 @@ function r1StoryProcessPromptBody(draw, gridList) {
 
 async function independentProposal(member, draw, isLeader, temperature, arm = "legacy") {
   const gridList = GRID_IDS.map((gridId) => `- ${gridId}: ${getGrid(gridId).label}`).join("\n");
-  if (hasR1ScreenplayArm(arm) || hasR1ActorIsolatedArm(arm)) {
+  if (hasR1ScreenplayArm(arm)) {
     const messages = [
       {
         role: "system",
@@ -2448,767 +2425,6 @@ async function independentProposal(member, draw, isLeader, temperature, arm = "l
     }
   }
   throw new Error(`independent_proposal_parse_failure: ${lastError}`);
-}
-
-function formatR1IsolatedActorPersona(member, isLeader) {
-  const publicName = member.surface?.name || "成员";
-  return formatR1UiProfile(member, isLeader, "team_room_r1_actor_isolated_v1")
-    .replace(/^姓名代号：.*$/mu, `姓名：${publicName}`)
-    .replace(/你是组长，负责推进讨论并代表全队提交。/gu, "你和其他四个人是平等的讨论参与者；只是网页当前把鼠标和键盘操作权交给了你。")
-    .replace(/你是普通队员。/gu, "你和其他四个人是平等的讨论参与者；网页当前没有把鼠标和键盘操作权交给你，但你不需要等待任何人邀请才可以说话。");
-}
-
-function validateR1ActorPublicRaw(raw, performanceMode = "speak", phase = "", uiState = null) {
-  const text = String(raw || "").trim();
-  if (!text) throw new Error("empty public performance");
-  if (/\bTBN\d+\b/u.test(text)) throw new Error("public performance exposed an internal persona id");
-  const stageDirections = Array.from(text.matchAll(/（([^）]*)）|\(([^)]*)\)/gsu))
-    .map((match) => String(match[1] || match[2] || ""))
-    .join("\n");
-  const privateMarkers = [
-    /脑子里/u,
-    /心里/u,
-    /心头/u,
-    /内心/u,
-    /暗自/u,
-    /没说出口/u,
-    /浮现/u,
-    /回忆起/u,
-    /想起/u,
-    /想到(?:的是|了)/u,
-    /意识到/u,
-    /盘算/u,
-    /琢磨/u,
-    /这个我认/u
-  ];
-  const leakedMarker = privateMarkers.find((pattern) => pattern.test(stageDirections));
-  if (leakedMarker) throw new Error(`public performance exposed private narration: ${leakedMarker}`);
-  const outsidePerformance = text
-    .replace(/（[^）]*）/gsu, "")
-    .replace(/\([^)]*\)/gsu, "")
-    .replace(/“[^”]*”/gsu, "")
-    .replace(/"[^"]*"/gsu, "")
-    .replace(/[\s，。！？、；：,.!?;:—-]/gu, "");
-  if (outsidePerformance) throw new Error("public performance must contain only parenthesized visible action and quoted speech");
-  const uiOperationPattern = /(?:鼠标|光标|指针).{0,160}(?:点击|点选|点下|点了|点一下|点了一下|单击|双击|选中|确认|按下|输入|敲|填|写|改|加|补|删|提交)|(?:按钮|格子|输入框|选项).{0,60}(?:点击|点选|点下|点了|点一下|点了一下|单击|双击|选中|确认|按下|输入|敲|填|写|改|加|补|删|提交)|(?:点击|点选|点下|点了|点一下|点了一下|单击|双击|选中|确认|按下|输入|敲|填|写|改|加|补|删|提交).{0,60}(?:按钮|格子|输入框|选项)/u;
-  if (performanceMode !== "operate" && uiOperationPattern.test(stageDirections)) {
-    throw new Error("speech performance crossed into a UI operation");
-  }
-  if (performanceMode === "operate" && phase === "selection") {
-    const clickedControls = r1ActorClickedSelectionControls(text);
-    const explicitContinue = r1ActorExplicitButtonClickEvidence(text, "继续");
-    if (explicitContinue && (clickedControls.grids.length > 0 || clickedControls.architectures.length > 0)) {
-      throw new Error("selection operation combined editing controls with clicking continue");
-    }
-  }
-  if (performanceMode === "operate" && phase === "vp") {
-    const explicitSubmit = r1ActorExplicitButtonClickEvidence(text, "提交");
-    const vp = uiState?.vp_summary || {};
-    const missingFields = ["who", "pain", "how"].filter((key) => !String(vp[key] || "").trim());
-    if (explicitSubmit && missingFields.length > 0) {
-      throw new Error(`submit button unavailable while VP fields are empty: ${missingFields.join(",")}`);
-    }
-  }
-  return text;
-}
-
-function projectR1ActorPublicRaw(raw, member, performanceMode = "speak") {
-  const text = String(raw || "").trim();
-  const publicName = member.surface?.name || "这名成员";
-  const speeches = [];
-  for (const match of text.matchAll(/“([^”]+)”|"([^"]+)"/gsu)) {
-    const speech = String(match[1] || match[2] || "").trim();
-    if (speech) speeches.push(`“${speech}”`);
-  }
-  const withoutSpeech = text
-    .replace(/“[^”]*”/gsu, "。")
-    .replace(/"[^"]*"/gsu, "。");
-  const visiblePattern = /点击|点选|点了|点下|选中|选择了|按下|输入|敲进|敲了|填进|改成|修改|提交|继续按钮|点头|摇头|沉默|没说话|目光|抬头|低头|皱眉|笑了|喝了|杯子|杯沿|转笔|手指|伸手|转头|鼠标|键盘|光标|看着屏幕|看了屏幕/u;
-  const privatePattern = /脑子里|心里|心头|内心|暗自|没说出口|浮现|回忆起|想起|想到(?:的是|了)|意识到|盘算|琢磨|这个我认/u;
-  const uiOperationPattern = /点击|点选|点了|点下|选中|选择了|按下|输入|敲进|敲了|填进|改成|修改|提交|继续按钮|鼠标|键盘|光标/u;
-  const actions = withoutSpeech
-    .split(/[\n。！？]+/u)
-    .map((part) => part.trim())
-    .filter((part) => part
-      && visiblePattern.test(part)
-      && !privatePattern.test(part)
-      && (performanceMode === "operate" || !uiOperationPattern.test(part)))
-    .slice(0, 3)
-    .map((part) => `（${part}。）`);
-  const projected = [...actions, ...speeches].join("\n").trim();
-  return projected || `（${publicName}没有说话。）`;
-}
-
-async function callR1IsolatedActor({ members, member, isLeader, ownProposal, privateState, screenText, uiState, transcript, phase, phaseTurnNumber, triggerContext, performanceMode, temperature, outputDir, eventIndex, operateRetryNote = "" }) {
-  const ownPublicHistory = clipText(transcript
-    .filter((entry) => entry.speaker === member.profile_id && entry.phase === phase)
-    .map((entry, index) => `${index + 1}. ${entry.text}`)
-    .join("\n"), 6000) || "（你还没有公开说过话）";
-	  const phaseInstruction = performanceMode === "operate"
-	    ? (phase === "selection"
-	        ? (uiState.grid_id && uiState.architecture
-	            ? "你刚才已经私下决定这一秒操作界面。市场格和产品定位都已经暂存；这一镜只演你点击继续，或明确改成另一个不同的市场格/定位。重复点击当前相同的市场格或定位没有效果，不要演停在按钮上犹豫。"
-	            : "你刚才已经私下决定这一秒操作界面。这一镜只演你首次点选或实际改选中的一个有效操作；不要改成继续讨论，也不要替操作补理由。重复点击当前相同的市场格或定位没有效果，不能拿它充当一次操作。")
-	        : (Object.values(uiState.vp_summary || {}).every(Boolean)
-	            ? "你刚才已经私下决定这一秒操作界面。WHO、PAIN、HOW 都已有文字；这一镜只演你点击提交，或明确改写某一个输入框的最终文字。不要演空泛犹豫。"
-	            : "你刚才已经私下决定这一秒操作界面。这一镜只演你实际输入/覆盖 WHO、PAIN、HOW 中一个或多个字段；必须写出输入框最终文字，不要只写敲了一行字。"))
-	    : (isLeader
-	        ? "你刚才已经私下决定这一秒只公开发言。这一镜可以追问、回应或说自己的看法，但不能碰鼠标、键盘、按钮或输入框；要操作留到另一个真实时刻。"
-	        : "你刚才已经私下决定这一秒公开发言。你可以插话、追问、坚持、改口或跑偏；你不能操作组长区域。只说此刻真会说的话。 ");
-	  const selectionBoundary = phase === "selection" && performanceMode !== "operate"
-	    ? [
-	        "这一页只聊两件事：市场格选哪个、产品定位选 Experience/Hybrid/Function 哪个。",
-	        "如果你要开口，台词里必须清楚落到：支持当前暂存、反对当前暂存、建议改成某个市场格/定位，或提出会影响这两个选择的疑问。",
-	        "不要在这一页展开按钮、报告、功能实现、运维、渠道、交付或 WHO/PAIN/HOW 措辞；这些留到后续页面。"
-	      ].join("\n")
-	    : "";
-	  const vpBoundary = phase === "vp" && performanceMode !== "operate"
-	    ? [
-	        "这一页只写 WHO、PAIN、HOW 三个框。",
-	        "如果你开口，台词里要给出一个具体改法：WHO 应该怎样改、PAIN 应该怎样改、或 HOW 应该怎样改。",
-	        "不要展开技术实现、市场渠道、投资人话术或完整产品方案；如果只是认可方向、提醒风险但不给字段改法，就沉默。"
-	      ].join("\n")
-	    : "";
-  const privateContext = phaseTurnNumber === 1
-    ? privateState
-    : "阶段开始时的那次内在冲动已经过去，也可能已经体现在你先前的动作或发言里。不要重新调用同一段回忆、案例或担心；现在只从眼前页面、最近公开现场和你自己已经说过的话继续反应。";
-  const messages = [
-    {
-      role: "system",
-      content: [
-        formatR1IsolatedActorPersona(member, isLeader),
-        "",
-        "你现在只扮演这一个人。你不知道别人心里在想什么，也不知道这场讨论最终会怎样。",
-        "不要替其他成员写台词，不要当主持人，不要总结整场会议，不要追求一个漂亮完整的答案。",
-        "别人讲过的家庭、客户和工作经历属于别人；你可以回应，但绝不能改写成自己的回忆。",
-        "不要每次复述刚才所有观点，也不要重复自己已经讲过的完整理由。每次只推进眼前一个很小的反应。",
-        "你已经听过下方本阶段的完整公开记录。别人讲清楚过的观点不能换成你的口吻再讲一遍；赞同但没有新增内容时可以不说。",
-        "镜头落到你身上不等于老师点名。先判断这个人此刻是否真的会开口；没有新的、非重复的东西时，最真实的演法通常是点头、沉默、看屏幕、走神或让别人继续，不能为了生成内容临时搜索一个新案例。",
-        "不要套用‘这个我认，但我再补一个’的接话模板。听到一个意见不等于必须赞同，也不等于必须追加细节。",
-        "你的内心已写在私有主人公状态里，其他人听不见。输出时绝不能写‘我心里想’、回忆浮现、脑子里转、觉得但没说等内心旁白。",
-        "只写讨论室里别人能直接看到的动作，以及你真正说出口的原话。公共场合只称呼姓名，不说 TBNxx 之类内部 id。",
-        "使用剧本台词格式：可见动作只能写在全角括号（ ）里，真正说出口的话只能写在中文引号“ ”里。括号外和引号外不得有任何叙述。",
-        "你只回应此刻真实听到的话和眼前页面。人物可以前后矛盾，也可以没有贡献。"
-      ].join("\n")
-    },
-    {
-      role: "user",
-      content: [
-        "【只给你看的主人公状态】",
-        privateContext,
-        "",
-        "【你自己的个人初选】",
-        `${ownProposal.grid_id}/${ownProposal.architecture}；WHO=${ownProposal.vp_summary?.who || ""}；PAIN=${ownProposal.vp_summary?.pain || ""}；HOW=${ownProposal.vp_summary?.how || ""}`,
-        "",
-	        "【眼前页面】",
-	        screenText,
-	        "",
-	        "【刚发生、你正在回应的一件事】",
-	        triggerContext || "这一阶段刚开始，你正在根据眼前页面自然开口或操作。",
-	        "",
-	        "【本阶段公开发生过的全部发言，按时间】",
-	        formatR1ActorPhaseTranscript(transcript, members, phase),
-        "",
-        "【你自己先前公开说过的话】",
-        ownPublicHistory,
-        "",
-	        phaseInstruction,
-	        operateRetryNote ? `【上一镜作废，重演同一刻】${operateRetryNote}` : "",
-	        selectionBoundary,
-	        vpBoundary,
-	        performanceMode === "operate"
-	          ? "写这一刻公开发生的一个界面操作。用括号内的可见动作明确写出点了哪个合法按钮，或在哪个输入框写入/改成了什么原文；如果是 WHO/PAIN/HOW 操作，必须逐字写出输入框里的最终文字，不要只写‘敲了一行字’或‘删掉重打’；这一镜不要加台词。"
-          : "写这一刻公开发生的一小段自然剧本文字：一个括号内的可见动作，加 1-3 句中文引号内的短口语。这个人本来很话多时可以稍长，但不要写完整分析文章。",
-        "合法形态示意只有格式意义：（低头转了转笔。）\n“这块我没想明白，你们先说。” 不要照抄这句话。",
-        "不要解释他为什么这么说，不要写没说出口的部分。",
-        "如果发生界面操作，必须在自然叙述里明确写出点了什么、输入了什么；没有操作就不要补操作。",
-        "不要 JSON、标题、列表、actor 标签、后台字段或研究说明。"
-      ].join("\n")
-    }
-  ];
-  let lastRaw = "";
-  let lastError = "";
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
-    const attemptMessages = attempt === 1 ? messages : [
-      ...messages,
-      { role: "assistant", content: lastRaw },
-      {
-        role: "user",
-        content: `刚才的版本不能成为公开 transcript：${lastError}。只重演同一刻，把内心、解释和内部代号留在私下；公开输出只能是别人看得到的动作和带引号的真实台词。`
-      }
-    ];
-    try {
-      lastRaw = await callText(attemptMessages, { temperature, maxTokens: 320 });
-      const raw = validateR1ActorPublicRaw(lastRaw, performanceMode, phase, uiState);
-      if (outputDir) {
-        appendJsonl(path.join(outputDir, "r1_actor_isolated_actor_calls.jsonl"), {
-          ts: new Date().toISOString(), event: eventIndex, phase, member_id: member.profile_id,
-          is_leader: isLeader, phase_turn_number: phaseTurnNumber, performance_mode: performanceMode, attempt, status: "ok", raw
-        });
-      }
-      return raw;
-    } catch (error) {
-      lastError = error.message;
-      if (outputDir) {
-        appendJsonl(path.join(outputDir, "r1_actor_isolated_actor_calls.jsonl"), {
-          ts: new Date().toISOString(), event: eventIndex, phase, member_id: member.profile_id,
-          is_leader: isLeader, phase_turn_number: phaseTurnNumber, performance_mode: performanceMode, attempt, status: "rejected", error: lastError, raw: lastRaw
-        });
-      }
-    }
-  }
-  const raw = projectR1ActorPublicRaw(lastRaw, member, performanceMode);
-  validateR1ActorPublicRaw(raw, performanceMode, phase, uiState);
-  if (outputDir) {
-    appendJsonl(path.join(outputDir, "r1_actor_isolated_actor_calls.jsonl"), {
-      ts: new Date().toISOString(), event: eventIndex, phase, member_id: member.profile_id,
-      is_leader: isLeader, phase_turn_number: phaseTurnNumber, performance_mode: performanceMode, attempt: 3, status: "public_projection_salvage",
-      error: lastError, source_raw: lastRaw, raw
-    });
-  }
-  return raw;
-}
-
-function r1ActorExplicitButtonClickEvidence(raw, buttonLabel) {
-  const click = "(?:点击|点选|点下|点了下去|点了下|点了一下|点一下|点了|按下|按了下去|按了一下|按一下|按了|单击)";
-  const label = `[“\"']?${buttonLabel}(?:按钮)?[”\"']?`;
-  const patterns = [
-    new RegExp(`${click}(?:了)?(?:屏幕|页面|界面)?(?:[上下][方面边]|[左右][上下]角|底部|顶部|旁边|中间|上|下)?(?:的)?(?:那个|那颗|那枚)?${label}`, "u"),
-    new RegExp(`点(?:了)?(?:一?下)?${label}`, "u"),
-    new RegExp(`(?:在|把|将)(?:那个)?${label}(?:上)?${click}(?:了)?`, "u"),
-    new RegExp(`${label}(?:被)?${click}(?:了)?`, "u")
-  ];
-  for (const pattern of patterns) {
-    const match = String(raw || "").match(pattern);
-    if (match) {
-      const clickOffset = match[0].search(new RegExp(click, "u"));
-      const clickIndex = clickOffset >= 0 ? match.index + clickOffset : match.index;
-      if (!r1ActorClickEvidenceNegated(raw, clickIndex)) return match[0];
-    }
-  }
-  const text = String(raw || "");
-  const labelPattern = new RegExp(label, "gu");
-  for (const match of text.matchAll(labelPattern)) {
-    const window = text.slice(match.index, match.index + 100);
-    const clickMatch = window.match(new RegExp(click, "u"));
-    if (!clickMatch) continue;
-    const beforeClick = window.slice(0, clickMatch.index);
-    if (/(?:移开|离开|挪开|滑开|没有点|没点|未点|没按|未按)/u.test(beforeClick)) continue;
-    if (r1ActorClickEvidenceNegated(window, clickMatch.index)) continue;
-    return window.slice(0, clickMatch.index + clickMatch[0].length);
-  }
-  return "";
-}
-
-function r1ActorGenericControlSpokenLabel(raw, kind) {
-  // A click phrased against a control context ("产品定位按钮…点了一下", "（按钮上，点了下去。）",
-  // "点了产品定位按钮") followed shortly by a quoted utterance that consists solely of one legal
-  // label ⇒ that label was selected. Handles the actor style where the button click is a stage
-  // direction and the chosen value is spoken as a separate quoted line.
-  const text = String(raw || "");
-  const click = "(?:点击|点选|点下|点了下去|点了下|点了一下|点一下|点了|按下|按了下去|按了一下|按一下|按了|单击)";
-  const pause = "(?:，|,|\\s)*(?:停[^，。；！？\\n]{0,8}|顿[^，。；！？\\n]{0,6}|犹豫[^，。；！？\\n]{0,6})?(?:，|,|\\s)*";
-  const specificControl = kind === "grid" ? "(?:市场格)" : "(?:产品定位|定位)";
-  const genericControl = "(?:按钮|鼠标|光标)";
-  const labels = kind === "grid"
-    ? GRID_IDS.map((key) => ({ key, tokens: [key] }))
-    : [
-        { key: "Experience", tokens: ["Experience", "体验型", "体验"] },
-        { key: "Hybrid", tokens: ["Hybrid", "混合型", "混合"] },
-        { key: "Function", tokens: ["Function", "功能型", "功能"] }
-      ];
-  const contextPatterns = [
-    new RegExp(`${specificControl}[^。；！？\\n“”]{0,10}${pause}${click}`, "gu"),
-    new RegExp(`${genericControl}[^。；！？\\n“”]{0,8}${pause}${click}`, "gu"),
-    new RegExp(`${click}(?:了)?[^。；！？\\n“”]{0,6}${specificControl}(?:的)?(?:按钮|选项)?`, "gu")
-  ];
-  const matchLabel = (spoken) => {
-    const bare = String(spoken || "").replace(/[（）()【】\[\]\s，。,.!！?？:：;；]/gu, "");
-    if (!bare) return null;
-    for (const item of labels) {
-      let residual = bare;
-      for (const token of [...item.tokens].sort((a, b) => b.length - a.length)) {
-        residual = residual.split(token).join("");
-      }
-      if (!residual) return item.key;
-    }
-    return null;
-  };
-  const results = [];
-  for (const pattern of contextPatterns) {
-    for (const match of text.matchAll(pattern)) {
-      const clickOffset = match[0].search(new RegExp(click, "u"));
-      const clickIndex = clickOffset >= 0 ? match.index + clickOffset : match.index;
-      if (r1ActorClickEvidenceNegated(text, clickIndex)) continue;
-      const windowStart = match.index + match[0].length;
-      const window = text.slice(windowStart, Math.min(text.length, windowStart + 90));
-      let found = null;
-      for (const quoted of window.matchAll(/[“"]([^”"]{1,40})[”"]/gu)) {
-        const key = matchLabel(quoted[1]);
-        if (key) {
-          found = { key, evidence: match[0] + window.slice(0, quoted.index + quoted[0].length), index: match.index };
-          break;
-        }
-      }
-      if (found && !results.some((item) => item.key === found.key && item.index === found.index)) {
-        results.push(found);
-      }
-    }
-  }
-  return results;
-}
-
-function r1ActorClickedSelectionControls(raw) {
-  const directGrids = GRID_IDS
-    .map((key) => ({ key, ...(r1ActorClickedControlEvidence(raw, key) || {}) }))
-    .filter((item) => item.evidence);
-  const directArchitectures = [
-    { key: "Experience", labels: ["Experience", "体验型", "体验"] },
-    { key: "Hybrid", labels: ["Hybrid", "混合型", "混合"] },
-    { key: "Function", labels: ["Function", "功能型", "功能"] }
-  ].map((item) => {
-    const evidence = item.labels
-      .map((label) => r1ActorClickedControlEvidence(raw, label))
-      .filter(Boolean)
-      .sort((a, b) => b.index - a.index)[0];
-    return { key: item.key, ...(evidence || {}) };
-  }).filter((item) => item.evidence);
-  const mergeGeneric = (direct, generic) => {
-    const merged = direct.slice();
-    for (const item of generic) {
-      if (!merged.some((existing) => existing.key === item.key)) merged.push(item);
-    }
-    return merged.sort((a, b) => a.index - b.index);
-  };
-  return {
-    grids: mergeGeneric(directGrids, r1ActorGenericControlSpokenLabel(raw, "grid")),
-    architectures: mergeGeneric(directArchitectures, r1ActorGenericControlSpokenLabel(raw, "architecture"))
-  };
-}
-
-function normalizeR1ActorUiEvent(parsed, { phase, isLeader, raw, uiState }) {
-  const source = parsed && typeof parsed === "object" ? parsed : {};
-  const allowed = phase === "selection"
-    ? new Set(["none", "edit_selection", "continue_to_vp"])
-    : new Set(["none", "edit_vp", "submit_r1"]);
-  let action = String(source.action || "none").trim();
-  if (!allowed.has(action)) throw new Error(`invalid actor-isolated action: ${action}`);
-  let evidenceQuote = String(source.evidence_quote || "").trim();
-  const explicitContinue = phase === "selection" ? r1ActorExplicitButtonClickEvidence(raw, "继续") : "";
-  const explicitSubmit = phase === "vp" ? r1ActorExplicitButtonClickEvidence(raw, "提交") : "";
-  if (explicitContinue) {
-    action = "continue_to_vp";
-    evidenceQuote = explicitContinue;
-  } else if (explicitSubmit) {
-    action = "submit_r1";
-    evidenceQuote = explicitSubmit;
-  } else if (action === "continue_to_vp" || action === "submit_r1") {
-    action = "none";
-    evidenceQuote = "";
-  }
-  if (action !== "none" && (!isLeader || !evidenceQuote || !raw.includes(evidenceQuote))) {
-    throw new Error("actor-isolated action requires a verbatim leader evidence quote");
-  }
-  let gridId = String(source.grid_id || "").trim();
-  let architecture = String(source.architecture || "").trim();
-  const clickedControls = phase === "selection" ? r1ActorClickedSelectionControls(raw) : { grids: [], architectures: [] };
-  const finalClickedGrid = clickedControls.grids[clickedControls.grids.length - 1];
-  const finalClickedArchitecture = clickedControls.architectures[clickedControls.architectures.length - 1];
-  const sourceGridHasEvidence = phase === "selection" && GRID_IDS.includes(gridId) && r1ActorControlEvidenceIncludesLabel(evidenceQuote, gridId);
-  const sourceArchitectureHasEvidence = phase === "selection"
-    && ["Experience", "Hybrid", "Function"].includes(architecture)
-    && r1ActorArchitectureLabels(architecture).some((label) => r1ActorControlEvidenceIncludesLabel(evidenceQuote, label));
-  // A field value the leader never wrote in this take is a UI-state echo or hallucination from
-  // the extractor; it must not ride into uiState on the back of another evidenced action.
-  const rawText = String(raw || "");
-  const rawMentionsGrid = gridId && rawText.includes(gridId);
-  const rawMentionsArchitecture = architecture
-    && r1ActorArchitectureLabels(architecture).some((label) => rawText.includes(label));
-  if (finalClickedGrid && !sourceGridHasEvidence) gridId = finalClickedGrid.key;
-  else if (!sourceGridHasEvidence && !finalClickedGrid && !rawMentionsGrid) gridId = "";
-  if (finalClickedArchitecture && !sourceArchitectureHasEvidence) architecture = finalClickedArchitecture.key;
-  else if (!sourceArchitectureHasEvidence && !finalClickedArchitecture && !rawMentionsArchitecture) architecture = "";
-  if (!explicitContinue && phase === "selection" && (clickedControls.grids.length > 0 || clickedControls.architectures.length > 0)) {
-    action = "edit_selection";
-    const finalClick = [finalClickedGrid, finalClickedArchitecture]
-      .filter(Boolean)
-      .sort((a, b) => b.index - a.index)[0];
-    evidenceQuote = finalClick?.evidence || evidenceQuote;
-  } else if (!explicitContinue && phase === "selection" && action === "edit_selection" && (sourceGridHasEvidence || sourceArchitectureHasEvidence)) {
-    action = "edit_selection";
-  } else if (!explicitContinue && phase === "selection" && action === "edit_selection") {
-    action = "none";
-    evidenceQuote = "";
-  }
-  if (gridId && !GRID_IDS.includes(gridId)) throw new Error(`invalid grid_id: ${gridId}`);
-  if (architecture && !["Experience", "Hybrid", "Function"].includes(architecture)) {
-    throw new Error(`invalid architecture: ${architecture}`);
-  }
-	  const vp = source.vp_summary && typeof source.vp_summary === "object" ? source.vp_summary : {};
-	  const currentUiState = uiState && typeof uiState === "object" ? uiState : {};
-  const selectionChanged = (gridId && gridId !== currentUiState.grid_id)
-    || (architecture && architecture !== currentUiState.architecture);
-  if (action === "edit_selection" && !selectionChanged) {
-    action = "none";
-    evidenceQuote = "";
-  }
-  if (action === "none") {
-    gridId = "";
-    architecture = "";
-  }
-	  return {
-	    action: phase === "vp" && action === "edit_vp" && !["who", "pain", "how"].some((key) => String(vp[key] || "").trim())
-	      ? "none"
-	      : action,
-	    evidence_quote: evidenceQuote,
-	    grid_id: gridId,
-	    architecture,
-    vp_summary: {
-      who: String(vp.who || "").trim(),
-      pain: String(vp.pain || "").trim(),
-      how: String(vp.how || "").trim()
-    }
-  };
-}
-
-function assertR1WritingAssistKeepsChoice(draft, assisted) {
-  if (assisted.grid_id !== draft.grid_id) {
-    throw new Error(`writing assist changed grid_id: ${draft.grid_id} -> ${assisted.grid_id}`);
-  }
-  if (assisted.architecture !== draft.architecture) {
-    throw new Error(`writing assist changed architecture: ${draft.architecture} -> ${assisted.architecture}`);
-  }
-}
-
-async function runR1ActorIsolatedDiscussion({ members, leaderIdx, draws, proposals, temperature, seed, arm, outputDir }) {
-  const leader = members[leaderIdx];
-  const uiState = { grid_id: "", architecture: "", vp_summary: { who: "", pain: "", how: "" } };
-  const transcript = [{
-    speaker: "screen",
-    phase: "selection",
-    text: "五个人的个人初选同时出现在小组战略分布页上。教室里没有主持人替他们总结，只有屏幕、桌椅和他们已经公开说出口的话。"
-  }];
-  const turns = [];
-  const phaseStates = {};
-  const actorTurnsByPhase = {};
-  // This is an API runaway guard, not a convergence rule; reaching it fails the run and never manufactures a submission.
-  const eventCap = 100;
-  const entranceCheckCap = 320;
-  let phase = "selection";
-  let eventIndex = 0;
-  let entranceCheckIndex = 0;
-  let quietBeatStreak = 0;
-  let triggerSerial = 0;
-  let currentTrigger = { mode: "phase_open", trigger: null, token: "selection:open" };
-  let queue = [];
-
-	  const setResponseQueue = (mode, trigger, excludeIndex = null) => {
-	    triggerSerial += 1;
-	    currentTrigger = { mode, trigger, token: `${phase}:${mode}:${triggerSerial}` };
-	    queue = mode === "phase_open"
-      ? r1ActorPhaseOpenQueue({ members, leaderIdx, seed, phase })
-      : mode === "leader_operation"
-	      ? [leaderIdx]
-	      : r1ActorEventQueue(members, seed, phase, currentTrigger.token, excludeIndex);
-	    quietBeatStreak = 0;
-	  };
-
-  while (phase !== "submitted" && eventIndex < eventCap && entranceCheckIndex < entranceCheckCap) {
-    const screenText = phase === "selection"
-      ? buildR1ActorIsolatedSelectionScreen({ members, leaderIdx, draws, proposals, uiState })
-      : buildR1ActorIsolatedVpScreen(uiState);
-    if (!phaseStates[phase]) {
-      const publicEnvironment = await createR1ActorPublicEnvironment({ phase, screenText, temperature, outputDir });
-      transcript.push({ speaker: "narrator", phase, text: publicEnvironment });
-      phaseStates[phase] = {};
-      const privateStates = await Promise.all(members.map((member, index) => {
-        return createR1ActorPrivateState({
-          member,
-          isLeader: index === leaderIdx,
-          ownProposal: proposals[index].parsed,
-          screenText,
-          heardTranscript: formatR1ActorPublicTranscript(transcript, members, 8),
-          phase,
-          temperature,
-          outputDir
-        });
-      }));
-      members.forEach((member, index) => {
-        phaseStates[phase][member.profile_id] = privateStates[index];
-      });
-      actorTurnsByPhase[phase] = {};
-      setResponseQueue("phase_open", null, null);
-    }
-    if (!queue.length) {
-      if (phase === "selection" && currentTrigger.mode === "phase_open" && !r1ActorHasNonLeaderSubstantiveTurn(turns, phase)) {
-        const fallbackIndex = await chooseR1ActorFallbackSpeaker({
-          members,
-          leaderIdx,
-          proposals,
-          phaseStates,
-          transcript,
-          phase,
-          uiState,
-          turns,
-          temperature,
-          seed,
-          outputDir,
-          eventIndex: entranceCheckIndex + 1
-        });
-        if (fallbackIndex != null) {
-          triggerSerial += 1;
-          currentTrigger = { mode: "system_selected_speaker", trigger: null, token: `${phase}:system_selected_speaker:${triggerSerial}` };
-          queue = [fallbackIndex];
-          quietBeatStreak = 0;
-          continue;
-        }
-      }
-      transcript.push({
-        speaker: "narrator",
-        phase,
-        text: "几秒钟没人接着往下说。屏幕上的按钮和输入框还停在原处，鼠标仍在组长手边。"
-      });
-      setResponseQueue("leader_operation", null, null);
-    }
-    const memberIndex = queue.shift();
-    const member = members[memberIndex];
-    const allowOperate = memberIndex === leaderIdx && currentTrigger.mode === "leader_operation";
-    entranceCheckIndex += 1;
-    actorTurnsByPhase[phase][member.profile_id] = (actorTurnsByPhase[phase][member.profile_id] || 0) + 1;
-    const phaseTurnNumber = actorTurnsByPhase[phase][member.profile_id];
-    const forcedSystemSpeaker = currentTrigger.mode === "system_selected_speaker";
-    const entrance = forcedSystemSpeaker
-      ? {
-          decision: "speak",
-          raw: "【后台选角】此前非组长均未自然给出实质发言；系统选择此成员作为最合理的打破沉默者。"
-        }
-      : await callR1ActorEntranceDecision({
-          members,
-          member,
-          isLeader: memberIndex === leaderIdx,
-          ownProposal: proposals[memberIndex].parsed,
-          privateState: phaseStates[phase][member.profile_id],
-          screenText,
-          transcript,
-          phase,
-          phaseTurnNumber,
-          quietBeatStreak,
-          triggerContext: r1ActorTriggerContext({
-            mode: currentTrigger.mode,
-            phase,
-            trigger: currentTrigger.trigger,
-            members,
-            uiState
-          }),
-          allowOperate,
-          temperature,
-          outputDir,
-          eventIndex: entranceCheckIndex
-        });
-    if (forcedSystemSpeaker && outputDir) {
-      appendJsonl(path.join(outputDir, "r1_actor_isolated_entrance_decisions.jsonl"), {
-        ts: new Date().toISOString(), event: entranceCheckIndex, phase, member_id: member.profile_id,
-        member_name: member.surface?.name || "这名成员", is_leader: memberIndex === leaderIdx, phase_turn_number: phaseTurnNumber,
-        quiet_beat_streak: quietBeatStreak, trigger_context: r1ActorTriggerContext({
-          mode: currentTrigger.mode,
-          phase,
-          trigger: currentTrigger.trigger,
-          members,
-          uiState
-        }),
-        allow_operate: false, attempt: 0, status: "forced_by_system_fallback", decision: entrance.decision, raw: entrance.raw
-      });
-    }
-    if (entrance.decision === "silent") {
-      quietBeatStreak += 1;
-      if (allowOperate) {
-        const idleEntry = {
-          speaker: "narrator",
-          phase,
-          text: "组长看着页面停了一下，没有说话，也没有碰鼠标。"
-        };
-        transcript.push(idleEntry);
-        setResponseQueue("response", idleEntry, leaderIdx);
-      }
-      continue;
-    }
-    eventIndex += 1;
-    const actorCallArgs = {
-      members,
-      member,
-      isLeader: memberIndex === leaderIdx,
-      ownProposal: proposals[memberIndex].parsed,
-      privateState: phaseStates[phase][member.profile_id],
-      screenText,
-      uiState,
-      transcript,
-      phase,
-      phaseTurnNumber,
-      triggerContext: r1ActorTriggerContext({
-        mode: currentTrigger.mode,
-        phase,
-        trigger: currentTrigger.trigger,
-        members,
-        uiState
-      }),
-      performanceMode: entrance.decision,
-      temperature,
-      outputDir,
-      eventIndex
-    };
-    let raw = entrance.decision === "silent"
-      ? `（${member.surface?.name || "这名成员"}没有开口。）`
-      : await callR1IsolatedActor(actorCallArgs);
-    let event = entrance.decision !== "operate"
-      ? { action: "none", evidence_quote: "", grid_id: "", architecture: "", vp_summary: { who: "", pain: "", how: "" } }
-      : await extractR1ActorUiEvent({
-          raw,
-          phase,
-          isLeader: memberIndex === leaderIdx,
-          uiState,
-          temperature,
-          outputDir,
-          eventIndex,
-          memberId: member.profile_id
-	        });
-    if (entrance.decision === "operate" && event.action === "none") {
-      // Re-shoot the same moment once: the actor already privately decided to operate, but the
-      // take contained no indexable UI action. The retry never invents a decision — it only asks
-      // the actor to make the already-decided operation explicit enough to index.
-      const retryRaw = await callR1IsolatedActor({
-        ...actorCallArgs,
-        operateRetryNote: "你刚才那一镜没有落下任何可索引的真实界面动作：没有点中任何合法按钮，也没有逐字写出某个输入框的最终文字。重演这一刻，在括号动作里把操作写实——点击时逐字写出按钮标签（例如 点击市场格“ToB_DIFF_ELDER”、点击产品定位“Hybrid”、点击“继续”按钮、点击“提交”按钮），输入时逐字写出该输入框的完整最终文字。仍然只演这一个操作。"
-      });
-      const retryEvent = await extractR1ActorUiEvent({
-        raw: retryRaw,
-        phase,
-        isLeader: memberIndex === leaderIdx,
-        uiState,
-        temperature,
-        outputDir,
-        eventIndex,
-        memberId: member.profile_id
-      });
-      if (retryEvent.action !== "none") {
-        raw = retryRaw;
-        event = retryEvent;
-      }
-    }
-    const participation = r1ActorPublicParticipation(raw);
-    const previousPhase = phase;
-    const transcriptEntry = { speaker: member.profile_id, phase: previousPhase, text: raw || "（没有说话）", participation, ui_action: event.action === "none" ? null : event };
-    transcript.push(transcriptEntry);
-    phase = applyR1ActorUiEvent({ event, phase, uiState });
-    quietBeatStreak = participation === "substantive" || event.action !== "none" ? 0 : quietBeatStreak + 1;
-    turns.push({
-      event: eventIndex,
-      phase: previousPhase,
-      actor: member.profile_id,
-      is_leader: memberIndex === leaderIdx,
-      phase_turn_number: phaseTurnNumber,
-      trigger_mode: currentTrigger.mode,
-      trigger_token: currentTrigger.token,
-      allow_operate: allowOperate,
-      entrance_decision: entrance.decision,
-      entrance_private_raw: entrance.raw,
-      participation,
-      raw,
-      indexed_ui_event: event,
-      ui_state_after: JSON.parse(JSON.stringify(uiState))
-    });
-    if (outputDir) {
-      writeJson(path.join(outputDir, "r1_actor_isolated_checkpoint.json"), {
-        seed,
-        arm,
-        leader_id: leader.profile_id,
-        phase,
-        event_index: eventIndex,
-        entrance_check_index: entranceCheckIndex,
-        private_states: phaseStates,
-        turns,
-        ui_state: uiState,
-        trigger: currentTrigger,
-        queue
-      });
-    }
-	    if (phase !== previousPhase && phase === "vp") {
-	      transcript.push({ speaker: "screen", phase, text: `组长点击继续。页面锁定 ${uiState.grid_id} / ${uiState.architecture}，切换到 WHO、PAIN、HOW。` });
-	      queue = [];
-	      currentTrigger = { mode: "phase_open", trigger: null, token: `${phase}:open` };
-		    } else if (phase !== previousPhase && phase === "submitted") {
-		      queue = [];
-		    } else if (event.action !== "none") {
-		      setResponseQueue("response", transcriptEntry, memberIndex);
-    } else if (currentTrigger.mode === "system_selected_speaker" && participation === "substantive") {
-      setResponseQueue("response", transcriptEntry, memberIndex);
-    } else if (currentTrigger.mode === "phase_open") {
-      queue = queue.slice();
-    } else if (currentTrigger.mode === "leader_operation" && participation === "substantive") {
-      setResponseQueue("response", transcriptEntry, memberIndex);
-    } else if (allowOperate && entrance.decision === "operate") {
-      queue = [];
-	    } else {
-	      queue = queue.slice();
-	    }
-  }
-  if (phase !== "submitted") {
-    throw new Error(`r1_actor_isolated_safety_stop_without_natural_submission_after_${eventIndex}_public_events_${entranceCheckIndex}_entrance_checks`);
-  }
-  const draftParsed = validateParsed("r1", {
-    grid_id: uiState.grid_id,
-    architecture: uiState.architecture,
-    vp_summary: uiState.vp_summary,
-    rationale: `组长在第 ${eventIndex} 个公开事件中点击提交；市场、定位和 VP 均来自已记录的组长界面动作。`
-  }, {});
-  const writingAssist = await runR1ActorIsolatedWritingAssist({
-    members,
-    leaderIdx,
-    transcript,
-    draftParsed,
-    temperature,
-    arm,
-    outputDir,
-    seed
-  });
-  const parsed = writingAssist.parsed;
-  const finalText = `【最终提交】grid_id=${parsed.grid_id}; architecture=${parsed.architecture}; WHO=${parsed.vp_summary.who}; PAIN=${parsed.vp_summary.pain}; HOW=${parsed.vp_summary.how}; rationale=${parsed.rationale}`;
-  transcript.push({
-    speaker: "screen",
-    phase: "vp",
-    text: "AI 写作辅助根据组长输入框草稿整理出可提交定稿，组长确认使用该定稿。",
-    ui_action: { type: "ai_writing_assist_round1", status: writingAssist.status, draft: draftParsed, assisted: parsed }
-  });
-  transcript.push({ speaker: "screen", phase: "vp", text: "组长点击提交，Round 1 页面接受了当前输入。", ui_action: { type: "submit_round1", ...parsed } });
-  if (outputDir) {
-    writeJson(path.join(outputDir, "r1_actor_isolated_state.json"), {
-      seed,
-      arm,
-      leader_id: leader.profile_id,
-      private_states: phaseStates,
-      turns,
-      final_ui_state: uiState,
-      draft_submission: draftParsed,
-      writing_assist: writingAssist,
-      parsed_submission: parsed
-    });
-  }
-  return {
-    transcript,
-    turns,
-    termination: "actor_isolated_explicit_leader_submit_plus_ai_writing_assist",
-    narration: { mode: "deterministic_public_environment_plus_private_per_actor_states", private_states: phaseStates },
-    leader_submit: {
-      text: finalText,
-      parsed,
-      draft_parsed: draftParsed,
-      parse_raw: writingAssist.raw || uiState,
-      attempts: writingAssist.attempts,
-      parse_method: writingAssist.status === "ok"
-        ? "actor_isolated_explicit_ui_actions_plus_ai_writing_assist"
-        : "actor_isolated_explicit_ui_actions_ai_writing_assist_failed_fallback_to_draft",
-      writing_assist: writingAssist
-    }
-  };
 }
 
 function strategicDistribution(proposals) {
@@ -5020,10 +4236,10 @@ function buildR2PricingInterfacePanel(r1Frozen, selectedCards, pricingContext, o
     summary.group_breakdown.length ? `分功能区成本：${summary.group_breakdown.join("；")}` : "",
     `Round 1 锚定市场：${r1Frozen.grid_label || r1Frozen.grid_id}；SAM ${samText} / WTPadj ${wtpText}。`,
     `价值主张对支付意愿的影响：${formatSignedPercent(wtpBreakdown.final_pct)}（仅看 VP 本身 ${formatSignedPercent(wtpBreakdown.base_pct)}，市场锦囊额外影响 ${formatSignedPercent(wtpBreakdown.jinang_delta_pct)}）。`,
-	    "【定价须知】",
-	    roomRoleplay
-	      ? `渠道抽成：约 ${summary.channel_fee_pct}%。`
-	      : `渠道成本：你们定的售价不等于到手收入。当前渠道抽成约 ${summary.channel_fee_pct}%。`,
+    "【定价须知】",
+    roomRoleplay
+      ? `渠道抽成：约 ${summary.channel_fee_pct}%。`
+      : `渠道成本：你们定的售价不等于到手收入。当前渠道抽成约 ${summary.channel_fee_pct}%。`,
     roomRoleplay ? "" : "量价权衡：价格越高，每台赚得越多，但愿意买的用户越少；价格越低，用户越多，但可能卖一台亏一台。",
     roomRoleplay ? "" : "产品力影响：产品能力组合越精准匹配目标场景，用户对价格的敏感度越低——好产品可以卖更贵。",
     "【产品售价控件】",
@@ -5648,11 +4864,6 @@ function normalizeScreenplayActor(actor, members) {
     const name = member.surface?.name || "";
     aliases.set(member.profile_id, member.profile_id);
     aliases.set(`@${member.profile_id}`, member.profile_id);
-    const tbnMatch = String(member.profile_id || "").match(/^TBN0*(\d+)$/u);
-    if (tbnMatch) {
-      aliases.set(`R${tbnMatch[1]}`, member.profile_id);
-      aliases.set(`R${tbnMatch[1].padStart(2, "0")}`, member.profile_id);
-    }
     if (name) {
       aliases.set(name, member.profile_id);
       aliases.set(`${member.profile_id} ${name}`, member.profile_id);
@@ -7368,7 +6579,6 @@ async function runD4ScreenplaySegment({
     compatibilityFeedback
   });
   const actorSheet = formatD4ScreenplayActorSheet(members, leaderIdx, segment, groupMap);
-  const legalActorIds = members.map((member) => member.profile_id).join(", ");
   const baseMessages = [
     {
       role: "system",
@@ -7392,14 +6602,13 @@ async function runD4ScreenplaySegment({
         "",
         "【编剧任务】",
         `继续写 D4 第 ${segmentIndex + 1} 格能力卡复核这一幕。角色们围着同一台电脑看当前功能区能力卡，像真人一样说话和动手。`,
-        `actor 字段只能填写演员表里的真实成员 id：${legalActorIds}。不要发明 Rxx、成员A 或姓名代号。`,
         "至少 4 个 beat，最多 10 个 beat；不是每个人都必须说话，可以有人只做动作或没展开。",
         "如果有人在界面点卡，写 ui_action={\"type\":\"select_card\",\"cap_id\":\"真实cap_id\",\"tier\":\"low|mid|high\"}。",
         "如果有人取消某张卡，写 ui_action={\"type\":\"unselect_card\",\"cap_id\":\"真实cap_id\"}。",
         "如果有人改档，写 ui_action={\"type\":\"change_tier\",\"cap_id\":\"真实cap_id\",\"tier\":\"low|mid|high\"}。",
         "最终当前功能区必须至少有一张卡停留选中；不要另写 final_cards，最终卡只由 UI 动作后界面状态决定。",
         "不要输出 Markdown，不要输出额外说明。schema：",
-        '{"scene_state":"一句场景状态","beats":[{"actor":"上面演员表里的真实成员 id","stage_direction":"动作/神情","line":"台词，可为空","ui_action":{"type":"select_card|unselect_card|change_tier","cap_id":"真实cap_id","tier":"low|mid|high"}|null}]}'
+        '{"scene_state":"一句场景状态","beats":[{"actor":"Rxx","stage_direction":"动作/神情","line":"台词，可为空","ui_action":{"type":"select_card|unselect_card|change_tier","cap_id":"真实cap_id","tier":"low|mid|high"}|null}]}'
       ].join("\n")
     }
   ];
@@ -7482,7 +6691,6 @@ async function runD4ScreenplaySegment({
             `界面/解析提示：${lastError}`,
             "请从这个界面提示后继续写一版完整 D4 剧本，仍然按演员人设，不要写商业分析。",
             "必须包含至少一个合法 UI card action，最终当前功能区至少保留一张卡；只输出 JSON。",
-            `actor 字段只能填写这些真实成员 id：${legalActorIds}。`,
             "合法 cap_id 只能从下面清单逐字选择，不能创造新 ID：",
             formatAllowedCardsForPrompt(allowedCards),
             "",
@@ -8539,19 +7747,7 @@ async function runTeam({ seed, batch, arm = "legacy", poolPath = null, outputRoo
   }];
   let r1Discussion;
   let r1Submit;
-  if (hasR1ActorIsolatedArm(arm)) {
-    r1Discussion = await runR1ActorIsolatedDiscussion({
-      members: sampled.members,
-      leaderIdx: sampled.leaderIdx,
-      draws,
-      proposals,
-      temperature,
-      seed: `${seed}:r1`,
-      arm,
-      outputDir
-    });
-    r1Submit = r1Discussion.leader_submit;
-  } else if (hasR1ScreenplayArm(arm)) {
+  if (hasR1ScreenplayArm(arm)) {
     r1Discussion = await runR1ScreenplayDiscussion({
       members: sampled.members,
       leaderIdx: sampled.leaderIdx,
@@ -8682,7 +7878,7 @@ async function runTeam({ seed, batch, arm = "legacy", poolPath = null, outputRoo
 		      }))
 		    });
 		  }
-		  if (hasR1ScreenplayArm(arm) || hasR1ActorIsolatedArm(arm)) {
+		  if (hasR1ScreenplayArm(arm)) {
 		    writeJson(path.join(outputDir, "r1_ui_screen_process.json"), {
 		      stories: proposals.map((proposal, index) => ({
 		        member_id: sampled.members[index].profile_id,
