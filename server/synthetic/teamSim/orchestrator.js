@@ -4513,6 +4513,7 @@ function roomBeatInstruction(beat) {
   if (!beat) return "";
   const shared = "这一轮像讨论室里的台词，不是课堂作业答案；不要把逻辑讲满，不要替全队写结论。";
   const instructions = {
+    persona_natural: "从此刻屏幕上的情景、刚才的对话和你小传里的经历出发，说这个人此刻自然会说的话：可以短、可以犹豫、可以坚持自己下过的注、可以让步；不要替全场总结，不要做方案对比。",
     short_view: "只说一个短观点或直觉，1句，最多补半句理由。",
     terse_agree: "只附和或轻微补一句，像“我同意这个方向，但别太重”。不要展开。",
     short_doubt: "只提出一个担心或反问，不给完整方案。",
@@ -4534,6 +4535,7 @@ function roomBeatInstruction(beat) {
 
 function roomBeatMaxTokens(beat) {
   if (!beat) return 500;
+  if (beat.kind === "persona_natural") return Number(beat.max_tokens) || 140;
   if (beat.kind === "low_effort" || beat.kind === "terse_agree" || beat.kind === "short_doubt") return 70;
   if (beat.kind === "short_view" || beat.kind === "bridge" || beat.kind === "quick_calc" || beat.kind === "leader_probe") return 105;
   if (beat.kind === "status_story" || beat.kind === "tangent" || beat.kind === "leader_wrap") return 145;
@@ -4766,14 +4768,14 @@ async function runActorStageDiscussion({ members, leaderIdx, draws, proposals, i
         decision = "silent";
       }
       if (decision !== "speak") continue;
-      const behavior = classroomBehaviorProfile(member, idx === leaderIdx);
-      const beatKind = chooseRoomBeatKind(behavior, idx === leaderIdx, topic, round, rng, null);
+      const tendency = String(member.speaking_tendency || "mid");
       const beat = {
         index: idx,
-        kind: beatKind,
-        label: roomBeatLabel(beatKind),
+        kind: "persona_natural",
+        label: "自然接话",
         generated: true,
-        note: behavior.labels ? `你的课堂状态：${behavior.labels.engagement}，${behavior.labels.status}，${behavior.labels.relevance}。` : ""
+        max_tokens: tendency === "low" ? 80 : tendency === "high" ? 190 : 130,
+        note: ""
       };
       const utterance = await speak(member, idx === leaderIdx, draws[idx], proposals[idx], transcript, topic, temperature, arm, beat);
       transcript.push({ speaker: member.profile_id, text: utterance });
@@ -10037,7 +10039,8 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
 	      writeJson(path.join(outputDir, "r2_checkpoints.json"), { checkpoints });
 	      continue;
 	    }
-	    let discussion = await runDiscussion({
+	    const segmentDiscussFn = isPricingActionActorArm(arm) ? runActorStageDiscussion : runDiscussion;
+	    let discussion = await segmentDiscussFn({
 	      members,
 	      leaderIdx,
 	      draws,
