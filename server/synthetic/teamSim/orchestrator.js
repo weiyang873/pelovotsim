@@ -459,7 +459,7 @@ function loadRandom42ProfilePool(poolPath = RANDOM42_POOL_PATH) {
         expressionStyle: requireFact("communication_and_participation"),
         blindSpots: taskBlindInferBlindSpots(fp),
         classroomProfile: { team_role: teamRole, effort_style: effortStyle },
-        pricingBias: requireFact("price_reference_history"),
+        pricingBias: `${taskBlindInferPricingDoctrine(fp, facts.career_context)}。价格参照：${requireFact("price_reference_history")}`,
         consumption_habits: requireFact("personal_consumption_habits"),
         speaking_tendency: actionOrientation >= 0.67 ? "high" : actionOrientation <= 0.33 ? "low" : "mid",
         surface: { ...surface, expression_style: requireFact("communication_and_participation") },
@@ -862,6 +862,23 @@ function isBehavioralNarrativeMember(member) {
 
 function isCareerGeneralProfileMember(member) {
   return Boolean(member?.career_general_profile && member?.current_position);
+}
+
+function taskBlindInferPricingDoctrine(fp, careerText) {
+  const t = String(careerText || "");
+  const promo = Number(fp.regulatory_focus_promotion);
+  const risk = Number(fp.risk_propensity_business);
+  const maxi = Number(fp.maximizing_satisficing);
+  const nfc = Number(fp.need_for_cognition);
+  for (const v of [promo, risk, maxi, nfc]) {
+    if (!Number.isFinite(v)) throw new Error("taskBlindInferPricingDoctrine: missing fingerprint dim; refusing fallback");
+  }
+  if (/互联网|软件|平台|电商|App|SaaS|在线/iu.test(t)) return "习惯互联网低价获客的打法，容易低估硬件的定价空间";
+  if (/消费品|零售|快消|民生|连锁|超市|餐饮|教育培训|培训/u.test(t) && promo < 0.6) return "怕定贵了普通客户不接受，倾向保守定价";
+  if ((/高端|品牌|奢侈|进口|咨询|投行|资本/u.test(t) && promo >= 0.5) || (promo >= 0.7 && risk >= 0.6)) return "觉得好东西就该卖贵，价格本身就是定位";
+  if (maxi >= 0.6 && nfc >= 0.55) return "算得很细，倾向反复比价找最优价格点";
+  if (promo <= 0.4 || risk <= 0.35) return "定价宁低勿高，怕压货砸在手里";
+  return "对定价没有成型的直觉，容易跟着身边的参照物走";
 }
 
 function taskBlindInferBlindSpots(fp) {
