@@ -4589,7 +4589,7 @@ async function speak(member, isLeader, draw, privateProposal, transcript, topic,
       ].filter(Boolean).join("\n")
     : "请自然发言 2-4 句。只能说你愿意公开说出口的内容。若你改变立场，点名触发你的具体发言。";
   const cardStakeContext = /选卡|功能段|功能区/.test(topicText) && member.d4_own_selection_note
-    ? `\n你自己刚才的选卡（只有你自己记得为什么选）：${member.d4_own_selection_note}\n讨论动到你选的卡时，按你的功能观和性格自然反应：可以护卡、可以坚持要补上你觉得该有的卡，也可以顺势让步。`
+    ? `\n你刚才自己选卡时心里那句话：“${member.d4_own_selection_note}”`
     : "";
   const messages = [
     {
@@ -9809,13 +9809,12 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
     }));
   }
   for (let i = 0; i < members.length; i += 1) {
-    const ownCards = individualSelections[i]?.parsed?.cards || [];
-    if (!ownCards.length) continue;
-    members[i].d4_own_selection_note = ownCards.map((card) => {
-      const stance = String(card.stance || "").trim();
-      const reason = String(card.reason || "").trim().slice(0, 40);
-      return `${card.cap_id}@${card.tier}${stance ? `(${stance})` : ""}${reason ? `：${reason}` : ""}`;
-    }).join("；");
+    // Natural memory only: the member's own inner line from the moment of picking (their own
+    // words, impressionistic, possibly wrong). No card ledger - whether they remember or care
+    // is left to the person the biography describes.
+    const story = individualSelections[i]?.story_trace || individualSelections[i]?.parsed || {};
+    const inner = String(story.inner_line || story.scene_state || "").trim();
+    members[i].d4_own_selection_note = inner ? inner.slice(0, 80) : "";
   }
   const teamMerged = mergeSelectionsWithSelectedBy(individualSelections);
   let selectedCards = teamMerged.selections.map((card) => ({ cap_id: card.cap_id, tier: card.tier }));
