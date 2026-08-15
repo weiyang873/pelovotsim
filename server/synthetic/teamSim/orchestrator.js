@@ -6193,7 +6193,9 @@ async function chooseR1MatchedPrototype({ members, leaderIdx, draws, proposals, 
         : `我们队 Round 1 的市场已经冻结为 ${r1Frozen.grid_label || r1Frozen.grid_id}。R2 客户画像必须继承这个市场，不允许切换 ToB/ToC、年龄段或策略口径。\n\n已匹配的 R2 客户画像如下：\n\n${summarizePrototype(chosenPrototype)}\n\n请讨论这个客户在界面里的需求证据，以及它对后续六个功能区选卡和定价的影响。`
     }
   ];
-  const prototypeDiscussion = await (isPricingActionActorArm(arm) ? runActorStageDiscussion : runDiscussion)({
+  const prototypeDiscussion = isPricingActionActorArm(arm)
+    ? { transcript: [{ speaker: "narrator", text: `每个人的屏幕各自切到客户调研页：${chosenPrototype.label}。这一页是各自阅读，没有小组讨论；读完各自进入个人选卡。` }], turns: [], termination: "individual_reading" }
+    : await runDiscussion({
     members,
     leaderIdx,
     draws,
@@ -9014,7 +9016,7 @@ async function individualCardStorySelection({ member, isLeader, draw, proposal, 
   throw new Error(`individual_card_story_parse_failure: ${lastError}`);
 }
 
-async function individualCardSelection({ member, isLeader, draw, proposal, assignment, r1Frozen, chosenPrototype, materials, temperature, arm, outputDir = null }) {
+async function individualCardSelection({ member, isLeader, draw, proposal, assignment, r1Frozen, chosenPrototype, materials, temperature, arm, outputDir = null, privateState = "" }) {
   if (hasD4StoryPickArm(arm)) {
     return individualCardStorySelection({ member, isLeader, draw, proposal, assignment, r1Frozen, chosenPrototype, materials, temperature, arm, outputDir });
   }
@@ -9074,11 +9076,18 @@ async function individualCardSelection({ member, isLeader, draw, proposal, assig
             ].join("\n")
           : "",
         isRoomRoleplayArm(arm)
-          ? (humanPick ? "" : [
+          ? (humanPick ? "" : (isPricingActionActorArm(arm)
+              ? [
+                  privateState ? `【只给你自己看的此刻状态】\n${privateState}` : "",
+                  "带着上面这个状态，像本人此刻在自己屏幕前那样点卡：手上点了什么就是什么，可以漏看、可以顺手点、可以嫌麻烦不点。不需要解释。",
+                  "只写一行【我的个人选卡提交】，然后给出可索引 JSON：",
+                  '{"cards":[{"cap_id":"真实cap_id","tier":"low|mid|high"}],"rationale":"顺嘴一句，可空"}'
+                ].filter(Boolean).join("\n")
+              : [
               "请像真人在个人选卡界面前一样，先用几句话说你为什么点这些卡、哪些卡你有点犹豫。",
               "最后单独写一行【我的个人选卡提交】，并给出可索引 JSON：",
               '{"cards":[{"cap_id":"真实cap_id","tier":"low|mid|high"}],"rationale":"一句自然话说明你的取舍"}'
-            ].join("\n"))
+            ].join("\n")))
           : '请只输出可 JSON.parse 的 JSON：{"cards":[{"cap_id":"真实cap_id","tier":"low|mid|high"}],"rationale":"一句自然话说明你的取舍"}'
       ].join("\n")
     }
@@ -9761,6 +9770,465 @@ function applyDeterministicUiCardGuard({ selectedCards, submittedCards, segmentS
   };
 }
 
+// ===== D4 on the R1 actor engine (fusion arm) =====
+// Event cap mirrors the frozen R1 actor_isolated cap24 (same engine, same freeze constant).
+const D4_ACTOR_EVENT_CAP = 24;
+// Real flow: each student reads the research page alone -> picks cards alone -> submits;
+// then the merge/discussion page opens for the group. The group page runs the same engine as
+// R1 actor_isolated: environment narration, per-member private state narrated strictly from
+// the biography, event-driven entrance decisions, leader operates the page (operate != speak),
+// quiet-beat fallback, timeout submission.
+
+const D4_ACTOR_NARRATOR_SYSTEM = [
+  "你是贴着一个人物行动的第三人称旁白。你只知道下面这一个人的人生和他亲眼看到、亲耳听到的内容。",
+  "不要替小组预告结局，不要判断商业上什么最好，也不要知道其他人的内心。",
+  "只有人物小传里的经历属于这个人。别人公开讲过的经历只能写成‘他刚听某人说’，绝不能移植成这个人自己的父母、项目、客户或回忆。",
+  "只写没说出口的内在状态，不替人物公开发言，不写引号台词，不写他已经开口补充了什么。",
+  "写的是这个人此刻身体和心里发生的具体状态，不是心理测评或决策标签。"
+].join("\n");
+
+async function createR2ActorPrivateState({ member, isLeader, ownActText, screenText, heardTranscript, ask, phase, temperature, outputDir }) {
+  const messages = [
+    { role: "system", content: D4_ACTOR_NARRATOR_SYSTEM },
+    {
+      role: "user",
+      content: [
+        "【这个人】",
+        formatR1IsolatedActorPersona(member, isLeader),
+        "",
+        ownActText ? `【他自己刚才做过的事】\n${ownActText}` : "",
+        ownActText ? "" : "",
+        "【他现在看到的页面】",
+        screenText,
+        "",
+        heardTranscript ? `【到目前为止公开说出口的话】\n${heardTranscript}` : "",
+        heardTranscript ? "" : "",
+        ask,
+        "只写自然叙事正文，不要 JSON、标题、列表或分析。"
+      ].filter((line) => line !== "").join("\n")
+    }
+  ];
+  const raw = await callText(messages, { temperature, maxTokens: 360 });
+  if (outputDir) {
+    appendJsonl(path.join(outputDir, "r2_actor_private_states.jsonl"), {
+      ts: new Date().toISOString(), phase, member_id: member.profile_id, raw
+    });
+  }
+  return String(raw || "").trim();
+}
+
+function d4DeckCardLine(card) {
+  const params = RD.getCapabilityParams(card.cap_id, card.tier) || {};
+  const meta = capMetaById(card.cap_id);
+  return `- ${meta.cap_name}（${card.cap_id}）· ${card.tier} · ${formatSignedCurrency(Number(params.dCOGS || 0))}/台 · 研发 ${formatWan(Number(params.nre_tier || params.nre || 0))}`;
+}
+
+function buildD4ReviewScreen({ deck, materials, r1Frozen, priceConfig }) {
+  const summary = selectedCardsCostSummary(deck, r1Frozen, priceConfig);
+  const validation = RD.validateSelections(deck);
+  const conflicts = hardCompatibilityViolations(validation).map((item) => item.message);
+  const selectedSet = new Set(deck.map((card) => card.cap_id));
+  const groupText = (materials.capabilityGroups.groups || []).map((group) => {
+    const rows = (group.capabilities || []).map((cap) => {
+      const tiers = Object.keys(cap.tiers).map((tier) => {
+        const params = RD.getCapabilityParams(cap.cap_id, tier);
+        return `${tier}: ${params.dCOGS}元增量/研发${params.nre_tier}万`;
+      }).join("；");
+      const chosen = deck.find((card) => card.cap_id === cap.cap_id);
+      return `- ${chosen ? `【已选 ${chosen.tier}】` : "【未选】"}${cap.name}（${cap.cap_id}）｜覆盖=${(cap.covers || []).join("、")}｜档位=${tiers}`;
+    });
+    return `${group.name} (${group.group_id})\n${rows.join("\n")}`;
+  }).join("\n\n");
+  void selectedSet;
+  return [
+    "【投影屏：团队合并 — 成本结构第一次揭示】",
+    "所有成员的选择已自动合并。现在开始揭示每张卡的单位增量成本和研发投入，让你们看到“功能堆上去以后，成本会变成什么样子”。",
+    `当前团队卡组（${deck.length} 张）：`,
+    ...deck.map(d4DeckCardLine),
+    `增量成本合计 ${formatSignedCurrency(summary.dCOGS)}/台；研发投入合计 ${formatWan(summary.nre_wan)}。`,
+    conflicts.length ? `页面冲突提示：${conflicts.join("；")}` : "",
+    "",
+    "全组一起审视产品的技术能力组合。每增加一项能力或提升档次，研发成本都会上升。你们需要在“产品竞争力”和“成本可行性”之间找到平衡。",
+    "组长操作区：可以给任一能力卡加选/取消/切换 low、mid、high 档位；页面下方是“继续”按钮，进入产品售价页。",
+    "",
+    "【页面上全部能力卡】",
+    groupText
+  ].filter((line) => line !== "").join("\n");
+}
+
+function d4OwnPicksText(selection) {
+  const cards = selection?.parsed?.cards || [];
+  if (!cards.length) return "（他刚才在自己屏幕上没有点任何卡。）";
+  return `他刚才在自己屏幕上点的是：${cards.map((card) => `${capMetaById(card.cap_id).cap_name}（${card.cap_id}）@${card.tier}`).join("、")}`;
+}
+
+function d4TriggerContext({ mode, trigger, members }) {
+  if (mode === "phase_open") return "页面刚切到团队合并页，投影屏第一次把合并卡组和成本数字摊出来。";
+  if (mode === "leader_operation") return "几秒钟没人接着往下说，鼠标仍在组长手边。";
+  if (mode === "system_selected_speaker") return "现场安静了一阵，镜头扫到你。";
+  if (trigger && trigger.speaker === "narrator") return `刚发生：${String(trigger.text).slice(0, 160)}`;
+  if (trigger) {
+    const who = members.find((m) => m.profile_id === trigger.speaker);
+    return `刚才 ${who?.surface?.name || trigger.speaker} 说：${String(trigger.text).slice(0, 200)}`;
+  }
+  return "";
+}
+
+const D4_ACTOR_COMMON_SYSTEM = [
+  "你只为这一个演员做一次私下的临场动作判断，不写其他人的行为，不替小组规划讨论，也不知道最后结果。",
+  "这不是老师点名，也不是轮到你必须贡献内容；现在只是有人刚说了一句话、页面刚变了一下，或现场安静了几秒，镜头扫到你看你会不会自然接话。",
+  "只对这一件刚发生的公共事件反应一次。没有被触发就沉默，不要为了补全小组答案而开口。",
+  "只有眼前内容真正碰到这个人的经历、利益、困惑或他自己刚才点过的卡时，才选择公开发言；不能为了完善答案、推进流程或显得参与而开口。",
+  "组长只是唯一能碰网页的人，不是主持人、老师或更权威的决策者。普通成员不需要等组长点名、提问或停手才开口。",
+  "当前在团队合并/集体讨论页。这一页只谈：某张卡留不留、要不要加某张卡、某张卡档位升降。能接受当前卡组、又没有新的具体改法或疑问，最自然的是沉默。",
+  "售价、渠道、回本这些属于下一页；除非它们直接让你要求改动某张卡，否则这一页先不说。",
+  "一个具体疑问、半句话、没把握的反对、个人经历中的小片段都算真实发言动机；不要把‘还没形成完整方案’自动判成沉默。反过来，也不要为了参与而硬凑新案例。"
+].join("\n");
+
+async function callD4ActorEntrance({ members, member, isLeader, ownActText, privateState, screenText, transcript, phaseTurnNumber, quietBeatStreak, triggerContext, allowOperate, temperature, outputDir, eventIndex }) {
+  const publicName = member.surface?.name || "这名成员";
+  const ownPublicHistory = clipText(transcript
+    .filter((entry) => entry.speaker === member.profile_id)
+    .map((entry, index) => `${index + 1}. ${entry.text}`)
+    .join("\n"), 6000) || "（你还没有公开说过话）";
+  const privateContext = phaseTurnNumber <= 2
+    ? [
+        "下面仍是这一页刚打开时只属于你的主人公状态。它没有因为你上一次沉默而消失，但时间已经往前走了；不要机械重复其中的回忆或措辞。",
+        privateState,
+        "结合眼前页面和后来真正公开发生的内容，只判断这一秒会不会自然开口或操作。"
+      ].join("\n")
+    : "这一页刚打开时的第一阵冲动已经过去。你自己刚才点过的卡仍写在下方；不要重新调用同一段回忆或为了有话可说临时搜索新案例，只判断眼前这一秒。";
+  const messages = [
+    {
+      role: "system",
+      content: [
+        formatR1IsolatedActorPersona(member, isLeader),
+        D4_ACTOR_COMMON_SYSTEM,
+        isLeader && allowOperate
+          ? "操作网页和公开发言是两件事。组长可以一句话不说就实际加卡、取消某张卡、改某张卡的档位，或点击“继续”进入售价页；也可以只说话而不碰网页。点击继续是一项网页操作，不是宣布所有人内心一致。"
+          : "这次镜头只判断沉默或公开发言，不发生网页操作。",
+        "判断依据是人物与此刻现场，不是商业答案质量。输出是私下拍摄决定，不会进入共享 transcript。"
+      ].join("\n")
+    },
+    {
+      role: "user",
+      content: [
+        "【只给演员看的主人公状态】",
+        privateContext,
+        "",
+        "【他自己刚才做过的事】",
+        ownActText,
+        "",
+        "【当前页面】",
+        screenText,
+        "",
+        "【本页到目前为止的公开记录】",
+        formatR1ActorPublicTranscript(transcript, members, 12) || "（还没有人说话）",
+        "",
+        `【刚发生的事】${triggerContext || "（无）"}`,
+        `【你自己已经公开说过的话】\n${ownPublicHistory}`,
+        quietBeatStreak >= 2 ? "现场已经安静了一会儿。安静本身不是必须说话的理由。" : "",
+        "",
+        `只输出：一两句私下判断，然后单独一行写【行动】沉默 或 【行动】发言${isLeader && allowOperate ? " 或 【行动】操作界面" : ""}。`
+      ].filter((line) => line !== "").join("\n")
+    }
+  ];
+  let lastRaw = "";
+  let lastError = "";
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      lastRaw = await callText(messages, { temperature, maxTokens: 220 });
+      const decision = parseR1ActorEntranceDecision(lastRaw, isLeader, allowOperate);
+      if (outputDir) {
+        appendJsonl(path.join(outputDir, "r2_d4_actor_entrance_decisions.jsonl"), {
+          ts: new Date().toISOString(), event: eventIndex, member_id: member.profile_id, member_name: publicName,
+          is_leader: isLeader, phase_turn_number: phaseTurnNumber, quiet_beat_streak: quietBeatStreak,
+          trigger_context: triggerContext || "", allow_operate: Boolean(allowOperate), attempt, status: "ok", decision, raw: lastRaw
+        });
+      }
+      return { decision, raw: lastRaw };
+    } catch (error) {
+      lastError = error.message;
+    }
+  }
+  throw new Error(`d4 actor entrance decision failed after 2 attempts: ${lastError}`);
+}
+
+async function callD4Actor({ members, member, isLeader, ownActText, privateState, screenText, transcript, phaseTurnNumber, triggerContext, performanceMode, temperature, outputDir, eventIndex, operateRetryNote = "" }) {
+  const ownPublicHistory = clipText(transcript
+    .filter((entry) => entry.speaker === member.profile_id)
+    .map((entry, index) => `${index + 1}. ${entry.text}`)
+    .join("\n"), 6000) || "（你还没有公开说过话）";
+  const modeInstruction = performanceMode === "operate"
+    ? "你刚才已经私下决定这一秒操作界面。这一镜只演一个真实操作：把某张能力卡加选到某个档位、取消某张卡、把某张卡切到另一个档位，或点击“继续”按钮。用括号动作逐字写出卡片名或 cap_id 和档位（low/mid/high），或按钮标签；不要替操作补理由，也不要同时演好几个操作。"
+    : (isLeader
+        ? "你刚才已经私下决定这一秒只公开发言。这一镜可以追问、回应或说自己的看法，但不能碰鼠标、按钮或档位；要操作留到另一个真实时刻。"
+        : "你刚才已经私下决定这一秒公开发言。你可以插话、追问、坚持、改口或跑偏；你不能操作组长区域。只说此刻真会说的话。");
+  const privateContext = phaseTurnNumber === 1
+    ? privateState
+    : "这一页刚打开时的那次内在冲动已经过去，也可能已经体现在你先前的动作或发言里。不要重新调用同一段回忆、案例或担心；现在只从眼前页面、最近公开现场和你自己已经说过的话继续反应。";
+  const messages = [
+    {
+      role: "system",
+      content: [
+        formatR1IsolatedActorPersona(member, isLeader),
+        "",
+        "你现在只扮演这一个人。你不知道别人心里在想什么，也不知道这场讨论最终会怎样。",
+        "不要替其他成员写台词，不要当主持人，不要总结整场会议，不要追求一个漂亮完整的答案。",
+        "别人讲过的家庭、客户和工作经历属于别人；你可以回应，但绝不能改写成自己的回忆。",
+        "不要每次复述刚才所有观点，也不要重复自己已经讲过的完整理由。每次只推进眼前一个很小的反应。",
+        "这一页只谈卡留不留、加不加、档位升降；不展开售价和渠道，那是下一页。",
+        modeInstruction,
+        operateRetryNote
+      ].filter(Boolean).join("\n")
+    },
+    {
+      role: "user",
+      content: [
+        "【只给演员看的主人公状态】",
+        privateContext,
+        "",
+        "【他自己刚才做过的事】",
+        ownActText,
+        "",
+        "【当前页面】",
+        screenText,
+        "",
+        "【本页到目前为止的公开记录】",
+        formatR1ActorPublicTranscript(transcript, members, 12) || "（还没有人说话）",
+        "",
+        `【刚发生的事】${triggerContext || "（无）"}`,
+        `【你自己已经公开说过的话】\n${ownPublicHistory}`,
+        "",
+        performanceMode === "operate"
+          ? "只写这一镜的括号动作，最多再带一句顺嘴说的话。"
+          : "只写这一镜的台词，一到三句，像真人临场说话；可以短、可以不完整、可以只接半句。不要用姓名开头，不要写别人。"
+      ].join("\n")
+    }
+  ];
+  const raw = await callText(messages, { temperature, maxTokens: performanceMode === "operate" ? 160 : 200 });
+  if (outputDir) {
+    appendJsonl(path.join(outputDir, "r2_d4_actor_takes.jsonl"), {
+      ts: new Date().toISOString(), event: eventIndex, member_id: member.profile_id, is_leader: isLeader,
+      performance_mode: performanceMode, phase_turn_number: phaseTurnNumber, trigger_context: triggerContext || "", raw
+    });
+  }
+  return String(raw || "").trim();
+}
+
+async function extractD4UiEvent({ raw, deck, materials, temperature, outputDir, eventIndex, memberId }) {
+  const legal = [];
+  for (const group of materials.capabilityGroups.groups || []) {
+    for (const cap of group.capabilities || []) legal.push({ cap_id: cap.cap_id, name: cap.name });
+  }
+  const messages = [
+    {
+      role: "system",
+      content: [
+        "你是界面事件索引器。只根据台词中括号里实际写出的动作，判断组长这一镜在网页上做了哪一个真实操作。",
+        "只承认明确写出的动作：加选某卡到某档、取消某卡、把某卡切到某档、点击“继续”。没有明确动作就输出 none。不要推断意图，不要补全。",
+        "只输出可 JSON.parse 的 JSON：{\"action\":\"none|add|remove|tier|continue\",\"cap_id\":\"\",\"tier\":\"low|mid|high|\"}"
+      ].join("\n")
+    },
+    {
+      role: "user",
+      content: [
+        "【合法能力卡】",
+        legal.map((item) => `${item.cap_id}｜${item.name}`).join("\n"),
+        "【当前卡组】",
+        deck.map((card) => `${card.cap_id}@${card.tier}`).join("、") || "（空）",
+        "【这一镜】",
+        raw
+      ].join("\n")
+    }
+  ];
+  let parsed = null;
+  let lastRaw = "";
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    lastRaw = await callText(messages, { temperature: Math.min(0.2, temperature), maxTokens: 80 });
+    parsed = parseJsonLoose(lastRaw);
+    if (parsed && typeof parsed === "object") break;
+  }
+  const action = String(parsed?.action || "none").trim();
+  const legalIds = new Set(legal.map((item) => item.cap_id));
+  const capId = String(parsed?.cap_id || "").trim();
+  const tier = String(parsed?.tier || "").trim().toLowerCase();
+  let event = { action: "none", cap_id: "", tier: "" };
+  if (action === "continue") event = { action: "continue", cap_id: "", tier: "" };
+  else if (action === "remove" && legalIds.has(capId) && deck.some((card) => card.cap_id === capId)) event = { action: "remove", cap_id: capId, tier: "" };
+  else if ((action === "add" || action === "tier") && legalIds.has(capId) && ["low", "mid", "high"].includes(tier)) {
+    const existing = deck.find((card) => card.cap_id === capId);
+    if (!existing) event = { action: "add", cap_id: capId, tier };
+    else if (existing.tier !== tier) event = { action: "tier", cap_id: capId, tier };
+  }
+  if (outputDir) {
+    appendJsonl(path.join(outputDir, "r2_d4_actor_ui_events.jsonl"), {
+      ts: new Date().toISOString(), event: eventIndex, member_id: memberId, raw_take: raw, extractor_raw: lastRaw, event
+    });
+  }
+  return event;
+}
+
+function applyD4UiEvent(deck, event) {
+  if (event.action === "add") return deck.concat([{ cap_id: event.cap_id, tier: event.tier }]);
+  if (event.action === "remove") return deck.filter((card) => card.cap_id !== event.cap_id);
+  if (event.action === "tier") return deck.map((card) => card.cap_id === event.cap_id ? { cap_id: card.cap_id, tier: event.tier } : card);
+  return deck;
+}
+
+function d4EventText(event, members, leaderIdx) {
+  const leaderName = members[leaderIdx].surface?.name || "组长";
+  const name = event.cap_id ? capMetaById(event.cap_id).cap_name : "";
+  if (event.action === "add") return `${leaderName}在页面上给“${name}”加选了 ${event.tier} 档。`;
+  if (event.action === "remove") return `${leaderName}在页面上取消了“${name}”。`;
+  if (event.action === "tier") return `${leaderName}把“${name}”切到了 ${event.tier} 档。`;
+  if (event.action === "continue") return `${leaderName}点击了“继续”，页面切到产品售价页。`;
+  return "";
+}
+
+async function runD4ActorReview({ members, leaderIdx, deck: deck0, individualSelections, materials, r1Frozen, priceConfig, temperature, seed, outputDir, maxEvents = 24, minCards = 6 }) {
+  let deck = deck0.map((card) => ({ cap_id: card.cap_id, tier: card.tier }));
+  const rng = makeRng(`d4_actor_review:${seed}`);
+  const transcript = [];
+  const turns = [];
+  const ownAct = members.map((_, index) => d4OwnPicksText(individualSelections[index]));
+  let screenText = buildD4ReviewScreen({ deck, materials, r1Frozen, priceConfig });
+  transcript.push({
+    speaker: "narrator",
+    text: "投影屏切到团队合并页：五个人各自点的卡已经合成一份卡组，每张卡旁边第一次亮出单位增量成本和研发投入。讨论室里能听见空调送风和走廊远处的声音，鼠标仍在组长手边。"
+  });
+  const privateStates = await Promise.all(members.map((member, index) => createR2ActorPrivateState({
+    member,
+    isLeader: index === leaderIdx,
+    ownActText: ownAct[index],
+    screenText,
+    heardTranscript: "",
+    ask: "页面刚切到团队合并页。写 80-180 字的私有主人公状态：他先看见什么（自己点的卡还在不在、被合并成什么样、成本数字扎不扎眼）、想不想开口、想起了哪段真实经历、哪里没把握。不要替他决定团队最后保留什么。",
+    phase: "d4_review",
+    temperature,
+    outputDir
+  })));
+  const turnsByMember = {};
+  const shuffled = (indices) => {
+    const arr = indices.slice();
+    for (let i = arr.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(rng() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  };
+  const nonLeaders = members.map((_, i) => i).filter((i) => i !== leaderIdx);
+  let queue = shuffled(nonLeaders).concat([leaderIdx]);
+  let currentTrigger = { mode: "phase_open", trigger: null };
+  let quietBeatStreak = 0;
+  let quietCycles = 0;
+  let eventIndex = 0;
+  let entranceCheckIndex = 0;
+  let termination = "leader_continue";
+  let fallbackUsed = false;
+  let ended = false;
+  while (!ended) {
+    if (eventIndex >= maxEvents) { termination = "event_cap_forced_submit"; break; }
+    if (!queue.length) {
+      // No one queued: a quiet beat. Give the leader an operate moment; after repeated quiet,
+      // pick a fallback speaker once (system-selected), then force submission on the next quiet.
+      quietCycles += 1;
+      if (quietCycles >= 3 && !fallbackUsed) {
+        const spoken = new Set(transcript.filter((e) => e.speaker !== "narrator").map((e) => e.speaker));
+        const candidates = nonLeaders.filter((i) => !spoken.has(members[i].profile_id));
+        const pick = (candidates.length ? candidates : nonLeaders)[Math.floor(rng() * (candidates.length ? candidates.length : nonLeaders.length))];
+        fallbackUsed = true;
+        currentTrigger = { mode: "system_selected_speaker", trigger: null };
+        queue = [pick];
+        continue;
+      }
+      if (quietCycles >= 4) { termination = "timeout_forced_submit"; break; }
+      transcript.push({ speaker: "narrator", text: "几秒钟没人接着往下说。投影屏上的卡组和成本数字还停在原处，鼠标仍在组长手边。" });
+      currentTrigger = { mode: "leader_operation", trigger: null };
+      queue = [leaderIdx];
+    }
+    const memberIndex = queue.shift();
+    const member = members[memberIndex];
+    const isLeader = memberIndex === leaderIdx;
+    const allowOperate = isLeader && (currentTrigger.mode === "leader_operation" || currentTrigger.mode === "response" || currentTrigger.mode === "phase_open");
+    entranceCheckIndex += 1;
+    turnsByMember[member.profile_id] = (turnsByMember[member.profile_id] || 0) + 1;
+    const phaseTurnNumber = turnsByMember[member.profile_id];
+    const triggerContext = d4TriggerContext({ mode: currentTrigger.mode, trigger: currentTrigger.trigger, members });
+    const forced = currentTrigger.mode === "system_selected_speaker";
+    const entrance = forced
+      ? { decision: "speak", raw: "【后台选角】现场持续安静；系统选择此成员作为最合理的打破沉默者。" }
+      : await callD4ActorEntrance({
+          members, member, isLeader, ownActText: ownAct[memberIndex], privateState: privateStates[memberIndex],
+          screenText, transcript, phaseTurnNumber, quietBeatStreak, triggerContext, allowOperate, temperature, outputDir,
+          eventIndex: entranceCheckIndex
+        });
+    if (entrance.decision === "silent") {
+      quietBeatStreak += 1;
+      if (allowOperate && currentTrigger.mode === "leader_operation") {
+        transcript.push({ speaker: "narrator", text: "组长看着页面停了一下，没有说话，也没有碰鼠标。" });
+      }
+      continue;
+    }
+    eventIndex += 1;
+    quietBeatStreak = 0;
+    quietCycles = 0;
+    let raw = await callD4Actor({
+      members, member, isLeader, ownActText: ownAct[memberIndex], privateState: privateStates[memberIndex],
+      screenText, transcript, phaseTurnNumber, triggerContext, performanceMode: entrance.decision, temperature, outputDir, eventIndex
+    });
+    let event = { action: "none", cap_id: "", tier: "" };
+    if (entrance.decision === "operate") {
+      event = await extractD4UiEvent({ raw, deck, materials, temperature, outputDir, eventIndex, memberId: member.profile_id });
+      if (event.action === "none") {
+        raw = await callD4Actor({
+          members, member, isLeader, ownActText: ownAct[memberIndex], privateState: privateStates[memberIndex],
+          screenText, transcript, phaseTurnNumber, triggerContext, performanceMode: "operate", temperature, outputDir, eventIndex,
+          operateRetryNote: "你刚才那一镜没有落下任何可索引的真实界面动作。重演这一刻，在括号动作里逐字写出：给哪张卡（卡名或 cap_id）加选/切到哪个档位（low/mid/high），或取消哪张卡，或点击“继续”。仍然只演这一个操作。"
+        });
+        event = await extractD4UiEvent({ raw, deck, materials, temperature, outputDir, eventIndex, memberId: member.profile_id });
+      }
+    }
+    transcript.push({ speaker: member.profile_id, text: raw, mode: entrance.decision });
+    turns.push({ event: eventIndex, member_id: member.profile_id, mode: entrance.decision, text: raw, ui_event: event });
+    if (event.action !== "none") {
+      if (event.action === "continue") {
+        if (deck.length < minCards) {
+          transcript.push({ speaker: "narrator", text: `页面提示：至少需要 ${minCards} 张能力卡才能继续。` });
+        } else {
+          transcript.push({ speaker: "narrator", text: d4EventText(event, members, leaderIdx) });
+          termination = "leader_continue";
+          ended = true;
+          break;
+        }
+      } else {
+        const candidate = applyD4UiEvent(deck, event);
+        const violation = hardCompatibilityViolations(RD.validateSelections(candidate));
+        if (violation.length) {
+          transcript.push({ speaker: "narrator", text: `${d4EventText(event, members, leaderIdx)}页面弹出冲突提示：${violation.map((item) => item.message).join("；")}。这次改动没有生效。` });
+        } else {
+          deck = candidate;
+          screenText = buildD4ReviewScreen({ deck, materials, r1Frozen, priceConfig });
+          transcript.push({ speaker: "narrator", text: d4EventText(event, members, leaderIdx) });
+        }
+      }
+    }
+    // Everyone else may react to what just happened; the leader is queued last with operate rights.
+    const lastEntry = transcript[transcript.length - 1];
+    currentTrigger = { mode: "response", trigger: lastEntry.speaker === "narrator" ? lastEntry : { speaker: member.profile_id, text: raw } };
+    queue = shuffled(members.map((_, i) => i).filter((i) => i !== memberIndex && i !== leaderIdx)).concat(memberIndex === leaderIdx ? [] : [leaderIdx]);
+  }
+  if (!ended) {
+    transcript.push({ speaker: "narrator", text: termination === "timeout_forced_submit"
+      ? "页面上的倒计时走到头，组长按当前卡组点了“继续”。"
+      : "讨论时间用完，组长按当前卡组点了“继续”。" });
+  }
+  if (outputDir) {
+    writeJson(path.join(outputDir, "r2_d4_actor_review.json"), { deck, transcript, turns, termination });
+  }
+  return { deck, transcript, turns, termination };
+}
+
 async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, config, materials, outputDir, seed, arm = "legacy" }) {
   const temperature = requireConfigNumber(config, "temperature");
   const useMatchedPrototype = arm !== "legacy";
@@ -9786,6 +10254,26 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
   const assignments = buildAssignmentsForMembers(members);
   const individualSelections = [];
   for (let i = 0; i < members.length; i += 1) {
+    let readingState = "";
+    if (isPricingActionActorArm(arm)) {
+      const seedText = chosenPrototype?.narrative_seed || {};
+      readingState = await createR2ActorPrivateState({
+        member: members[i],
+        isLeader: i === leaderIdx,
+        ownActText: "",
+        screenText: [
+          `【客户调研页】${chosenPrototype.label}`,
+          seedText.report_excerpt ? `已冻结调研报告摘录：${seedText.report_excerpt}` : "",
+          "",
+          `【个人选卡页】你负责的维度：${formatGroupNames(assignments[i].groups, groupMap)}。为你负责的维度选择能力卡。根据访谈结果和你的判断，把你认为产品应该具备的能力都选上，再选择合适的档次。每个档位会显示单位成本、研发投入和团队投入说明。`
+        ].filter(Boolean).join("\n"),
+        heardTranscript: "",
+        ask: "他一个人坐在自己的屏幕前，先看调研页，再切到自己负责维度的选卡页。写 80-180 字的私有主人公状态：他怎么读这页（认真逐条看还是扫一眼、哪句话进了心、哪些跳过了）、切到选卡页时先被什么吸引、想起了哪段真实经历、手上想点什么、哪里没把握。不要替他列出最终选择。",
+        phase: "d4_individual",
+        temperature,
+        outputDir
+      });
+    }
     individualSelections.push(await individualCardSelection({
       member: members[i],
       isLeader: i === leaderIdx,
@@ -9797,7 +10285,8 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
       materials,
       temperature,
       arm,
-      outputDir
+      outputDir,
+      privateState: readingState
     }));
   }
   for (let i = 0; i < members.length; i += 1) {
@@ -9890,7 +10379,38 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
 	  }
 	  writeJson(path.join(outputDir, "r2_checkpoints.json"), { checkpoints });
 
-  const segments = expandCardSegmentsToSingletons(requireConfigArray(config, "r2_card_segments"));
+  const priceConfigForReview = getProductionPricingContext(r1Frozen, materials);
+  const actorReview = isPricingActionActorArm(arm)
+    ? await runD4ActorReview({
+        members,
+        leaderIdx,
+        deck: selectedCards,
+        individualSelections,
+        materials,
+        r1Frozen,
+        priceConfig: priceConfigForReview,
+        temperature,
+        seed,
+        outputDir,
+        maxEvents: Number.isFinite(Number(config.max_r1_actor_events)) ? Math.max(1, Math.floor(Number(config.max_r1_actor_events))) : D4_ACTOR_EVENT_CAP,
+        minCards: selectionConstraints.total_min
+      })
+    : null;
+  if (actorReview) {
+    selectedCards = actorReview.deck;
+    checkpoints.push({
+      decision_point: "cards_review",
+      termination: actorReview.termination,
+      turns: actorReview.turns.length,
+      cards: selectedCards.slice(),
+      cumulative_cards: selectedCards.slice(),
+      compatibility: RD.validateSelections(selectedCards),
+      submission_mode: "d4_actor_review_real_page"
+    });
+    r2Transcript.push({ decision_point: "cards_review", transcript: actorReview.transcript, turns: actorReview.turns });
+    writeJson(path.join(outputDir, "r2_checkpoints.json"), { checkpoints });
+  }
+  const segments = actorReview ? [] : expandCardSegmentsToSingletons(requireConfigArray(config, "r2_card_segments"));
   for (let segmentIndex = 0; segmentIndex < segments.length; segmentIndex += 1) {
     const segment = segments[segmentIndex];
     const segmentPoint = segment.length === 1 ? `cards_${segment[0]}` : `cards_segment_${segmentIndex + 1}`;
