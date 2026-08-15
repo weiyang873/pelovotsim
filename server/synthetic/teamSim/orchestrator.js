@@ -4559,7 +4559,7 @@ async function speak(member, isLeader, draw, privateProposal, transcript, topic,
       ].filter(Boolean).join("\n")
     : "请自然发言 2-4 句。只能说你愿意公开说出口的内容。若你改变立场，点名触发你的具体发言。";
   const cardStakeContext = /选卡|功能段|功能区/.test(topicText) && member.d4_own_selection_note
-    ? `\n你刚才自己选卡时心里那句话：“${member.d4_own_selection_note}”`
+    ? `\n${member.d4_own_selection_note}`
     : "";
   const messages = [
     {
@@ -5808,7 +5808,7 @@ async function leaderSubmit({ members, leaderIdx, transcript, topic, decisionTyp
     ? [
         draws && draws[leaderIdx] ? `私有 context：\n${formatJinang(draws[leaderIdx])}` : "",
         proposals && proposals[leaderIdx]?.parsed ? `你的会前提案：${proposals[leaderIdx].parsed.grid_id}/${proposals[leaderIdx].parsed.architecture}，${proposals[leaderIdx].parsed.rationale}` : "",
-        decisionType === "cards" && leader.d4_own_selection_note ? `你刚才自己选卡时心里那句话：“${leader.d4_own_selection_note}”` : ""
+        decisionType === "cards" && leader.d4_own_selection_note ? leader.d4_own_selection_note : ""
       ].filter(Boolean).join("\n")
     : "";
   const r1WritingAssist = decisionType === "r1"
@@ -9804,9 +9804,12 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
     // Natural memory only: the member's own inner line from the moment of picking (their own
     // words, impressionistic, possibly wrong). No card ledger - whether they remember or care
     // is left to the person the biography describes.
+    // R1-style own-act memory: the member's own picks verbatim (cap@tier, nothing else) plus the
+    // inner line they wrote while picking. No stance/confidence/reason, no instruction.
+    const own=(individualSelections[i]?.parsed?.cards||[]).map((card)=>`${card.cap_id}@${card.tier}`).join("、");
     const story = individualSelections[i]?.story_trace || individualSelections[i]?.parsed || {};
     const inner = String(story.inner_line || story.scene_state || "").trim();
-    members[i].d4_own_selection_note = inner ? inner.slice(0, 80) : "";
+    members[i].d4_own_selection_note = [own ? `你刚才在自己那页点的是：${own}` : "", inner ? `当时心里那句话：“${inner.slice(0, 80)}”` : ""].filter(Boolean).join("\n");
   }
   const teamMerged = mergeSelectionsWithSelectedBy(individualSelections);
   let selectedCards = teamMerged.selections.map((card) => ({ cap_id: card.cap_id, tier: card.tier }));
