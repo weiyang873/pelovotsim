@@ -4615,13 +4615,14 @@ async function speak(member, isLeader, draw, privateProposal, transcript, topic,
     ? `\n${member.d4_own_selection_note}`
     : "";
   const r1Carry = isRoomRoleplayArm(arm) && isTaskBlindNarrativeMember(member) ? formatR1ActorCarryoverForPrompt(member, 360) : "";
+  const ideology = /定价|售价|price/u.test(topicText) ? d5IdeologyLine(member) : "";
   const r1Public = isRoomRoleplayArm(arm) && isTaskBlindNarrativeMember(member) && member.r1_public_memory
     ? `【上一轮 R1 页面上大家公开说过的话（你都在场，节选）】\n${member.r1_public_memory}\n\n`
     : "";
   const messages = [
     {
       role: "system",
-      content: `${formatProfile(member, isLeader, arm)}${r1Carry ? `\n\n${r1Carry}` : ""}\n\n私有 context：\n${formatJinang(draw)}\n你的会前提案：${privateProposal.parsed.grid_id}/${privateProposal.parsed.architecture}，${privateProposal.parsed.rationale}${cardStakeContext}${stateContext}`
+      content: `${formatProfile(member, isLeader, arm)}${ideology ? `\n${ideology}` : ""}${r1Carry ? `\n\n${r1Carry}` : ""}\n\n私有 context：\n${formatJinang(draw)}\n你的会前提案：${privateProposal.parsed.grid_id}/${privateProposal.parsed.architecture}，${privateProposal.parsed.rationale}${cardStakeContext}${stateContext}`
     },
     {
       role: "user",
@@ -5863,6 +5864,7 @@ async function leaderSubmit({ members, leaderIdx, transcript, topic, decisionTyp
   // else - no instruction on how to use it; what they do with it is the person's own.
   const leaderPrivateContext = isRoomRoleplayArm(arm)
     ? [
+        /price|pricing/.test(String(decisionType)) ? d5IdeologyLine(leader) : "",
         isTaskBlindNarrativeMember(leader) ? formatR1ActorCarryoverForPrompt(leader, 360) : "",
         isTaskBlindNarrativeMember(leader) && leader.r1_public_memory ? `【上一轮 R1 页面上大家公开说过的话（节选）】\n${leader.r1_public_memory}` : "",
         draws && draws[leaderIdx] ? `私有 context：\n${formatJinang(draws[leaderIdx])}` : "",
@@ -7448,6 +7450,16 @@ async function runD5ScreenplayPricing({
   throw new Error(`d5_screenplay_parse_failure: ${lastError}`);
 }
 
+function d5IdeologyEnabled() {
+  return /^(1|true|yes|on)$/i.test(String(process.env.TEAM_SIM_D5_IDEOLOGY || "").trim());
+}
+
+function d5IdeologyLine(member) {
+  if (!d5IdeologyEnabled() || !isTaskBlindNarrativeMember(member)) return "";
+  const doctrine = String(member.pricingBias || "").split("。价格参照")[0].trim();
+  return doctrine ? `定价上你一贯的看法：${doctrine}` : "";
+}
+
 function formatD5NarratorActorSheet(members, leaderIdx, arm) {
   return members.map((member, index) => {
     const state = ensureBehavioralState(member, index === leaderIdx);
@@ -7455,6 +7467,7 @@ function formatD5NarratorActorSheet(members, leaderIdx, arm) {
     return [
       `【成员 ${member.profile_id}${index === leaderIdx ? " / 组长" : ""}】`,
       formatProfile(member, index === leaderIdx, arm),
+      d5IdeologyLine(member),
       isTaskBlindNarrativeMember(member)
         ? `个人消费与取舍（本人真实经历，定性）：${member.decisionStyle}；${member.consumption_habits}`
         : "",
