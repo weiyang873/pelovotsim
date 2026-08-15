@@ -1064,19 +1064,19 @@ function taskBlindClassroomBehaviorProfile(member, isLeader) {
   const nfc = requireFingerprintDim(fp, "need_for_cognition", id);
   const maxi = requireFingerprintDim(fp, "maximizing_satisficing", id);
   const aot = requireFingerprintDim(fp, "actively_open_minded_thinking", id);
-  const amb = requireFingerprintDim(fp, "ambiguity_tolerance", id);
+  requireFingerprintDim(fp, "ambiguity_tolerance", id);
   const cfc = requireFingerprintDim(fp, "consideration_future_consequences", id);
   requireFingerprintDim(fp, "risk_propensity_business", id);
-  const rng = makeRng(`classroom_behavior:${id}`);
-  const jitter = () => (rng() - 0.5) * 0.12;
-  const talkativeness = clamp(0.5 + (act - 0.5) * 0.5 + (promo - 0.5) * 0.35 + jitter(), 0, 1);
-  const dominance = clamp(0.42 + (isLeader ? 0.16 : 0) + (act - 0.5) * 0.4 + (promo - 0.5) * 0.3 + jitter(), 0, 1);
-  const statusMotive = clamp(0.5 + (promo - 0.5) * 0.6 + jitter(), 0, 1);
-  const engagement = clamp(0.5 + (nfc - 0.5) * 0.6 + (maxi - 0.5) * 0.2 + jitter(), 0, 1);
-  const relevanceControl = clamp(0.5 + (cfc - 0.5) * 0.4 + (nfc - 0.5) * 0.25 + jitter(), 0, 1);
-  const agreeability = clamp(0.5 - (aot - 0.5) * 0.5 + (amb - 0.5) * 0.25 + jitter(), 0, 1);
-  const calculationImpulse = clamp(0.45 + (maxi - 0.5) * 0.45 + (nfc - 0.5) * 0.35 - (amb - 0.5) * 0.15 + jitter(), 0, 1);
-  const taskSkepticism = clamp(0.4 + (aot - 0.5) * 0.5 - (amb - 0.5) * 0.25 + jitter(), 0, 1);
+  // 1:1 design-native mapping: each knob is the semantically matching fingerprint dim,
+  // no invented composite weights, no rng. Dims are the persona design.
+  const talkativeness = act;
+  const dominance = clamp(act + (isLeader ? 0.15 : 0), 0, 1);
+  const statusMotive = promo;
+  const engagement = nfc;
+  const relevanceControl = cfc;
+  const agreeability = clamp(1 - aot, 0, 1);
+  const calculationImpulse = maxi;
+  const taskSkepticism = aot;
   return {
     talkativeness,
     dominance,
@@ -4524,7 +4524,7 @@ async function speak(member, isLeader, draw, privateProposal, transcript, topic,
   const stateContext = isStatefulRoomRoleplayArm(arm)
     ? `\n\n${formatBehavioralState(member, topic, isLeader, arm)}`
     : isRoomRoleplayArm(arm) && isTaskBlindNarrativeMember(member)
-      ? `\n\n【课堂行为倾向】${formatClassroomBehavior(member, isLeader)}`
+      ? `\n\n【行为倾向】${behaviorFingerprintForPrompt(member.behavioral_fingerprint)}`
       : "";
   const roomInstruction = isRoomRoleplayArm(arm)
     ? [
@@ -4712,7 +4712,7 @@ async function runActorStageDiscussion({ members, leaderIdx, draws, proposals, i
       let decision = "silent";
       try {
         const raw = await callText([
-          { role: "system", content: `${formatProfile(member, idx === leaderIdx, arm)}\n【课堂行为倾向】${formatClassroomBehavior(member, idx === leaderIdx)}\n你在小组定价讨论现场。只判断此刻这个人会不会自然开口，不写台词。` },
+          { role: "system", content: `${formatProfile(member, idx === leaderIdx, arm)}\n【行为倾向】${behaviorFingerprintForPrompt(member.behavioral_fingerprint)}\n你在小组定价讨论现场。只判断此刻这个人会不会自然开口，不写台词。` },
           { role: "user", content: `当前环节：${topic}\n最近现场：\n${recent || "（刚开始，还没人说话）"}\n\n此刻你会开口吗？只输出 JSON：{"speak": true|false}` }
         ], { temperature: 0.3, maxTokens: 30 });
         const parsed = parseJsonLoose(raw);
@@ -8255,11 +8255,11 @@ function taskBlindD4Salience(member) {
   const cfc = requireFingerprintDim(fp, "consideration_future_consequences", id);
   const amb = requireFingerprintDim(fp, "ambiguity_tolerance", id);
   const options = [
-    { score: (0.5 - risk) * 1.0, text: "更容易被安全、可靠、少惹麻烦的卡吸引" },
-    { score: (0.5 - promo) * 0.9, text: "更容易被成本低、看起来不出错的卡吸引" },
-    { score: (promo - 0.5) * 1.0, text: "更容易被能直接讲给客户听的卡吸引" },
-    { score: (cfc - 0.5) * 0.9, text: "更容易被自己行业里熟悉的系统/运维/渠道逻辑吸引" },
-    { score: (amb - 0.5) * 0.7, text: "更容易被情感陪伴、互动感、外显体验吸引" }
+    { score: 0.5 - risk, text: "更容易被安全、可靠、少惹麻烦的卡吸引" },
+    { score: 0.5 - promo, text: "更容易被成本低、看起来不出错的卡吸引" },
+    { score: promo - 0.5, text: "更容易被能直接讲给客户听的卡吸引" },
+    { score: cfc - 0.5, text: "更容易被自己行业里熟悉的系统/运维/渠道逻辑吸引" },
+    { score: amb - 0.5, text: "更容易被情感陪伴、互动感、外显体验吸引" }
   ];
   options.sort((a, b) => b.score - a.score);
   return options[0].text;
@@ -8271,13 +8271,12 @@ function taskBlindD4Flaw(member) {
   const nfc = requireFingerprintDim(fp, "need_for_cognition", id);
   const maxi = requireFingerprintDim(fp, "maximizing_satisficing", id);
   const cfc = requireFingerprintDim(fp, "consideration_future_consequences", id);
-  const risk = requireFingerprintDim(fp, "risk_propensity_business", id);
   const promo = requireFingerprintDim(fp, "regulatory_focus_promotion", id);
   const options = [
-    { score: (0.5 - nfc) * 1.0, text: "至少有一张看起来合理的底座卡你会低估、误读或暂时跳过" },
-    { score: (0.5 - maxi) * 0.9, text: "至少有一张你会因为名字直观而顺手点，但信心不一定高" },
-    { score: (cfc - 0.5) * 0.8 + (0.5 - risk) * 0.4, text: "至少有一张你会因为成本/研发投入而降档或犹豫" },
-    { score: (0.5 - promo) * 0.7, text: "至少有一张你觉得客户未必感知得到，所以不想强推" }
+    { score: 0.5 - nfc, text: "至少有一张看起来合理的底座卡你会低估、误读或暂时跳过" },
+    { score: 0.5 - maxi, text: "至少有一张你会因为名字直观而顺手点，但信心不一定高" },
+    { score: cfc - 0.5, text: "至少有一张你会因为成本/研发投入而降档或犹豫" },
+    { score: 0.5 - promo, text: "至少有一张你觉得客户未必感知得到，所以不想强推" }
   ];
   options.sort((a, b) => b.score - a.score);
   return options[0].text;
