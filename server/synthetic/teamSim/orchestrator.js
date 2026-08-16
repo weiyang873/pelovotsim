@@ -7633,7 +7633,8 @@ function d5IdeologyLine(member) {
 // Per-member D5 persona deepening (env-gated): (1) pricing view inferred from the biography by the
 // model itself (no threshold rules), (2) an inner price the person has in mind before anyone speaks.
 async function prepareD4ReadingHabits({ members, temperature, outputDir }) {
-  if (!d5IdeologyEnabled()) return;
+  const readingFlag = /^(1|true|yes|on)$/i.test(String(process.env.TEAM_SIM_D4_READING || "").trim());
+  if (!d5IdeologyEnabled() && !readingFlag) return;
   await Promise.all(members.map(async (member) => {
     if (!isTaskBlindNarrativeMember(member) || member.d4_reading_habit) return;
     const raw = await callText([
@@ -9398,6 +9399,7 @@ async function individualCardSelection({ member, isLeader, draw, proposal, assig
           ? { includeReportExcerpt: true, omitStructuredResearch: true }
           : { includeReportExcerpt: true }),
         "",
+        member.d4_reading_habit ? `【你读这页的习惯（从你的经历看）】${member.d4_reading_habit}` : "",
         "【界面：个人选卡】",
         `你负责的维度：${formatGroupNames(assignment.groups, groupMap)}。`,
         humanPick
