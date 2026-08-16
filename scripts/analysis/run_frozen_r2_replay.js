@@ -19,13 +19,14 @@ function loadLocalEnv() {
 }
 
 function parseArgs(argv) {
-  const args = { preset: "", rep: 0, concurrency: null, control: "" };
+  const args = { preset: "", rep: 0, concurrency: null, control: "", limit: 0 };
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
     if (a === "--preset") args.preset = String(argv[++i] || "");
     else if (a === "--rep") args.rep = Number(argv[++i]);
     else if (a === "--concurrency") args.concurrency = Number(argv[++i]);
     else if (a === "--control") args.control = String(argv[++i] || "");
+    else if (a === "--limit") args.limit = Number(argv[++i]);
     else throw new Error(`unknown argument: ${a}`);
   }
   if (!args.preset) throw new Error("--preset required");
@@ -59,12 +60,13 @@ async function main() {
       if (fs.existsSync(path.join(dir, "r1_frozen.json"))) sourceDirs.push(dir);
     }
   }
-  const batch = `${batchPrefix}_rep${args.rep}_${new Date().toISOString().slice(0, 10).replace(/-/g, "")}`;
+  const pickedDirs = args.limit > 0 ? sourceDirs.slice(0, args.limit) : sourceDirs;
+  const batch = `${batchPrefix}${args.limit > 0 ? "_smoke" : ""}_rep${args.rep}_${new Date().toISOString().slice(0, 10).replace(/-/g, "")}`;
   const concurrency = args.concurrency || preset.args.concurrency || 3;
   const { default: pLimit } = await import("p-limit");
   const limit = pLimit(concurrency);
   const results = []; const failures = [];
-  await Promise.all(sourceDirs.map((sourceDir) => limit(async () => {
+  await Promise.all(pickedDirs.map((sourceDir) => limit(async () => {
     try {
       const r = await runR2FromExistingR1({ sourceDir, batch, arm: preset.args.arm });
       const price = r.r2_price ?? r.price ?? null;
