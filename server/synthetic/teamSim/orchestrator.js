@@ -10799,6 +10799,35 @@ async function runR2Decision({ members, leaderIdx, draws, proposals, r1Frozen, c
         outputDir
       });
     }
+    const perDim = /^(1|true|yes|on)$/i.test(String(process.env.TEAM_SIM_D4_PER_DIM || "").trim()) && (assignments[i].groups || []).length > 1;
+    if (perDim) {
+      // Real page structure: dimension groups are scrolled through one at a time; ask one group per call.
+      const parts = [];
+      for (const groupId of assignments[i].groups) {
+        parts.push(await individualCardSelection({
+          member: members[i],
+          isLeader: i === leaderIdx,
+          draw: draws[i],
+          proposal: proposals[i],
+          assignment: { ...assignments[i], groups: [groupId] },
+          r1Frozen,
+          chosenPrototype,
+          materials,
+          temperature,
+          arm,
+          outputDir,
+          privateState: readingState
+        }));
+      }
+      const merged = { ...parts[0] };
+      merged.groups = assignments[i].groups.slice();
+      merged.parsed = { ...parts[0].parsed, cards: parts.flatMap((part) => part.parsed?.cards || []), rationale: parts.map((part) => part.parsed?.rationale || "").filter(Boolean).join(" / ") };
+      merged.group_by_card = Object.assign({}, ...parts.map((part) => part.group_by_card || {}));
+      merged.raw = parts.map((part) => part.raw).join("\n\n---\n\n");
+      merged.per_dimension_calls = parts.length;
+      individualSelections.push(merged);
+      continue;
+    }
     individualSelections.push(await individualCardSelection({
       member: members[i],
       isLeader: i === leaderIdx,
