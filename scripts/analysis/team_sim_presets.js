@@ -99,6 +99,56 @@ const FROZEN_PRESETS = {
     }
   },
 
+  team_r2_story3_converge_v1: {
+    runner_type: "r2_replay",
+    lifecycle: "frozen",
+    description: "Team Round 2 replayed from frozen team R1 (actor_isolated cap24, five rounds): story D4 (task-blind reading habits from biography, no lean scaffolds) + six-segment screenplay review + three-scene screenplay D5 with per-member private three-stage commitment, biography-derived pricing view, R1 memory carried into every call, room converges to one member's position. Freeze evidence 5x42: SD 1029+/-113, mean 3600+/-109, cards 12.0, coverCore 0.67, loss 63+/-5%, team price = a member's private price 88+/-4%.",
+    module: "server/synthetic/teamSim/teamR2StoryScreenplaySim.js",
+    code_tag: "frozen/team-r2-story3-B-20260816",
+    evidence: [1, 2, 3, 4, 5].map((i) => `runs_v4flash_0731/team_r2_replay/team_r2_story3_B_rep${i}_20260816`),
+    source_batches: [1, 2, 3, 4, 5].map((i) => [`runs_v4flash_0731/team_pilot/teamr1_cap24_rep${i}_20260815`, `runs_v4flash_0731/team_pilot/teamr1_cap24_rep${i}_retry_20260815`]),
+    env: {
+      ...COMMON_DEEPSEEK_OFFICIAL_ENV,
+      TEAM_SIM_HIDE_JINANG: "1",
+      TEAM_SIM_D5_IDEOLOGY: "1",
+      TEAM_SIM_D5_PRIVATE_STAGE: "1",
+      TEAM_SIM_D5_CONVERGE: "1"
+    },
+    args: {
+      arm: "team_room_story_d4_screenplay3_d5_v1",
+      concurrency: 3,
+      batchPrefix: "team_r2_story3_B"
+    },
+    controls: {
+      no_converge_rule: { env_delta: { TEAM_SIM_D5_CONVERGE: "0" }, evidence_prefix: "team_r2_story3_A", note: "same machine, room may compromise: SD 661+/-21, loss 52+/-6%" }
+    }
+  },
+
+  solo_r2_v2q_perdim_reading_v1: {
+    runner_type: "r2_replay",
+    lifecycle: "frozen",
+    description: "Solo Round 2 replayed from frozen solo R1 (hidden jinang, five rounds): pricing-action persona D5, individual pick asked one dimension group per call (real page structure) with reading habit inferred from the biography. Freeze evidence 5x42: SD 912+/-49, mean 4296+/-134, cards 14.6+/-0.4, coverCore 0.74, loss 53+/-6%. Supersedes solo v1 (one-call pick: SD 877+/-64, cards 10.1, loss 17.7+/-4.1%), which is kept as reference.",
+    module: "server/synthetic/teamSim/soloRoleplayV2Sim.js",
+    code_tag: "frozen/solo-v2Q-20260816",
+    evidence: [1, 2, 3, 4, 5].map((i) => `runs_v4flash_0731/team_r2_replay/solo_r2_v2Q_rep${i}_20260816`),
+    source_batches: [1, 2, 3, 4, 5].map((i) => [`runs_v4flash_0731/team_pilot/solo_r1_hidden_rep${i}_20260815`, `runs_v4flash_0731/team_pilot/solo_r1_hidden_rep${i}_retry_20260815`]),
+    env: {
+      ...COMMON_DEEPSEEK_OFFICIAL_ENV,
+      TEAM_SIM_HIDE_JINANG: "1",
+      TEAM_SIM_D4_PER_DIM: "1",
+      TEAM_SIM_D4_READING: "1"
+    },
+    args: {
+      arm: "team_room_roleplay_ui",
+      concurrency: 3,
+      batchPrefix: "solo_r2_v2Q"
+    },
+    controls: {
+      perdim_only: { env_delta: { TEAM_SIM_D4_READING: "0" }, evidence_prefix: "solo_r2_v2P", note: "SD 935+/-143, cards 13.9, loss 43+/-7%" },
+      solo_v1_reference: { note: "one-call pick, 8/12 code snapshot; SD 877+/-64, mean 4294+/-77, cards 10.1, loss 17.7+/-4.1% (downgraded to reference 2026-08-16)" }
+    }
+  },
+
   random42_simple_layered_individual_v1: {
     runner_type: "single_ui_parity",
     lifecycle: "frozen",
