@@ -1,0 +1,72 @@
+{
+  "schema": "task_blind_narrative_pool_manifest_v1",
+  "seed": "20260817-faultline-design-topup",
+  "generated_at": "2026-08-17T07:38:32.927Z",
+  "started_at": "2026-08-17T07:35:24.769Z",
+  "wall_clock_ms": 188158,
+  "provider": "qwen",
+  "model": "deepseek-v4-flash-0731",
+  "base_url_host": "dashscope.aliyuncs.com",
+  "count_requested": 14,
+  "count_generated": 14,
+  "errors": [],
+  "background_schema_path": "data/task_blind_persona_pipeline_v1/r1_pilot12_20260812/background_schema.json",
+  "background_schema_sha256": "14113cb532d864c6c04d4e3b66000d36d07dc2eb13210ae99bdc635a43e562d3",
+  "frozen_fact_cards_path": "data/task_blind_persona_pipeline_v1/faultline_design_pool_topup_20260817/frozen_fact_cards.json",
+  "frozen_fact_cards_sha256": "224cc84c60b3d56dc1acac4f57727b8c517fb487c611cf3b19c9e52769d92335",
+  "pool_path": "data/task_blind_persona_pipeline_v1/faultline_design_pool_topup_20260817/persona_pool_task_blind_narrative_v1.json",
+  "pool_sha256": "45e61442331e845ceaddf256dc7c4fbc5eed791275ea166c49dfcbb19f9167e5",
+  "information_firewall": {
+    "task_analyzer_sees": [
+      "task_text",
+      "generic_field_catalog",
+      "trait_dimension_names_only"
+    ],
+    "fact_sampler_sees": [
+      "expanded_field_ids",
+      "general_population_priors",
+      "seed"
+    ],
+    "biography_writer_sees": [
+      "frozen_fact_values",
+      "natural_language_trait_directives",
+      "name"
+    ],
+    "biography_writer_does_not_see": [
+      "task_text",
+      "task_id",
+      "task_options",
+      "schema_relevance_reasons",
+      "trait_numbers"
+    ]
+  },
+  "forbidden_biography_terms": [
+    "ToB",
+    "ToC",
+    "COST",
+    "DIFF",
+    "成本领先",
+    "差异化",
+    "体验型",
+    "混合型",
+    "功能型",
+    "AI宠物",
+    "AI 宠物",
+    "机器人",
+    "目标市场",
+    "市场格",
+    "grid_id",
+    "Round 1",
+    "R1",
+    "本次任务",
+    "这个任务",
+    "课堂选择",
+    "商业战略",
+    "战略偏好",
+    "应该选择",
+    "建议选择"
+  ],
+  "forbidden_biography_term_hits": [],
+  "script_path": "scripts/analysis/generate_task_blind_persona_pool_v2_design.js",
+  "script_sha256": "45792b91070d8ba312831568c11c5cc7c390430d16892e789e7fdfa9b21cd408"
+}

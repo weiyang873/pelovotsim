@@ -1,0 +1,942 @@
+{
+ "pool": "data/task_blind_persona_pipeline_v1/faultline_shared_card_probe_20260817/persona_pool_task_blind_narrative_v1.json",
+ "design": "shared-fact-card faultline probe (control/surface/deep/both), isolate rotates",
+ "teams": {
+  "10": {
+   "cell": "deep",
+   "triad": 3,
+   "core": [
+    "ATBN153",
+    "ATBN24",
+    "ATBN142"
+   ],
+   "isolate": "ATBN142",
+   "matched": [
+    "ATBN153",
+    "ATBN24"
+   ],
+   "added": [
+    "FL03_deep_D",
+    "FL03_deep_E"
+   ],
+   "profile_ids": [
+    "ATBN153",
+    "ATBN24",
+    "ATBN142",
+    "FL03_deep_D",
+    "FL03_deep_E"
+   ],
+   "leader_id": "ATBN153"
+  },
+  "11": {
+   "cell": "both",
+   "triad": 3,
+   "core": [
+    "ATBN153",
+    "ATBN24",
+    "ATBN142"
+   ],
+   "isolate": "ATBN142",
+   "matched": [
+    "ATBN153",
+    "ATBN24"
+   ],
+   "added": [
+    "FL03_both_D",
+    "FL03_both_E"
+   ],
+   "profile_ids": [
+    "ATBN153",
+    "ATBN24",
+    "ATBN142",
+    "FL03_both_D",
+    "FL03_both_E"
+   ],
+   "leader_id": "ATBN153"
+  },
+  "12": {
+   "cell": "surface",
+   "triad": 4,
+   "core": [
+    "BTBN134",
+    "ATBN51",
+    "CTBN99"
+   ],
+   "isolate": "BTBN134",
+   "matched": [
+    "ATBN51",
+    "CTBN99"
+   ],
+   "added": [
+    "FL04_surface_D",
+    "FL04_surface_E"
+   ],
+   "profile_ids": [
+    "BTBN134",
+    "ATBN51",
+    "CTBN99",
+    "FL04_surface_D",
+    "FL04_surface_E"
+   ],
+   "leader_id": "FL04_surface_D"
+  },
+  "13": {
+   "cell": "both",
+   "triad": 4,
+   "core": [
+    "BTBN134",
+    "ATBN51",
+    "CTBN99"
+   ],
+   "isolate": "BTBN134",
+   "matched": [
+    "ATBN51",
+    "CTBN99"
+   ],
+   "added": [
+    "FL04_both_D",
+    "FL04_both_E"
+   ],
+   "profile_ids": [
+    "BTBN134",
+    "ATBN51",
+    "CTBN99",
+    "FL04_both_D",
+    "FL04_both_E"
+   ],
+   "leader_id": "BTBN134"
+  },
+  "14": {
+   "cell": "control",
+   "triad": 5,
+   "core": [
+    "ATBN56",
+    "CTBN38",
+    "ATBN165"
+   ],
+   "isolate": "CTBN38",
+   "matched": [
+    "ATBN56",
+    "ATBN165"
+   ],
+   "added": [
+    "FL05_control_D",
+    "FL05_control_E"
+   ],
+   "profile_ids": [
+    "ATBN56",
+    "CTBN38",
+    "ATBN165",
+    "FL05_control_D",
+    "FL05_control_E"
+   ],
+   "leader_id": "ATBN165"
+  },
+  "15": {
+   "cell": "surface",
+   "triad": 5,
+   "core": [
+    "ATBN56",
+    "CTBN38",
+    "ATBN165"
+   ],
+   "isolate": "CTBN38",
+   "matched": [
+    "ATBN56",
+    "ATBN165"
+   ],
+   "added": [
+    "FL05_surface_D",
+    "FL05_surface_E"
+   ],
+   "profile_ids": [
+    "ATBN56",
+    "CTBN38",
+    "ATBN165",
+    "FL05_surface_D",
+    "FL05_surface_E"
+   ],
+   "leader_id": "ATBN56"
+  },
+  "16": {
+   "cell": "both",
+   "triad": 5,
+   "core": [
+    "ATBN56",
+    "CTBN38",
+    "ATBN165"
+   ],
+   "isolate": "CTBN38",
+   "matched": [
+    "ATBN56",
+    "ATBN165"
+   ],
+   "added": [
+    "FL05_both_D",
+    "FL05_both_E"
+   ],
+   "profile_ids": [
+    "ATBN56",
+    "CTBN38",
+    "ATBN165",
+    "FL05_both_D",
+    "FL05_both_E"
+   ],
+   "leader_id": "ATBN56"
+  },
+  "17": {
+   "cell": "control",
+   "triad": 6,
+   "core": [
+    "ATBN20",
+    "BTBN43",
+    "ATBN01"
+   ],
+   "isolate": "ATBN01",
+   "matched": [
+    "ATBN20",
+    "BTBN43"
+   ],
+   "added": [
+    "FL06_control_D",
+    "FL06_control_E"
+   ],
+   "profile_ids": [
+    "ATBN20",
+    "BTBN43",
+    "ATBN01",
+    "FL06_control_D",
+    "FL06_control_E"
+   ],
+   "leader_id": "FL06_control_D"
+  },
+  "18": {
+   "cell": "surface",
+   "triad": 6,
+   "core": [
+    "ATBN20",
+    "BTBN43",
+    "ATBN01"
+   ],
+   "isolate": "ATBN01",
+   "matched": [
+    "ATBN20",
+    "BTBN43"
+   ],
+   "added": [
+    "FL06_surface_D",
+    "FL06_surface_E"
+   ],
+   "profile_ids": [
+    "ATBN20",
+    "BTBN43",
+    "ATBN01",
+    "FL06_surface_D",
+    "FL06_surface_E"
+   ],
+   "leader_id": "ATBN20"
+  },
+  "19": {
+   "cell": "deep",
+   "triad": 6,
+   "core": [
+    "ATBN20",
+    "BTBN43",
+    "ATBN01"
+   ],
+   "isolate": "ATBN01",
+   "matched": [
+    "ATBN20",
+    "BTBN43"
+   ],
+   "added": [
+    "FL06_deep_D",
+    "FL06_deep_E"
+   ],
+   "profile_ids": [
+    "ATBN20",
+    "BTBN43",
+    "ATBN01",
+    "FL06_deep_D",
+    "FL06_deep_E"
+   ],
+   "leader_id": "FL06_deep_E"
+  },
+  "20": {
+   "cell": "both",
+   "triad": 6,
+   "core": [
+    "ATBN20",
+    "BTBN43",
+    "ATBN01"
+   ],
+   "isolate": "ATBN01",
+   "matched": [
+    "ATBN20",
+    "BTBN43"
+   ],
+   "added": [
+    "FL06_both_D",
+    "FL06_both_E"
+   ],
+   "profile_ids": [
+    "ATBN20",
+    "BTBN43",
+    "ATBN01",
+    "FL06_both_D",
+    "FL06_both_E"
+   ],
+   "leader_id": "FL06_both_D"
+  },
+  "21": {
+   "cell": "control",
+   "triad": 7,
+   "core": [
+    "BTBN46",
+    "BTBN125",
+    "BTBN131"
+   ],
+   "isolate": "BTBN46",
+   "matched": [
+    "BTBN125",
+    "BTBN131"
+   ],
+   "added": [
+    "FL07_control_D",
+    "FL07_control_E"
+   ],
+   "profile_ids": [
+    "BTBN46",
+    "BTBN125",
+    "BTBN131",
+    "FL07_control_D",
+    "FL07_control_E"
+   ],
+   "leader_id": "BTBN131"
+  },
+  "22": {
+   "cell": "surface",
+   "triad": 7,
+   "core": [
+    "BTBN46",
+    "BTBN125",
+    "BTBN131"
+   ],
+   "isolate": "BTBN46",
+   "matched": [
+    "BTBN125",
+    "BTBN131"
+   ],
+   "added": [
+    "FL07_surface_D",
+    "FL07_surface_E"
+   ],
+   "profile_ids": [
+    "BTBN46",
+    "BTBN125",
+    "BTBN131",
+    "FL07_surface_D",
+    "FL07_surface_E"
+   ],
+   "leader_id": "FL07_surface_D"
+  },
+  "23": {
+   "cell": "deep",
+   "triad": 7,
+   "core": [
+    "BTBN46",
+    "BTBN125",
+    "BTBN131"
+   ],
+   "isolate": "BTBN46",
+   "matched": [
+    "BTBN125",
+    "BTBN131"
+   ],
+   "added": [
+    "FL07_deep_D",
+    "FL07_deep_E"
+   ],
+   "profile_ids": [
+    "BTBN46",
+    "BTBN125",
+    "BTBN131",
+    "FL07_deep_D",
+    "FL07_deep_E"
+   ],
+   "leader_id": "BTBN125"
+  },
+  "24": {
+   "cell": "both",
+   "triad": 7,
+   "core": [
+    "BTBN46",
+    "BTBN125",
+    "BTBN131"
+   ],
+   "isolate": "BTBN46",
+   "matched": [
+    "BTBN125",
+    "BTBN131"
+   ],
+   "added": [
+    "FL07_both_D",
+    "FL07_both_E"
+   ],
+   "profile_ids": [
+    "BTBN46",
+    "BTBN125",
+    "BTBN131",
+    "FL07_both_D",
+    "FL07_both_E"
+   ],
+   "leader_id": "FL07_both_D"
+  },
+  "25": {
+   "cell": "control",
+   "triad": 8,
+   "core": [
+    "CTBN16",
+    "ATBN77",
+    "ATBN54"
+   ],
+   "isolate": "ATBN77",
+   "matched": [
+    "CTBN16",
+    "ATBN54"
+   ],
+   "added": [
+    "FL08_control_D",
+    "FL08_control_E"
+   ],
+   "profile_ids": [
+    "CTBN16",
+    "ATBN77",
+    "ATBN54",
+    "FL08_control_D",
+    "FL08_control_E"
+   ],
+   "leader_id": "ATBN77"
+  },
+  "26": {
+   "cell": "surface",
+   "triad": 8,
+   "core": [
+    "CTBN16",
+    "ATBN77",
+    "ATBN54"
+   ],
+   "isolate": "ATBN77",
+   "matched": [
+    "CTBN16",
+    "ATBN54"
+   ],
+   "added": [
+    "FL08_surface_D",
+    "FL08_surface_E"
+   ],
+   "profile_ids": [
+    "CTBN16",
+    "ATBN77",
+    "ATBN54",
+    "FL08_surface_D",
+    "FL08_surface_E"
+   ],
+   "leader_id": "ATBN54"
+  },
+  "27": {
+   "cell": "deep",
+   "triad": 8,
+   "core": [
+    "CTBN16",
+    "ATBN77",
+    "ATBN54"
+   ],
+   "isolate": "ATBN77",
+   "matched": [
+    "CTBN16",
+    "ATBN54"
+   ],
+   "added": [
+    "FL08_deep_D",
+    "FL08_deep_E"
+   ],
+   "profile_ids": [
+    "CTBN16",
+    "ATBN77",
+    "ATBN54",
+    "FL08_deep_D",
+    "FL08_deep_E"
+   ],
+   "leader_id": "FL08_deep_D"
+  },
+  "28": {
+   "cell": "both",
+   "triad": 8,
+   "core": [
+    "CTBN16",
+    "ATBN77",
+    "ATBN54"
+   ],
+   "isolate": "ATBN77",
+   "matched": [
+    "CTBN16",
+    "ATBN54"
+   ],
+   "added": [
+    "FL08_both_D",
+    "FL08_both_E"
+   ],
+   "profile_ids": [
+    "CTBN16",
+    "ATBN77",
+    "ATBN54",
+    "FL08_both_D",
+    "FL08_both_E"
+   ],
+   "leader_id": "FL08_both_D"
+  },
+  "29": {
+   "cell": "control",
+   "triad": 9,
+   "core": [
+    "CTBN63",
+    "CTBN112",
+    "BTBN194"
+   ],
+   "isolate": "BTBN194",
+   "matched": [
+    "CTBN63",
+    "CTBN112"
+   ],
+   "added": [
+    "FL09_control_D",
+    "FL09_control_E"
+   ],
+   "profile_ids": [
+    "CTBN63",
+    "CTBN112",
+    "BTBN194",
+    "FL09_control_D",
+    "FL09_control_E"
+   ],
+   "leader_id": "BTBN194"
+  },
+  "30": {
+   "cell": "surface",
+   "triad": 9,
+   "core": [
+    "CTBN63",
+    "CTBN112",
+    "BTBN194"
+   ],
+   "isolate": "BTBN194",
+   "matched": [
+    "CTBN63",
+    "CTBN112"
+   ],
+   "added": [
+    "FL09_surface_D",
+    "FL09_surface_E"
+   ],
+   "profile_ids": [
+    "CTBN63",
+    "CTBN112",
+    "BTBN194",
+    "FL09_surface_D",
+    "FL09_surface_E"
+   ],
+   "leader_id": "FL09_surface_E"
+  },
+  "31": {
+   "cell": "deep",
+   "triad": 9,
+   "core": [
+    "CTBN63",
+    "CTBN112",
+    "BTBN194"
+   ],
+   "isolate": "BTBN194",
+   "matched": [
+    "CTBN63",
+    "CTBN112"
+   ],
+   "added": [
+    "FL09_deep_D",
+    "FL09_deep_E"
+   ],
+   "profile_ids": [
+    "CTBN63",
+    "CTBN112",
+    "BTBN194",
+    "FL09_deep_D",
+    "FL09_deep_E"
+   ],
+   "leader_id": "BTBN194"
+  },
+  "32": {
+   "cell": "both",
+   "triad": 9,
+   "core": [
+    "CTBN63",
+    "CTBN112",
+    "BTBN194"
+   ],
+   "isolate": "BTBN194",
+   "matched": [
+    "CTBN63",
+    "CTBN112"
+   ],
+   "added": [
+    "FL09_both_D",
+    "FL09_both_E"
+   ],
+   "profile_ids": [
+    "CTBN63",
+    "CTBN112",
+    "BTBN194",
+    "FL09_both_D",
+    "FL09_both_E"
+   ],
+   "leader_id": "FL09_both_E"
+  },
+  "33": {
+   "cell": "control",
+   "triad": 10,
+   "core": [
+    "BTBN09",
+    "ATBN123",
+    "BTBN200"
+   ],
+   "isolate": "BTBN09",
+   "matched": [
+    "ATBN123",
+    "BTBN200"
+   ],
+   "added": [
+    "FL10_control_D",
+    "FL10_control_E"
+   ],
+   "profile_ids": [
+    "BTBN09",
+    "ATBN123",
+    "BTBN200",
+    "FL10_control_D",
+    "FL10_control_E"
+   ],
+   "leader_id": "FL10_control_D"
+  },
+  "34": {
+   "cell": "surface",
+   "triad": 10,
+   "core": [
+    "BTBN09",
+    "ATBN123",
+    "BTBN200"
+   ],
+   "isolate": "BTBN09",
+   "matched": [
+    "ATBN123",
+    "BTBN200"
+   ],
+   "added": [
+    "FL10_surface_D",
+    "FL10_surface_E"
+   ],
+   "profile_ids": [
+    "BTBN09",
+    "ATBN123",
+    "BTBN200",
+    "FL10_surface_D",
+    "FL10_surface_E"
+   ],
+   "leader_id": "BTBN09"
+  },
+  "35": {
+   "cell": "deep",
+   "triad": 10,
+   "core": [
+    "BTBN09",
+    "ATBN123",
+    "BTBN200"
+   ],
+   "isolate": "BTBN09",
+   "matched": [
+    "ATBN123",
+    "BTBN200"
+   ],
+   "added": [
+    "FL10_deep_D",
+    "FL10_deep_E"
+   ],
+   "profile_ids": [
+    "BTBN09",
+    "ATBN123",
+    "BTBN200",
+    "FL10_deep_D",
+    "FL10_deep_E"
+   ],
+   "leader_id": "FL10_deep_D"
+  },
+  "36": {
+   "cell": "both",
+   "triad": 10,
+   "core": [
+    "BTBN09",
+    "ATBN123",
+    "BTBN200"
+   ],
+   "isolate": "BTBN09",
+   "matched": [
+    "ATBN123",
+    "BTBN200"
+   ],
+   "added": [
+    "FL10_both_D",
+    "FL10_both_E"
+   ],
+   "profile_ids": [
+    "BTBN09",
+    "ATBN123",
+    "BTBN200",
+    "FL10_both_D",
+    "FL10_both_E"
+   ],
+   "leader_id": "FL10_both_D"
+  },
+  "01": {
+   "cell": "control",
+   "triad": 1,
+   "core": [
+    "BTBN161",
+    "ATBN164",
+    "BTBN121"
+   ],
+   "isolate": "BTBN161",
+   "matched": [
+    "ATBN164",
+    "BTBN121"
+   ],
+   "added": [
+    "FL01_control_D",
+    "FL01_control_E"
+   ],
+   "profile_ids": [
+    "BTBN161",
+    "ATBN164",
+    "BTBN121",
+    "FL01_control_D",
+    "FL01_control_E"
+   ],
+   "leader_id": "FL01_control_D"
+  },
+  "02": {
+   "cell": "surface",
+   "triad": 1,
+   "core": [
+    "BTBN161",
+    "ATBN164",
+    "BTBN121"
+   ],
+   "isolate": "BTBN161",
+   "matched": [
+    "ATBN164",
+    "BTBN121"
+   ],
+   "added": [
+    "FL01_surface_D",
+    "FL01_surface_E"
+   ],
+   "profile_ids": [
+    "BTBN161",
+    "ATBN164",
+    "BTBN121",
+    "FL01_surface_D",
+    "FL01_surface_E"
+   ],
+   "leader_id": "BTBN161"
+  },
+  "03": {
+   "cell": "deep",
+   "triad": 1,
+   "core": [
+    "BTBN161",
+    "ATBN164",
+    "BTBN121"
+   ],
+   "isolate": "BTBN161",
+   "matched": [
+    "ATBN164",
+    "BTBN121"
+   ],
+   "added": [
+    "FL01_deep_D",
+    "FL01_deep_E"
+   ],
+   "profile_ids": [
+    "BTBN161",
+    "ATBN164",
+    "BTBN121",
+    "FL01_deep_D",
+    "FL01_deep_E"
+   ],
+   "leader_id": "BTBN121"
+  },
+  "04": {
+   "cell": "both",
+   "triad": 1,
+   "core": [
+    "BTBN161",
+    "ATBN164",
+    "BTBN121"
+   ],
+   "isolate": "BTBN161",
+   "matched": [
+    "ATBN164",
+    "BTBN121"
+   ],
+   "added": [
+    "FL01_both_D",
+    "FL01_both_E"
+   ],
+   "profile_ids": [
+    "BTBN161",
+    "ATBN164",
+    "BTBN121",
+    "FL01_both_D",
+    "FL01_both_E"
+   ],
+   "leader_id": "ATBN164"
+  },
+  "05": {
+   "cell": "control",
+   "triad": 2,
+   "core": [
+    "BTBN92",
+    "BTBN124",
+    "ATBN22"
+   ],
+   "isolate": "BTBN124",
+   "matched": [
+    "BTBN92",
+    "ATBN22"
+   ],
+   "added": [
+    "FL02_control_D",
+    "FL02_control_E"
+   ],
+   "profile_ids": [
+    "BTBN92",
+    "BTBN124",
+    "ATBN22",
+    "FL02_control_D",
+    "FL02_control_E"
+   ],
+   "leader_id": "FL02_control_D"
+  },
+  "06": {
+   "cell": "surface",
+   "triad": 2,
+   "core": [
+    "BTBN92",
+    "BTBN124",
+    "ATBN22"
+   ],
+   "isolate": "BTBN124",
+   "matched": [
+    "BTBN92",
+    "ATBN22"
+   ],
+   "added": [
+    "FL02_surface_D",
+    "FL02_surface_E"
+   ],
+   "profile_ids": [
+    "BTBN92",
+    "BTBN124",
+    "ATBN22",
+    "FL02_surface_D",
+    "FL02_surface_E"
+   ],
+   "leader_id": "BTBN124"
+  },
+  "07": {
+   "cell": "deep",
+   "triad": 2,
+   "core": [
+    "BTBN92",
+    "BTBN124",
+    "ATBN22"
+   ],
+   "isolate": "BTBN124",
+   "matched": [
+    "BTBN92",
+    "ATBN22"
+   ],
+   "added": [
+    "FL02_deep_D",
+    "FL02_deep_E"
+   ],
+   "profile_ids": [
+    "BTBN92",
+    "BTBN124",
+    "ATBN22",
+    "FL02_deep_D",
+    "FL02_deep_E"
+   ],
+   "leader_id": "BTBN92"
+  },
+  "08": {
+   "cell": "both",
+   "triad": 2,
+   "core": [
+    "BTBN92",
+    "BTBN124",
+    "ATBN22"
+   ],
+   "isolate": "BTBN124",
+   "matched": [
+    "BTBN92",
+    "ATBN22"
+   ],
+   "added": [
+    "FL02_both_D",
+    "FL02_both_E"
+   ],
+   "profile_ids": [
+    "BTBN92",
+    "BTBN124",
+    "ATBN22",
+    "FL02_both_D",
+    "FL02_both_E"
+   ],
+   "leader_id": "FL02_both_E"
+  },
+  "09": {
+   "cell": "control",
+   "triad": 3,
+   "core": [
+    "ATBN153",
+    "ATBN24",
+    "ATBN142"
+   ],
+   "isolate": "ATBN142",
+   "matched": [
+    "ATBN153",
+    "ATBN24"
+   ],
+   "added": [
+    "FL03_control_D",
+    "FL03_control_E"
+   ],
+   "profile_ids": [
+    "ATBN153",
+    "ATBN24",
+    "ATBN142",
+    "FL03_control_D",
+    "FL03_control_E"
+   ],
+   "leader_id": "FL03_control_D"
+  }
+ }
+}

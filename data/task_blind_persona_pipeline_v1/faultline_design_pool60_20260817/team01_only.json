@@ -1,0 +1,24 @@
+{
+ "teams": {
+  "01": {
+   "cell": "aligned",
+   "sub1": [
+    "TBN04",
+    "XTBN02"
+   ],
+   "sub2": [
+    "TBN45",
+    "TBN43"
+   ],
+   "isolate": "TBN57",
+   "profile_ids": [
+    "TBN04",
+    "XTBN02",
+    "TBN45",
+    "TBN43",
+    "TBN57"
+   ],
+   "leader_id": "TBN45"
+  }
+ }
+}

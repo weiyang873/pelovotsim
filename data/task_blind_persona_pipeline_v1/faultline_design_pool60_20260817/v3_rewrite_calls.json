@@ -1,0 +1,502 @@
+[
+ {
+  "id": "TBN06",
+  "a": 1,
+  "err": "biography too long: 2011"
+ },
+ {
+  "id": "TBN09",
+  "a": 1,
+  "err": "biography too long: 2012"
+ },
+ {
+  "id": "TBN03",
+  "a": 1,
+  "err": "biography too long: 2096"
+ },
+ {
+  "id": "TBN07",
+  "a": 1,
+  "err": "biography too long: 2112"
+ },
+ {
+  "id": "TBN10",
+  "a": 1,
+  "err": "biography too long: 1990"
+ },
+ {
+  "id": "TBN07",
+  "a": 2,
+  "err": "biography too long: 1832"
+ },
+ {
+  "id": "TBN03",
+  "a": 2,
+  "err": "biography needs >=3 quoted lines, found 0"
+ },
+ {
+  "id": "TBN06",
+  "a": 2,
+  "err": "biography too long: 1999"
+ },
+ {
+  "id": "TBN11",
+  "a": 1,
+  "err": "biography too long: 2466"
+ },
+ {
+  "id": "TBN07",
+  "a": 3,
+  "err": "biography too long: 2146"
+ },
+ {
+  "id": "TBN11",
+  "a": 2,
+  "err": "biography too long: 2048"
+ },
+ {
+  "id": "TBN06",
+  "a": 3,
+  "err": "biography too long: 2248"
+ },
+ {
+  "id": "TBN15",
+  "a": 1,
+  "err": "biography too long: 1875"
+ },
+ {
+  "id": "TBN16",
+  "a": 1,
+  "err": "biography too long: 2179"
+ },
+ {
+  "id": "TBN07",
+  "a": 4,
+  "err": "task leakage: 机器人"
+ },
+ {
+  "id": "TBN11",
+  "a": 3,
+  "err": "biography too long: 1880"
+ },
+ {
+  "id": "TBN06",
+  "a": 4,
+  "err": "biography too long: 1884"
+ },
+ {
+  "id": "TBN17",
+  "a": 1,
+  "err": "biography too long: 1928"
+ },
+ {
+  "id": "TBN16",
+  "a": 2,
+  "err": "biography too long: 1847"
+ },
+ {
+  "id": "TBN17",
+  "a": 2,
+  "err": "biography too long: 2150"
+ },
+ {
+  "id": "TBN18",
+  "a": 1,
+  "err": "biography too long: 2166"
+ },
+ {
+  "id": "TBN19",
+  "a": 1,
+  "err": "biography too long: 2088"
+ },
+ {
+  "id": "TBN16",
+  "a": 3,
+  "err": "biography too long: 2160"
+ },
+ {
+  "id": "TBN21",
+  "a": 1,
+  "err": "biography too long: 2297"
+ },
+ {
+  "id": "TBN18",
+  "a": 2,
+  "err": "task leakage: 机器人"
+ },
+ {
+  "id": "TBN19",
+  "a": 2,
+  "err": "biography too long: 1862"
+ },
+ {
+  "id": "TBN22",
+  "a": 1,
+  "err": "biography too long: 2132"
+ },
+ {
+  "id": "TBN16",
+  "a": 4,
+  "err": "biography too long: 2085"
+ },
+ {
+  "id": "TBN21",
+  "a": 2,
+  "err": "biography too long: 2124"
+ },
+ {
+  "id": "TBN19",
+  "a": 3,
+  "err": "biography too long: 1983"
+ },
+ {
+  "id": "TBN18",
+  "a": 3,
+  "err": "biography too long: 2268"
+ },
+ {
+  "id": "TBN24",
+  "a": 1,
+  "err": "biography too long: 1996"
+ },
+ {
+  "id": "TBN25",
+  "a": 1,
+  "err": "biography too long: 1906"
+ },
+ {
+  "id": "TBN26",
+  "a": 1,
+  "err": "task leakage: 机器人"
+ },
+ {
+  "id": "TBN18",
+  "a": 4,
+  "err": "biography too long: 1844"
+ },
+ {
+  "id": "TBN27",
+  "a": 1,
+  "err": "biography too long: 1812"
+ },
+ {
+  "id": "TBN19",
+  "a": 4,
+  "err": "biography too long: 2659"
+ },
+ {
+  "id": "TBN24",
+  "a": 2,
+  "err": "biography too long: 1895"
+ },
+ {
+  "id": "TBN25",
+  "a": 2,
+  "err": "biography too long: 1802"
+ },
+ {
+  "id": "TBN27",
+  "a": 2,
+  "err": "biography too long: 1875"
+ },
+ {
+  "id": "TBN26",
+  "a": 2,
+  "err": "biography too long: 2155"
+ },
+ {
+  "id": "TBN28",
+  "a": 1,
+  "err": "biography too long: 2489"
+ },
+ {
+  "id": "TBN29",
+  "a": 1,
+  "err": "biography too long: 1944"
+ },
+ {
+  "id": "TBN26",
+  "a": 3,
+  "err": "biography too long: 1835"
+ },
+ {
+  "id": "TBN31",
+  "a": 1,
+  "err": "biography too long: 2281"
+ },
+ {
+  "id": "TBN32",
+  "a": 1,
+  "err": "biography too long: 1904"
+ },
+ {
+  "id": "TBN33",
+  "a": 1,
+  "err": "biography too long: 1963"
+ },
+ {
+  "id": "TBN36",
+  "a": 1,
+  "err": "biography needs >=3 quoted lines, found 0"
+ },
+ {
+  "id": "TBN34",
+  "a": 1,
+  "err": "biography too long: 2915"
+ },
+ {
+  "id": "TBN31",
+  "a": 2,
+  "err": "biography too long: 2684"
+ },
+ {
+  "id": "TBN33",
+  "a": 2,
+  "err": "biography too long: 2157"
+ },
+ {
+  "id": "TBN31",
+  "a": 3,
+  "err": "task leakage: 机器人"
+ },
+ {
+  "id": "TBN34",
+  "a": 2,
+  "err": "biography too long: 2384"
+ },
+ {
+  "id": "TBN38",
+  "a": 1,
+  "err": "biography too long: 2680"
+ },
+ {
+  "id": "TBN33",
+  "a": 3,
+  "err": "biography too long: 2130"
+ },
+ {
+  "id": "TBN39",
+  "a": 1,
+  "err": "biography too long: 1899"
+ },
+ {
+  "id": "TBN38",
+  "a": 2,
+  "err": "biography too long: 1837"
+ },
+ {
+  "id": "TBN33",
+  "a": 4,
+  "err": "task leakage: 机器人"
+ },
+ {
+  "id": "TBN42",
+  "a": 1,
+  "err": "biography too long: 1828"
+ },
+ {
+  "id": "TBN44",
+  "a": 1,
+  "err": "biography too long: 1851"
+ },
+ {
+  "id": "TBN38",
+  "a": 3,
+  "err": "biography too long: 1916"
+ },
+ {
+  "id": "TBN46",
+  "a": 1,
+  "err": "biography too long: 1808"
+ },
+ {
+  "id": "TBN44",
+  "a": 2,
+  "err": "biography too long: 1901"
+ },
+ {
+  "id": "TBN48",
+  "a": 1,
+  "err": "task leakage: 机器人"
+ },
+ {
+  "id": "TBN38",
+  "a": 4,
+  "err": "biography too long: 1853"
+ },
+ {
+  "id": "TBN50",
+  "a": 1,
+  "err": "biography too long: 1832"
+ },
+ {
+  "id": "TBN51",
+  "a": 1,
+  "err": "biography too long: 2392"
+ },
+ {
+  "id": "TBN48",
+  "a": 2,
+  "err": "biography too long: 2061"
+ },
+ {
+  "id": "TBN51",
+  "a": 2,
+  "err": "biography too long: 1979"
+ },
+ {
+  "id": "TBN53",
+  "a": 1,
+  "err": "biography too long: 1876"
+ },
+ {
+  "id": "TBN55",
+  "a": 1,
+  "err": "biography too long: 1883"
+ },
+ {
+  "id": "TBN56",
+  "a": 1,
+  "err": "biography too long: 1922"
+ },
+ {
+  "id": "TBN48",
+  "a": 3,
+  "err": "biography too long: 2163"
+ },
+ {
+  "id": "TBN60",
+  "a": 1,
+  "err": "biography needs >=3 quoted lines, found 0"
+ },
+ {
+  "id": "TBN51",
+  "a": 3,
+  "err": "biography too long: 1953"
+ },
+ {
+  "id": "TBN55",
+  "a": 2,
+  "err": "biography too long: 1826"
+ },
+ {
+  "id": "TBN48",
+  "a": 4,
+  "err": "biography too long: 2054"
+ },
+ {
+  "id": "XTBN01",
+  "a": 1,
+  "err": "biography too long: 1829"
+ },
+ {
+  "id": "TBN51",
+  "a": 4,
+  "err": "biography too long: 2488"
+ },
+ {
+  "id": "XTBN04",
+  "a": 1,
+  "err": "biography too long: 2150"
+ },
+ {
+  "id": "XTBN05",
+  "a": 1,
+  "err": "biography too long: 1899"
+ },
+ {
+  "id": "XTBN01",
+  "a": 2,
+  "err": "biography too long: 1804"
+ },
+ {
+  "id": "XTBN07",
+  "a": 1,
+  "err": "biography too long: 2120"
+ },
+ {
+  "id": "XTBN04",
+  "a": 2,
+  "err": "biography needs >=3 quoted lines, found 0"
+ },
+ {
+  "id": "XTBN05",
+  "a": 2,
+  "err": "biography too long: 1881"
+ },
+ {
+  "id": "XTBN09",
+  "a": 1,
+  "err": "biography too long: 2097"
+ },
+ {
+  "id": "XTBN10",
+  "a": 1,
+  "err": "biography too long: 1803"
+ },
+ {
+  "id": "XTBN09",
+  "a": 2,
+  "err": "biography needs >=3 quoted lines, found 0"
+ },
+ {
+  "id": "XTBN11",
+  "a": 1,
+  "err": "biography too long: 2800"
+ },
+ {
+  "id": "XTBN12",
+  "a": 1,
+  "err": "biography too long: 1954"
+ },
+ {
+  "id": "XTBN14",
+  "a": 1,
+  "err": "biography too long: 1980"
+ },
+ {
+  "id": "XTBN13",
+  "a": 1,
+  "err": "biography too long: 1925"
+ },
+ {
+  "id": "XTBN09",
+  "a": 3,
+  "err": "biography too long: 1996"
+ },
+ {
+  "id": "XTBN11",
+  "a": 2,
+  "err": "biography too long: 2042"
+ },
+ {
+  "id": "XTBN12",
+  "a": 2,
+  "err": "biography too long: 2410"
+ },
+ {
+  "id": "XTBN14",
+  "a": 2,
+  "err": "biography too long: 3151"
+ },
+ {
+  "id": "XTBN11",
+  "a": 3,
+  "err": "biography too long: 1873"
+ },
+ {
+  "id": "XTBN12",
+  "a": 3,
+  "err": "biography too long: 2675"
+ },
+ {
+  "id": "XTBN11",
+  "a": 4,
+  "err": "biography too long: 2097"
+ },
+ {
+  "id": "XTBN12",
+  "a": 4,
+  "err": "biography too long: 1884"
+ }
+]

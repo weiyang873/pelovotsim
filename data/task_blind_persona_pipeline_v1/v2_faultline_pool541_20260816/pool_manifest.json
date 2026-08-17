@@ -1,0 +1,29 @@
+{
+ "schema": "task_blind_narrative_pool_manifest_v1",
+ "note": "v2 faultline pool: merge of three v2 batches with id prefixes A/B/C; generator scripts/analysis/generate_task_blind_persona_pool_v2.js; surface fields edu_first_tier/postgrad/overseas/industry_type added; industry_type is post-hoc classification",
+ "count": 541,
+ "sources": [
+  {
+   "batch": "v2_faultline_pool200_20260816",
+   "prefix": "A",
+   "seed": "20260816-task-blind-faultline-v2-pool200",
+   "count": 179,
+   "pool_sha256": "52e7640bf8250723a77ea175dce6b4dda5d1cbdde07c8bb1fae98686d9639830"
+  },
+  {
+   "batch": "v2_faultline_pool200b_20260816",
+   "prefix": "B",
+   "seed": "20260816-task-blind-faultline-v2-pool200b",
+   "count": 180,
+   "pool_sha256": "a283805c7852d56ef4b94667c42153845cc0dab0817c1eb5be9f82b6c732e3af"
+  },
+  {
+   "batch": "v2_faultline_pool200c_20260816",
+   "prefix": "C",
+   "seed": "20260816-task-blind-faultline-v2-pool200c",
+   "count": 182,
+   "pool_sha256": "2c225af54a36927070996a7bdbcdf09f3eb3dd537adc4ec0a63825e1c72b90b4"
+  }
+ ],
+ "pool_sha256": "fbacf54c6d1c1c1f5ce5e5aa1b66016ac2700d9dcb54be702a9d412bfdbb72d1"
+}

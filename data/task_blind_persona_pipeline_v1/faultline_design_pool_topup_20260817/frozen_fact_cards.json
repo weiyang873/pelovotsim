@@ -1,0 +1,1112 @@
+[
+  {
+    "persona_id": "TBN01",
+    "seed": "20260817-faultline-design-topup:1",
+    "name": "王文清",
+    "surface": {
+      "gender": "female",
+      "age": 54,
+      "edu": "普通本科，海外硕士",
+      "edu_first_tier": "普通本科",
+      "postgrad": "海外硕士",
+      "overseas": {
+        "hasOverseas": true,
+        "destination": "英国",
+        "duration": "2年",
+        "field": "商科",
+        "ageAt": 24,
+        "firstJobBack": "民营企业"
+      },
+      "region": "长沙",
+      "industry": "养老服务",
+      "industry_type": "传统",
+      "design_cell": "E-eng-old"
+    },
+    "behavioral_fingerprint": {
+      "maximizing_satisficing": 0.75,
+      "need_for_cognition": 0.3,
+      "actively_open_minded_thinking": 0.38,
+      "risk_propensity_business": 0.63,
+      "ambiguity_tolerance": 0.15,
+      "regulatory_focus_promotion": 0.59,
+      "consideration_future_consequences": 0.84,
+      "action_orientation": 0.79
+    },
+    "behavioral_directives": {
+      "maximizing_satisficing": "常担心还有更合适的选项，会主动扩大搜索并反复比较。",
+      "need_for_cognition": "愿意想一点，但若很快能形成说得通的判断就不再深挖。",
+      "actively_open_minded_thinking": "会听不同意见，但更容易保留原先看法。",
+      "risk_propensity_business": "只要潜在收益足够，会接受较明显的结果波动和试错。",
+      "ambiguity_tolerance": "信息缺口会让其明显停滞，倾向等规则和概率更清楚再行动。",
+      "regulatory_focus_promotion": "进取与防守随情境切换，没有固定一边。",
+      "consideration_future_consequences": "会持续追踪多年后的后果，必要时牺牲明显的眼前收益。",
+      "action_orientation": "决定后会很快转入行动，受挫后能调整并继续。"
+    },
+    "frozen_facts": {
+      "age_and_life_stage": "54岁，处在职业责任已经较重、个人生活结构相对稳定但仍可能变化的阶段。",
+      "education_and_learning": "第一学历普通本科；24岁左右去英国读了2年商科硕士，回国后第一份工作在民营企业；专业训练与运营与供应链相关或在职业中逐步补齐。",
+      "career_context": "大型民营集团的供应链负责人，所在行业为养老服务，主要职能是运营与供应链。",
+      "customer_and_user_exposure": "工作中同时接触机构客户与个人服务对象，对付款、使用和影响决策的角色有混合经验。",
+      "product_and_technology_familiarity": "日常办公软件熟练，智能设备主要靠同事或家人推荐，对技术参数耐心有限。",
+      "household_structure": "有稳定伴侣；子女数2，年龄23、20岁；有约83岁长辈，异地，每年见几次。",
+      "intergenerational_contact": "与2个子女有真实日常接触，年龄为23、20岁。 有一位约83岁的长辈，异地，每年见几次。",
+      "caregiving_and_dependents": "家庭成员总体独立，目前没有持续照护责任",
+      "economic_resources_and_pressure": "家庭财务由伴侣更多管理，本人对日常价格并不总敏感，看到大额账单才会认真比较。 当前岗位为供应链负责人；家庭状态为有稳定伴侣。",
+      "personal_consumption_habits": "习惯先定一个可接受预算，再从两三款里选；不总买最低价，也很少追最新款。",
+      "price_reference_history": "部门采购过约 9 万元的软件、设备或服务，实际使用评价并不完全一致。 为家人付过每月 3500 元的教育、照护或康复服务。",
+      "quality_convenience_tradeoffs": "曾经为省钱买过一件使用麻烦的东西，后来又重新购买；此后在高频用品上更看重省心。",
+      "social_influence_on_choices": "专业人士的意见会明显改变其判断，但不喜欢被销售人员催促。",
+      "communication_and_participation": "表达有条理但略像汇报，被挑战时会停一下再改口。"
+    },
+    "sampling_provenance": {
+      "task_text_seen": false,
+      "schema_relevance_reasons_seen": false,
+      "selected_field_ids": [
+        "age_and_life_stage",
+        "education_and_learning",
+        "career_context",
+        "customer_and_user_exposure",
+        "product_and_technology_familiarity",
+        "household_structure",
+        "intergenerational_contact",
+        "caregiving_and_dependents",
+        "economic_resources_and_pressure",
+        "personal_consumption_habits",
+        "price_reference_history",
+        "quality_convenience_tradeoffs",
+        "social_influence_on_choices",
+        "communication_and_participation"
+      ],
+      "sampler": "deterministic_general_population_priors_v2_faultline"
+    }
+  },
+  {
+    "persona_id": "TBN02",
+    "seed": "20260817-faultline-design-topup:2",
+    "name": "林文清",
+    "surface": {
+      "gender": "female",
+      "age": 55,
+      "edu": "985/211 本科",
+      "edu_first_tier": "985/211 本科",
+      "postgrad": "无",
+      "overseas": {
+        "hasOverseas": false,
+        "destination": "",
+        "duration": ""
+      },
+      "region": "青岛",
+      "industry": "医疗服务",
+      "industry_type": "传统",
+      "design_cell": "E-eng-old"
+    },
+    "behavioral_fingerprint": {
+      "maximizing_satisficing": 0.3,
+      "need_for_cognition": 0.26,
+      "actively_open_minded_thinking": 0.41,
+      "risk_propensity_business": 0.28,
+      "ambiguity_tolerance": 0.69,
+      "regulatory_focus_promotion": 0.36,
+      "consideration_future_consequences": 0.57,
+      "action_orientation": 0.92
+    },
+    "behavioral_directives": {
+      "maximizing_satisficing": "通常先看少数几个顺眼的方案，达到基本要求后便倾向收手。",
+      "need_for_cognition": "愿意想一点，但若很快能形成说得通的判断就不再深挖。",
+      "actively_open_minded_thinking": "证据清楚时能够调整，是否寻找反证取决于事情重要性。",
+      "risk_propensity_business": "偏好风险边界清楚的路径，面对较大波动会退回保守方案。",
+      "ambiguity_tolerance": "在信息不全时也能形成临时判断，并通过行动获取反馈。",
+      "regulatory_focus_promotion": "安全和避免后悔更有驱动力，但机会很清楚时也会向前。",
+      "consideration_future_consequences": "会在短期兑现与长期积累之间寻找折中。",
+      "action_orientation": "行动启动和恢复都很强，阻力反而容易激发持续推进。"
+    },
+    "frozen_facts": {
+      "age_and_life_stage": "55岁，处在职业责任已经较重、个人生活结构相对稳定但仍可能变化的阶段。",
+      "education_and_learning": "第一学历985/211 本科，没有再读学位；专业训练与技术与研发相关或在职业中逐步补齐。",
+      "career_context": "大型民营集团的技术负责人，所在行业为医疗服务，主要职能是技术与研发。",
+      "customer_and_user_exposure": "工作中同时接触机构客户与个人服务对象，对付款、使用和影响决策的角色有混合经验。",
+      "product_and_technology_familiarity": "对软硬件集成和系统可靠性较熟，愿意自己试用新设备。",
+      "household_structure": "有稳定伴侣；子女数1，年龄22岁；主要老人已经去世。",
+      "intergenerational_contact": "与1个子女有真实日常接触，年龄为22岁。 主要长辈已经去世，近年没有持续照护老人。",
+      "caregiving_and_dependents": "家庭成员总体独立，目前没有持续照护责任",
+      "economic_resources_and_pressure": "家庭财务由伴侣更多管理，本人对日常价格并不总敏感，看到大额账单才会认真比较。 当前岗位为技术负责人；家庭状态为有稳定伴侣。",
+      "personal_consumption_habits": "习惯先定一个可接受预算，再从两三款里选；不总买最低价，也很少追最新款。",
+      "price_reference_history": "订阅过每年 400 元的服务，后来因使用频率不足取消或降档。 部门采购过约 10 万元的软件、设备或服务，实际使用评价并不完全一致。",
+      "quality_convenience_tradeoffs": "曾因时间紧直接选了熟悉供应商，结果稳定但价格偏高；本人并不确定当时是否最划算。",
+      "social_influence_on_choices": "同事使用什么会形成参照，不过本人不愿承认自己在跟随。",
+      "communication_and_participation": "课堂上通常先听，不确定时只说半句；真正熟悉的地方会突然讲得很细。"
+    },
+    "sampling_provenance": {
+      "task_text_seen": false,
+      "schema_relevance_reasons_seen": false,
+      "selected_field_ids": [
+        "age_and_life_stage",
+        "education_and_learning",
+        "career_context",
+        "customer_and_user_exposure",
+        "product_and_technology_familiarity",
+        "household_structure",
+        "intergenerational_contact",
+        "caregiving_and_dependents",
+        "economic_resources_and_pressure",
+        "personal_consumption_habits",
+        "price_reference_history",
+        "quality_convenience_tradeoffs",
+        "social_influence_on_choices",
+        "communication_and_participation"
+      ],
+      "sampler": "deterministic_general_population_priors_v2_faultline"
+    }
+  },
+  {
+    "persona_id": "TBN03",
+    "seed": "20260817-faultline-design-topup:3",
+    "name": "宋思远",
+    "surface": {
+      "gender": "female",
+      "age": 58,
+      "edu": "普通本科，海外硕士",
+      "edu_first_tier": "普通本科",
+      "postgrad": "海外硕士",
+      "overseas": {
+        "hasOverseas": true,
+        "destination": "美国",
+        "duration": "2年",
+        "field": "计算机",
+        "ageAt": 34,
+        "firstJobBack": "国有企业"
+      },
+      "region": "郑州",
+      "industry": "医疗器械与数字医疗",
+      "industry_type": "新兴",
+      "design_cell": "E-eng-old"
+    },
+    "behavioral_fingerprint": {
+      "maximizing_satisficing": 0.41,
+      "need_for_cognition": 0.36,
+      "actively_open_minded_thinking": 0.28,
+      "risk_propensity_business": 0.15,
+      "ambiguity_tolerance": 0.37,
+      "regulatory_focus_promotion": 0.06,
+      "consideration_future_consequences": 0.15,
+      "action_orientation": 0.06
+    },
+    "behavioral_directives": {
+      "maximizing_satisficing": "会比较几种选择，但搜索范围随时间和兴趣改变。",
+      "need_for_cognition": "愿意想一点，但若很快能形成说得通的判断就不再深挖。",
+      "actively_open_minded_thinking": "会听不同意见，但更容易保留原先看法。",
+      "risk_propensity_business": "对结果波动非常警惕，宁可放慢也希望避免明显失败。",
+      "ambiguity_tolerance": "能容忍少量未知，但关键环节不清楚时会反复确认。",
+      "regulatory_focus_promotion": "首先想到责任、失误和可能失去什么，目标通常编码成守住底线。",
+      "consideration_future_consequences": "眼前结果权重很高，远期收益很难抵消当前麻烦。",
+      "action_orientation": "拍板后也容易反复回想，受挫时恢复慢，启动常需要外力。"
+    },
+    "frozen_facts": {
+      "age_and_life_stage": "58岁，处在职业责任已经较重、个人生活结构相对稳定但仍可能变化的阶段。",
+      "education_and_learning": "第一学历普通本科；34岁左右去美国读了2年计算机硕士，回国后第一份工作在国有企业；专业训练与运营与供应链相关或在职业中逐步补齐。",
+      "career_context": "创业公司的运营负责人，所在行业为医疗器械与数字医疗，主要职能是运营与供应链。",
+      "customer_and_user_exposure": "工作中同时接触机构客户与个人服务对象，对付款、使用和影响决策的角色有混合经验。",
+      "product_and_technology_familiarity": "会使用常见数字工具，但面对陌生硬件更关注是否容易上手和有没有售后。",
+      "household_structure": "有稳定伴侣；子女数1，年龄25岁；有约86岁长辈，同城不同住。",
+      "intergenerational_contact": "与1个子女有真实日常接触，年龄为25岁。 有一位约86岁的长辈，同城不同住。",
+      "caregiving_and_dependents": "家庭成员总体独立，目前没有持续照护责任",
+      "economic_resources_and_pressure": "收入较稳定，可支配空间尚可；工作忙，常愿意用钱换时间，但对长期固定支出谨慎。 当前岗位为运营负责人；家庭状态为有稳定伴侣。",
+      "personal_consumption_habits": "日常小额购买很快，耐用品会看几轮评价；一旦熟人给出可信建议，常提前停止搜索。",
+      "price_reference_history": "换过一台 4700 元的手机，原先在更便宜和更省心之间犹豫。 为家人付过每月 3900 元的教育、照护或康复服务。",
+      "quality_convenience_tradeoffs": "曾因时间紧直接选了熟悉供应商，结果稳定但价格偏高；本人并不确定当时是否最划算。",
+      "social_influence_on_choices": "家里大件通常与伴侣共同决定，工作用品更听实际使用者。",
+      "communication_and_participation": "课堂上通常先听，不确定时只说半句；真正熟悉的地方会突然讲得很细。"
+    },
+    "sampling_provenance": {
+      "task_text_seen": false,
+      "schema_relevance_reasons_seen": false,
+      "selected_field_ids": [
+        "age_and_life_stage",
+        "education_and_learning",
+        "career_context",
+        "customer_and_user_exposure",
+        "product_and_technology_familiarity",
+        "household_structure",
+        "intergenerational_contact",
+        "caregiving_and_dependents",
+        "economic_resources_and_pressure",
+        "personal_consumption_habits",
+        "price_reference_history",
+        "quality_convenience_tradeoffs",
+        "social_influence_on_choices",
+        "communication_and_participation"
+      ],
+      "sampler": "deterministic_general_population_priors_v2_faultline"
+    }
+  },
+  {
+    "persona_id": "TBN04",
+    "seed": "20260817-faultline-design-topup:4",
+    "name": "罗雅琴",
+    "surface": {
+      "gender": "female",
+      "age": 50,
+      "edu": "普通本科，海外硕士",
+      "edu_first_tier": "普通本科",
+      "postgrad": "海外硕士",
+      "overseas": {
+        "hasOverseas": true,
+        "destination": "香港",
+        "duration": "1年",
+        "field": "商科",
+        "ageAt": 31,
+        "firstJobBack": "自己创业"
+      },
+      "region": "杭州",
+      "industry": "医疗服务",
+      "industry_type": "传统",
+      "design_cell": "E-eng-old"
+    },
+    "behavioral_fingerprint": {
+      "maximizing_satisficing": 0.89,
+      "need_for_cognition": 0.7,
+      "actively_open_minded_thinking": 0.07,
+      "risk_propensity_business": 0.87,
+      "ambiguity_tolerance": 0.29,
+      "regulatory_focus_promotion": 0.22,
+      "consideration_future_consequences": 0.28,
+      "action_orientation": 0.89
+    },
+    "behavioral_directives": {
+      "maximizing_satisficing": "很难接受只是够用，倾向把可见选择查得很全，停手也较晚。",
+      "need_for_cognition": "喜欢追问原因、比较机制，通常愿意投入较多思考。",
+      "actively_open_minded_thinking": "形成第一判断后不太主动找反例，容易把反对意见当成干扰。",
+      "risk_propensity_business": "容易被高上行机会吸引，愿意承担别人觉得过大的经营不确定性。",
+      "ambiguity_tolerance": "能容忍少量未知，但关键环节不清楚时会反复确认。",
+      "regulatory_focus_promotion": "安全和避免后悔更有驱动力，但机会很清楚时也会向前。",
+      "consideration_future_consequences": "偏向先解决近期问题，长期影响通常排在后面。",
+      "action_orientation": "行动启动和恢复都很强，阻力反而容易激发持续推进。"
+    },
+    "frozen_facts": {
+      "age_and_life_stage": "50岁，处在职业责任已经较重、个人生活结构相对稳定但仍可能变化的阶段。",
+      "education_and_learning": "第一学历普通本科；31岁左右去香港读了1年商科硕士，回国后第一份工作在自己创业；专业训练与技术与研发相关或在职业中逐步补齐。",
+      "career_context": "国有控股企业的总工程师，所在行业为医疗服务，主要职能是技术与研发。",
+      "customer_and_user_exposure": "工作中同时接触机构客户与个人服务对象，对付款、使用和影响决策的角色有混合经验。",
+      "product_and_technology_familiarity": "对软硬件集成和系统可靠性较熟，愿意自己试用新设备。",
+      "household_structure": "有稳定伴侣；子女数1，年龄18岁；有约78岁长辈，车程半小时内。",
+      "intergenerational_contact": "与1个子女有真实日常接触，年龄为18岁。 有一位约78岁的长辈，车程半小时内。",
+      "caregiving_and_dependents": "家庭成员总体独立，目前没有持续照护责任",
+      "economic_resources_and_pressure": "没有迫切债务压力，但长期职业不确定性使其保留较高储蓄。 当前岗位为总工程师；家庭状态为有稳定伴侣。",
+      "personal_consumption_habits": "很爱比较参数和评价，有时为了几百元来回犹豫，最后也可能因为省事选较贵的。",
+      "price_reference_history": "部门采购过约 29 万元的软件、设备或服务，实际使用评价并不完全一致。 家里买过一件 4700 元的耐用品，使用了5年。",
+      "quality_convenience_tradeoffs": "给自己买东西常将就，涉及家人安全或团队交付时却容易接受额外花费。",
+      "social_influence_on_choices": "对熟人实际用过的反馈信任很高，常胜过广告和陌生评价。",
+      "communication_and_participation": "喜欢用自己的行业例子绕着讲，有时说着说着才回到问题。"
+    },
+    "sampling_provenance": {
+      "task_text_seen": false,
+      "schema_relevance_reasons_seen": false,
+      "selected_field_ids": [
+        "age_and_life_stage",
+        "education_and_learning",
+        "career_context",
+        "customer_and_user_exposure",
+        "product_and_technology_familiarity",
+        "household_structure",
+        "intergenerational_contact",
+        "caregiving_and_dependents",
+        "economic_resources_and_pressure",
+        "personal_consumption_habits",
+        "price_reference_history",
+        "quality_convenience_tradeoffs",
+        "social_influence_on_choices",
+        "communication_and_participation"
+      ],
+      "sampler": "deterministic_general_population_priors_v2_faultline"
+    }
+  },
+  {
+    "persona_id": "TBN05",
+    "seed": "20260817-faultline-design-topup:5",
+    "name": "梁嘉诚",
+    "surface": {
+      "gender": "male",
+      "age": 58,
+      "edu": "普通本科",
+      "edu_first_tier": "普通本科",
+      "postgrad": "无",
+      "overseas": {
+        "hasOverseas": false,
+        "destination": "",
+        "duration": ""
+      },
+      "region": "北京",
+      "industry": "医疗服务",
+      "industry_type": "传统",
+      "design_cell": "E-eng-old"
+    },
+    "behavioral_fingerprint": {
+      "maximizing_satisficing": 0.07,
+      "need_for_cognition": 0.83,
+      "actively_open_minded_thinking": 0.37,
+      "risk_propensity_business": 0.7,
+      "ambiguity_tolerance": 0.13,
+      "regulatory_focus_promotion": 0.1,
+      "consideration_future_consequences": 0.38,
+      "action_orientation": 0.36
+    },
+    "behavioral_directives": {
+      "maximizing_satisficing": "只要遇到一个能过自己底线的方案就容易停下来，不太愿意继续翻找。",
+      "need_for_cognition": "面对复杂问题会自发拆解、验证和反复推演，即使没有人要求。",
+      "actively_open_minded_thinking": "会听不同意见，但更容易保留原先看法。",
+      "risk_propensity_business": "只要潜在收益足够，会接受较明显的结果波动和试错。",
+      "ambiguity_tolerance": "信息缺口会让其明显停滞，倾向等规则和概率更清楚再行动。",
+      "regulatory_focus_promotion": "首先想到责任、失误和可能失去什么，目标通常编码成守住底线。",
+      "consideration_future_consequences": "偏向先解决近期问题，长期影响通常排在后面。",
+      "action_orientation": "决定后能启动，但遇到阻力容易停下来重新考虑。"
+    },
+    "frozen_facts": {
+      "age_and_life_stage": "58岁，处在职业责任已经较重、个人生活结构相对稳定但仍可能变化的阶段。",
+      "education_and_learning": "第一学历普通本科，没有再读学位；专业训练与运营与供应链相关或在职业中逐步补齐。",
+      "career_context": "创业公司的运营中心负责人，所在行业为医疗服务，主要职能是运营与供应链。",
+      "customer_and_user_exposure": "工作中同时接触机构客户与个人服务对象，对付款、使用和影响决策的角色有混合经验。",
+      "product_and_technology_familiarity": "对新设备兴趣一般，能不换就不换，必要时会请熟人帮忙挑。",
+      "household_structure": "有稳定伴侣；子女数2，年龄29、23岁；主要老人已经去世。",
+      "intergenerational_contact": "与2个子女有真实日常接触，年龄为29、23岁。 主要长辈已经去世，近年没有持续照护老人。",
+      "caregiving_and_dependents": "本人承担日常安排和关键决定",
+      "economic_resources_and_pressure": "近两年承担家庭住房或老人医疗支出，金额较大时会明显犹豫。 当前岗位为运营中心负责人；家庭状态为有稳定伴侣。",
+      "personal_consumption_habits": "很爱比较参数和评价，有时为了几百元来回犹豫，最后也可能因为省事选较贵的。",
+      "price_reference_history": "订阅过每年 800 元的服务，后来因使用频率不足取消或降档。 部门采购过约 56 万元的软件、设备或服务，实际使用评价并不完全一致。",
+      "quality_convenience_tradeoffs": "曾因时间紧直接选了熟悉供应商，结果稳定但价格偏高；本人并不确定当时是否最划算。",
+      "social_influence_on_choices": "专业人士的意见会明显改变其判断，但不喜欢被销售人员催促。",
+      "communication_and_participation": "表达有条理但略像汇报，被挑战时会停一下再改口。"
+    },
+    "sampling_provenance": {
+      "task_text_seen": false,
+      "schema_relevance_reasons_seen": false,
+      "selected_field_ids": [
+        "age_and_life_stage",
+        "education_and_learning",
+        "career_context",
+        "customer_and_user_exposure",
+        "product_and_technology_familiarity",
+        "household_structure",
+        "intergenerational_contact",
+        "caregiving_and_dependents",
+        "economic_resources_and_pressure",
+        "personal_consumption_habits",
+        "price_reference_history",
+        "quality_convenience_tradeoffs",
+        "social_influence_on_choices",
+        "communication_and_participation"
+      ],
+      "sampler": "deterministic_general_population_priors_v2_faultline"
+    }
+  },
+  {
+    "persona_id": "TBN06",
+    "seed": "20260817-faultline-design-topup:6",
+    "name": "罗思远",
+    "surface": {
+      "gender": "female",
+      "age": 50,
+      "edu": "普通本科",
+      "edu_first_tier": "普通本科",
+      "postgrad": "无",
+      "overseas": {
+        "hasOverseas": false,
+        "destination": "",
+        "duration": ""
+      },
+      "region": "杭州",
+      "industry": "医疗器械与数字医疗",
+      "industry_type": "新兴",
+      "design_cell": "E-eng-old"
+    },
+    "behavioral_fingerprint": {
+      "maximizing_satisficing": 0.69,
+      "need_for_cognition": 0.36,
+      "actively_open_minded_thinking": 0.11,
+      "risk_propensity_business": 0.63,
+      "ambiguity_tolerance": 0.63,
+      "regulatory_focus_promotion": 0.64,
+      "consideration_future_consequences": 0.19,
+      "action_orientation": 0.77
+    },
+    "behavioral_directives": {
+      "maximizing_satisficing": "常担心还有更合适的选项，会主动扩大搜索并反复比较。",
+      "need_for_cognition": "愿意想一点，但若很快能形成说得通的判断就不再深挖。",
+      "actively_open_minded_thinking": "形成第一判断后不太主动找反例，容易把反对意见当成干扰。",
+      "risk_propensity_business": "只要潜在收益足够，会接受较明显的结果波动和试错。",
+      "ambiguity_tolerance": "在信息不全时也能形成临时判断，并通过行动获取反馈。",
+      "regulatory_focus_promotion": "更容易被成长、成就和向上机会激活，停滞会令其不安。",
+      "consideration_future_consequences": "眼前结果权重很高，远期收益很难抵消当前麻烦。",
+      "action_orientation": "决定后会很快转入行动，受挫后能调整并继续。"
+    },
+    "frozen_facts": {
+      "age_and_life_stage": "50岁，处在职业责任已经较重、个人生活结构相对稳定但仍可能变化的阶段。",
+      "education_and_learning": "第一学历普通本科，没有再读学位；专业训练与运营与供应链相关或在职业中逐步补齐。",
+      "career_context": "民营成长型企业的运营负责人，所在行业为医疗器械与数字医疗，主要职能是运营与供应链。",
+      "customer_and_user_exposure": "平时更多通过合作机构接触最终使用者，对两端信息都有经验但并不完整。",
+      "product_and_technology_familiarity": "日常办公软件熟练，智能设备主要靠同事或家人推荐，对技术参数耐心有限。",
+      "household_structure": "有稳定伴侣；子女数0；主要老人已经去世。",
+      "intergenerational_contact": "没有子女，与儿童接触很少。 主要长辈已经去世，近年没有持续照护老人。",
+      "caregiving_and_dependents": "家庭成员总体独立，目前没有持续照护责任",
+      "economic_resources_and_pressure": "家庭财务由伴侣更多管理，本人对日常价格并不总敏感，看到大额账单才会认真比较。 当前岗位为运营负责人；家庭状态为有稳定伴侣。",
+      "personal_consumption_habits": "很爱比较参数和评价，有时为了几百元来回犹豫，最后也可能因为省事选较贵的。",
+      "price_reference_history": "买过一件 1200 元的小型智能设备，有时常用，有时很快闲置。 换过一台 6200 元的手机，原先在更便宜和更省心之间犹豫。",
+      "quality_convenience_tradeoffs": "曾经为所谓高级功能多付钱，结果大部分功能没有用到；后来会先问实际使用者。",
+      "social_influence_on_choices": "家里大件通常与伴侣共同决定，工作用品更听实际使用者。",
+      "communication_and_participation": "话多、反应快，容易接别人的话，也可能把讨论带偏。"
+    },
+    "sampling_provenance": {
+      "task_text_seen": false,
+      "schema_relevance_reasons_seen": false,
+      "selected_field_ids": [
+        "age_and_life_stage",
+        "education_and_learning",
+        "career_context",
+        "customer_and_user_exposure",
+        "product_and_technology_familiarity",
+        "household_structure",
+        "intergenerational_contact",
+        "caregiving_and_dependents",
+        "economic_resources_and_pressure",
+        "personal_consumption_habits",
+        "price_reference_history",
+        "quality_convenience_tradeoffs",
+        "social_influence_on_choices",
+        "communication_and_participation"
+      ],
+      "sampler": "deterministic_general_population_priors_v2_faultline"
+    }
+  },
+  {
+    "persona_id": "TBN07",
+    "seed": "20260817-faultline-design-topup:7",
+    "name": "高志远",
+    "surface": {
+      "gender": "male",
+      "age": 56,
+      "edu": "普通本科，海外硕士",
+      "edu_first_tier": "普通本科",
+      "postgrad": "海外硕士",
+      "overseas": {
+        "hasOverseas": true,
+        "destination": "香港",
+        "duration": "2年",
+        "field": "公共管理",
+        "ageAt": 32,
+        "firstJobBack": "外资企业中国区"
+      },
+      "region": "成都",
+      "industry": "医疗器械与数字医疗",
+      "industry_type": "新兴",
+      "design_cell": "E-eng-old"
+    },
+    "behavioral_fingerprint": {
+      "maximizing_satisficing": 0.44,
+      "need_for_cognition": 0.93,
+      "actively_open_minded_thinking": 0.2,
+      "risk_propensity_business": 0.71,
+      "ambiguity_tolerance": 0.57,
+      "regulatory_focus_promotion": 0.33,
+      "consideration_future_consequences": 0.94,
+      "action_orientation": 0.11
+    },
+    "behavioral_directives": {
+      "maximizing_satisficing": "会比较几种选择，但搜索范围随时间和兴趣改变。",
+      "need_for_cognition": "面对复杂问题会自发拆解、验证和反复推演，即使没有人要求。",
+      "actively_open_minded_thinking": "会听不同意见，但更容易保留原先看法。",
+      "risk_propensity_business": "只要潜在收益足够，会接受较明显的结果波动和试错。",
+      "ambiguity_tolerance": "会边做边补信息，同时为未知部分保留调整余地。",
+      "regulatory_focus_promotion": "安全和避免后悔更有驱动力，但机会很清楚时也会向前。",
+      "consideration_future_consequences": "会持续追踪多年后的后果，必要时牺牲明显的眼前收益。",
+      "action_orientation": "拍板后也容易反复回想，受挫时恢复慢，启动常需要外力。"
+    },
+    "frozen_facts": {
+      "age_and_life_stage": "56岁，处在职业责任已经较重、个人生活结构相对稳定但仍可能变化的阶段。",
+      "education_and_learning": "第一学历普通本科；32岁左右去香港读了2年公共管理硕士，回国后第一份工作在外资企业中国区；专业训练与运营与供应链相关或在职业中逐步补齐。",
+      "career_context": "外资企业中国区的供应链负责人，所在行业为医疗器械与数字医疗，主要职能是运营与供应链。",
+      "customer_and_user_exposure": "平时更多通过合作机构接触最终使用者，对两端信息都有经验但并不完整。",
+      "product_and_technology_familiarity": "对新设备兴趣一般，能不换就不换，必要时会请熟人帮忙挑。",
+      "household_structure": "离异，目前单身；子女数2，年龄29、22岁；有约82岁长辈，同住。",
+      "intergenerational_contact": "与2个子女有真实日常接触，年龄为29、22岁。 有一位约82岁的长辈，同住。",
+      "caregiving_and_dependents": "家庭成员总体独立，目前没有持续照护责任",
+      "economic_resources_and_pressure": "家庭财务由伴侣更多管理，本人对日常价格并不总敏感，看到大额账单才会认真比较。 当前岗位为供应链负责人；家庭状态为离异，目前单身。",
+      "personal_consumption_habits": "日常小额购买很快，耐用品会看几轮评价；一旦熟人给出可信建议，常提前停止搜索。",
+      "price_reference_history": "部门采购过约 79 万元的软件、设备或服务，实际使用评价并不完全一致。 为家人付过每月 5300 元的教育、照护或康复服务。",
+      "quality_convenience_tradeoffs": "有一件价格不高的东西意外用了很多年，使其不再简单把贵和可靠画等号。",
+      "social_influence_on_choices": "习惯自己做决定，除非家人明确反对，否则很少重新比较。",
+      "communication_and_participation": "话多、反应快，容易接别人的话，也可能把讨论带偏。"
+    },
+    "sampling_provenance": {
+      "task_text_seen": false,
+      "schema_relevance_reasons_seen": false,
+      "selected_field_ids": [
+        "age_and_life_stage",
+        "education_and_learning",
+        "career_context",
+        "customer_and_user_exposure",
+        "product_and_technology_familiarity",
+        "household_structure",
+        "intergenerational_contact",
+        "caregiving_and_dependents",
+        "economic_resources_and_pressure",
+        "personal_consumption_habits",
+        "price_reference_history",
+        "quality_convenience_tradeoffs",
+        "social_influence_on_choices",
+        "communication_and_participation"
+      ],
+      "sampler": "deterministic_general_population_priors_v2_faultline"
+    }
+  },
+  {
+    "persona_id": "TBN08",
+    "seed": "20260817-faultline-design-topup:8",
+    "name": "许建平",
+    "surface": {
+      "gender": "male",
+      "age": 34,
+      "edu": "985/211 本科，海外硕士",
+      "edu_first_tier": "985/211 本科",
+      "postgrad": "海外硕士",
+      "overseas": {
+        "hasOverseas": true,
+        "destination": "新加坡",
+        "duration": "1年",
+        "field": "金融",
+        "ageAt": 27,
+        "firstJobBack": "外资企业中国区"
+      },
+      "region": "西安",
+      "industry": "跨境电商",
+      "industry_type": "新兴",
+      "design_cell": "C-mkt-young"
+    },
+    "behavioral_fingerprint": {
+      "maximizing_satisficing": 0.59,
+      "need_for_cognition": 0.25,
+      "actively_open_minded_thinking": 0.56,
+      "risk_propensity_business": 0.43,
+      "ambiguity_tolerance": 0.71,
+      "regulatory_focus_promotion": 0.22,
+      "consideration_future_consequences": 0.08,
+      "action_orientation": 0.6
+    },
+    "behavioral_directives": {
+      "maximizing_satisficing": "会比较几种选择，但搜索范围随时间和兴趣改变。",
+      "need_for_cognition": "愿意想一点，但若很快能形成说得通的判断就不再深挖。",
+      "actively_open_minded_thinking": "证据清楚时能够调整，是否寻找反证取决于事情重要性。",
+      "risk_propensity_business": "是否冒险取决于熟悉度、资源余量和退出机会。",
+      "ambiguity_tolerance": "在信息不全时也能形成临时判断，并通过行动获取反馈。",
+      "regulatory_focus_promotion": "安全和避免后悔更有驱动力，但机会很清楚时也会向前。",
+      "consideration_future_consequences": "眼前结果权重很高，远期收益很难抵消当前麻烦。",
+      "action_orientation": "决定后会很快转入行动，受挫后能调整并继续。"
+    },
+    "frozen_facts": {
+      "age_and_life_stage": "34岁，处在职业责任已经较重、个人生活结构相对稳定但仍可能变化的阶段。",
+      "education_and_learning": "第一学历985/211 本科；27岁左右去新加坡读了1年金融硕士，回国后第一份工作在外资企业中国区；专业训练与市场与品牌相关或在职业中逐步补齐。",
+      "career_context": "大型民营集团的品牌负责人，所在行业为跨境电商，主要职能是市场与品牌。",
+      "customer_and_user_exposure": "平时更多通过合作机构接触最终使用者，对两端信息都有经验但并不完整。",
+      "product_and_technology_familiarity": "对新设备兴趣一般，能不换就不换，必要时会请熟人帮忙挑。",
+      "household_structure": "单身；子女数1，年龄2岁；主要老人已经去世。",
+      "intergenerational_contact": "与1个子女有真实日常接触，年龄为2岁。 主要长辈已经去世，近年没有持续照护老人。",
+      "caregiving_and_dependents": "主要由伴侣或兄弟姐妹照料，本人只在紧急时参与",
+      "economic_resources_and_pressure": "近两年承担家庭住房或老人医疗支出，金额较大时会明显犹豫。 当前岗位为品牌负责人；家庭状态为单身。",
+      "personal_consumption_habits": "工作太忙时会让伴侣或同事代选，自己只确认几个底线，买后不爱退换。",
+      "price_reference_history": "买过一件 1500 元的小型智能设备，有时常用，有时很快闲置。 家里买过一件 7100 元的耐用品，使用了7年。",
+      "quality_convenience_tradeoffs": "有一件价格不高的东西意外用了很多年，使其不再简单把贵和可靠画等号。",
+      "social_influence_on_choices": "专业人士的意见会明显改变其判断，但不喜欢被销售人员催促。",
+      "communication_and_participation": "课堂上通常先听，不确定时只说半句；真正熟悉的地方会突然讲得很细。"
+    },
+    "sampling_provenance": {
+      "task_text_seen": false,
+      "schema_relevance_reasons_seen": false,
+      "selected_field_ids": [
+        "age_and_life_stage",
+        "education_and_learning",
+        "career_context",
+        "customer_and_user_exposure",
+        "product_and_technology_familiarity",
+        "household_structure",
+        "intergenerational_contact",
+        "caregiving_and_dependents",
+        "economic_resources_and_pressure",
+        "personal_consumption_habits",
+        "price_reference_history",
+        "quality_convenience_tradeoffs",
+        "social_influence_on_choices",
+        "communication_and_participation"
+      ],
+      "sampler": "deterministic_general_population_priors_v2_faultline"
+    }
+  },
+  {
+    "persona_id": "TBN09",
+    "seed": "20260817-faultline-design-topup:9",
+    "name": "罗雅琴",
+    "surface": {
+      "gender": "female",
+      "age": 36,
+      "edu": "普通本科，国内硕士",
+      "edu_first_tier": "普通本科",
+      "postgrad": "国内硕士",
+      "overseas": {
+        "hasOverseas": false,
+        "destination": "",
+        "duration": ""
+      },
+      "region": "苏州",
+      "industry": "连锁零售",
+      "industry_type": "传统",
+      "design_cell": "C-mkt-young"
+    },
+    "behavioral_fingerprint": {
+      "maximizing_satisficing": 0.36,
+      "need_for_cognition": 0.77,
+      "actively_open_minded_thinking": 0.18,
+      "risk_propensity_business": 0.27,
+      "ambiguity_tolerance": 0.93,
+      "regulatory_focus_promotion": 0.33,
+      "consideration_future_consequences": 0.73,
+      "action_orientation": 0.3
+    },
+    "behavioral_directives": {
+      "maximizing_satisficing": "通常先看少数几个顺眼的方案，达到基本要求后便倾向收手。",
+      "need_for_cognition": "喜欢追问原因、比较机制，通常愿意投入较多思考。",
+      "actively_open_minded_thinking": "形成第一判断后不太主动找反例，容易把反对意见当成干扰。",
+      "risk_propensity_business": "偏好风险边界清楚的路径，面对较大波动会退回保守方案。",
+      "ambiguity_tolerance": "对模糊状态适应很快，愿意先进入情境再逐步定义问题。",
+      "regulatory_focus_promotion": "安全和避免后悔更有驱动力，但机会很清楚时也会向前。",
+      "consideration_future_consequences": "愿意为未来结果承担近期成本，不轻易透支长期关系或能力。",
+      "action_orientation": "决定后能启动，但遇到阻力容易停下来重新考虑。"
+    },
+    "frozen_facts": {
+      "age_and_life_stage": "36岁，处在职业责任已经较重、个人生活结构相对稳定但仍可能变化的阶段。",
+      "education_and_learning": "第一学历普通本科，之后在国内读了硕士；专业训练与产品与业务相关或在职业中逐步补齐。",
+      "career_context": "创业公司的产品负责人，所在行业为连锁零售，主要职能是产品与业务。",
+      "customer_and_user_exposure": "长期接触个人消费者和渠道反馈，也见过实际使用者与付款家人意见不同。",
+      "product_and_technology_familiarity": "对软硬件集成和系统可靠性较熟，愿意自己试用新设备。",
+      "household_structure": "有稳定伴侣；子女数0；有约61岁长辈，同城不同住。",
+      "intergenerational_contact": "没有子女，与儿童接触很少。 有一位约61岁的长辈，同城不同住。",
+      "caregiving_and_dependents": "主要由伴侣或兄弟姐妹照料，本人只在紧急时参与",
+      "economic_resources_and_pressure": "家庭财务由伴侣更多管理，本人对日常价格并不总敏感，看到大额账单才会认真比较。 当前岗位为产品负责人；家庭状态为有稳定伴侣。",
+      "personal_consumption_habits": "对自己较节省，对家人或团队用品更愿意多付；是否比价取决于当时有没有时间。",
+      "price_reference_history": "买过一件 1300 元的小型智能设备，有时常用，有时很快闲置。 家里买过一件 7200 元的耐用品，使用了7年。",
+      "quality_convenience_tradeoffs": "曾经为省钱买过一件使用麻烦的东西，后来又重新购买；此后在高频用品上更看重省心。",
+      "social_influence_on_choices": "习惯自己做决定，除非家人明确反对，否则很少重新比较。",
+      "communication_and_participation": "话多、反应快，容易接别人的话，也可能把讨论带偏。"
+    },
+    "sampling_provenance": {
+      "task_text_seen": false,
+      "schema_relevance_reasons_seen": false,
+      "selected_field_ids": [
+        "age_and_life_stage",
+        "education_and_learning",
+        "career_context",
+        "customer_and_user_exposure",
+        "product_and_technology_familiarity",
+        "household_structure",
+        "intergenerational_contact",
+        "caregiving_and_dependents",
+        "economic_resources_and_pressure",
+        "personal_consumption_habits",
+        "price_reference_history",
+        "quality_convenience_tradeoffs",
+        "social_influence_on_choices",
+        "communication_and_participation"
+      ],
+      "sampler": "deterministic_general_population_priors_v2_faultline"
+    }
+  },
+  {
+    "persona_id": "TBN10",
+    "seed": "20260817-faultline-design-topup:10",
+    "name": "徐思远",
+    "surface": {
+      "gender": "female",
+      "age": 35,
+      "edu": "985/211 本科，国内硕士",
+      "edu_first_tier": "985/211 本科",
+      "postgrad": "国内硕士",
+      "overseas": {
+        "hasOverseas": false,
+        "destination": "",
+        "duration": ""
+      },
+      "region": "上海",
+      "industry": "连锁零售",
+      "industry_type": "传统",
+      "design_cell": "C-mkt-young"
+    },
+    "behavioral_fingerprint": {
+      "maximizing_satisficing": 0.05,
+      "need_for_cognition": 0.43,
+      "actively_open_minded_thinking": 0.65,
+      "risk_propensity_business": 0.81,
+      "ambiguity_tolerance": 0.51,
+      "regulatory_focus_promotion": 0.25,
+      "consideration_future_consequences": 0.26,
+      "action_orientation": 0.35
+    },
+    "behavioral_directives": {
+      "maximizing_satisficing": "只要遇到一个能过自己底线的方案就容易停下来，不太愿意继续翻找。",
+      "need_for_cognition": "重要问题会认真分析，普通问题更多依赖经验。",
+      "actively_open_minded_thinking": "会主动问自己可能错在哪里，并认真处理可信的反对意见。",
+      "risk_propensity_business": "容易被高上行机会吸引，愿意承担别人觉得过大的经营不确定性。",
+      "ambiguity_tolerance": "会边做边补信息，同时为未知部分保留调整余地。",
+      "regulatory_focus_promotion": "安全和避免后悔更有驱动力，但机会很清楚时也会向前。",
+      "consideration_future_consequences": "偏向先解决近期问题，长期影响通常排在后面。",
+      "action_orientation": "决定后能启动，但遇到阻力容易停下来重新考虑。"
+    },
+    "frozen_facts": {
+      "age_and_life_stage": "35岁，处在职业责任已经较重、个人生活结构相对稳定但仍可能变化的阶段。",
+      "education_and_learning": "第一学历985/211 本科，之后在国内读了硕士；专业训练与市场与品牌相关或在职业中逐步补齐。",
+      "career_context": "外资企业中国区的增长负责人，所在行业为连锁零售，主要职能是市场与品牌。",
+      "customer_and_user_exposure": "长期接触个人消费者和渠道反馈，也见过实际使用者与付款家人意见不同。",
+      "product_and_technology_familiarity": "对新设备兴趣一般，能不换就不换，必要时会请熟人帮忙挑。",
+      "household_structure": "有稳定伴侣；子女数0；有约62岁长辈，同住。",
+      "intergenerational_contact": "没有子女，偶尔在亲友聚会接触孩子，但不熟悉日常照料。 有一位约62岁的长辈，同住。",
+      "caregiving_and_dependents": "本人承担日常安排和关键决定",
+      "economic_resources_and_pressure": "收入较稳定，可支配空间尚可；工作忙，常愿意用钱换时间，但对长期固定支出谨慎。 当前岗位为增长负责人；家庭状态为有稳定伴侣。",
+      "personal_consumption_habits": "很爱比较参数和评价，有时为了几百元来回犹豫，最后也可能因为省事选较贵的。",
+      "price_reference_history": "部门采购过约 29 万元的软件、设备或服务，实际使用评价并不完全一致。 买过一件 1200 元的小型智能设备，有时常用，有时很快闲置。",
+      "quality_convenience_tradeoffs": "给自己买东西常将就，涉及家人安全或团队交付时却容易接受额外花费。",
+      "social_influence_on_choices": "对熟人实际用过的反馈信任很高，常胜过广告和陌生评价。",
+      "communication_and_participation": "喜欢用自己的行业例子绕着讲，有时说着说着才回到问题。"
+    },
+    "sampling_provenance": {
+      "task_text_seen": false,
+      "schema_relevance_reasons_seen": false,
+      "selected_field_ids": [
+        "age_and_life_stage",
+        "education_and_learning",
+        "career_context",
+        "customer_and_user_exposure",
+        "product_and_technology_familiarity",
+        "household_structure",
+        "intergenerational_contact",
+        "caregiving_and_dependents",
+        "economic_resources_and_pressure",
+        "personal_consumption_habits",
+        "price_reference_history",
+        "quality_convenience_tradeoffs",
+        "social_influence_on_choices",
+        "communication_and_participation"
+      ],
+      "sampler": "deterministic_general_population_priors_v2_faultline"
+    }
+  },
+  {
+    "persona_id": "TBN11",
+    "seed": "20260817-faultline-design-topup:11",
+    "name": "宋雅琴",
+    "surface": {
+      "gender": "female",
+      "age": 37,
+      "edu": "普通本科",
+      "edu_first_tier": "普通本科",
+      "postgrad": "无",
+      "overseas": {
+        "hasOverseas": false,
+        "destination": "",
+        "duration": ""
+      },
+      "region": "深圳",
+      "industry": "连锁零售",
+      "industry_type": "传统",
+      "design_cell": "C-mkt-young"
+    },
+    "behavioral_fingerprint": {
+      "maximizing_satisficing": 0.58,
+      "need_for_cognition": 0.78,
+      "actively_open_minded_thinking": 0.59,
+      "risk_propensity_business": 0.12,
+      "ambiguity_tolerance": 0.16,
+      "regulatory_focus_promotion": 0.87,
+      "consideration_future_consequences": 0.24,
+      "action_orientation": 0.74
+    },
+    "behavioral_directives": {
+      "maximizing_satisficing": "会比较几种选择，但搜索范围随时间和兴趣改变。",
+      "need_for_cognition": "喜欢追问原因、比较机制，通常愿意投入较多思考。",
+      "actively_open_minded_thinking": "证据清楚时能够调整，是否寻找反证取决于事情重要性。",
+      "risk_propensity_business": "对结果波动非常警惕，宁可放慢也希望避免明显失败。",
+      "ambiguity_tolerance": "信息缺口会让其明显停滞，倾向等规则和概率更清楚再行动。",
+      "regulatory_focus_promotion": "强烈用突破和获得来理解成功，压力下仍倾向寻找向上的动作。",
+      "consideration_future_consequences": "偏向先解决近期问题，长期影响通常排在后面。",
+      "action_orientation": "决定后会很快转入行动，受挫后能调整并继续。"
+    },
+    "frozen_facts": {
+      "age_and_life_stage": "37岁，处在职业责任已经较重、个人生活结构相对稳定但仍可能变化的阶段。",
+      "education_and_learning": "第一学历普通本科，没有再读学位；专业训练与市场与品牌相关或在职业中逐步补齐。",
+      "career_context": "国有控股企业的品牌负责人，所在行业为连锁零售，主要职能是市场与品牌。",
+      "customer_and_user_exposure": "长期接触个人消费者和渠道反馈，也见过实际使用者与付款家人意见不同。",
+      "product_and_technology_familiarity": "对新设备兴趣一般，能不换就不换，必要时会请熟人帮忙挑。",
+      "household_structure": "离异，目前单身；子女数1，年龄11岁；主要老人已经去世。",
+      "intergenerational_contact": "与1个子女有真实日常接触，年龄为11岁。 主要长辈已经去世，近年没有持续照护老人。",
+      "caregiving_and_dependents": "家庭成员总体独立，目前没有持续照护责任",
+      "economic_resources_and_pressure": "收入较稳定，可支配空间尚可；工作忙，常愿意用钱换时间，但对长期固定支出谨慎。 当前岗位为品牌负责人；家庭状态为离异，目前单身。",
+      "personal_consumption_habits": "工作太忙时会让伴侣或同事代选，自己只确认几个底线，买后不爱退换。",
+      "price_reference_history": "买过一件 1600 元的小型智能设备，有时常用，有时很快闲置。 订阅过每年 1200 元的服务，后来因使用频率不足取消或降档。",
+      "quality_convenience_tradeoffs": "曾经为所谓高级功能多付钱，结果大部分功能没有用到；后来会先问实际使用者。",
+      "social_influence_on_choices": "习惯自己做决定，除非家人明确反对，否则很少重新比较。",
+      "communication_and_participation": "话多、反应快，容易接别人的话，也可能把讨论带偏。"
+    },
+    "sampling_provenance": {
+      "task_text_seen": false,
+      "schema_relevance_reasons_seen": false,
+      "selected_field_ids": [
+        "age_and_life_stage",
+        "education_and_learning",
+        "career_context",
+        "customer_and_user_exposure",
+        "product_and_technology_familiarity",
+        "household_structure",
+        "intergenerational_contact",
+        "caregiving_and_dependents",
+        "economic_resources_and_pressure",
+        "personal_consumption_habits",
+        "price_reference_history",
+        "quality_convenience_tradeoffs",
+        "social_influence_on_choices",
+        "communication_and_participation"
+      ],
+      "sampler": "deterministic_general_population_priors_v2_faultline"
+    }
+  },
+  {
+    "persona_id": "TBN12",
+    "seed": "20260817-faultline-design-topup:12",
+    "name": "李启航",
+    "surface": {
+      "gender": "male",
+      "age": 37,
+      "edu": "大专",
+      "edu_first_tier": "大专",
+      "postgrad": "无",
+      "overseas": {
+        "hasOverseas": false,
+        "destination": "",
+        "duration": ""
+      },
+      "region": "青岛",
+      "industry": "跨境电商",
+      "industry_type": "新兴",
+      "design_cell": "C-mkt-young"
+    },
+    "behavioral_fingerprint": {
+      "maximizing_satisficing": 0.87,
+      "need_for_cognition": 0.58,
+      "actively_open_minded_thinking": 0.06,
+      "risk_propensity_business": 0.52,
+      "ambiguity_tolerance": 0.3,
+      "regulatory_focus_promotion": 0.52,
+      "consideration_future_consequences": 0.4,
+      "action_orientation": 0.32
+    },
+    "behavioral_directives": {
+      "maximizing_satisficing": "很难接受只是够用，倾向把可见选择查得很全，停手也较晚。",
+      "need_for_cognition": "重要问题会认真分析，普通问题更多依赖经验。",
+      "actively_open_minded_thinking": "形成第一判断后不太主动找反例，容易把反对意见当成干扰。",
+      "risk_propensity_business": "是否冒险取决于熟悉度、资源余量和退出机会。",
+      "ambiguity_tolerance": "能容忍少量未知，但关键环节不清楚时会反复确认。",
+      "regulatory_focus_promotion": "进取与防守随情境切换，没有固定一边。",
+      "consideration_future_consequences": "会在短期兑现与长期积累之间寻找折中。",
+      "action_orientation": "决定后能启动，但遇到阻力容易停下来重新考虑。"
+    },
+    "frozen_facts": {
+      "age_and_life_stage": "37岁，处在职业责任已经较重、个人生活结构相对稳定但仍可能变化的阶段。",
+      "education_and_learning": "第一学历大专，没有再读学位；专业训练与销售与渠道相关或在职业中逐步补齐。",
+      "career_context": "民营成长型企业的商业负责人，所在行业为跨境电商，主要职能是销售与渠道。",
+      "customer_and_user_exposure": "平时更多通过合作机构接触最终使用者，对两端信息都有经验但并不完整。",
+      "product_and_technology_familiarity": "日常办公软件熟练，智能设备主要靠同事或家人推荐，对技术参数耐心有限。",
+      "household_structure": "有稳定伴侣；子女数0；有约60岁长辈，同住。",
+      "intergenerational_contact": "没有子女，偶尔在亲友聚会接触孩子，但不熟悉日常照料。 有一位约60岁的长辈，同住。",
+      "caregiving_and_dependents": "家庭成员总体独立，目前没有持续照护责任",
+      "economic_resources_and_pressure": "家庭财务由伴侣更多管理，本人对日常价格并不总敏感，看到大额账单才会认真比较。 当前岗位为商业负责人；家庭状态为有稳定伴侣。",
+      "personal_consumption_habits": "很爱比较参数和评价，有时为了几百元来回犹豫，最后也可能因为省事选较贵的。",
+      "price_reference_history": "为家人付过每月 4900 元的教育、照护或康复服务。 买过一件 400 元的小型智能设备，有时常用，有时很快闲置。",
+      "quality_convenience_tradeoffs": "曾经为所谓高级功能多付钱，结果大部分功能没有用到；后来会先问实际使用者。",
+      "social_influence_on_choices": "专业人士的意见会明显改变其判断，但不喜欢被销售人员催促。",
+      "communication_and_participation": "话多、反应快，容易接别人的话，也可能把讨论带偏。"
+    },
+    "sampling_provenance": {
+      "task_text_seen": false,
+      "schema_relevance_reasons_seen": false,
+      "selected_field_ids": [
+        "age_and_life_stage",
+        "education_and_learning",
+        "career_context",
+        "customer_and_user_exposure",
+        "product_and_technology_familiarity",
+        "household_structure",
+        "intergenerational_contact",
+        "caregiving_and_dependents",
+        "economic_resources_and_pressure",
+        "personal_consumption_habits",
+        "price_reference_history",
+        "quality_convenience_tradeoffs",
+        "social_influence_on_choices",
+        "communication_and_participation"
+      ],
+      "sampler": "deterministic_general_population_priors_v2_faultline"
+    }
+  },
+  {
+    "persona_id": "TBN13",
+    "seed": "20260817-faultline-design-topup:13",
+    "name": "许俊峰",
+    "surface": {
+      "gender": "male",
+      "age": 35,
+      "edu": "985/211 本科",
+      "edu_first_tier": "985/211 本科",
+      "postgrad": "无",
+      "overseas": {
+        "hasOverseas": false,
+        "destination": "",
+        "duration": ""
+      },
+      "region": "上海",
+      "industry": "人工智能应用",
+      "industry_type": "新兴",
+      "design_cell": "C-mkt-young"
+    },
+    "behavioral_fingerprint": {
+      "maximizing_satisficing": 0.24,
+      "need_for_cognition": 0.88,
+      "actively_open_minded_thinking": 0.92,
+      "risk_propensity_business": 0.73,
+      "ambiguity_tolerance": 0.59,
+      "regulatory_focus_promotion": 0.25,
+      "consideration_future_consequences": 0.87,
+      "action_orientation": 0.71
+    },
+    "behavioral_directives": {
+      "maximizing_satisficing": "通常先看少数几个顺眼的方案，达到基本要求后便倾向收手。",
+      "need_for_cognition": "面对复杂问题会自发拆解、验证和反复推演，即使没有人要求。",
+      "actively_open_minded_thinking": "习惯邀请最强反方；新证据充分时，即使难堪也会明显更新判断。",
+      "risk_propensity_business": "只要潜在收益足够，会接受较明显的结果波动和试错。",
+      "ambiguity_tolerance": "会边做边补信息，同时为未知部分保留调整余地。",
+      "regulatory_focus_promotion": "安全和避免后悔更有驱动力，但机会很清楚时也会向前。",
+      "consideration_future_consequences": "会持续追踪多年后的后果，必要时牺牲明显的眼前收益。",
+      "action_orientation": "决定后会很快转入行动，受挫后能调整并继续。"
+    },
+    "frozen_facts": {
+      "age_and_life_stage": "35岁，处在职业责任已经较重、个人生活结构相对稳定但仍可能变化的阶段。",
+      "education_and_learning": "第一学历985/211 本科，没有再读学位；专业训练与产品与业务相关或在职业中逐步补齐。",
+      "career_context": "大型民营集团的产品事业部负责人，所在行业为人工智能应用，主要职能是产品与业务。",
+      "customer_and_user_exposure": "平时更多通过合作机构接触最终使用者，对两端信息都有经验但并不完整。",
+      "product_and_technology_familiarity": "对软硬件集成和系统可靠性较熟，愿意自己试用新设备。",
+      "household_structure": "单身；子女数0；有约63岁长辈，同住。",
+      "intergenerational_contact": "没有子女，偶尔在亲友聚会接触孩子，但不熟悉日常照料。 有一位约63岁的长辈，同住。",
+      "caregiving_and_dependents": "主要由伴侣或兄弟姐妹照料，本人只在紧急时参与",
+      "economic_resources_and_pressure": "收入较稳定，可支配空间尚可；工作忙，常愿意用钱换时间，但对长期固定支出谨慎。 当前岗位为产品事业部负责人；家庭状态为单身。",
+      "personal_consumption_habits": "很爱比较参数和评价，有时为了几百元来回犹豫，最后也可能因为省事选较贵的。",
+      "price_reference_history": "订阅过每年 900 元的服务，后来因使用频率不足取消或降档。 家里买过一件 3000 元的耐用品，使用了3年。",
+      "quality_convenience_tradeoffs": "曾经为省钱买过一件使用麻烦的东西，后来又重新购买；此后在高频用品上更看重省心。",
+      "social_influence_on_choices": "习惯自己做决定，除非家人明确反对，否则很少重新比较。",
+      "communication_and_participation": "说话短，先报结论，别人追问才补理由；不太使用完整书面句。"
+    },
+    "sampling_provenance": {
+      "task_text_seen": false,
+      "schema_relevance_reasons_seen": false,
+      "selected_field_ids": [
+        "age_and_life_stage",
+        "education_and_learning",
+        "career_context",
+        "customer_and_user_exposure",
+        "product_and_technology_familiarity",
+        "household_structure",
+        "intergenerational_contact",
+        "caregiving_and_dependents",
+        "economic_resources_and_pressure",
+        "personal_consumption_habits",
+        "price_reference_history",
+        "quality_convenience_tradeoffs",
+        "social_influence_on_choices",
+        "communication_and_participation"
+      ],
+      "sampler": "deterministic_general_population_priors_v2_faultline"
+    }
+  },
+  {
+    "persona_id": "TBN14",
+    "seed": "20260817-faultline-design-topup:14",
+    "name": "刘嘉诚",
+    "surface": {
+      "gender": "male",
+      "age": 34,
+      "edu": "普通本科，海外硕士",
+      "edu_first_tier": "普通本科",
+      "postgrad": "海外硕士",
+      "overseas": {
+        "hasOverseas": true,
+        "destination": "加拿大",
+        "duration": "2年",
+        "field": "计算机",
+        "ageAt": 26,
+        "firstJobBack": "自己创业"
+      },
+      "region": "北京",
+      "industry": "跨境电商",
+      "industry_type": "新兴",
+      "design_cell": "C-mkt-young"
+    },
+    "behavioral_fingerprint": {
+      "maximizing_satisficing": 0.81,
+      "need_for_cognition": 0.59,
+      "actively_open_minded_thinking": 0.15,
+      "risk_propensity_business": 0.79,
+      "ambiguity_tolerance": 0.41,
+      "regulatory_focus_promotion": 0.09,
+      "consideration_future_consequences": 0.8,
+      "action_orientation": 0.24
+    },
+    "behavioral_directives": {
+      "maximizing_satisficing": "很难接受只是够用，倾向把可见选择查得很全，停手也较晚。",
+      "need_for_cognition": "重要问题会认真分析，普通问题更多依赖经验。",
+      "actively_open_minded_thinking": "形成第一判断后不太主动找反例，容易把反对意见当成干扰。",
+      "risk_propensity_business": "只要潜在收益足够，会接受较明显的结果波动和试错。",
+      "ambiguity_tolerance": "会边做边补信息，同时为未知部分保留调整余地。",
+      "regulatory_focus_promotion": "首先想到责任、失误和可能失去什么，目标通常编码成守住底线。",
+      "consideration_future_consequences": "会持续追踪多年后的后果，必要时牺牲明显的眼前收益。",
+      "action_orientation": "决定后能启动，但遇到阻力容易停下来重新考虑。"
+    },
+    "frozen_facts": {
+      "age_and_life_stage": "34岁，处在职业责任已经较重、个人生活结构相对稳定但仍可能变化的阶段。",
+      "education_and_learning": "第一学历普通本科；26岁左右去加拿大读了2年计算机硕士，回国后第一份工作在自己创业；专业训练与市场与品牌相关或在职业中逐步补齐。",
+      "career_context": "区域龙头企业的品牌负责人，所在行业为跨境电商，主要职能是市场与品牌。",
+      "customer_and_user_exposure": "工作中同时接触机构客户与个人服务对象，对付款、使用和影响决策的角色有混合经验。",
+      "product_and_technology_familiarity": "日常办公软件熟练，智能设备主要靠同事或家人推荐，对技术参数耐心有限。",
+      "household_structure": "有稳定伴侣；子女数1，年龄6岁；有约65岁长辈，车程半小时内。",
+      "intergenerational_contact": "与1个子女有真实日常接触，年龄为6岁。 有一位约65岁的长辈，车程半小时内。",
+      "caregiving_and_dependents": "主要由伴侣或兄弟姐妹照料，本人只在紧急时参与",
+      "economic_resources_and_pressure": "近两年承担家庭住房或老人医疗支出，金额较大时会明显犹豫。 当前岗位为品牌负责人；家庭状态为有稳定伴侣。",
+      "personal_consumption_habits": "对自己较节省，对家人或团队用品更愿意多付；是否比价取决于当时有没有时间。",
+      "price_reference_history": "订阅过每年 1800 元的服务，后来因使用频率不足取消或降档。 换过一台 7100 元的手机，原先在更便宜和更省心之间犹豫。",
+      "quality_convenience_tradeoffs": "曾因时间紧直接选了熟悉供应商，结果稳定但价格偏高；本人并不确定当时是否最划算。",
+      "social_influence_on_choices": "习惯自己做决定，除非家人明确反对，否则很少重新比较。",
+      "communication_and_participation": "课堂上通常先听，不确定时只说半句；真正熟悉的地方会突然讲得很细。"
+    },
+    "sampling_provenance": {
+      "task_text_seen": false,
+      "schema_relevance_reasons_seen": false,
+      "selected_field_ids": [
+        "age_and_life_stage",
+        "education_and_learning",
+        "career_context",
+        "customer_and_user_exposure",
+        "product_and_technology_familiarity",
+        "household_structure",
+        "intergenerational_contact",
+        "caregiving_and_dependents",
+        "economic_resources_and_pressure",
+        "personal_consumption_habits",
+        "price_reference_history",
+        "quality_convenience_tradeoffs",
+        "social_influence_on_choices",
+        "communication_and_participation"
+      ],
+      "sampler": "deterministic_general_population_priors_v2_faultline"
+    }
+  }
+]

@@ -1,0 +1,26 @@
+{
+ "teams": {
+  "01": {
+   "cell": "speech_probe",
+   "profile_ids": [
+    "TBN17",
+    "TBN07",
+    "TBN26",
+    "TBN22",
+    "TBN25"
+   ],
+   "leader_id": "TBN25"
+  },
+  "02": {
+   "cell": "speech_probe",
+   "profile_ids": [
+    "TBN17",
+    "TBN34",
+    "TBN02",
+    "TBN29",
+    "TBN21"
+   ],
+   "leader_id": "TBN17"
+  }
+ }
+}

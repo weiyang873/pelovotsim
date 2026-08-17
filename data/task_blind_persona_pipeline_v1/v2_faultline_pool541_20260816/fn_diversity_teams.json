@@ -1,0 +1,270 @@
+{
+ "pool": "data/task_blind_persona_pipeline_v1/v2_faultline_pool541_20260816/persona_pool_task_blind_narrative_v1.json",
+ "design": "function diversity contrast: 12 homogeneous (all marketing/sales/product/customer/strategy) vs 12 max-diverse (mkt+ops+tech+other+finance); distinct industries/names, gender-mixed",
+ "teams": {
+  "10": {
+   "cell": "homogeneous_mkt",
+   "profile_ids": [
+    "ATBN180",
+    "ATBN150",
+    "ATBN31",
+    "CTBN191",
+    "ATBN125"
+   ],
+   "leader_id": "ATBN180"
+  },
+  "11": {
+   "cell": "homogeneous_mkt",
+   "profile_ids": [
+    "BTBN151",
+    "CTBN109",
+    "CTBN179",
+    "BTBN56",
+    "BTBN63"
+   ],
+   "leader_id": "BTBN151"
+  },
+  "12": {
+   "cell": "homogeneous_mkt",
+   "profile_ids": [
+    "BTBN147",
+    "ATBN35",
+    "ATBN186",
+    "ATBN11",
+    "ATBN51"
+   ],
+   "leader_id": "ATBN51"
+  },
+  "13": {
+   "cell": "diverse_fn",
+   "profile_ids": [
+    "ATBN46",
+    "ATBN168",
+    "CTBN61",
+    "ATBN08",
+    "ATBN122"
+   ],
+   "leader_id": "ATBN08"
+  },
+  "14": {
+   "cell": "diverse_fn",
+   "profile_ids": [
+    "CTBN177",
+    "ATBN20",
+    "ATBN45",
+    "CTBN36",
+    "ATBN39"
+   ],
+   "leader_id": "ATBN39"
+  },
+  "15": {
+   "cell": "diverse_fn",
+   "profile_ids": [
+    "BTBN126",
+    "ATBN143",
+    "BTBN131",
+    "ATBN196",
+    "CTBN110"
+   ],
+   "leader_id": "ATBN196"
+  },
+  "16": {
+   "cell": "diverse_fn",
+   "profile_ids": [
+    "ATBN83",
+    "CTBN39",
+    "CTBN129",
+    "ATBN88",
+    "BTBN83"
+   ],
+   "leader_id": "ATBN88"
+  },
+  "17": {
+   "cell": "diverse_fn",
+   "profile_ids": [
+    "CTBN106",
+    "BTBN74",
+    "CTBN103",
+    "BTBN35",
+    "BTBN44"
+   ],
+   "leader_id": "CTBN106"
+  },
+  "18": {
+   "cell": "diverse_fn",
+   "profile_ids": [
+    "CTBN76",
+    "CTBN162",
+    "ATBN48",
+    "ATBN85",
+    "ATBN123"
+   ],
+   "leader_id": "CTBN162"
+  },
+  "19": {
+   "cell": "diverse_fn",
+   "profile_ids": [
+    "CTBN121",
+    "ATBN155",
+    "CTBN116",
+    "ATBN184",
+    "ATBN84"
+   ],
+   "leader_id": "CTBN116"
+  },
+  "20": {
+   "cell": "diverse_fn",
+   "profile_ids": [
+    "BTBN04",
+    "BTBN03",
+    "ATBN101",
+    "CTBN155",
+    "ATBN89"
+   ],
+   "leader_id": "ATBN101"
+  },
+  "21": {
+   "cell": "diverse_fn",
+   "profile_ids": [
+    "BTBN86",
+    "BTBN182",
+    "CTBN183",
+    "BTBN82",
+    "ATBN38"
+   ],
+   "leader_id": "CTBN183"
+  },
+  "22": {
+   "cell": "diverse_fn",
+   "profile_ids": [
+    "CTBN38",
+    "CTBN143",
+    "ATBN151",
+    "CTBN98",
+    "CTBN08"
+   ],
+   "leader_id": "CTBN98"
+  },
+  "23": {
+   "cell": "diverse_fn",
+   "profile_ids": [
+    "CTBN78",
+    "BTBN125",
+    "CTBN169",
+    "ATBN105",
+    "BTBN133"
+   ],
+   "leader_id": "ATBN105"
+  },
+  "24": {
+   "cell": "diverse_fn",
+   "profile_ids": [
+    "ATBN165",
+    "BTBN07",
+    "BTBN08",
+    "ATBN133",
+    "ATBN147"
+   ],
+   "leader_id": "ATBN147"
+  },
+  "01": {
+   "cell": "homogeneous_mkt",
+   "profile_ids": [
+    "BTBN160",
+    "CTBN160",
+    "BTBN199",
+    "BTBN20",
+    "BTBN146"
+   ],
+   "leader_id": "CTBN160"
+  },
+  "02": {
+   "cell": "homogeneous_mkt",
+   "profile_ids": [
+    "CTBN92",
+    "CTBN09",
+    "BTBN41",
+    "BTBN30",
+    "BTBN48"
+   ],
+   "leader_id": "BTBN41"
+  },
+  "03": {
+   "cell": "homogeneous_mkt",
+   "profile_ids": [
+    "ATBN173",
+    "ATBN99",
+    "ATBN95",
+    "BTBN183",
+    "ATBN15"
+   ],
+   "leader_id": "BTBN183"
+  },
+  "04": {
+   "cell": "homogeneous_mkt",
+   "profile_ids": [
+    "ATBN179",
+    "BTBN116",
+    "ATBN166",
+    "BTBN191",
+    "BTBN101"
+   ],
+   "leader_id": "BTBN116"
+  },
+  "05": {
+   "cell": "homogeneous_mkt",
+   "profile_ids": [
+    "ATBN112",
+    "CTBN148",
+    "ATBN49",
+    "CTBN117",
+    "ATBN162"
+   ],
+   "leader_id": "ATBN112"
+  },
+  "06": {
+   "cell": "homogeneous_mkt",
+   "profile_ids": [
+    "CTBN107",
+    "ATBN195",
+    "ATBN118",
+    "BTBN175",
+    "ATBN200"
+   ],
+   "leader_id": "ATBN200"
+  },
+  "07": {
+   "cell": "homogeneous_mkt",
+   "profile_ids": [
+    "ATBN01",
+    "ATBN131",
+    "ATBN110",
+    "ATBN141",
+    "BTBN164"
+   ],
+   "leader_id": "ATBN131"
+  },
+  "08": {
+   "cell": "homogeneous_mkt",
+   "profile_ids": [
+    "ATBN102",
+    "BTBN174",
+    "ATBN138",
+    "CTBN194",
+    "CTBN115"
+   ],
+   "leader_id": "ATBN102"
+  },
+  "09": {
+   "cell": "homogeneous_mkt",
+   "profile_ids": [
+    "ATBN59",
+    "ATBN33",
+    "ATBN189",
+    "ATBN182",
+    "ATBN157"
+   ],
+   "leader_id": "ATBN189"
+  }
+ }
+}

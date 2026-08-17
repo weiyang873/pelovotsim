@@ -1,0 +1,97 @@
+{
+  "schema": "task_blind_narrative_pool_manifest_v1",
+  "seed": "20260817-faultline-design-v1",
+  "generated_at": "2026-08-17T07:33:05.303Z",
+  "started_at": "2026-08-17T07:20:18.506Z",
+  "wall_clock_ms": 766796,
+  "provider": "qwen",
+  "model": "deepseek-v4-flash-0731",
+  "base_url_host": "dashscope.aliyuncs.com",
+  "count_requested": 60,
+  "count_generated": 54,
+  "errors": [
+    {
+      "persona_id": "TBN02",
+      "error": "biography too long: 1909"
+    },
+    {
+      "persona_id": "TBN08",
+      "error": "biography too long: 1919"
+    },
+    {
+      "persona_id": "TBN12",
+      "error": "biography too long: 2042"
+    },
+    {
+      "persona_id": "TBN49",
+      "error": "biography too long: 2329"
+    },
+    {
+      "persona_id": "TBN58",
+      "error": "biography too long: 1890"
+    },
+    {
+      "persona_id": "TBN59",
+      "error": "biography too long: 1937"
+    }
+  ],
+  "background_schema_path": "data/task_blind_persona_pipeline_v1/r1_pilot12_20260812/background_schema.json",
+  "background_schema_sha256": "14113cb532d864c6c04d4e3b66000d36d07dc2eb13210ae99bdc635a43e562d3",
+  "frozen_fact_cards_path": "data/task_blind_persona_pipeline_v1/faultline_design_pool60_20260817/frozen_fact_cards.json",
+  "frozen_fact_cards_sha256": "ec1816d10b1e4b66fea1589c412a1d63bd1cad5e01956ffd621e1e1a077826a7",
+  "pool_path": "data/task_blind_persona_pipeline_v1/faultline_design_pool60_20260817/persona_pool_task_blind_narrative_v1.json",
+  "pool_sha256": "855b62e7cee090da457653e03c5559ebf1149beadbc0e125c05841f8ae36c4d9",
+  "information_firewall": {
+    "task_analyzer_sees": [
+      "task_text",
+      "generic_field_catalog",
+      "trait_dimension_names_only"
+    ],
+    "fact_sampler_sees": [
+      "expanded_field_ids",
+      "general_population_priors",
+      "seed"
+    ],
+    "biography_writer_sees": [
+      "frozen_fact_values",
+      "natural_language_trait_directives",
+      "name"
+    ],
+    "biography_writer_does_not_see": [
+      "task_text",
+      "task_id",
+      "task_options",
+      "schema_relevance_reasons",
+      "trait_numbers"
+    ]
+  },
+  "forbidden_biography_terms": [
+    "ToB",
+    "ToC",
+    "COST",
+    "DIFF",
+    "成本领先",
+    "差异化",
+    "体验型",
+    "混合型",
+    "功能型",
+    "AI宠物",
+    "AI 宠物",
+    "机器人",
+    "目标市场",
+    "市场格",
+    "grid_id",
+    "Round 1",
+    "R1",
+    "本次任务",
+    "这个任务",
+    "课堂选择",
+    "商业战略",
+    "战略偏好",
+    "应该选择",
+    "建议选择"
+  ],
+  "forbidden_biography_term_hits": [],
+  "script_path": "scripts/analysis/generate_task_blind_persona_pool_v2_design.js",
+  "script_sha256": "45792b91070d8ba312831568c11c5cc7c390430d16892e789e7fdfa9b21cd408"
+}

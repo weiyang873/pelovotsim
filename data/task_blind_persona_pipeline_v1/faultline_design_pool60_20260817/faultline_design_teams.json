@@ -1,0 +1,290 @@
+{
+ "pool": "data/task_blind_persona_pipeline_v1/faultline_design_pool60_20260817/persona_pool_merged.json",
+ "design": "ALIGNED: 2×(elder-care ind × eng fn × 50+, gender-mixed) + 2×(consumer ind × mkt fn × ≤38, gender-mixed) + neutral isolate; CROSSCUT: same six values crossed one per person + isolate; all teams pass: gender/edu/overseas not aligned with industry line (Fau<0.75), trait Fau<0.6",
+ "teams": {
+  "10": {
+   "cell": "crosscut",
+   "members_cells": [
+    "E-mkt-old",
+    "C-eng-young",
+    "E-eng-young",
+    "C-mkt-old"
+   ],
+   "isolate": "TBN52",
+   "profile_ids": [
+    "TBN18",
+    "TBN33",
+    "TBN09",
+    "TBN37",
+    "TBN52"
+   ],
+   "leader_id": "TBN33"
+  },
+  "11": {
+   "cell": "crosscut",
+   "members_cells": [
+    "E-eng-young",
+    "C-mkt-old",
+    "E-mkt-old",
+    "C-eng-young"
+   ],
+   "isolate": "TBN54",
+   "profile_ids": [
+    "TBN10",
+    "TBN40",
+    "TBN15",
+    "TBN35",
+    "TBN54"
+   ],
+   "leader_id": "TBN15"
+  },
+  "12": {
+   "cell": "crosscut",
+   "members_cells": [
+    "E-mkt-old",
+    "C-eng-young",
+    "E-eng-young",
+    "C-mkt-old"
+   ],
+   "isolate": "TBN50",
+   "profile_ids": [
+    "TBN16",
+    "TBN32",
+    "TBN11",
+    "TBN41",
+    "TBN50"
+   ],
+   "leader_id": "TBN32"
+  },
+  "13": {
+   "cell": "crosscut",
+   "members_cells": [
+    "E-eng-young",
+    "C-mkt-old",
+    "E-mkt-old",
+    "C-eng-young"
+   ],
+   "isolate": "TBN56",
+   "profile_ids": [
+    "TBN10",
+    "TBN39",
+    "TBN17",
+    "TBN36",
+    "TBN56"
+   ],
+   "leader_id": "TBN36"
+  },
+  "14": {
+   "cell": "crosscut",
+   "members_cells": [
+    "E-mkt-old",
+    "C-eng-young",
+    "E-eng-young",
+    "C-mkt-old"
+   ],
+   "isolate": "TBN50",
+   "profile_ids": [
+    "TBN17",
+    "TBN33",
+    "TBN09",
+    "TBN39",
+    "TBN50"
+   ],
+   "leader_id": "TBN33"
+  },
+  "15": {
+   "cell": "crosscut",
+   "members_cells": [
+    "E-eng-young",
+    "C-mkt-old",
+    "E-mkt-old",
+    "C-eng-young"
+   ],
+   "isolate": "TBN51",
+   "profile_ids": [
+    "TBN07",
+    "TBN41",
+    "TBN16",
+    "TBN32",
+    "TBN51"
+   ],
+   "leader_id": "TBN07"
+  },
+  "01": {
+   "cell": "aligned",
+   "sub1": [
+    "TBN04",
+    "XTBN02"
+   ],
+   "sub2": [
+    "TBN45",
+    "TBN43"
+   ],
+   "isolate": "TBN57",
+   "profile_ids": [
+    "TBN04",
+    "XTBN02",
+    "TBN45",
+    "TBN43",
+    "TBN57"
+   ],
+   "leader_id": "TBN45"
+  },
+  "02": {
+   "cell": "aligned",
+   "sub1": [
+    "XTBN07",
+    "XTBN04"
+   ],
+   "sub2": [
+    "XTBN13",
+    "XTBN11"
+   ],
+   "isolate": "TBN55",
+   "profile_ids": [
+    "XTBN07",
+    "XTBN04",
+    "XTBN13",
+    "XTBN11",
+    "TBN55"
+   ],
+   "leader_id": "XTBN07"
+  },
+  "03": {
+   "cell": "aligned",
+   "sub1": [
+    "XTBN01",
+    "TBN01"
+   ],
+   "sub2": [
+    "TBN44",
+    "XTBN09"
+   ],
+   "isolate": "TBN54",
+   "profile_ids": [
+    "XTBN01",
+    "TBN01",
+    "TBN44",
+    "XTBN09",
+    "TBN54"
+   ],
+   "leader_id": "TBN01"
+  },
+  "04": {
+   "cell": "aligned",
+   "sub1": [
+    "XTBN06",
+    "XTBN05"
+   ],
+   "sub2": [
+    "TBN46",
+    "XTBN11"
+   ],
+   "isolate": "TBN57",
+   "profile_ids": [
+    "XTBN06",
+    "XTBN05",
+    "TBN46",
+    "XTBN11",
+    "TBN57"
+   ],
+   "leader_id": "XTBN06"
+  },
+  "05": {
+   "cell": "aligned",
+   "sub1": [
+    "XTBN03",
+    "TBN06"
+   ],
+   "sub2": [
+    "XTBN10",
+    "XTBN12"
+   ],
+   "isolate": "TBN55",
+   "profile_ids": [
+    "XTBN03",
+    "TBN06",
+    "XTBN10",
+    "XTBN12",
+    "TBN55"
+   ],
+   "leader_id": "TBN55"
+  },
+  "06": {
+   "cell": "aligned",
+   "sub1": [
+    "TBN03",
+    "TBN04"
+   ],
+   "sub2": [
+    "XTBN08",
+    "TBN43"
+   ],
+   "isolate": "TBN60",
+   "profile_ids": [
+    "TBN03",
+    "TBN04",
+    "XTBN08",
+    "TBN43",
+    "TBN60"
+   ],
+   "leader_id": "TBN03"
+  },
+  "07": {
+   "cell": "aligned",
+   "sub1": [
+    "TBN05",
+    "XTBN05"
+   ],
+   "sub2": [
+    "XTBN14",
+    "XTBN10"
+   ],
+   "isolate": "TBN54",
+   "profile_ids": [
+    "TBN05",
+    "XTBN05",
+    "XTBN14",
+    "XTBN10",
+    "TBN54"
+   ],
+   "leader_id": "TBN54"
+  },
+  "08": {
+   "cell": "crosscut",
+   "members_cells": [
+    "E-mkt-old",
+    "C-eng-young",
+    "E-eng-young",
+    "C-mkt-old"
+   ],
+   "isolate": "TBN51",
+   "profile_ids": [
+    "TBN14",
+    "TBN31",
+    "TBN11",
+    "TBN42",
+    "TBN51"
+   ],
+   "leader_id": "TBN14"
+  },
+  "09": {
+   "cell": "crosscut",
+   "members_cells": [
+    "E-eng-young",
+    "C-mkt-old",
+    "E-mkt-old",
+    "C-eng-young"
+   ],
+   "isolate": "TBN53",
+   "profile_ids": [
+    "TBN07",
+    "TBN38",
+    "TBN13",
+    "TBN34",
+    "TBN53"
+   ],
+   "leader_id": "TBN38"
+  }
+ }
+}

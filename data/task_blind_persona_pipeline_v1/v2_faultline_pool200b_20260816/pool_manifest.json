@@ -1,0 +1,153 @@
+{
+  "schema": "task_blind_narrative_pool_manifest_v1",
+  "seed": "20260816-task-blind-faultline-v2-pool200b",
+  "generated_at": "2026-08-16T13:14:06.586Z",
+  "started_at": "2026-08-16T12:34:34.220Z",
+  "wall_clock_ms": 2372366,
+  "provider": "qwen",
+  "model": "deepseek-v4-flash-0731",
+  "base_url_host": "dashscope.aliyuncs.com",
+  "count_requested": 200,
+  "count_generated": 180,
+  "errors": [
+    {
+      "persona_id": "TBN02",
+      "error": "biography too long: 2417"
+    },
+    {
+      "persona_id": "TBN24",
+      "error": "biography too long: 1849"
+    },
+    {
+      "persona_id": "TBN33",
+      "error": "biography too long: 2074"
+    },
+    {
+      "persona_id": "TBN36",
+      "error": "biography too long: 1887"
+    },
+    {
+      "persona_id": "TBN40",
+      "error": "biography too long: 1947"
+    },
+    {
+      "persona_id": "TBN45",
+      "error": "biography too long: 2128"
+    },
+    {
+      "persona_id": "TBN55",
+      "error": "biography too long: 2253"
+    },
+    {
+      "persona_id": "TBN73",
+      "error": "biography too long: 1987"
+    },
+    {
+      "persona_id": "TBN84",
+      "error": "biography too long: 2285"
+    },
+    {
+      "persona_id": "TBN97",
+      "error": "Unterminated string in JSON at position 4682"
+    },
+    {
+      "persona_id": "TBN102",
+      "error": "task leakage: 机器人"
+    },
+    {
+      "persona_id": "TBN100",
+      "error": "biography too long: 2382"
+    },
+    {
+      "persona_id": "TBN106",
+      "error": "biography too long: 2002"
+    },
+    {
+      "persona_id": "TBN120",
+      "error": "biography too long: 2351"
+    },
+    {
+      "persona_id": "TBN123",
+      "error": "biography too long: 2055"
+    },
+    {
+      "persona_id": "TBN152",
+      "error": "biography too long: 1933"
+    },
+    {
+      "persona_id": "TBN156",
+      "error": "biography too long: 2095"
+    },
+    {
+      "persona_id": "TBN154",
+      "error": "biography too long: 2029"
+    },
+    {
+      "persona_id": "TBN166",
+      "error": "biography too long: 1887"
+    },
+    {
+      "persona_id": "TBN170",
+      "error": "biography too long: 2151"
+    }
+  ],
+  "background_schema_path": "data/task_blind_persona_pipeline_v1/r1_pilot12_20260812/background_schema.json",
+  "background_schema_sha256": "14113cb532d864c6c04d4e3b66000d36d07dc2eb13210ae99bdc635a43e562d3",
+  "frozen_fact_cards_path": "data/task_blind_persona_pipeline_v1/v2_faultline_pool200b_20260816/frozen_fact_cards.json",
+  "frozen_fact_cards_sha256": "e82456b385f588e22d0422021e19502d499ebe2595baec4cec8dd5714a6146a5",
+  "pool_path": "data/task_blind_persona_pipeline_v1/v2_faultline_pool200b_20260816/persona_pool_task_blind_narrative_v1.json",
+  "pool_sha256": "a283805c7852d56ef4b94667c42153845cc0dab0817c1eb5be9f82b6c732e3af",
+  "information_firewall": {
+    "task_analyzer_sees": [
+      "task_text",
+      "generic_field_catalog",
+      "trait_dimension_names_only"
+    ],
+    "fact_sampler_sees": [
+      "expanded_field_ids",
+      "general_population_priors",
+      "seed"
+    ],
+    "biography_writer_sees": [
+      "frozen_fact_values",
+      "natural_language_trait_directives",
+      "name"
+    ],
+    "biography_writer_does_not_see": [
+      "task_text",
+      "task_id",
+      "task_options",
+      "schema_relevance_reasons",
+      "trait_numbers"
+    ]
+  },
+  "forbidden_biography_terms": [
+    "ToB",
+    "ToC",
+    "COST",
+    "DIFF",
+    "成本领先",
+    "差异化",
+    "体验型",
+    "混合型",
+    "功能型",
+    "AI宠物",
+    "AI 宠物",
+    "机器人",
+    "目标市场",
+    "市场格",
+    "grid_id",
+    "Round 1",
+    "R1",
+    "本次任务",
+    "这个任务",
+    "课堂选择",
+    "商业战略",
+    "战略偏好",
+    "应该选择",
+    "建议选择"
+  ],
+  "forbidden_biography_term_hits": [],
+  "script_path": "scripts/analysis/generate_task_blind_persona_pool_v2.js",
+  "script_sha256": "06343270c290137b2bf0e9aa0f9e01fcbc4e81a4e05565cc8af710c4e87393ff"
+}

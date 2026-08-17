@@ -1,0 +1,7 @@
+{
+  "schema": "trait_only_pool_manifest_v1",
+  "generated_at": "2026-08-16T09:37:11.316Z",
+  "count": 42,
+  "source": "runs_v4flash_0731/probes/trait_only_bio_ceibs_20260816/trait_only_biographies.jsonl",
+  "note": "Probe pool: 8-dim fingerprints identical to r1_pool42_20260812; biography written from traits + 'CEIBS EMBA' only; frozen_facts extracted post hoc from the biography. NOT a frozen line."
+}
