@@ -2,6 +2,7 @@
   "provider": "deepseek",
   "base_url": "https://api.deepseek.com",
   "default_model": "deepseek-v4-flash",
+  "disable_thinking": true,
   "roles": {
     "vp_coach": null,
     "interview_coach": null,

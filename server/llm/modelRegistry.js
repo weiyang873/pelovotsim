@@ -40,6 +40,13 @@ function requireNonEmptyString(value, fieldName) {
   return value.trim();
 }
 
+function requireBoolean(value, fieldName) {
+  if (typeof value !== "boolean") {
+    throw new Error(`[modelRegistry] ${fieldName} must be a boolean in ${CONFIG_PATH}`);
+  }
+  return value;
+}
+
 function validateConfig(rawConfig) {
   if (!rawConfig || typeof rawConfig !== "object" || Array.isArray(rawConfig)) {
     throw new Error(`[modelRegistry] Config must be a JSON object: ${CONFIG_PATH}`);
@@ -48,6 +55,10 @@ function validateConfig(rawConfig) {
   const provider = requireNonEmptyString(rawConfig.provider, "provider").toLowerCase();
   const baseUrl = requireNonEmptyString(rawConfig.base_url, "base_url");
   const defaultModel = requireNonEmptyString(rawConfig.default_model, "default_model");
+  if (!hasOwn(rawConfig, "disable_thinking")) {
+    throw new Error(`[modelRegistry] disable_thinking must be set in ${CONFIG_PATH}`);
+  }
+  const disableThinking = requireBoolean(rawConfig.disable_thinking, "disable_thinking");
   if (!rawConfig.roles || typeof rawConfig.roles !== "object" || Array.isArray(rawConfig.roles)) {
     throw new Error(`[modelRegistry] roles must be an object in ${CONFIG_PATH}`);
   }
@@ -78,6 +89,7 @@ function validateConfig(rawConfig) {
     provider,
     baseUrl,
     defaultModel,
+    disableThinking,
     roles
   };
 }
@@ -144,6 +156,14 @@ function getBaseUrl() {
   return providerDefault || registry.baseUrl;
 }
 
+function getDisableThinking() {
+  return registry.disableThinking;
+}
+
+function logResolvedConfig() {
+  console.log(`[modelRegistry] disable_thinking -> ${getDisableThinking()}`);
+}
+
 function logResolvedRoles() {
   for (const role of Object.keys(registry.roles)) {
     console.log(`[modelRegistry] ${role} -> ${getModel(role)}`);
@@ -161,12 +181,14 @@ function logResolvedModel(role, responseModel) {
   console.log(`[modelRegistry] ${normalizedRole} response model -> ${resolved}`);
 }
 
+logResolvedConfig();
 logResolvedRoles();
 
 module.exports = {
   getProvider,
   getModel,
   getBaseUrl,
+  getDisableThinking,
   logResolvedModel,
   __CONFIG_PATH: CONFIG_PATH
 };

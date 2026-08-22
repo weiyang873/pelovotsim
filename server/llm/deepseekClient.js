@@ -1,7 +1,7 @@
 // deepseekClient.js - Clean slate v2
 const http = require("http");
 const https = require("https");
-const { getProvider, getModel, getBaseUrl, logResolvedModel } = require("./modelRegistry");
+const { getProvider, getModel, getBaseUrl, getDisableThinking, logResolvedModel } = require("./modelRegistry");
 
 const REQUEST_TIMEOUT_MS = parseInt(process.env.DEEPSEEK_TIMEOUT_MS || "60000", 10);
 const MAX_RETRIES = Math.max(0, parseInt(process.env.LLM_MAX_RETRIES || "5", 10));
@@ -182,16 +182,19 @@ function boolEnv(name) {
 }
 
 function isThinkingDisabled(options = {}) {
-  if (options.disableThinking === true) return true;
+  if (Object.prototype.hasOwnProperty.call(options, "disableThinking")) {
+    return options.disableThinking === true;
+  }
   if (boolEnv("LLM_DISABLE_THINKING")) return true;
   const provider = getProvider();
-  if (provider === "deepseek") return boolEnv("DEEPSEEK_DISABLE_THINKING");
+  if (provider === "deepseek" && boolEnv("DEEPSEEK_DISABLE_THINKING")) return true;
   if (provider === "qwen") {
     if (boolEnv("QWEN_DISABLE_THINKING")) return true;
     const enableThinking = process.env.QWEN_ENABLE_THINKING;
     if (enableThinking !== undefined && /^(0|false|no|off)$/i.test(String(enableThinking).trim())) return true;
+    return false;
   }
-  return false;
+  return getDisableThinking();
 }
 
 function providerRequestExtras(options = {}) {
