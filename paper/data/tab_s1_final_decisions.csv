@@ -1,0 +1,5 @@
+device,n,compliant,neutral,soft,hard,consent,MAE5,enacted
+Human,485,0.45,0.59,0.6,0.62,0.54,,0.76
+Grid (Jul),74,0,0.23,0.42,0.25,0.42,0.295,0.08
+Repr-pool plain,595,0.28,0.33,0.39,0.22,0.46,0.219,0.15
+A: Repr+warm+satisfice,599,0.45,0.45,0.43,0.33,0.45,0.135,0.64

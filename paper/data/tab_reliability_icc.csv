@@ -1,0 +1,6 @@
+line,units,runs,price_within_sd,price_total_sd,price_icc,naive_within_sd_mean,naive_share_varmeans,strategy_modal_share,cards_within_sd,cards_total_sd,cards_icc,strategy_agreement,grid_agreement,loss_agreement
+Solo v2Q (same persona x5),28,202,871,909,0.09,697,0.21,0.83,1.9,2.2,0.19,0.73,0.33,0.5
+Team R2 B (same composition x5),42,201,958,1027,0.14,789,0.32,0.76,1.7,1.7,0.1,0.61,0.22,0.57
+Team R2 A,42,199,601,661,0.18,480,0.36,0.77,1.6,1.7,0.14,0.61,0.22,0.54
+Benchmark team simple,42,210,411,429,0.09,342,0.28,0.99,1.2,1.3,0.14,0.97,0.56,0.84
+Benchmark individual simple,26,210,513,512,-0.0,439,0.15,0.99,1.2,1.2,0.05,0.98,0.54,0.83

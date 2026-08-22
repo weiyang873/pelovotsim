@@ -1,0 +1,21 @@
+subscale,device,n,p0,p1,p2,p3,p4,p5,p6,p7
+reliable,Human,483,0.01,0.0,0.02,0.02,0.12,0.18,0.46,0.18
+reliable,Grid (Jul),74,0.0,0.0,0.0,0.01,0.01,0.18,0.74,0.05
+reliable,Repr-pool plain,593,0.0,0.0,0.03,0.06,0.24,0.28,0.34,0.05
+reliable,A: Repr+warm+satisfice,596,0.0,0.0,0.0,0.03,0.15,0.27,0.48,0.07
+competent,Human,482,0.01,0.01,0.02,0.01,0.08,0.13,0.44,0.3
+competent,Grid (Jul),74,0.0,0.0,0.0,0.0,0.0,0.01,0.73,0.26
+competent,Repr-pool plain,593,0.0,0.0,0.03,0.2,0.29,0.37,0.1,0.01
+competent,A: Repr+warm+satisfice,596,0.0,0.0,0.01,0.11,0.24,0.42,0.19,0.03
+ethical,Human,442,0.02,0.02,0.02,0.04,0.19,0.18,0.38,0.15
+ethical,Grid (Jul),74,0.0,0.0,0.0,0.0,0.08,0.43,0.45,0.04
+ethical,Repr-pool plain,593,0.0,0.0,0.03,0.04,0.11,0.25,0.44,0.12
+ethical,A: Repr+warm+satisfice,596,0.0,0.0,0.01,0.01,0.07,0.21,0.51,0.19
+sincere,Human,475,0.01,0.01,0.03,0.03,0.14,0.17,0.45,0.15
+sincere,Grid (Jul),74,0.0,0.0,0.0,0.01,0.15,0.41,0.42,0.01
+sincere,Repr-pool plain,593,0.0,0.0,0.04,0.1,0.26,0.36,0.2,0.04
+sincere,A: Repr+warm+satisfice,596,0.0,0.0,0.02,0.05,0.16,0.39,0.31,0.07
+benevolent,Human,437,0.03,0.03,0.05,0.04,0.21,0.2,0.34,0.11
+benevolent,Grid (Jul),74,0.0,0.0,0.0,0.0,0.42,0.31,0.27,0.0
+benevolent,Repr-pool plain,592,0.01,0.06,0.24,0.27,0.29,0.1,0.03,0.01
+benevolent,A: Repr+warm+satisfice,596,0.0,0.03,0.13,0.22,0.31,0.2,0.08,0.02

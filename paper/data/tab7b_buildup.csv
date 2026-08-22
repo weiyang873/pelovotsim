@@ -1,0 +1,8 @@
+step,n_runs,n_batches,price_mean,price_sd_pooled,price_sd_per_round,cv,loss_rate,cost_share,cards,market_cells
+"0. Benchmark (attribute list, fixed script)",210,5,4411,512,504,0.12,0.12,0.01,9.2,8
+"1. Biography, fixed script",42,1,4162,483,483,0.12,0.12,0.02,10.3,6
+"2. Attribute list, roleplay",41,1,5059,479,479,0.09,0.83,0,15.2,4
+"3. Biography, roleplay (full design)",202,5,4294,909,901,0.21,0.52,0.32,14.6,10
+"4. Full design, teams of 5",201,5,3602,1027,1016,0.29,0.63,0.3,12.4,11
+3a. Fact card only (traits removed),40,1,4498,844,844,0.19,0.62,0.28,15.1,9
+3b. Traits only (fact card removed),32,1,4404,838,838,0.19,0.5,0.31,13.5,9
