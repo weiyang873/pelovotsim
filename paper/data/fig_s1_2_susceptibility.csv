@@ -1,0 +1,6 @@
+condition,enacted,n,ci95_lo,ci95_hi
+Human (n=80),0.762,80,0.669,0.856
+Simple card questionnaire (n=13),0.077,13,0,0.222
+Layered biography questionnaire (n=12),0.25,12,0.005,0.495
+Full chat (n=100),0.14,100,0.072,0.208
+Full chat + satisfice (n=100),0.73,100,0.643,0.817

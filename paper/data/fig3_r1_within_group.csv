@@ -1,0 +1,5 @@
+line,n_teams,members_per_team,distinct_norm,strategy,final_maj,cost,age,arch,distinct,H_bits,unanimous
+Human,16,5.56,0.66,0.725,0.5,0.4,0.671,0.62,3.69,1.64,0.12
+Roleplay team,210,5,0.763,0.722,0.419,0.339,0.617,0.563,3.81,1.82,0
+Benchmark layered,168,5,0.52,0.987,0.679,0.013,0.851,0.856,2.6,1.2,0.03
+Benchmark simple,168,5,0.562,0.983,0.69,0.017,0.8,0.855,2.81,1.33,0.01

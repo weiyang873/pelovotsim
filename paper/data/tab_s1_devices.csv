@@ -1,0 +1,5 @@
+device,model,n,compliant,neutral,soft,hard,consent,MAE5,arms_indistinguishable
+"Human (Prolific, main FINAL)",,485,0.45,0.59,0.60,0.62,0.54,,
+Simple card questionnaire,deepseek-v4-flash-0731,74,0.00,0.23,0.42,0.25,0.42,0.295,2/5
+Layered biography questionnaire,deepseek-v4-flash-0731,74,0.00,0.18,0.38,0.23,0.54,0.292,2/5
+Full chat,deepseek-v4-flash-0731,600,0.50,0.57,0.42,0.51,0.44,0.090,4/5

@@ -1,0 +1,9 @@
+DV,D4 lines,numbers per line,industry Blau,function Blau,finance members
+Profit,-0.15 (0.02),+0.16 (0.01),-0.03,+0.02,+0.02
+Loss,+0.09 (0.00),-0.14 (0.00),+0.01,-0.01,+0.01
+log revenue,-0.23 (0.00),+0.19 (0.01),+0.01,+0.05,-0.03
+
+"Robustness: frozen roleplay line (201 team-rounds, 42 compositions, cluster-robust)"
+Profit,-0.18 (0.01),+0.29 (0.00),-0.10,-0.04,-0.06
+Loss,+0.07 (0.03),-0.15 (0.00),+0.09 (0.00),+0.03,+0.05 (0.10)
+log revenue,-0.10,+0.17 (0.02),-0.03,-0.03,-0.08

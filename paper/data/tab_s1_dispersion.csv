@@ -1,0 +1,5 @@
+device,model,n,conf_sd,conf_ratio,perf_sd,perf_ratio,moral_sd,moral_ratio,mdmt_instrument
+Human,,485,18.1,1.00,1.15,1.00,1.41,1.00,20-word grid 0-7
+Simple card questionnaire,deepseek-v4-flash-0731,74,4.5,0.25,0.41,0.35,0.57,0.40,20-word grid 0-7
+Layered biography questionnaire,deepseek-v4-flash-0731,74,5.6,0.31,0.47,0.41,0.43,0.30,20-word grid 0-7
+Full chat,deepseek-v4-flash-0731,600,12.0,0.66,,,1.00,0.71,verbal anchors 1-6 (×1.4)
