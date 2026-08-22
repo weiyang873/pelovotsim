@@ -18,6 +18,7 @@ client/dist/
 data/llm_logs/
 data/persona_sim_logs/
 data/sim_logs/
+data/synthetic/
 data/sim_test_report_*.json
 data/score_cache.json
 data/tag_cache.json

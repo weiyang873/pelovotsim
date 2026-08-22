@@ -1,7 +1,0 @@
-{
-  "synthetic": true,
-  "status": "superseded",
-  "reason": "R2 prototype moderator opening used only a Round 1 one-line summary instead of full r1_frozen JSON. Rerun required after prompt injection fix.",
-  "superseded_by_batch": "team_gate_r1full_2026-08-03",
-  "superseded_at": "2026-08-03"
-}
