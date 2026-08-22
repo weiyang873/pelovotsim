@@ -53,19 +53,21 @@ human .76 (n=80) · simple card .08 · layered biography .25 · full chat .14 ·
 ## T7 — Does the biography carry the persona? (Study 2)
 
 #### T7a. Manipulation check: can a reader recover the 8 assigned traits from the biography?
-LLM judge reads only the biography, rates each trait 0–1; correlated with the assigned value (41 personas). Binary agreement = share of personas on the same side of the median.
+LLM judge reads only the biography, rates each trait 0–1; correlated with the assigned value (42 personas). Binary agreement = share of personas on the same side of the median.
 
 | Trait | r | binary agreement |
 |---|---|---|
-| Maximizing (vs satisficing) | .70 | .80 |
-| Need for cognition | .66 | .68 |
-| Actively open-minded thinking | .65 | .71 |
-| Business risk propensity | .76 | .85 |
-| Ambiguity tolerance | .59 | .68 |
-| Promotion focus | .38 | .59 |
-| Consideration of future consequences | .57 | .71 |
-| Action orientation | .70 | .78 |
-| **Mean** | **.63** | **.72** |
+| Maximizing (vs satisficing) | .73 | .86 |
+| Need for cognition | .59 | .74 |
+| Actively open-minded thinking | .72 | .67 |
+| Business risk propensity | .75 | .83 |
+| Ambiguity tolerance | .61 | .71 |
+| Promotion focus | .40 | .67 |
+| Consideration of future consequences | .57 | .64 |
+| Action orientation | .42 | .64 |
+| **Mean** | **.60** | **.72** |
+
+(42 personas, re-run 2026-08-22 with `scripts/analysis/probe_personality_backtest.js`; same judge reading only the persona's R1 speech: mean r .02, agreement .49.)
 
 Reading: the assigned traits are recoverable from the biography the agent reads.
 
@@ -88,3 +90,7 @@ Reading: neither a better persona nor a freer process alone moves dispersion (st
 
 Caveats: the benchmark process shows the task tips (锦囊) while the roleplay process hides them, so the process factor bundles an information-set difference; the benchmark persona text is not task-blind. Steps 1–2 are single rounds (single-round SD fluctuates ±50–150; step 3's matched single round was 756).
 Sources: step 0 = benchmark individual simple 5×42 (frozen); step 1 = `ablation_bio_x_script_indiv_20260820`; step 2 = `solo_r2_v2Q_attrlist_20260820`; step 3 = solo v2Q frozen 5×42; card-only/trait-only = `solo_r2_v2Q_cardonly_20260819` / `solo_r2_v2Q_traitonly_rep1_20260816`.
+
+## Corrections 2026-08-22 (see docs/RESULT_PROVENANCE_MAP.md)
+- Reliability: "unit explains ≈30% of price variance" was var(unit means)/total var; one-way ICC(1) is .08–.18 (`paper/tab_reliability_icc.py`). Write "≈10%".
+- Drop "members holding the same private evidence endorse each other (.82 vs .46, p=.048)" and the sentence "Phenomena that run through information reproduce": the original measure is unrecoverable and two deterministic re-definitions do not reproduce it (`paper/tab_endorsement_dyads.py`).
