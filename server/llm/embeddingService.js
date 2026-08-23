@@ -5,23 +5,33 @@ const fs = require("fs");
 const { getModel } = require("./modelRegistry");
 
 const ANCHOR_PATH = path.join(__dirname, "..", "..", "data", "round2_dim_anchors_v1.json");
+const DEFAULT_EMBEDDING_MODEL_REVISION = "2c4055b12046f11709e9df2c122e59ffbdc2f900";
 const EMBEDDING_MODEL = getModel("embedding");
+const EMBEDDING_MODEL_REVISION = requirePinnedRevision(String(
+  process.env.HF_EMBEDDING_MODEL_REVISION || DEFAULT_EMBEDDING_MODEL_REVISION
+).trim());
 const EMBEDDING_CACHE_DIR_NAME = `models--${EMBEDDING_MODEL.replace(/[\\/]/g, "--")}`;
 const CACHE_DIR = process.env.HF_CACHE_DIR || path.join(process.env.HOME || "", ".cache", "huggingface");
+const REVISION_CACHE_ROOT = path.join(CACHE_DIR, ...EMBEDDING_MODEL.split(/[\\/]/), EMBEDDING_MODEL_REVISION);
 const LOCAL_MODEL_ROOT = process.env.HF_LOCAL_MODEL_PATH || path.join(
-  process.env.HOME || "",
-  ".cache",
-  "huggingface",
+  CACHE_DIR,
   "hub",
   EMBEDDING_CACHE_DIR_NAME,
   "snapshots",
-  "main"
+  EMBEDDING_MODEL_REVISION
 );
 
 let embedder = null;
 let anchorVectors = {};
 let anchorConfig = null;
 let initPromise = null;
+
+function requirePinnedRevision(revision) {
+  if (!/^[0-9a-f]{40}$/i.test(revision)) {
+    throw new Error(`[EmbeddingService] HF_EMBEDDING_MODEL_REVISION must be a 40-char commit hash, got ${revision}`);
+  }
+  return revision;
+}
 
 function configureTransformersEnv() {
   env.cacheDir = CACHE_DIR;
@@ -32,6 +42,8 @@ function configureTransformersEnv() {
   }
   console.log(`[EmbeddingService] env.cacheDir=${env.cacheDir}`);
   console.log(`[EmbeddingService] env.localModelPath=${env.localModelPath}`);
+  console.log(`[EmbeddingService] model=${EMBEDDING_MODEL}`);
+  console.log(`[EmbeddingService] pinned_revision=${EMBEDDING_MODEL_REVISION}`);
 }
 
 function hasLocalModelFiles(rootDir) {
@@ -58,21 +70,29 @@ async function init() {
   initPromise = (async () => {
     configureTransformersEnv();
     console.log(`[EmbeddingService] 加载模型 ${EMBEDDING_MODEL}...`);
-    if (hasLocalModelFiles(LOCAL_MODEL_ROOT)) {
+    if (hasLocalModelFiles(LOCAL_MODEL_ROOT) || hasLocalModelFiles(REVISION_CACHE_ROOT)) {
       try {
         embedder = await pipeline("feature-extraction", EMBEDDING_MODEL, {
-          local_files_only: true
+          local_files_only: true,
+          revision: EMBEDDING_MODEL_REVISION
         });
-        console.log("[EmbeddingService] 本地模型加载完成（localModelPath + model id）");
+        console.log("[EmbeddingService] 本地模型加载完成（pinned revision）");
       } catch (localErr) {
-        console.warn("[EmbeddingService] 本地缓存加载失败，回退在线加载:", localErr.message || localErr);
+        console.error(
+          `[EmbeddingService][ERROR] pinned local model load failed; falling back to online load. revision=${EMBEDDING_MODEL_REVISION}`,
+          localErr.message || localErr
+        );
       }
     } else {
-      console.warn("[EmbeddingService] 本地模型文件不完整，回退在线加载。");
+      console.error(
+        `[EmbeddingService][ERROR] pinned local model files missing; falling back to online load. revision=${EMBEDDING_MODEL_REVISION}`
+      );
     }
     if (!embedder) {
-      embedder = await pipeline("feature-extraction", EMBEDDING_MODEL);
-      console.log("[EmbeddingService] 在线模型加载完成");
+      embedder = await pipeline("feature-extraction", EMBEDDING_MODEL, {
+        revision: EMBEDDING_MODEL_REVISION
+      });
+      console.error(`[EmbeddingService][ERROR] 在线模型加载完成 revision=${EMBEDDING_MODEL_REVISION}`);
     }
 
     if (!fs.existsSync(ANCHOR_PATH)) {
@@ -227,6 +247,10 @@ function getDimensions() {
   return Array.isArray(anchorConfig?.dimensions) ? anchorConfig.dimensions : [];
 }
 
+function getModelRevision() {
+  return EMBEDDING_MODEL_REVISION;
+}
+
 module.exports = {
   init,
   embed,
@@ -234,5 +258,6 @@ module.exports = {
   scoreTagsWithPolarity,
   maxCosineToDimension,
   getAnchorVersion,
-  getDimensions
+  getDimensions,
+  getModelRevision
 };
