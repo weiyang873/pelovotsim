@@ -61,6 +61,7 @@ const DB_PATH = process.env.DATABASE_URL || [
   process.env.PGPORT || "5432",
   process.env.PGDATABASE || "postgres"
 ].join(":");
+const DB_LOG_TARGET = formatDbTargetForLog();
 const CONFIG_DIR = path.join(ROOT, "game_config_v0.1");
 let ENGINE_CONFIG = null;
 const LLM_RATE_WINDOW_MS = 10_000;
@@ -83,6 +84,27 @@ const STARTUP_SUMMARY_SCHEMA_TABLES = [
   "round2_persona_views",
   "session_config"
 ];
+
+function formatDbTargetForLog() {
+  const rawUrl = process.env.DATABASE_URL;
+  if (rawUrl) {
+    try {
+      const url = new URL(rawUrl);
+      const username = url.username ? decodeURIComponent(url.username) : "";
+      const userPart = username ? `${username}:` : "";
+      const passwordPart = url.password ? "***" : "";
+      const authPart = userPart || passwordPart ? `${userPart}${passwordPart}@` : "";
+      return `${url.protocol}//${authPart}${url.host}${url.pathname || ""}`;
+    } catch (_err) {
+      return String(rawUrl).replace(/\/\/([^:@/\s]+):([^@/\s]*)@/, "//$1:***@");
+    }
+  }
+
+  const host = process.env.PGHOST || "localhost";
+  const port = process.env.PGPORT || "5432";
+  const database = process.env.PGDATABASE || "postgres";
+  return `host=${host} port=${port} db=${database}`;
+}
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -3391,7 +3413,7 @@ function startServer() {
     }
     server.listen(PORT, HOST, () => {
       console.log(`EMBA sim server running at http://${HOST}:${PORT}`);
-      console.log(`PostgreSQL DB: ${DB_PATH}`);
+      console.log(`PostgreSQL DB: ${DB_LOG_TARGET}`);
     });
   };
   boot().catch((err) => {
@@ -3405,4 +3427,4 @@ if (require.main === module) {
   startServer();
 }
 
-module.exports = { createAppServer, startServer, DB_PATH, parseStudentReply };
+module.exports = { createAppServer, startServer, DB_PATH, DB_LOG_TARGET, formatDbTargetForLog, parseStudentReply };
