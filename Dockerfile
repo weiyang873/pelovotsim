@@ -48,6 +48,7 @@ COPY --from=backend-deps /app/node_modules ./node_modules
 COPY --from=backend-deps /app/.cache/huggingface /app/.cache/huggingface
 COPY package*.json ./
 COPY server/ ./server/
+COPY scripts/ ./scripts/
 COPY game_config_v0.1/ ./game_config_v0.1/
 COPY data/ ./data/
 COPY legal/ ./legal/
