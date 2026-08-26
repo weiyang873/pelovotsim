@@ -18,12 +18,13 @@ import {
   teacherResetMember,
   teacherResetSession,
   teacherResetTeam,
+  teacherSetLeader,
   updateTeacherSessionConfig,
   verifyTeacherCode
 } from "../api/teacherApi";
 
 const TEACHER_CODE_KEY = "emba_teacher_code";
-const TABS = ["实时监控", "Round 1 复盘", "Round 2 复盘", "跨轮对比", "AI 讲解稿", "导出", "7关卡诊断", "能力卡生态"];
+const TABS = ["实时监控", "课堂复盘", "Round 1 复盘", "Round 2 复盘", "跨轮对比", "AI 讲解稿", "导出", "7关卡诊断", "能力卡生态"];
 const STATUS_ORDER = [
   "R2_NOT_STARTED",
   "R2_REVIEW",
@@ -194,6 +195,10 @@ function isMarkedAbsent(member) {
   );
 }
 
+function leaderDisplayName(name) {
+  return String(name || "").trim() || "未设置";
+}
+
 function leaderForceSummary(action) {
   const details = action?.details || {};
   const gateMap = {
@@ -362,6 +367,18 @@ function TeamCard({ team, expanded, onToggle, onAction, busy, productImage, prod
               </div>
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+              <span
+                style={{
+                  padding: "3px 8px",
+                  borderRadius: 999,
+                  background: "#fef3c7",
+                  color: "#92400e",
+                  fontSize: 11,
+                  fontWeight: 800
+                }}
+              >
+                组长: {leaderDisplayName(team.leaderName)}
+              </span>
               {team.members.map((member) => {
                 const marker = memberIndicator(team.r2.status, member);
                 return (
@@ -477,7 +494,7 @@ function TeamCard({ team, expanded, onToggle, onAction, busy, productImage, prod
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
                 <tr style={{ background: "#f8fafc", color: "#475569" }}>
-                  {["成员", "负责维度", "访谈状态", "选卡状态", "已选卡数", "操作"].map((label) => (
+                  {["成员", "负责维度", "访谈状态", "选卡状态", "已选卡数", "组长", "操作"].map((label) => (
                     <th key={label} style={{ textAlign: "left", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" }}>{label}</th>
                   ))}
                 </tr>
@@ -485,13 +502,39 @@ function TeamCard({ team, expanded, onToggle, onAction, busy, productImage, prod
               <tbody>
                 {team.members.map((member) => (
                   <tr key={member.id}>
-                    <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0", fontWeight: 700, color: "#0f172a" }}>{member.name}</td>
+                    <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0", fontWeight: 700, color: "#0f172a" }}>
+                      {member.name}
+                      {member.id === team.leaderMemberId ? (
+                        <span style={{ marginLeft: 8, padding: "2px 7px", borderRadius: 999, background: "#fef3c7", color: "#92400e", fontSize: 10, fontWeight: 800 }}>
+                          组长
+                        </span>
+                      ) : null}
+                    </td>
                     <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0", color: "#475569" }}>
                       {member.dims.length ? formatDims(member.dims).join(" / ") : "— 未分配"}
                     </td>
                     <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0", color: "#475569" }}>{detailInterviewLabel(member)}</td>
                     <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0", color: "#475569" }}>{detailCardLabel(member)}</td>
                     <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0", color: "#475569" }}>{member.cardsSelected || "—"}</td>
+                    <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>
+                      {member.id === team.leaderMemberId ? (
+                        <span style={{ fontSize: 11, color: "#92400e", fontWeight: 800 }}>当前组长</span>
+                      ) : (
+                        <button
+                          onClick={() => onAction("setLeader", { team_id: team.id, member_id: member.id, member_name: member.name })}
+                          disabled={busy}
+                          style={{
+                            ...ghostButtonStyle(true),
+                            color: "#1a5c3a",
+                            border: "1px solid #bbf7d0",
+                            background: "#f0fdf4",
+                            cursor: busy ? "wait" : "pointer"
+                          }}
+                        >
+                          设为组长
+                        </button>
+                      )}
+                    </td>
                     <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                         {member.interviewStatus === "in_progress" && (
@@ -739,6 +782,20 @@ export default function AdminPanel() {
   const handleAction = async (type, payload) => {
     if (!teacherCode) return;
 
+    if (type === "setLeader") {
+      const memberName = String(payload?.member_name || "该成员").trim();
+      const confirmed = window.confirm(`确认把 ${memberName} 设为本组组长？\n该成员刷新或等页面轮询后会获得组长操作权限。`);
+      if (!confirmed) return;
+      await withRefresh(
+        "setLeader",
+        () => teacherSetLeader(teacherCode, {
+          team_id: payload?.team_id,
+          member_id: payload?.member_id
+        }),
+        `已将 ${memberName} 设为组长`
+      );
+      return;
+    }
     if (type === "forceEndInterview") {
       await withRefresh("forceEndInterview", () => teacherForceEndInterview(teacherCode, payload), "已强制结束该成员访谈");
       return;

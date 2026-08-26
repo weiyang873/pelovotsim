@@ -7,6 +7,7 @@ import {
   getTeacherDebriefData,
   getTeacherVpIterations
 } from "../api/teacherApi";
+import ClassroomDebrief from "./ClassroomDebrief";
 import DiagnosticTab from "./DiagnosticTab";
 import CardEcosystemTab from "./CardEcosystemTab";
 import { formatYuan as formatMoney, formatWanFromYuan as formatWan } from "../utils/formatMoney";
@@ -2521,7 +2522,7 @@ export default function TeacherDebriefTabs({ activeTab, teacherCode, onExportJso
   const mountedRef = useRef(true);
 
   const sessionId = "default";
-  const debriefTabs = ["Round 1 复盘", "Round 2 复盘", "跨轮对比", "AI 讲解稿", "导出", "7关卡诊断", "能力卡生态"];
+  const debriefTabs = ["课堂复盘", "Round 1 复盘", "Round 2 复盘", "跨轮对比", "AI 讲解稿", "导出", "7关卡诊断", "能力卡生态"];
 
   const loadDebriefData = async (force = false) => {
     if (!teacherCode) return;
@@ -2670,6 +2671,12 @@ export default function TeacherDebriefTabs({ activeTab, teacherCode, onExportJso
       </div>
 
       <DebriefTabErrorBoundary activeTab={activeTab}>
+        {activeTab === "课堂复盘" && (
+          <ClassroomDebrief
+            teams={debriefData?.teams || []}
+            meta={debriefData?.meta || null}
+          />
+        )}
         {activeTab === "Round 1 复盘" && (
           <Round1Tab
             teams={round1Teams}

@@ -4,6 +4,7 @@ const { chatCompletion } = require("../llm/deepseekClient");
 const { withLlmLogging } = require("../llm/llm_logger");
 const { getTeamSessions } = require("../llm/sessions");
 const { buildDataUrl, generateProductImage } = require("../llm/lovotImageGen");
+const { getCapabilityParams } = require("../llm/rdCalculator");
 const { loadJinangConfig } = require("../multiplayer/jinangDealer");
 const { listTeamIterations } = require("../multiplayer/vpIterationStore");
 const { ensureSessionConfigSchema } = require("../multiplayer/sessionConfig");
@@ -24,6 +25,19 @@ const ARCH_DISPLAY = {
   Experience: { label: "体验●", color: "#8B5CF6", symbol: "●" },
   Hybrid: { label: "混合▲", color: "#F59E0B", symbol: "▲" },
   Function: { label: "功能■", color: "#3B82F6", symbol: "■" }
+};
+const CARD_DIM_DISPLAY = {
+  interaction_expression: "交互",
+  perception_understanding: "感知",
+  mobility_navigation: "运动",
+  safety_trust: "安全",
+  expand_connect: "扩展",
+  ops_maintenance: "运维"
+};
+const CARD_TIER_DISPLAY = {
+  low: "低",
+  mid: "中",
+  high: "高"
 };
 let __teacherDebriefSchemaPromise = null;
 
@@ -229,6 +243,68 @@ function computeVpCompositeScore(C, G, E) {
   const e = Math.max(1, Math.min(5, Number(E || 0) || 3));
   const avgGE = (g + e) / 2;
   return Math.min(5, Math.round(Math.sqrt(c * avgGE) * 10) / 10);
+}
+
+function normalizeCardSummaryRow(row) {
+  if (!row || typeof row !== "object") {
+    const text = String(row || "").trim();
+    return {
+      id: text,
+      name: text.replace(/·(低|中|高)$/u, ""),
+      tier: "",
+      tierLabel: text.match(/·(低|中|高)$/u)?.[1] || "",
+      label: text
+    };
+  }
+  return {
+    id: row.id || row.cap_id || "",
+    name: row.name || row.label || row.id || row.cap_id || "能力卡",
+    tier: row.tier || "",
+    tierLabel: row.tierLabel || CARD_TIER_DISPLAY[row.tier] || row.tier || "",
+    label: row.label || [row.name || row.id || row.cap_id, row.tierLabel || CARD_TIER_DISPLAY[row.tier] || row.tier].filter(Boolean).join("·")
+  };
+}
+
+function buildTeacherCardDetails(submission) {
+  const summaryRows = Array.isArray(submission?.cards) ? submission.cards.map(normalizeCardSummaryRow) : [];
+  const summaryById = Object.fromEntries(summaryRows.map((row) => [String(row.id || ""), row]));
+  const selections = Array.isArray(submission?.selections) ? submission.selections : [];
+
+  if (!selections.length) {
+    return summaryRows.map((row) => ({
+      id: row.id || row.name,
+      name: row.name,
+      dimKey: "",
+      dim: "",
+      tier: row.tier,
+      tierLabel: row.tierLabel,
+      label: row.label
+    }));
+  }
+
+  return selections.map((sel) => {
+    const capId = String(sel?.cap_id || sel?.id || "").trim();
+    const tier = String(sel?.tier || "").trim();
+    const summary = summaryById[capId] || {};
+    let params = null;
+    try {
+      if (capId && tier) params = getCapabilityParams(capId, tier);
+    } catch (_) {
+      params = null;
+    }
+    const dimKey = params?.group_id || "";
+    const tierLabel = summary.tierLabel || CARD_TIER_DISPLAY[tier] || tier;
+    const name = summary.name || params?.cap_name || capId || "能力卡";
+    return {
+      id: capId || name,
+      name,
+      dimKey,
+      dim: CARD_DIM_DISPLAY[dimKey] || "",
+      tier,
+      tierLabel,
+      label: summary.label || [name, tierLabel].filter(Boolean).join("·")
+    };
+  });
 }
 
 function formatDisplayName(name, fallbackIndex) {
@@ -826,9 +902,9 @@ async function buildTeamRecord(teamRow, sessionId, teamIndex) {
   const volumeLog = logs.r2_volume || {};
   const result = snapshot?.result?.result || {};
   const bestGrid = snapshot?.result?.best_grid || snapshot?.submission?.best_grid || r1.grid;
-  const cards = Array.isArray(snapshot?.submission?.cards)
-    ? snapshot.submission.cards.map((item) => item.label || `${item.name || item.id}·${item.tierLabel || item.tier || ""}`)
-    : [];
+  const rawCards = Array.isArray(snapshot?.submission?.cards) ? snapshot.submission.cards : [];
+  const cards = rawCards.map((item) => normalizeCardSummaryRow(item).label).filter(Boolean);
+  const cardsDetail = buildTeacherCardDetails(snapshot?.submission);
   const submissionPrice = snapshot?.submission?.price;
   const submissionDcogs = snapshot?.submission?.dcogs;
   const units = toFiniteNumber(snapshot?.result?.units, profitLog.Q);
@@ -861,8 +937,15 @@ async function buildTeamRecord(teamRow, sessionId, teamIndex) {
     profitPerUnit,
     submittedAt: snapshot?.submission?.submitted_at || null,
     cards,
+    cardsDetail,
     roi: result.roi == null ? null : Number(result.roi),
     nre: toFiniteNumber(result.nre_total_wan, null),
+    fixedCost: toFiniteNumber(result.fixedCost, result.f_total),
+    rdSpend: toFiniteNumber(result.rdInvestment, null),
+    breakevenQ: toFiniteNumber(result.breakeven_q, null),
+    priceWtpPct: Number.isFinite(Number(snapshot?.submission?.price)) && Number.isFinite(Number(effectiveWtpAdj)) && Number(effectiveWtpAdj) > 0
+      ? roundNumber((Number(snapshot.submission.price) / Number(effectiveWtpAdj)) * 100, 1)
+      : null,
     coverCore: toFiniteNumber(result.coverCore, null),
     coverNice: toFiniteNumber(result.coverNice, null),
     evi,
