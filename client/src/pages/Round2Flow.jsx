@@ -562,32 +562,149 @@ function renderInlineBold(text) {
   });
 }
 
-function renderReportText(text) {
-  return String(text || "").split(/\r?\n/).map((line, index) => {
+const REPORT_SECTION_TITLES = ["受访者概况", "核心发现", "行为与态度", "调研员备注"];
+
+function parseReportSectionLine(trimmed) {
+  const content = trimmed.replace(/^▎\s*/, "").trim();
+  const knownTitle = REPORT_SECTION_TITLES.find((title) => (
+    content === title || content.startsWith(`${title} `)
+  ));
+  if (!knownTitle) return { title: content, body: "" };
+  return {
+    title: knownTitle,
+    body: content.slice(knownTitle.length).trim()
+  };
+}
+
+function parseReportFindingLine(trimmed) {
+  const boldMatch = trimmed.match(/^\*\*(发现[一二三四五六七八九十\d]+[：:][^*]+)\*\*\s*(.*)$/);
+  if (boldMatch) {
+    return { title: boldMatch[1].trim(), body: boldMatch[2].trim() };
+  }
+  if (/^发现[一二三四五六七八九十\d]+[：:]/.test(trimmed)) {
+    return { title: trimmed, body: "" };
+  }
+  return null;
+}
+
+function renderReportText(text, options = {}) {
+  const compact = Boolean(options.compact);
+  const content = String(text || "").trim();
+  if (!content) return null;
+  const lines = content.split(/\r?\n/);
+  const meaningfulLines = lines.map((line) => line.trim()).filter(Boolean);
+  const hasReportStructure = meaningfulLines.some((line) => (
+    /^━+$/.test(line) || line.startsWith("▎") || parseReportFindingLine(line)
+  )) || meaningfulLines[0] === "客户调研报告";
+
+  if (!hasReportStructure) {
+    return (
+      <div style={{whiteSpace:"pre-wrap",overflowWrap:"anywhere",wordBreak:"break-word"}}>
+        {renderInlineBold(content)}
+      </div>
+    );
+  }
+
+  const rendered = [];
+  let beforeFirstSection = true;
+
+  lines.forEach((line, index) => {
     const trimmed = line.trim();
     if (!trimmed) {
-      return <div key={index} style={{height:10}} />;
+      return;
     }
     if (/^━+$/.test(trimmed)) {
-      return (
-        <div key={index} style={{color:"#cbd5e1",letterSpacing:1,textAlign:"center",lineHeight:1.4}}>
+      return;
+    }
+    if (trimmed.startsWith("▎")) {
+      beforeFirstSection = false;
+      const section = parseReportSectionLine(trimmed);
+      rendered.push(
+        <div key={`section_${index}`} style={{marginTop:rendered.length ? (compact ? 6 : 12) : 0,paddingTop:compact ? 6 : 8,borderTop:rendered.length ? "1px solid #e5e7eb" : "none",fontSize:compact ? 12 : 13,fontWeight:900,color:"#166534",lineHeight:1.4}}>
+          {section.title}
+        </div>
+      );
+      if (section.body) {
+        rendered.push(
+          <div key={`section_body_${index}`} style={{fontSize:compact ? 12 : 14,color:"#374151",lineHeight:compact ? 1.7 : 1.85,overflowWrap:"anywhere",wordBreak:"break-word"}}>
+            {renderInlineBold(section.body)}
+          </div>
+        );
+      }
+      return;
+    }
+
+    const finding = parseReportFindingLine(trimmed);
+    if (finding) {
+      beforeFirstSection = false;
+      rendered.push(
+        <div key={`finding_${index}`} style={{borderLeft:"3px solid #1a5c3a",padding:compact ? "6px 0 6px 10px" : "8px 0 8px 12px",background:"linear-gradient(90deg, rgba(236, 253, 245, 0.9), rgba(236, 253, 245, 0))"}}>
+          <div style={{fontSize:compact ? 12 : 14,fontWeight:900,color:"#14532d",lineHeight:1.45}}>
+            {finding.title}
+          </div>
+          {finding.body && (
+            <div style={{marginTop:4,fontSize:compact ? 12 : 14,color:"#374151",lineHeight:compact ? 1.7 : 1.85,overflowWrap:"anywhere",wordBreak:"break-word"}}>
+              {renderInlineBold(finding.body)}
+            </div>
+          )}
+        </div>
+      );
+      return;
+    }
+
+    const numbered = trimmed.match(/^(\d+)[.、]\s*(.+)$/);
+    if (numbered) {
+      beforeFirstSection = false;
+      rendered.push(
+        <div key={`numbered_${index}`} style={{display:"grid",gridTemplateColumns:"24px minmax(0, 1fr)",gap:8,alignItems:"start",fontSize:compact ? 12 : 14,color:"#374151",lineHeight:compact ? 1.7 : 1.85}}>
+          <div style={{fontWeight:900,color:"#166534",textAlign:"right"}}>{numbered[1]}.</div>
+          <div style={{overflowWrap:"anywhere",wordBreak:"break-word"}}>{renderInlineBold(numbered[2])}</div>
+        </div>
+      );
+      return;
+    }
+
+    const keyValue = trimmed.match(/^([^：:]{2,18})[：:]\s*(.+)$/);
+    if (keyValue && !/^https?:\/\//i.test(trimmed)) {
+      beforeFirstSection = false;
+      rendered.push(
+        <div key={`kv_${index}`} style={{fontSize:compact ? 12 : 14,color:"#374151",lineHeight:compact ? 1.7 : 1.85,overflowWrap:"anywhere",wordBreak:"break-word"}}>
+          <strong style={{color:"#111827"}}>{keyValue[1]}：</strong>{renderInlineBold(keyValue[2])}
+        </div>
+      );
+      return;
+    }
+
+    if (beforeFirstSection && trimmed === "客户调研报告") {
+      rendered.push(
+        <div key={`title_${index}`} style={{fontSize:compact ? 14 : 18,fontWeight:900,color:"#111827",lineHeight:1.35}}>
           {trimmed}
         </div>
       );
+      return;
     }
-    if (trimmed.startsWith("▎")) {
-      return (
-        <div key={index} style={{borderLeft:"4px solid #1a5c3a",padding:"4px 0 4px 10px",margin:"10px 0 6px",fontWeight:800,color:"#111827",background:"#f8fafc"}}>
-          {renderInlineBold(trimmed.replace(/^▎\s*/, ""))}
+
+    if (beforeFirstSection) {
+      rendered.push(
+        <div key={`subtitle_${index}`} style={{fontSize:compact ? 12 : 14,fontWeight:800,color:"#475569",lineHeight:1.55}}>
+          {renderInlineBold(trimmed)}
         </div>
       );
+      return;
     }
-    return (
-      <div key={index} style={{margin:"0 0 8px"}}>
-        {renderInlineBold(line)}
+
+    rendered.push(
+      <div key={`p_${index}`} style={{fontSize:compact ? 12 : 14,color:"#374151",lineHeight:compact ? 1.7 : 1.85,overflowWrap:"anywhere",wordBreak:"break-word"}}>
+        {renderInlineBold(trimmed)}
       </div>
     );
   });
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:compact ? 7 : 10,maxWidth:"100%"}}>
+      {rendered}
+    </div>
+  );
 }
 
 function formatGridLabel(gridId) {
@@ -2610,7 +2727,7 @@ export default function App() {
           ) : isSummaryMode ? (
             <div style={{padding:"16px 18px",borderRadius:12,background:"#fff",border:"1px solid #dbe5dd",fontSize:13,color:"#374151",lineHeight:1.85}}>
               <div style={{fontSize:14,fontWeight:800,color:"#166534",marginBottom:10}}>{summaryReportTitle}</div>
-              {renderReportText(selectedPersonaSummaryText)}
+              {renderReportText(selectedPersonaSummaryText, { compact: true })}
             </div>
           ) : (
             <div style={{display:"flex",flexDirection:"column",gap:12}}>
@@ -3652,9 +3769,9 @@ export default function App() {
           {/* Interview summary for reference while selecting cards */}
           <div style={{padding:"14px 18px",borderRadius:10,background:"#f0fdf4",border:"1.5px solid #bbf7d0",marginBottom:8}}>
             <div style={{fontSize:13,fontWeight:700,color:"#166534",marginBottom:6}}>{isSummaryMode ? "📄 已冻结调研报告摘录" : "🎙️ 你的访谈洞察"}</div>
-            <div style={{fontSize:13,color:"#374151",lineHeight:1.8,marginBottom:10}}>
+            <div style={{fontSize:13,color:"#374151",lineHeight:1.8,marginBottom:10,maxHeight:isSummaryMode ? 260 : "none",overflowY:isSummaryMode ? "auto" : "visible",paddingRight:isSummaryMode ? 6 : 0}}>
               {isSummaryMode
-                ? (selectedPersonaSummaryText || "请先在上一步阅读调研报告，再根据这份报告选卡。")
+                ? renderReportText(selectedPersonaSummaryText || "请先在上一步阅读调研报告，再根据这份报告选卡。", { compact: true })
                 : (buildInterviewSummary(interviewResult, memberDims) || "请先完成真实访谈，再根据提炼结果选卡。")}
             </div>
             {individualSubmitError && (
