@@ -38,3 +38,15 @@ DV 说明：利润 = settlement.profit（万元）；亏损 = profit<0；log 收
 - 未复现/未测：备选方案→更快（R1 备选多 → 亏损少但更慢）；顾问机制、决策整合、高速环境边界条件。
 - 限制：相关设计；"实时信息" 为文本代理（每句数字量/成本词占比）；roleplay 主样本出自单编剧机制（逐人 actor 11 队方向一致）；单一任务。
 - 数据位置：冻结 B `runs_v4flash_0731/team_r2_replay/team_r2_story3_B_rep1-5_20260816`（worktree）；设计队 = faultline2x2 146 + triad 35 + shared-card 31 + fn-diversity 19；benchmark `runs_v4flash_0731/team_pilot/benchmark_team_rep2-5_20260816` + `benchmark_team_rep1layered_20260817` + 08-14 simple 轮。
+
+## Robustness to the ratio construction (2026-08-22, `paper/tab_robust_info_ratio.py` → `paper/data/tab_robust_info_ratio.csv`)
+
+Concern: info per line has the DV (line count) in its denominator; total info has the opposite mechanical bias (more lines → more total, +0.25…+0.58 everywhere). Clean measures = info per line over a fixed early window (first 2/3/5 lines, first half), denominator independent of total length.
+
+DV = D4 length, controls industry Blau + finance members, SE clustered by composition:
+- Roleplay frozen / designed separately: e3 = −0.09 (p=.16 / p=.13) — direction holds, single-sample power does not.
+- Roleplay pooled (n=432, + sample dummy): e2 −0.08 (p=.057), e3 −0.09 (p=.038), ehalf −0.09 (p=.027).
+- Benchmark, same measures: e3 −0.02 (ns) simple / −0.09 (ns) layered; ehalf +0.14 (p=.048) simple / +0.01 layered — zero or positive.
+- Profit half is stronger with early/total measures (e5 +0.20, p<.001 pooled; also holds per sample).
+
+Reading for the paper: the counterintuitive slope survives denominator-free measurement but at β ≈ −0.09 and only pooled-significant; the cross-design contrast (negative in roleplay, zero/positive in benchmark) survives cleanly. Recommended wording: lead with the contrast and the profit half; report −0.13** (per-line) with the early-window robustness in the same table, not as an appendix afterthought.
