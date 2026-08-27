@@ -2324,6 +2324,7 @@ export default function App() {
     return () => {
       canceled = true;
       controller.abort();
+      setIsStartingInterview(false);
     };
   }, [applyInterviewPayload, canStartInterviewForMember, completedInterviewCount, interviewRestoreChecked, interviewSessionId, interviewTransition, isSummaryMode, memberDims, memberId, step, teamId]);
 
