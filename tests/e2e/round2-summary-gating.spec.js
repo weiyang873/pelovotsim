@@ -35,12 +35,16 @@ function readAdminCode() {
 async function bootstrapRound2Team(request, interviewMode, options = {}) {
   const baseUrl = resolveBaseUrl();
   const teamSize = Math.max(1, Number(options.teamSize || 1));
-  const skipRes = await request.get(`${baseUrl}/api/test/skip-to-r2?teamSize=${encodeURIComponent(String(teamSize))}`);
+  const adminCode = readAdminCode();
+  const skipRes = await request.get(`${baseUrl}/api/test/skip-to-r2?teamSize=${encodeURIComponent(String(teamSize))}`, {
+    headers: {
+      "x-teacher-code": adminCode
+    }
+  });
   expect(skipRes.status()).toBe(200);
   const skipJson = await skipRes.json();
   expect(skipJson.ok).toBeTruthy();
 
-  const adminCode = readAdminCode();
   const configRes = await request.post(`${baseUrl}/api/teacher/session-config`, {
     headers: {
       "Content-Type": "application/json",
@@ -94,6 +98,28 @@ async function clickRound2RecapContinue(page) {
     if (!button) throw new Error("Round 2 recap continue button not found");
     button.click();
   });
+}
+
+async function selectEnabledCardCheckboxes(root, targetCount) {
+  const checkboxes = root.locator("input[type='checkbox']");
+  let selectedCount = 0;
+  for (let index = 0; index < await checkboxes.count(); index += 1) {
+    if (selectedCount >= targetCount) break;
+    const checkbox = checkboxes.nth(index);
+    if (await checkbox.isDisabled().catch(() => true)) continue;
+    if (await checkbox.isChecked().catch(() => false)) continue;
+    await checkbox.click();
+    selectedCount += 1;
+  }
+  expect(selectedCount).toBe(targetCount);
+}
+
+async function completeSummaryReading(page) {
+  await clickRound2RecapContinue(page);
+  await expect(page.locator("[data-testid='r2-interview-container']")).toBeVisible({ timeout: 30000 });
+  await expect(page.getByText("你已阅读 1/3 份")).toBeVisible({ timeout: 30000 });
+  await page.getByRole("button", { name: "完成阅读，等待团队" }).click();
+  await expect(page.locator("[data-testid='r2-card-selection-container']")).toBeVisible({ timeout: 30000 });
 }
 
 test.describe.serial("Round 2 summary/live gating", () => {
@@ -161,5 +187,23 @@ test.describe.serial("Round 2 summary/live gating", () => {
     await page.waitForTimeout(4000);
     await expect(page.locator("[data-testid='r2-interview-container']")).toBeVisible({ timeout: 10000 });
     await expect(page.locator("[data-testid='r2-card-selection-container']")).toHaveCount(0);
+  });
+
+  test("merge continue is disabled until the team has at least six cards", async ({ page, request }) => {
+    const ctx = await bootstrapRound2Team(request, "summary");
+    await page.goto(ctx.round2Url);
+    await completeSummaryReading(page);
+
+    await selectEnabledCardCheckboxes(page.locator("[data-testid='r2-card-selection-container']"), 5);
+    await page.getByRole("button", { name: /提交个人选卡/ }).click();
+    await expect(page.locator("[data-testid='r2-merge-container']")).toBeVisible({ timeout: 30000 });
+
+    const mergeContinueBtn = page.locator("[data-testid='r2-merge-continue-btn']");
+    await expect(mergeContinueBtn).toBeDisabled();
+    await expect(mergeContinueBtn).toHaveText(/还需选 1 张能力卡/);
+
+    await selectEnabledCardCheckboxes(page.locator("[data-testid='r2-merge-card-gate']"), 1);
+    await expect(mergeContinueBtn).toBeEnabled();
+    await expect(mergeContinueBtn).toHaveText(/^继续$/);
   });
 });

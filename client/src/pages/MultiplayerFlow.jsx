@@ -454,10 +454,28 @@ function buildVpRecapSentence(summary, fallbackText) {
 }
 
 function toPercentChange(adj, ref) {
-  const a = Number(adj || 0);
-  const b = Number(ref || 0);
-  if (!Number.isFinite(a) || !Number.isFinite(b) || b <= 0) return 0;
+  const a = numberOrNull(adj);
+  const b = numberOrNull(ref);
+  if (a == null || b == null || b <= 0) return null;
   return Math.round(((a / b) - 1) * 100);
+}
+
+function numberOrNull(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function formatSignedPercentNumber(value) {
+  const n = numberOrNull(value);
+  if (n == null) return "—";
+  return n >= 0 ? `+${n}%` : `${n}%`;
+}
+
+function signedPercentColor(value) {
+  const n = numberOrNull(value);
+  if (n == null) return "#6b7280";
+  return n >= 0 ? "#2FAB6E" : "#dc2626";
 }
 
 function normalizeScoreValue(value) {
@@ -2415,22 +2433,19 @@ export default function App() {
   const finalCell = results?.team?.final_grid_id ? toUiCell(results.team.final_grid_id) : (teamCell || selectedCell);
   const finalArch = results?.team?.final_architecture || teamArch || arch || "Experience";
   const wtpBreakdown = results?.wtp_breakdown || {};
-  const wtpPct = Number.isFinite(Number(wtpBreakdown?.final_pct))
-    ? Number(wtpBreakdown.final_pct)
-    : toPercentChange(r1?.WTPadj, r1?.WTPref);
-  const wtpBasePct = Number.isFinite(Number(wtpBreakdown?.base_pct))
-    ? Number(wtpBreakdown.base_pct)
-    : wtpPct;
-  const wtpJinangDeltaPct = Number.isFinite(Number(wtpBreakdown?.jinang_delta_pct))
-    ? Number(wtpBreakdown.jinang_delta_pct)
-    : Math.round(Number(wtpBreakdown?.market_jinang_bonus_total ?? wtpBreakdown?.jinang_bonus ?? 0) * 100);
-  const rhoDiscountValue = Number.isFinite(Number(wtpBreakdown?.rho_discount))
-    ? Number(wtpBreakdown.rho_discount)
+  const wtpPct = numberOrNull(wtpBreakdown?.final_pct) ?? toPercentChange(r1?.WTPadj, r1?.WTPref);
+  const wtpBasePct = numberOrNull(wtpBreakdown?.base_pct) ?? wtpPct;
+  const rawWtpJinangDeltaPct = numberOrNull(wtpBreakdown?.jinang_delta_pct);
+  const rawWtpJinangBonus = numberOrNull(wtpBreakdown?.market_jinang_bonus_total ?? wtpBreakdown?.jinang_bonus);
+  const wtpJinangDeltaPct = rawWtpJinangDeltaPct != null
+    ? rawWtpJinangDeltaPct
+    : (rawWtpJinangBonus != null ? Math.round(rawWtpJinangBonus * 100) : null);
+  const rhoDiscountValue = numberOrNull(wtpBreakdown?.rho_discount);
+  const wtpHasJinangBoost = wtpJinangDeltaPct != null && Math.abs(wtpJinangDeltaPct) > 0;
+  const resultMarketJinangBonus = numberOrNull(resultMarketJinang?.bonus);
+  const resultMarketJinangBonusPct = resultMarketJinangBonus != null
+    ? Math.round(resultMarketJinangBonus * 100)
     : null;
-  const wtpHasJinangBoost = Math.abs(wtpJinangDeltaPct) > 0;
-  const resultMarketJinangBonusPct = Number.isFinite(Number(resultMarketJinang?.bonus))
-    ? Math.round(Number(resultMarketJinang.bonus) * 100)
-    : 0;
   const matchedJinangCount = settleItems.filter((s) => Boolean(s?.matched)).length;
   const matchedMarketJinangCount = settleItems.filter((s) => Boolean(s?.matched) && s?.jinang_type === "market").length;
   const matchedTechJinangCount = settleItems.filter((s) => Boolean(s?.matched) && s?.jinang_type === "tech").length;
@@ -2441,9 +2456,8 @@ export default function App() {
       const rawJinangId = String(s?.jinang_id || "").trim();
       const normalizedJinangId = rawJinangId.replace("-", "");
       const card = getCard(rawJinangId) || getCard(normalizedJinangId) || { icon: "🎴", title: s?.name || rawJinangId || "锦囊" };
-      const bonusPct = Number.isFinite(Number(s?.bonus))
-        ? Math.round(Number(s.bonus) * 100)
-        : 0;
+      const bonus = numberOrNull(s?.bonus);
+      const bonusPct = bonus != null ? Math.round(bonus * 100) : null;
       return {
         id: s?.id || `${s?.member_id}-${s?.jinang_id}`,
         card,
@@ -2454,7 +2468,7 @@ export default function App() {
         scope: round1ScoresRevealed ? (s?.jinang_type === "market" ? "Round 1 支付意愿" : "Round 2 研发与成本") : "",
         text: round1ScoresRevealed
           ? (s?.jinang_type === "market"
-              ? `→ 为支付意愿额外增加了 ${bonusPct}%`
+              ? (bonusPct != null ? `→ 为支付意愿额外增加了 ${bonusPct}%` : "→ 市场端增益数据暂缺")
               : "→ 只在第二轮生效：相关能力卡成本/风险更低")
           : ""
       };
@@ -3962,14 +3976,14 @@ export default function App() {
                 </div>
                 <div style={{ minWidth: 220 }}>
                   <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 4 }}>最终结果（含市场锦囊）</div>
-                  <div style={{ fontSize: 36, fontWeight: 800, color: wtpPct >= 0 ? "#2FAB6E" : "#dc2626" }}>
-                    {wtpPct >= 0 ? `+${wtpPct}%` : `${wtpPct}%`}
+                  <div style={{ fontSize: 36, fontWeight: 800, color: signedPercentColor(wtpPct) }}>
+                    {formatSignedPercentNumber(wtpPct)}
                   </div>
                   <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 8 }}>
-                    仅看 VP 本身：{wtpBasePct >= 0 ? `+${wtpBasePct}%` : `${wtpBasePct}%`}
+                    仅看 VP 本身：{formatSignedPercentNumber(wtpBasePct)}
                   </div>
-                  <div style={{ fontSize: 12, color: wtpJinangDeltaPct >= 0 ? "#2FAB6E" : "#dc2626", marginTop: 4 }}>
-                    市场锦囊额外影响：{wtpJinangDeltaPct >= 0 ? `+${wtpJinangDeltaPct}%` : `${wtpJinangDeltaPct}%`}
+                  <div style={{ fontSize: 12, color: signedPercentColor(wtpJinangDeltaPct), marginTop: 4 }}>
+                    市场锦囊额外影响：{formatSignedPercentNumber(wtpJinangDeltaPct)}
                   </div>
                   {rhoDiscountValue != null && (
                     <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
@@ -3983,7 +3997,9 @@ export default function App() {
                   )}
                 </div>
                 <div style={{ fontSize: 13, color: "#666", lineHeight: 1.7, flex: "1 1 280px" }}>
-                  {wtpPct >= 0
+                  {wtpPct == null
+                    ? "支付意愿数据暂未揭示；等第一轮结果和锦囊结算完成后，这里会显示拆分影响。"
+                    : wtpPct >= 0
                     ? "支付意愿先根据价值主张本身计算，再叠加市场锦囊影响；如果客户定义还不够清晰，系统会适当压低最终溢价。"
                     : "当前最终结果仍低于该细分市场平均水平，说明价值主张还需要继续加强。"}
                 </div>
@@ -4016,7 +4032,9 @@ export default function App() {
                   市场锦囊最高匹配项：<strong>{resultMarketJinang.name}</strong>
                   {resultMarketJinang.match_tier ? `（${String(resultMarketJinang.match_tier)}）` : ""}
                   {round1ScoresRevealed && (
-                    resultMarketJinangBonusPct > 0
+                    resultMarketJinangBonusPct == null
+                      ? "，市场端增益数据暂缺。"
+                      : resultMarketJinangBonusPct > 0
                       ? `，为支付意愿额外增加了 ${resultMarketJinangBonusPct}%。`
                       : "，但本轮未形成额外市场端增益。"
                   )}

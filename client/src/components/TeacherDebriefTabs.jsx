@@ -105,22 +105,28 @@ function gridCellKeyFromGridId(value) {
   return `${market}·${strategy}|${segment}`;
 }
 
-function formatPercent(value, digits = 0) {
+function toPresentNumber(value) {
+  if (value == null || value === "") return null;
   const n = Number(value);
-  if (!Number.isFinite(n)) return "-";
+  return Number.isFinite(n) ? n : null;
+}
+
+function formatPercent(value, digits = 0) {
+  const n = toPresentNumber(value);
+  if (n == null) return "-";
   return `${(n * 100).toFixed(digits)}%`;
 }
 
 function formatSignedPercent(value, digits = 0) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return "-";
+  const n = toPresentNumber(value);
+  if (n == null) return "-";
   const text = `${(Math.abs(n) * 100).toFixed(digits)}%`;
   return n > 0 ? `+${text}` : (n < 0 ? `-${text}` : text);
 }
 
 function formatScore(value) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return "-";
+  const n = toPresentNumber(value);
+  if (n == null) return "-";
   return n.toFixed(1);
 }
 
@@ -146,8 +152,8 @@ function getProductVValue(team) {
     team?.r2?.product_v
   ];
   for (const value of candidates) {
-    const n = Number(value);
-    if (Number.isFinite(n) && n >= 0 && n <= 1) return n;
+    const n = toPresentNumber(value);
+    if (n != null && n >= 0 && n <= 1) return n;
   }
   const fallbackCandidates = [
     team?.r2?.vpScore,
@@ -156,8 +162,8 @@ function getProductVValue(team) {
     team?.r1?.VPscore
   ];
   for (const value of fallbackCandidates) {
-    const n = Number(value);
-    if (Number.isFinite(n) && n >= 0 && n <= 1) return n;
+    const n = toPresentNumber(value);
+    if (n != null && n >= 0 && n <= 1) return n;
   }
   return null;
 }
@@ -167,8 +173,8 @@ function formatProductV(value) {
 }
 
 function getRadarScore(scores, key, fallback = 0) {
-  const n = Number(scores?.[key]);
-  return Number.isFinite(n) ? n : fallback;
+  const n = toPresentNumber(scores?.[key]);
+  return n != null ? n : fallback;
 }
 
 function computeRadarScale(teams) {
@@ -238,14 +244,14 @@ function getTeamLabel(team) {
 }
 
 function formatPercentNumber(value, digits = 0) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return "-";
+  const n = toPresentNumber(value);
+  if (n == null) return "-";
   return `${n.toFixed(digits)}%`;
 }
 
 function formatSignedPercentNumber(value, digits = 0) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return "-";
+  const n = toPresentNumber(value);
+  if (n == null) return "-";
   if (n > 0) return `+${n.toFixed(digits)}%`;
   if (n < 0) return `-${Math.abs(n).toFixed(digits)}%`;
   return `${n.toFixed(digits)}%`;
@@ -256,43 +262,43 @@ function getChannelFeeRate(team) {
 }
 
 function normalizeNreToYuan(value) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return null;
+  const n = toPresentNumber(value);
+  if (n == null) return null;
   if (n === 0) return 0;
   return Math.abs(n) >= 1000000 ? n : n * 10000;
 }
 
 function computeNrePerUnit(team) {
   const totalNreYuan = normalizeNreToYuan(team?.r2?.nre);
-  const units = Number(team?.r2?.units);
-  if (!Number.isFinite(totalNreYuan) || !Number.isFinite(units) || units <= 0) return null;
+  const units = toPresentNumber(team?.r2?.units);
+  if (!Number.isFinite(totalNreYuan) || units == null || units <= 0) return null;
   return totalNreYuan / units;
 }
 
 function computeRdRoiPct(team) {
-  const profit = Number(team?.r2?.profit);
-  const dCOGS = Number(team?.r2?.dCOGS);
-  const units = Number(team?.r2?.units);
+  const profit = toPresentNumber(team?.r2?.profit);
+  const dCOGS = toPresentNumber(team?.r2?.dCOGS);
+  const units = toPresentNumber(team?.r2?.units);
+  if (profit == null || dCOGS == null || units == null) return null;
   const spend = dCOGS * units;
-  if (!Number.isFinite(profit) || !Number.isFinite(spend) || spend <= 0) return null;
+  if (!Number.isFinite(spend) || spend <= 0) return null;
   return (profit / spend) * 100;
 }
 
 function computeAverageMemberEvi(team) {
   const values = (team?.members || [])
-    .map((member) => Number(member?.r2_evi))
-    .filter((value) => Number.isFinite(value));
+    .map((member) => toPresentNumber(member?.r2_evi))
+    .filter((value) => value != null);
   if (values.length) {
     return values.reduce((sum, value) => sum + value, 0) / values.length;
   }
-  const teamEvi = Number(team?.r2?.evi);
-  return Number.isFinite(teamEvi) ? teamEvi : null;
+  return toPresentNumber(team?.r2?.evi);
 }
 
 function computeUnitEconomics(team) {
-  const price = Number(team?.r2?.price);
-  const dCOGS = Number(team?.r2?.dCOGS);
-  if (!Number.isFinite(price) || !Number.isFinite(dCOGS)) return null;
+  const price = toPresentNumber(team?.r2?.price);
+  const dCOGS = toPresentNumber(team?.r2?.dCOGS);
+  if (price == null || dCOGS == null) return null;
   const feeRate = getChannelFeeRate(team);
   const channelFee = price * feeRate;
   const netPrice = price - channelFee;
@@ -311,21 +317,22 @@ function computeUnitEconomics(team) {
 }
 
 function getPricingQuality(ratio) {
-  if (!Number.isFinite(Number(ratio))) {
+  const n = toPresentNumber(ratio);
+  if (n == null) {
     return { label: "—", color: "#64748b", fill: "#cbd5e1" };
   }
-  if (ratio < 0.5) return { label: "定价严重不足", color: "#dc2626", fill: "#ef4444" };
-  if (ratio < 0.65) return { label: "偏低", color: "#d97706", fill: "#f59e0b" };
-  if (ratio <= 0.85) return { label: "甜点区间", color: "#059669", fill: "#10b981" };
-  if (ratio <= 1.1) return { label: "偏高", color: "#d97706", fill: "#f59e0b" };
+  if (n < 0.5) return { label: "定价严重不足", color: "#dc2626", fill: "#ef4444" };
+  if (n < 0.65) return { label: "偏低", color: "#d97706", fill: "#f59e0b" };
+  if (n <= 0.85) return { label: "甜点区间", color: "#059669", fill: "#10b981" };
+  if (n <= 1.1) return { label: "偏高", color: "#d97706", fill: "#f59e0b" };
   return { label: "超WTP", color: "#dc2626", fill: "#ef4444" };
 }
 
 function computePricingBreakdown(team) {
-  const price = Number(team?.r2?.price);
-  const dCOGS = Number(team?.r2?.dCOGS);
-  const wtpAdj = Number(team?.r2?.wtpAdj ?? team?.r1?.wtpAdj);
-  if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(dCOGS)) return null;
+  const price = toPresentNumber(team?.r2?.price);
+  const dCOGS = toPresentNumber(team?.r2?.dCOGS);
+  const wtpAdj = toPresentNumber(team?.r2?.wtpAdj ?? team?.r1?.wtpAdj);
+  if (price == null || price <= 0 || dCOGS == null) return null;
 
   const feeRate = getChannelFeeRate(team);
   const V = ROUND2_BASE_VARIABLE_COST;
@@ -336,15 +343,9 @@ function computePricingBreakdown(team) {
   const actualMargin = price * (1 - feeRate) - V - dCOGS;
   const ratio = wtpAdj > 0 ? price / wtpAdj : null;
   const counterfactual = team?.r2?.counterfactual || null;
-  const wtp72Price = Number.isFinite(Number(counterfactual?.price))
-    ? Number(counterfactual.price)
-    : null;
-  const wtp72Margin = Number.isFinite(Number(counterfactual?.unitMargin))
-    ? Number(counterfactual.unitMargin)
-    : null;
-  const diff = Number.isFinite(Number(counterfactual?.profitDelta))
-    ? Number(counterfactual.profitDelta)
-    : null;
+  const wtp72Price = toPresentNumber(counterfactual?.price);
+  const wtp72Margin = toPresentNumber(counterfactual?.unitMargin);
+  const diff = toPresentNumber(counterfactual?.profitDelta);
   const netPrice = price * (1 - feeRate);
   const channel = feeRate === 0.15 ? "ToB" : "ToC";
   const totalForBar = marginPct >= 0
@@ -368,28 +369,28 @@ function computePricingBreakdown(team) {
     wtp72Price,
     wtp72Margin,
     diff,
-    currentUnits: Number.isFinite(Number(team?.r2?.units)) ? Number(team.r2.units) : null,
-    currentProfit: Number.isFinite(Number(team?.r2?.profit)) ? Number(team.r2.profit) : null,
-    counterfactualUnits: Number(counterfactual?.units),
-    counterfactualProfit: Number(counterfactual?.profit),
+    currentUnits: toPresentNumber(team?.r2?.units),
+    currentProfit: toPresentNumber(team?.r2?.profit),
+    counterfactualUnits: toPresentNumber(counterfactual?.units),
+    counterfactualProfit: toPresentNumber(counterfactual?.profit),
     netPrice,
     totalForBar
   };
 }
 
 function getPricingCounterfactualLabel(row) {
-  const ratio = Number(row?.ratio);
-  const profitDelta = Number(row?.diff);
-  const currentProfit = Number(row?.currentProfit);
-  const inSweet = Number.isFinite(ratio) && ratio >= 0.65 && ratio <= 0.85;
+  const ratio = toPresentNumber(row?.ratio);
+  const profitDelta = toPresentNumber(row?.diff);
+  const currentProfit = toPresentNumber(row?.currentProfit);
+  const inSweet = ratio != null && ratio >= 0.65 && ratio <= 0.85;
 
   if (inSweet) {
     return { label: "✓ 甜点区间", color: "#166534" };
   }
 
-  if (Number.isFinite(profitDelta)) {
+  if (profitDelta != null) {
     const absDelta = Math.abs(profitDelta);
-    const relDelta = Number.isFinite(currentProfit) && currentProfit !== 0
+    const relDelta = currentProfit != null && currentProfit !== 0
       ? absDelta / Math.abs(currentProfit)
       : 0;
     if (profitDelta > 0 && relDelta > 0.05) {
@@ -407,8 +408,8 @@ function getPricingCounterfactualLabel(row) {
 function buildPriceGroups(teams) {
   const grouped = new Map();
   (teams || []).forEach((team) => {
-    const price = Number(team?.r2?.price);
-    if (!Number.isFinite(price)) return;
+    const price = toPresentNumber(team?.r2?.price);
+    if (price == null) return;
     const key = Math.round(price);
     if (!grouped.has(key)) grouped.set(key, []);
     grouped.get(key).push(team);
@@ -453,7 +454,11 @@ function computeActualGm(team) {
 }
 
 function isSubmittedR2(team) {
-  return Number.isFinite(Number(team?.r2?.price)) && Number.isFinite(Number(team?.r2?.profit));
+  const price = team?.r2?.price;
+  const profit = team?.r2?.profit;
+  return price != null && profit != null
+    && Number.isFinite(Number(price)) && Number.isFinite(Number(profit))
+    && Number(price) > 0;
 }
 
 function isConsistent(team) {
@@ -770,7 +775,7 @@ function ConsistencyStats({ teams }) {
 
 function SamWtpCard({ teams }) {
   const sorted = teams
-    .filter((team) => Number.isFinite(Number(team?.r1?.sam)) || Number.isFinite(Number(team?.r1?.wtpAdj)))
+    .filter((team) => team?.r1?.sam != null || team?.r1?.wtpAdj != null)
     .slice()
     .sort((a, b) => Number(b?.r1?.sam || 0) - Number(a?.r1?.sam || 0));
   const maxSam = Math.max(1, ...sorted.map((team) => Number(team?.r1?.sam || 0)));
@@ -869,7 +874,9 @@ function VPIterationTimeline({ iterations, loading }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {iterations.map((item) => {
-        const delta = Number(item?.scoreAfter) - Number(item?.scoreBefore);
+        const scoreBefore = toPresentNumber(item?.scoreBefore);
+        const scoreAfter = toPresentNumber(item?.scoreAfter);
+        const delta = scoreBefore != null && scoreAfter != null ? scoreAfter - scoreBefore : null;
         return (
           <div key={`${item.round}-${item.timestamp || "na"}`} style={{ paddingLeft: 16, borderLeft: "3px solid #cbd5e1" }}>
             <div style={{ fontSize: 12, fontWeight: 900, color: "#0f172a" }}>
@@ -878,10 +885,10 @@ function VPIterationTimeline({ iterations, loading }) {
               发言人：{item?.speaker || "团队成员"}
               {item?.persona ? `（${item.persona}）` : ""}
               {" | "}
-              {Number.isFinite(Number(item?.scoreBefore)) ? formatScore(item.scoreBefore) : "-"} → {formatScore(item?.scoreAfter)}
+              {scoreBefore != null ? formatScore(scoreBefore) : "-"} → {scoreAfter != null ? formatScore(scoreAfter) : "-"}
               {" "}
-              <span style={{ color: delta >= 0 ? "#059669" : "#dc2626" }}>
-                {Number.isFinite(delta) ? (delta >= 0 ? "↑" : "↓") : ""}
+              <span style={{ color: delta == null || delta >= 0 ? "#059669" : "#dc2626" }}>
+                {delta != null ? (delta >= 0 ? "↑" : "↓") : ""}
               </span>
             </div>
             <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
@@ -929,6 +936,7 @@ function Round1DetailAccordion({ teams, teacherCode, sessionId, productImages, p
         {teams.map((team) => {
           const expanded = expandedTeamId === team.id;
           const arch = getArchDisplay(team?.r1?.arch);
+          const vpImprovementPct = toPresentNumber(team?.r1?.vpImprovementPct);
           return (
             <div key={team.id} style={{ border: "1px solid #e2e8f0", borderRadius: 16, overflow: "hidden" }}>
               <button
@@ -957,8 +965,8 @@ function Round1DetailAccordion({ teams, teacherCode, sessionId, productImages, p
                     <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
                       VP: {formatScore(team?.r1?.vpInitialScore)} → {formatScore(team?.r1?.vpFinalScore || team?.r1?.VPscore)}
                       {" "}
-                      <span style={{ color: Number(team?.r1?.vpImprovementPct) >= 0 ? "#059669" : "#dc2626", fontWeight: 800 }}>
-                        ({Number.isFinite(Number(team?.r1?.vpImprovementPct)) ? `${Number(team.r1.vpImprovementPct) >= 0 ? "+" : ""}${Number(team.r1.vpImprovementPct)}%` : "-"})
+                      <span style={{ color: vpImprovementPct == null || vpImprovementPct >= 0 ? "#059669" : "#dc2626", fontWeight: 800 }}>
+                        ({vpImprovementPct != null ? `${vpImprovementPct >= 0 ? "+" : ""}${vpImprovementPct}%` : "-"})
                       </span>
                     </div>
                   </div>
@@ -1420,7 +1428,7 @@ function UnitEconomicsCard({ teams }) {
       return right - left;
     });
 
-  const missingNre = rows.some((row) => !Number.isFinite(Number(row?.econ?.nrePerUnit)));
+  const missingNre = rows.some((row) => row?.econ?.nrePerUnit == null || !Number.isFinite(Number(row.econ.nrePerUnit)));
 
   return (
     <div style={CARD_STYLE}>
@@ -1436,7 +1444,8 @@ function UnitEconomicsCard({ teams }) {
           </thead>
           <tbody>
             {rows.map(({ team, econ }) => {
-              const unitProfit = Number(econ?.unitProfit);
+              const nrePerUnit = toPresentNumber(econ?.nrePerUnit);
+              const unitProfit = toPresentNumber(econ?.unitProfit);
               return (
                 <tr key={team.id}>
                   <td style={{ padding: "10px", borderBottom: "1px solid #e2e8f0", fontWeight: 800, color: team.color }}>{getTeamLabel(team)}</td>
@@ -1449,10 +1458,10 @@ function UnitEconomicsCard({ teams }) {
                   <td style={{ padding: "10px", borderBottom: "1px solid #e2e8f0" }}>{formatMoney(econ?.V)}</td>
                   <td style={{ padding: "10px", borderBottom: "1px solid #e2e8f0" }}>{formatMoney(econ?.dCOGS)}</td>
                   <td style={{ padding: "10px", borderBottom: "1px solid #e2e8f0" }}>
-                    {Number.isFinite(Number(econ?.nrePerUnit)) ? formatMoney(econ.nrePerUnit) : "—"}
+                    {nrePerUnit != null ? formatMoney(nrePerUnit) : "—"}
                   </td>
-                  <td style={{ padding: "10px", borderBottom: "1px solid #e2e8f0", color: !Number.isFinite(unitProfit) ? "#64748b" : (unitProfit >= 0 ? "#166534" : "#dc2626"), fontWeight: 900 }}>
-                    {Number.isFinite(unitProfit) ? formatMoney(unitProfit) : "—"}
+                  <td style={{ padding: "10px", borderBottom: "1px solid #e2e8f0", color: unitProfit == null ? "#64748b" : (unitProfit >= 0 ? "#166534" : "#dc2626"), fontWeight: 900 }}>
+                    {unitProfit != null ? formatMoney(unitProfit) : "—"}
                   </td>
                 </tr>
               );
@@ -1472,12 +1481,12 @@ function UnitEconomicsCard({ teams }) {
 function PricingQualityCard({ teams }) {
   const rows = teams
     .map((team) => {
-      const price = Number(team?.r2?.price);
-      const wtp = Number(team?.r2?.wtpAdj ?? team?.r1?.wtpAdj);
+      const price = toPresentNumber(team?.r2?.price);
+      const wtp = toPresentNumber(team?.r2?.wtpAdj ?? team?.r1?.wtpAdj);
       const ratio = price > 0 && wtp > 0 ? price / wtp : null;
       return { team, price, wtp, ratio };
     })
-    .filter((item) => item.ratio != null && Number.isFinite(Number(item.ratio)))
+    .filter((item) => item.ratio != null && toPresentNumber(item.ratio) != null)
     .sort((a, b) => a.ratio - b.ratio);
 
   const scaleMax = Math.max(1.2, ...rows.map((row) => Number(row.ratio || 0)));
@@ -1610,10 +1619,12 @@ function ChannelFeeErosionCard({ teams }) {
   const rows = teams
     .map((team) => {
       const feeRate = getChannelFeeRate(team);
-      const totalChannelFee = Number(team?.r2?.price || 0) * feeRate * Number(team?.r2?.units || 0);
+      const price = toPresentNumber(team?.r2?.price);
+      const units = toPresentNumber(team?.r2?.units);
+      const totalChannelFee = price != null && units != null ? price * feeRate * units : null;
       return { team, feeRate, totalChannelFee };
     })
-    .filter((item) => Number.isFinite(item.totalChannelFee));
+    .filter((item) => item.totalChannelFee != null);
 
   const tocRows = rows.filter((item) => item.feeRate === 0.25).sort((a, b) => b.totalChannelFee - a.totalChannelFee);
   const tobRows = rows.filter((item) => item.feeRate === 0.15).sort((a, b) => b.totalChannelFee - a.totalChannelFee);
@@ -1626,7 +1637,7 @@ function ChannelFeeErosionCard({ teams }) {
       <div style={{ fontSize: 14, fontWeight: 900, color: "#0f172a" }}>{title}</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
         {items.map(({ team, totalChannelFee }) => {
-          const profit = Number(team?.r2?.profit || 0);
+          const profit = toPresentNumber(team?.r2?.profit);
           const note = profit < 0 && totalChannelFee > Math.abs(profit) ? "渠道费比亏损还大" : "";
           return (
             <div key={team.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
@@ -1669,11 +1680,11 @@ function PricingDeepDebriefSection({ teams }) {
   const counterfactualRows = pricingRows
     .slice()
     .sort((a, b) => {
-      const left = Number(a.ratio);
-      const right = Number(b.ratio);
-      if (!Number.isFinite(left) && !Number.isFinite(right)) return 0;
-      if (!Number.isFinite(left)) return 1;
-      if (!Number.isFinite(right)) return -1;
+      const left = toPresentNumber(a.ratio);
+      const right = toPresentNumber(b.ratio);
+      if (left == null && right == null) return 0;
+      if (left == null) return 1;
+      if (right == null) return -1;
       return left - right;
     });
   const biggestPriceGroup = priceGroups
@@ -1683,8 +1694,8 @@ function PricingDeepDebriefSection({ teams }) {
     ? biggestPriceGroup.teams
         .map((team) => {
           const breakdown = computePricingBreakdown(team);
-          const units = Number(team?.r2?.units);
-          const profit = Number(team?.r2?.profit);
+          const units = toPresentNumber(team?.r2?.units);
+          const profit = toPresentNumber(team?.r2?.profit);
           const unitMargin = breakdown?.actualMargin ?? null;
           return {
             team,
@@ -1694,6 +1705,7 @@ function PricingDeepDebriefSection({ teams }) {
             unitMargin
           };
         })
+        .filter((row) => row.breakdown && row.units != null && row.profit != null)
         .sort((a, b) => b.profit - a.profit)
     : [];
   const feeRateCountMap = sharedPriceTeams.reduce((acc, row) => {
@@ -1854,11 +1866,12 @@ function PricingDeepDebriefSection({ teams }) {
             <tbody>
               {counterfactualRows.map((row, index) => {
                 const label = getPricingCounterfactualLabel(row);
-                const currentUnits = Number.isFinite(Number(row.currentUnits)) ? Number(row.currentUnits) : null;
-                const currentProfit = Number.isFinite(Number(row.currentProfit)) ? Number(row.currentProfit) : null;
-                const counterfactualUnits = Number.isFinite(Number(row.counterfactualUnits)) ? Number(row.counterfactualUnits) : null;
-                const counterfactualProfit = Number.isFinite(Number(row.counterfactualProfit)) ? Number(row.counterfactualProfit) : null;
-                const diff = Number.isFinite(Number(row.diff)) ? Number(row.diff) : null;
+                const currentUnits = toPresentNumber(row.currentUnits);
+                const currentProfit = toPresentNumber(row.currentProfit);
+                const wtp72Price = toPresentNumber(row.wtp72Price);
+                const counterfactualUnits = toPresentNumber(row.counterfactualUnits);
+                const counterfactualProfit = toPresentNumber(row.counterfactualProfit);
+                const diff = toPresentNumber(row.diff);
                 return (
                   <tr key={row.team.id} style={{ background: index % 2 === 0 ? "#ffffff" : "#f8fafc" }}>
                     <td style={{ ...tableCellBaseStyle, fontWeight: 800, color: row.team.color }}>{getTeamLabel(row.team)}</td>
@@ -1868,7 +1881,7 @@ function PricingDeepDebriefSection({ teams }) {
                     <td style={{ ...tableCellBaseStyle, color: currentProfit != null && currentProfit >= 0 ? "#166534" : (currentProfit != null ? "#dc2626" : "#334155"), fontWeight: 800 }}>
                       {currentProfit != null ? formatWan(currentProfit) : "—"}
                     </td>
-                    <td style={tableCellBaseStyle}>{Number.isFinite(Number(row.wtp72Price)) ? formatMoney(row.wtp72Price) : "—"}</td>
+                    <td style={tableCellBaseStyle}>{wtp72Price != null ? formatMoney(wtp72Price) : "—"}</td>
                     <td style={tableCellBaseStyle}>{counterfactualUnits != null ? counterfactualUnits.toLocaleString() : "—"}</td>
                     <td style={{ ...tableCellBaseStyle, color: counterfactualProfit != null && counterfactualProfit >= 0 ? "#166534" : (counterfactualProfit != null ? "#dc2626" : "#334155"), fontWeight: 800 }}>
                       {counterfactualProfit != null ? formatWan(counterfactualProfit) : "—"}
@@ -1922,9 +1935,9 @@ function PricingDeepDebriefSection({ teams }) {
                         {formatMoney(row?.unitMargin)}
                       </td>
                       <td style={{ ...tableCellBaseStyle, background: minUnits ? "#dbeafe" : undefined, fontWeight: minUnits ? 800 : 600 }}>
-                        {Number(row?.units || 0).toLocaleString()}
+                        {row.units != null ? row.units.toLocaleString() : "—"}
                       </td>
-                      <td style={{ ...tableCellBaseStyle, fontWeight: 800, color: Number(row?.profit) >= 0 ? "#166534" : "#dc2626" }}>
+                      <td style={{ ...tableCellBaseStyle, fontWeight: 800, color: row.profit >= 0 ? "#166534" : "#dc2626" }}>
                         {formatWan(row?.profit)}
                       </td>
                     </tr>

@@ -690,6 +690,11 @@ async function loadRound2State(teamIds = null) {
       AND action IN ('force_advance_by_leader')
     ORDER BY team_id, performed_at DESC;
   `);
+  const round1SubmissionRows = await runSql(`
+    SELECT team_id, member_id, submitted_at
+    FROM member_submissions
+    WHERE team_id IN (${inSql});
+  `);
 
   const assignmentMap = new Map();
   assignmentRows.forEach((row) => {
@@ -755,6 +760,10 @@ async function loadRound2State(teamIds = null) {
       performedAt: row.performed_at
     });
   });
+  const round1SubmissionMap = new Map();
+  round1SubmissionRows.forEach((row) => {
+    round1SubmissionMap.set(`${row.team_id}::${row.member_id}`, row.submitted_at || null);
+  });
 
   return allTeamIds.map((teamId) => {
     const team = teamMap.get(teamId);
@@ -772,6 +781,7 @@ async function loadRound2State(teamIds = null) {
         Array.isArray(selection?.selections) ? selection.selections.length : 0
       );
       const cardStatus = deriveMemberCardStatus(member, selection);
+      const round1SubmittedAt = round1SubmissionMap.get(`${teamId}::${member.id}`) || null;
       const currentStep = deriveCurrentStep(
         clampStatus(team.r2Status),
         member,
@@ -793,6 +803,8 @@ async function loadRound2State(teamIds = null) {
         cardsSelected,
         currentStep,
         currentStepLabel: MEMBER_STEP_LABELS[currentStep] || currentStep,
+        round1Submitted: Boolean(round1SubmittedAt),
+        round1SubmittedAt,
         forcedByTeacher: member.forcedByTeacher,
         skippedByLeader: member.cardStatusStored === "skipped_by_leader" || member.readingStatusStored === "skipped_by_leader",
         lastActivityAt,
@@ -804,11 +816,13 @@ async function loadRound2State(teamIds = null) {
 
     const effectiveStatus = deriveTeamStatus(team, members, teamSubmission);
     const enteredAt = deriveTeamEnteredAt(team, members, teamSubmission, effectiveStatus);
+    const normalizedMemberCount = members.length || team.memberCount;
+    const round1SubmittedCount = members.filter((member) => member.round1Submitted).length;
 
     return {
       id: team.id,
       name: team.name,
-      memberCount: members.length || team.memberCount,
+      memberCount: normalizedMemberCount,
       status: team.teamStatus,
       leaderMemberId: team.leaderMemberId || null,
       leaderName: team.leaderName || "",
@@ -820,7 +834,9 @@ async function loadRound2State(teamIds = null) {
         grid: team.finalGridId || "",
         gridLabel: formatGridLabel(team.finalGridId),
         arch: formatArchitectureLabel(team.finalArchitecture),
-        status: team.teamStatus === "frozen" ? "frozen" : team.teamStatus
+        status: team.teamStatus === "frozen" ? "frozen" : team.teamStatus,
+        submittedCount: round1SubmittedCount,
+        memberCount: normalizedMemberCount
       },
       r2: {
         status: effectiveStatus,
@@ -866,10 +882,15 @@ async function refreshCachedTeamRound2State(teamId) {
 
 async function getSessionStatusSummary() {
   const teams = await loadRound2State();
+  const r1AllSubmitted = teams.filter((team) => {
+    const memberCount = Number(team?.r1?.memberCount || team?.memberCount || 0);
+    return memberCount > 0 && Number(team?.r1?.submittedCount || 0) >= memberCount;
+  }).length;
   return {
     meta: {
       totalStudents: teams.reduce((sum, team) => sum + (team.members?.length || 0), 0),
       totalTeams: teams.length,
+      r1AllSubmitted,
       r1Frozen: teams.filter((team) => team.status === "frozen").length,
       r2Submitted: teams.filter((team) => team.r2.status === "R2_SUBMITTED").length
     },

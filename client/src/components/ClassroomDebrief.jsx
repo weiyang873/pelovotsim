@@ -144,7 +144,11 @@ function getVpTotal(team) {
 }
 
 function isSubmittedR2(team) {
-  return Number.isFinite(Number(team?.r2?.profit)) && Number.isFinite(Number(team?.r2?.price));
+  const price = team?.r2?.price;
+  const profit = team?.r2?.profit;
+  return price != null && profit != null
+    && Number.isFinite(Number(price)) && Number.isFinite(Number(profit))
+    && Number(price) > 0;
 }
 
 function getChannelFeeRate(team) {
@@ -744,7 +748,7 @@ function WaterfallCard({ team, anonymous, onFocus }) {
 function R2PricingSlide({ teams, anonymous, onFocus }) {
   const rows = teams
     .map((team) => ({ team, pct: getPricingPct(team) }))
-    .filter(({ team }) => Number.isFinite(Number(team?.r2?.price)) || Number.isFinite(Number(team?.r2?.profit)));
+    .filter(({ team }) => team?.r2?.price != null || team?.r2?.profit != null);
   const hasPct = rows.some((row) => Number.isFinite(row.pct));
   const maxPct = Math.max(120, ...rows.map((row) => Number(row.pct || 0)));
 

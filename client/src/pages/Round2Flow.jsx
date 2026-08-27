@@ -796,8 +796,9 @@ function buildVpRecapSentence(summary, fallbackText) {
 }
 
 function normalizeScoreValue(value) {
+  if (value === null || value === undefined || value === "") return null;
   const n = Number(value);
-  if (!Number.isFinite(n)) return 0;
+  if (!Number.isFinite(n)) return null;
   return Math.max(0, Math.min(5, Math.round(n * 10) / 10));
 }
 
@@ -841,8 +842,17 @@ function formatRecapComparison(recap) {
 }
 
 function formatSignedPercent(value) {
-  const n = Number(value || 0);
+  if (value === null || value === undefined || value === "") return "—";
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "—";
   return n >= 0 ? `+${n}%` : `${n}%`;
+}
+
+function signedPercentColor(value) {
+  if (value === null || value === undefined || value === "") return "#6b7280";
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "#6b7280";
+  return n >= 0 ? "#2FAB6E" : "#dc2626";
 }
 
 function Round1StarRating({ score }) {
@@ -1536,38 +1546,32 @@ export default function App() {
   const hasRound1VpBreakdown = resultVpScore != null && recapVpC != null && recapVpG != null && recapVpE != null;
   const round1ScoresRevealed = hasRound1VpBreakdown;
   const resultFeedbackText = String(teamRecap?.vp_feedback || "").trim();
-  const wtpFinalPct = Number.isFinite(Number(teamRecap?.wtp_breakdown?.final_pct))
-    ? Number(teamRecap.wtp_breakdown.final_pct)
-    : 0;
-  const wtpBasePct = Number.isFinite(Number(teamRecap?.wtp_breakdown?.base_pct))
-    ? Number(teamRecap.wtp_breakdown.base_pct)
-    : 0;
-  const wtpJinangDeltaPct = Number.isFinite(Number(teamRecap?.wtp_breakdown?.jinang_delta_pct))
-    ? Number(teamRecap.wtp_breakdown.jinang_delta_pct)
-    : Math.round(Number(teamRecap?.wtp_breakdown?.market_jinang_bonus_total ?? teamRecap?.wtp_breakdown?.jinang_bonus ?? 0) * 100);
+  const wtpFinalPct = firstFiniteNumber(teamRecap?.wtp_breakdown?.final_pct);
+  const wtpBasePct = firstFiniteNumber(teamRecap?.wtp_breakdown?.base_pct);
+  const rawWtpJinangDeltaPct = firstFiniteNumber(teamRecap?.wtp_breakdown?.jinang_delta_pct);
+  const rawWtpJinangBonus = firstFiniteNumber(
+    teamRecap?.wtp_breakdown?.market_jinang_bonus_total,
+    teamRecap?.wtp_breakdown?.jinang_bonus
+  );
+  const wtpJinangDeltaPct = rawWtpJinangDeltaPct != null
+    ? rawWtpJinangDeltaPct
+    : (rawWtpJinangBonus != null ? Math.round(rawWtpJinangBonus * 100) : null);
   const matchedJinangCount = Number(teamRecap?.jinang_summary?.matched_count || 0);
   const matchedMarketJinangCount = Number(teamRecap?.jinang_summary?.matched_market_count || 0);
   const matchedTechJinangCount = Number(teamRecap?.jinang_summary?.matched_tech_count || 0);
   const totalJinangCount = Number(teamRecap?.jinang_summary?.total_count || 0);
   const resultMarketJinang = teamRecap?.jinang_market || null;
   const resultTechJinang = teamRecap?.jinang_tech || null;
-  const resultMarketJinangBonusPct = Number.isFinite(Number(resultMarketJinang?.bonus))
-    ? Math.round(Number(resultMarketJinang.bonus) * 100)
-    : 0;
+  const resultMarketJinangBonus = firstFiniteNumber(resultMarketJinang?.bonus);
+  const resultMarketJinangBonusPct = resultMarketJinangBonus != null
+    ? Math.round(resultMarketJinangBonus * 100)
+    : null;
   const recapComparison = useMemo(
     () => formatRecapComparison(teamRecap),
     [teamRecap]
   );
-  const marketSizeYi = Number.isFinite(Number(submittedCalc?.market_size_yi))
-    ? Number(submittedCalc.market_size_yi)
-    : Number.isFinite(Number(teamRecap?.market_size_yi))
-      ? Number(teamRecap.market_size_yi)
-      : null;
-  const marketHhi = Number.isFinite(Number(submittedCalc?.hhi))
-    ? Number(submittedCalc.hhi)
-    : Number.isFinite(Number(teamRecap?.hhi))
-      ? Number(teamRecap.hhi)
-      : null;
+  const marketSizeYi = firstFiniteNumber(submittedCalc?.market_size_yi, teamRecap?.market_size_yi);
+  const marketHhi = firstFiniteNumber(submittedCalc?.hhi, teamRecap?.hhi);
   const marketHhiLabel = String(submittedCalc?.hhi_label || teamRecap?.hhi_label || getHHILabel(marketHhi));
   const hasMarketReference = Number.isFinite(marketSizeYi) && Number.isFinite(marketHhi);
   const teamTitle = teamInfo?.team_name || "当前团队";
@@ -3152,11 +3156,11 @@ export default function App() {
           <div style={{padding:"16px 18px",borderRadius:10,border:"1px solid #e5e7eb",marginBottom:12,display:"flex",gap:16,flexWrap:"wrap",alignItems:"flex-start"}}>
             <div style={{minWidth:220}}>
               <div style={{fontSize:14,fontWeight:700,color:"#374151",marginBottom:8}}>用户支付意愿</div>
-              <div style={{fontSize:34,fontWeight:800,color:wtpFinalPct >= 0 ? "#2FAB6E" : "#dc2626",lineHeight:1}}>
+              <div style={{fontSize:34,fontWeight:800,color:signedPercentColor(wtpFinalPct),lineHeight:1}}>
                 {formatSignedPercent(wtpFinalPct)}
               </div>
               <div style={{fontSize:12,color:"#9ca3af",marginTop:8}}>仅看 VP 本身：{formatSignedPercent(wtpBasePct)}</div>
-              <div style={{fontSize:12,color:wtpJinangDeltaPct >= 0 ? "#2FAB6E" : "#dc2626",marginTop:4}}>
+              <div style={{fontSize:12,color:signedPercentColor(wtpJinangDeltaPct),marginTop:4}}>
                 市场锦囊额外影响：{formatSignedPercent(wtpJinangDeltaPct)}
               </div>
             </div>
@@ -3907,7 +3911,37 @@ export default function App() {
           <div style={{padding:"10px 14px",borderRadius:8,background:"#FEF3C7",border:"1px solid #FDE68A",fontSize:12,color:"#92400E"}}>
             💡 接下来进入团队讨论和定价。你们已经能看到每张卡的具体 dCOGS 和 NRE，可以开始砍卡、降档或改价格。
           </div>
-          <button onClick={()=>setStep(4)} style={BS}>继续</button>
+          {teamCalc.cnt < MIN_TEAM_CARDS && (
+            <div data-testid="r2-merge-card-gate" style={{marginTop:16,padding:"14px 16px",borderRadius:10,background:"#FEF2F2",border:"1px solid #FECACA"}}>
+              <div style={{fontSize:13,fontWeight:800,color:"#991B1B",marginBottom:10}}>
+                还需选 {MIN_TEAM_CARDS - teamCalc.cnt} 张能力卡后才能进入定价
+              </div>
+              <div style={{fontSize:12,color:"#7f1d1d",lineHeight:1.7,marginBottom:12}}>
+                请由组长在下方补选或调整团队能力卡；补足后即可继续。
+              </div>
+              {DIMS.map(dim => renderDimGroup(dim.id, teamSel, true, "team"))}
+            </div>
+          )}
+          <button
+            type="button"
+            data-testid="r2-merge-continue-btn"
+            onClick={() => {
+              if (round2TeamControlsLocked || teamCalc.cnt < MIN_TEAM_CARDS) return;
+              setStep(4);
+            }}
+            disabled={round2TeamControlsLocked || teamCalc.cnt < MIN_TEAM_CARDS}
+            style={{
+              ...BS,
+              background: (!round2TeamControlsLocked && teamCalc.cnt >= MIN_TEAM_CARDS) ? BS.background : "#d1d5db",
+              cursor: (!round2TeamControlsLocked && teamCalc.cnt >= MIN_TEAM_CARDS) ? "pointer" : "not-allowed"
+            }}
+          >
+            {round2TeamControlsLocked
+              ? `仅组长 ${leaderDisplayName(leaderName)} 可继续`
+              : teamCalc.cnt < MIN_TEAM_CARDS
+                ? `还需选 ${MIN_TEAM_CARDS - teamCalc.cnt} 张能力卡`
+                : "继续"}
+          </button>
         </div>
         );
       })()}

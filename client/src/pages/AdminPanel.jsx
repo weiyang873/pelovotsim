@@ -43,6 +43,23 @@ const STATUS_COLORS = {
   R2_TEAM_DISCUSSION: "#10B981",
   R2_SUBMITTED: "#10B981"
 };
+const ROUND1_STATUS_ORDER = ["forming", "phase1", "phase2", "phase3", "phase4", "frozen"];
+const ROUND1_STATUS_LABELS = {
+  forming: "组队中",
+  phase1: "个人战略",
+  phase2: "团队共识",
+  phase3: "VP Coach",
+  phase4: "结果确认",
+  frozen: "已冻结"
+};
+const ROUND1_STATUS_COLORS = {
+  forming: "#64748b",
+  phase1: "#2563eb",
+  phase2: "#7c3aed",
+  phase3: "#f59e0b",
+  phase4: "#0891b2",
+  frozen: "#059669"
+};
 const TIMEOUT_THRESHOLDS = {
   R2_INTERVIEWING: 15,
   R2_INDIVIDUAL_CARDS: 10,
@@ -122,6 +139,26 @@ function progressPercent(status) {
   return ((index + 1) / STATUS_ORDER.length) * 100;
 }
 
+function round1StatusValue(team) {
+  return String(team?.r1?.status || team?.status || "forming").trim().toLowerCase();
+}
+
+function round1StatusLabel(status) {
+  return ROUND1_STATUS_LABELS[status] || status || "未开始";
+}
+
+function round1ProgressPercent(status) {
+  const index = ROUND1_STATUS_ORDER.indexOf(status);
+  if (index < 0) return 0;
+  return ((index + 1) / ROUND1_STATUS_ORDER.length) * 100;
+}
+
+function round1SubmissionText(team) {
+  const submitted = Number(team?.r1?.submittedCount || 0);
+  const total = Number(team?.r1?.memberCount || team?.memberCount || 0);
+  return `${submitted}/${total || 0} 个人提交`;
+}
+
 function timeoutState(team) {
   const limit = TIMEOUT_THRESHOLDS[team?.r2?.status];
   const minutes = Number(team?.r2?.durationMinutes || 0);
@@ -187,6 +224,10 @@ function detailCardLabel(member) {
   return "— 未开始";
 }
 
+function detailRound1Label(member) {
+  return member.round1Submitted ? "✓ 已提交" : "— 未提交";
+}
+
 function isMarkedAbsent(member) {
   return Boolean(
     member?.forcedByTeacher &&
@@ -212,6 +253,35 @@ function leaderForceSummary(action) {
     skippedNames: skipped.map((item) => item.name || item.member_name || item.id).filter(Boolean),
     at: details.force_advanced_at || action?.performedAt || ""
   };
+}
+
+function ProgressRow({ label, text, percent, color }) {
+  const safePercent = Math.max(0, Math.min(100, Number(percent) || 0));
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 4 }}>
+        <span style={{ fontSize: 11, fontWeight: 900, color: "#475569" }}>{label}</span>
+        <span style={{ fontSize: 11, fontWeight: 800, color, whiteSpace: "nowrap" }}>{text}</span>
+      </div>
+      <div
+        style={{
+          width: "100%",
+          height: 8,
+          borderRadius: 999,
+          background: "#e2e8f0",
+          overflow: "hidden"
+        }}
+      >
+        <div
+          style={{
+            width: `${safePercent}%`,
+            height: "100%",
+            background: color
+          }}
+        />
+      </div>
+    </div>
+  );
 }
 
 function formatDims(dims) {
@@ -264,7 +334,7 @@ function AuthGate({ onVerified }) {
         }}
       >
         <div style={{ fontSize: 20, fontWeight: 900, color: "#0f172a", marginBottom: 6 }}>教师控制台</div>
-        <div style={{ fontSize: 12, color: "#64748b", marginBottom: 18 }}>实时查看各组 Round 2 进度并进行干预</div>
+        <div style={{ fontSize: 12, color: "#64748b", marginBottom: 18 }}>实时查看各组 Round 1 / Round 2 进度并进行干预</div>
         <input
           value={code}
           onChange={(e) => {
@@ -311,7 +381,11 @@ function AuthGate({ onVerified }) {
 
 function TeamCard({ team, expanded, onToggle, onAction, busy, productImage, productImageLoading, onLoadProductImage }) {
   const timeout = timeoutState(team);
-  const statusColor = STATUS_COLORS[team.r2.status] || "#64748b";
+  const r2Status = team.r2.status;
+  const round1Status = round1StatusValue(team);
+  const round1Color = ROUND1_STATUS_COLORS[round1Status] || "#64748b";
+  const statusColor = STATUS_COLORS[r2Status] || "#64748b";
+  const round1SubmittedMembers = Number(team?.r1?.submittedCount || 0);
   const submittedMembers = team.members.filter((member) => member.cardStatus === "submitted").length;
   const [actionChoice, setActionChoice] = useState("");
 
@@ -347,24 +421,19 @@ function TeamCard({ team, expanded, onToggle, onAction, busy, productImage, prod
                 </span>
               )}
             </div>
-            <div style={{ marginTop: 10 }}>
-              <div
-                style={{
-                  width: "100%",
-                  height: 10,
-                  borderRadius: 999,
-                  background: "#e2e8f0",
-                  overflow: "hidden"
-                }}
-              >
-                <div
-                  style={{
-                    width: `${progressPercent(team.r2.status)}%`,
-                    height: "100%",
-                    background: statusColor
-                  }}
-                />
-              </div>
+            <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+              <ProgressRow
+                label="Round 1"
+                text={`${round1StatusLabel(round1Status)} · ${round1SubmissionText(team)}`}
+                percent={round1ProgressPercent(round1Status)}
+                color={round1Color}
+              />
+              <ProgressRow
+                label="Round 2"
+                text={team.r2.statusLabel}
+                percent={progressPercent(r2Status)}
+                color={statusColor}
+              />
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
               <span
@@ -379,8 +448,20 @@ function TeamCard({ team, expanded, onToggle, onAction, busy, productImage, prod
               >
                 组长: {leaderDisplayName(team.leaderName)}
               </span>
+              <span
+                style={{
+                  padding: "3px 8px",
+                  borderRadius: 999,
+                  background: "#e0f2fe",
+                  color: "#0369a1",
+                  fontSize: 11,
+                  fontWeight: 800
+                }}
+              >
+                R1: {round1SubmittedMembers}/{team.memberCount || 0} 个人提交
+              </span>
               {team.members.map((member) => {
-                const marker = memberIndicator(team.r2.status, member);
+                const marker = memberIndicator(r2Status, member);
                 return (
                   <span key={member.id} style={{ fontSize: 12, color: marker.color }}>
                     {member.name} {marker.icon}
@@ -484,7 +565,11 @@ function TeamCard({ team, expanded, onToggle, onAction, busy, productImage, prod
           )}
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
             <div style={{ fontSize: 13, color: "#334155" }}>
-              团队状态: <strong>{team.r2.status}</strong>
+              R1 状态: <strong>{round1StatusLabel(round1Status)}</strong>
+            </div>
+            <div style={{ fontSize: 13, color: "#334155" }}>R1 个人提交: {round1SubmittedMembers}/{team.memberCount || 0}</div>
+            <div style={{ fontSize: 13, color: "#334155" }}>
+              R2 状态: <strong>{r2Status}</strong>
             </div>
             <div style={{ fontSize: 13, color: "#334155" }}>已在此状态: {fmtMinutes(team.r2.durationMinutes)}</div>
             <div style={{ fontSize: 13, color: "#334155" }}>已提交个人选卡: {submittedMembers}/{team.memberCount}</div>
@@ -494,7 +579,7 @@ function TeamCard({ team, expanded, onToggle, onAction, busy, productImage, prod
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
                 <tr style={{ background: "#f8fafc", color: "#475569" }}>
-                  {["成员", "负责维度", "访谈状态", "选卡状态", "已选卡数", "组长", "操作"].map((label) => (
+                  {["成员", "负责维度", "R1 个人战略", "访谈状态", "选卡状态", "已选卡数", "组长", "操作"].map((label) => (
                     <th key={label} style={{ textAlign: "left", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" }}>{label}</th>
                   ))}
                 </tr>
@@ -513,6 +598,7 @@ function TeamCard({ team, expanded, onToggle, onAction, busy, productImage, prod
                     <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0", color: "#475569" }}>
                       {member.dims.length ? formatDims(member.dims).join(" / ") : "— 未分配"}
                     </td>
+                    <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0", color: member.round1Submitted ? "#059669" : "#64748b" }}>{detailRound1Label(member)}</td>
                     <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0", color: "#475569" }}>{detailInterviewLabel(member)}</td>
                     <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0", color: "#475569" }}>{detailCardLabel(member)}</td>
                     <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0", color: "#475569" }}>{member.cardsSelected || "—"}</td>
@@ -1052,7 +1138,7 @@ export default function AdminPanel() {
     return <AuthGate onVerified={setTeacherCode} />;
   }
 
-  const meta = sessionData.meta || { totalStudents: 0, totalTeams: 0, r1Frozen: 0, r2Submitted: 0 };
+  const meta = sessionData.meta || { totalStudents: 0, totalTeams: 0, r1AllSubmitted: 0, r1Frozen: 0, r2Submitted: 0 };
   const waitingTeams = (sessionData.teams || []).filter((team) => team?.r2?.status === "R2_NOT_STARTED").length;
   const importPreviewGroups = importPreviewRows.reduce((acc, row) => {
     const groupKey = String(row.group || "");
@@ -1145,6 +1231,7 @@ export default function AdminPanel() {
               {[
                 { label: "总学生数", value: meta.totalStudents, color: "#2563eb" },
                 { label: "总组数", value: meta.totalTeams, color: "#7c3aed" },
+                { label: "R1 个人齐交", value: `${meta.r1AllSubmitted || 0}/${meta.totalTeams || 0}`, color: "#0891b2" },
                 { label: "R1 已冻结", value: `${meta.r1Frozen}/${meta.totalTeams || 0}`, color: "#059669" },
                 { label: "R2 已提交", value: `${meta.r2Submitted}/${meta.totalTeams || 0}`, color: "#10b981" }
               ].map((item) => (
