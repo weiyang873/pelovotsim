@@ -6,6 +6,10 @@ function resolveBaseUrl() {
   return process.env.BASE_URL || process.env.TEST_URL || "http://localhost:8787";
 }
 
+function buildRound2Url(teamId, memberId) {
+  return `${resolveBaseUrl()}/multiplayer/round2?teamId=${encodeURIComponent(teamId)}&memberId=${encodeURIComponent(memberId)}&session_id=default`;
+}
+
 function readAdminCode() {
   if (process.env.ADMIN_CODE) return String(process.env.ADMIN_CODE).trim();
   const envPath = path.join(process.cwd(), ".env");
@@ -78,8 +82,17 @@ async function bootstrapRound2Team(request, interviewMode, options = {}) {
     teamId: skipJson.team_id,
     memberId: skipJson.member_id,
     members: Array.isArray(skipJson.member_links) ? skipJson.member_links : [],
-    round2Url: `${baseUrl}/multiplayer/round2?teamId=${encodeURIComponent(skipJson.team_id)}&memberId=${encodeURIComponent(skipJson.member_id)}&session_id=default`
+    round2Url: buildRound2Url(skipJson.team_id, skipJson.member_id)
   };
+}
+
+async function fetchRound2TeamStatus(request, teamId, memberId) {
+  const res = await request.get(
+    `${resolveBaseUrl()}/api/round2/state?teamId=${encodeURIComponent(teamId)}&memberId=${encodeURIComponent(memberId)}`
+  );
+  if (res.status() !== 200) return `HTTP_${res.status()}`;
+  const json = await res.json();
+  return json?.team_status || "";
 }
 
 async function clickRound2RecapContinue(page) {
@@ -120,6 +133,15 @@ async function completeSummaryReading(page) {
   await expect(page.getByText("你已阅读 1/3 份")).toBeVisible({ timeout: 30000 });
   await page.getByRole("button", { name: "完成阅读，等待团队" }).click();
   await expect(page.locator("[data-testid='r2-card-selection-container']")).toBeVisible({ timeout: 30000 });
+}
+
+async function enterPersonalCardSelection(page) {
+  const cardSelection = page.locator("[data-testid='r2-card-selection-container']");
+  if (await cardSelection.isVisible().catch(() => false)) return;
+  const button = page.getByRole("button", { name: "继续，进入个人选卡" });
+  await expect(button).toBeVisible({ timeout: 30000 });
+  await button.click();
+  await expect(cardSelection).toBeVisible({ timeout: 30000 });
 }
 
 test.describe.serial("Round 2 summary/live gating", () => {
@@ -201,9 +223,72 @@ test.describe.serial("Round 2 summary/live gating", () => {
     const mergeContinueBtn = page.locator("[data-testid='r2-merge-continue-btn']");
     await expect(mergeContinueBtn).toBeDisabled();
     await expect(mergeContinueBtn).toHaveText(/还需选 1 张能力卡/);
+    await expect(page.locator("[data-testid='r2-merge-card-gate']")).toBeVisible();
+    await expect.poll(
+      () => fetchRound2TeamStatus(request, ctx.teamId, ctx.memberId),
+      { timeout: 10000 }
+    ).toBe("R2_TEAM_MERGE");
 
     await selectEnabledCardCheckboxes(page.locator("[data-testid='r2-merge-card-gate']"), 1);
+    await expect(page.locator("[data-testid='r2-merge-container']")).toBeVisible();
     await expect(mergeContinueBtn).toBeEnabled();
     await expect(mergeContinueBtn).toHaveText(/^继续$/);
+    await expect(page.getByRole("heading", { name: "研发与定价决策" })).toHaveCount(0);
+    await expect.poll(
+      () => fetchRound2TeamStatus(request, ctx.teamId, ctx.memberId),
+      { timeout: 10000 }
+    ).toBe("R2_TEAM_MERGE");
+
+    await mergeContinueBtn.click();
+    await expect(page.getByRole("heading", { name: "研发与定价决策" })).toBeVisible({ timeout: 30000 });
+    await expect(page.getByText("单台总变动成本")).toBeVisible({ timeout: 30000 });
+    await expect(page.getByText("已选 6 张").first()).toBeVisible({ timeout: 30000 });
+    await expect.poll(
+      () => fetchRound2TeamStatus(request, ctx.teamId, ctx.memberId),
+      { timeout: 10000 }
+    ).toBe("R2_TEAM_DISCUSSION");
+  });
+
+  test("non-leader cannot continue from merge", async ({ browser, request }) => {
+    const ctx = await bootstrapRound2Team(request, "summary", { teamSize: 2 });
+    const [leader, nonLeader] = ctx.members
+      .slice()
+      .sort((a, b) => Number(a?.member_index || 0) - Number(b?.member_index || 0));
+    expect(leader?.member_id).toBeTruthy();
+    expect(nonLeader?.member_id).toBeTruthy();
+
+    const leaderContext = await browser.newContext();
+    const nonLeaderContext = await browser.newContext();
+    const leaderPage = await leaderContext.newPage();
+    const nonLeaderPage = await nonLeaderContext.newPage();
+
+    try {
+      await leaderPage.goto(buildRound2Url(ctx.teamId, leader.member_id));
+      await nonLeaderPage.goto(buildRound2Url(ctx.teamId, nonLeader.member_id));
+      await clickRound2RecapContinue(leaderPage);
+      await clickRound2RecapContinue(nonLeaderPage);
+      await expect(leaderPage.getByText("你已阅读 1/3 份")).toBeVisible({ timeout: 30000 });
+      await expect(nonLeaderPage.getByText("你已阅读 1/3 份")).toBeVisible({ timeout: 30000 });
+
+      await leaderPage.getByRole("button", { name: "完成阅读，等待团队" }).click();
+      await expect(leaderPage.getByText("团队调研汇总").first()).toBeVisible({ timeout: 30000 });
+      await nonLeaderPage.getByRole("button", { name: "完成阅读，等待团队" }).click();
+      await expect(leaderPage.getByRole("button", { name: "继续，进入个人选卡" })).toBeVisible({ timeout: 30000 });
+
+      await enterPersonalCardSelection(leaderPage);
+      await enterPersonalCardSelection(nonLeaderPage);
+      await selectEnabledCardCheckboxes(leaderPage.locator("[data-testid='r2-card-selection-container']"), 3);
+      await selectEnabledCardCheckboxes(nonLeaderPage.locator("[data-testid='r2-card-selection-container']"), 3);
+      await leaderPage.getByRole("button", { name: /提交个人选卡/ }).click();
+      await nonLeaderPage.getByRole("button", { name: /提交个人选卡/ }).click();
+
+      await expect(nonLeaderPage.locator("[data-testid='r2-merge-container']")).toBeVisible({ timeout: 30000 });
+      const mergeContinueBtn = nonLeaderPage.locator("[data-testid='r2-merge-continue-btn']");
+      await expect(mergeContinueBtn).toBeDisabled();
+      await expect(mergeContinueBtn).toHaveText(/仅组长 .+ 可继续/);
+    } finally {
+      await leaderContext.close();
+      await nonLeaderContext.close();
+    }
   });
 });

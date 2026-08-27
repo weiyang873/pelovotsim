@@ -2371,7 +2371,7 @@ export default function App() {
 
   useEffect(() => {
     if (!isTeamMode || !teamId || !memberId || submitted || !isLeader || !round2DraftTouchedRef.current) return undefined;
-    if (step < 3) return undefined;
+    if (step < 4) return undefined;
     const timer = window.setTimeout(() => {
       const draftPrice = parsePositiveNumberOrNull(teamPrice);
       saveRound2TeamDraft({
@@ -3927,6 +3927,14 @@ export default function App() {
             data-testid="r2-merge-continue-btn"
             onClick={() => {
               if (round2TeamControlsLocked || teamCalc.cnt < MIN_TEAM_CARDS) return;
+              if (isLeader && teamId && memberId) {
+                saveRound2TeamDraft({
+                  team_id: teamId,
+                  member_id: memberId,
+                  price: parsePositiveNumberOrNull(teamPrice) || fallbackPrice,
+                  selections: toSubmitSelectionsMap(teamSel)
+                }).catch(() => {});
+              }
               setStep(4);
             }}
             disabled={round2TeamControlsLocked || teamCalc.cnt < MIN_TEAM_CARDS}
