@@ -8,11 +8,13 @@ const CARD_STYLE = {
   padding: 18
 };
 
-const SLIDES = [
+const BASE_SLIDES = [
   { id: "cover", label: "总览", section: "封面" },
+  { id: "r1-index", label: "R1 目录", section: "R1" },
   { id: "r1-map", label: "R1 地图", section: "R1" },
   { id: "r1-vp", label: "VP 对决", section: "R1" },
   { id: "r1-scatter", label: "宽窄图", section: "R1" },
+  { id: "r2-index", label: "R2 目录", section: "R2" },
   { id: "r2-board", label: "利润揭榜", section: "R2" },
   { id: "r2-autopsy", label: "双组拆解", section: "R2" },
   { id: "r2-pricing", label: "定价带", section: "R2" },
@@ -116,6 +118,16 @@ function getTeamLabel(team, anonymous = true) {
   if (!team) return "—";
   if (anonymous) return `第${getTeamNo(team)}组`;
   return team.name || team.displayName || `第${getTeamNo(team)}组`;
+}
+
+function teamSlideId(round, teamId) {
+  return `${round}-team-${teamId}`;
+}
+
+function getProductLabel(team) {
+  return team?.productName
+    || team?.product_name
+    || clipText(team?.r1?.how || team?.r1?.vp || "产品方案", 34);
 }
 
 function getArchSymbol(team) {
@@ -308,28 +320,28 @@ function Reveal({ id, order = 999, revealed, onReveal, children, block = false }
   );
 }
 
-function TeamChip({ team, anonymous, onFocus, compact = false }) {
+function TeamChip({ team, anonymous, onFocus, compact = false, large = false, round = "" }) {
   return (
     <button
       type="button"
-      onClick={() => onFocus(team.id)}
+      onClick={() => onFocus(team.id, round)}
       title={getTeamLabel(team, anonymous)}
       style={{
         border: `1px solid ${team.color || "#cbd5e1"}`,
         background: `${team.color || "#1a5c3a"}16`,
         color: team.color || "#1a5c3a",
         borderRadius: 999,
-        padding: compact ? "5px 9px" : "7px 12px",
+        padding: compact ? "5px 9px" : (large ? "9px 17px" : "7px 12px"),
         display: "inline-flex",
         alignItems: "center",
-        gap: 7,
-        fontSize: compact ? 11 : 13,
+        gap: large ? 9 : 7,
+        fontSize: compact ? 11 : (large ? 17 : 13),
         fontWeight: 900,
         cursor: "pointer",
         whiteSpace: "nowrap"
       }}
     >
-      <span style={{ width: 9, height: 9, borderRadius: 999, background: team.color || "#1a5c3a" }} />
+      <span style={{ width: large ? 12 : 9, height: large ? 12 : 9, borderRadius: 999, background: team.color || "#1a5c3a" }} />
       {getTeamLabel(team, anonymous)}
       {getArchSymbol(team) ? <span style={{ color: "#475569" }}>{getArchSymbol(team)}</span> : null}
     </button>
@@ -392,6 +404,73 @@ function Metric({ label, value, tone }) {
   );
 }
 
+function DirectoryCard({ index, title, detail, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        textAlign: "left",
+        background: "#fff",
+        border: "1px solid #dbe3ef",
+        borderRadius: 16,
+        padding: "18px 20px",
+        cursor: "pointer",
+        minHeight: 118,
+        display: "grid",
+        alignContent: "start",
+        gap: 8
+      }}
+    >
+      <div style={{ color: "#0f172a", fontSize: 22, fontWeight: 950, lineHeight: 1.25 }}>{index} {title}</div>
+      <div style={{ color: "#64748b", fontSize: 14, fontWeight: 750, lineHeight: 1.55 }}>{detail}</div>
+    </button>
+  );
+}
+
+function TeamButtonStrip({ teams, anonymous, onFocus, round }) {
+  if (!teams.length) {
+    return <div style={{ marginTop: 18, color: "#94a3b8", fontSize: 13 }}>暂无小组数据</div>;
+  }
+  return (
+    <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 22 }}>
+      {teams.map((team) => (
+        <TeamChip key={team.id} team={team} anonymous={anonymous} onFocus={onFocus} round={round} large />
+      ))}
+    </div>
+  );
+}
+
+function R1IndexSlide({ teams, anonymous, onFocus, onGo }) {
+  return (
+    <div>
+      <SlideTitle title="R1 复盘 · 市场定位" subtitle="约 25 分钟 · 三个对比页承载教学，组页供取证跳转。" />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 14 }}>
+        <DirectoryCard index="①" title="战略地形图" detail="个人选择 vs 团队定稿 · 聚集与空白" onClick={() => onGo("r1-map")} />
+        <DirectoryCard index="②" title="VP 对决" detail="三份匿名 VP · 全场排序后揭晓" onClick={() => onGo("r1-vp")} />
+        <DirectoryCard index="③" title="定位宽窄图" detail="C × (G+E) · 宽而浅 vs 窄而深" onClick={() => onGo("r1-scatter")} />
+      </div>
+      <TeamButtonStrip teams={teams} anonymous={anonymous} onFocus={onFocus} round="r1" />
+    </div>
+  );
+}
+
+function R2IndexSlide({ teams, anonymous, onFocus, onGo }) {
+  return (
+    <div>
+      <SlideTitle title="R2 复盘 · 产品研发" subtitle="约 20 分钟 · 从结果倒推配置，再回看意图。" />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 14 }}>
+        <DirectoryCard index="①" title="利润揭榜" detail="先押冠军，从末位逐名揭示" onClick={() => onGo("r2-board")} />
+        <DirectoryCard index="②" title="双组拆解" detail="精准组 vs 堆料组 · 利润瀑布对照" onClick={() => onGo("r2-autopsy")} />
+        <DirectoryCard index="③" title="定价带" detail="定价 / 支付意愿 · 60–90% 绿带" onClick={() => onGo("r2-pricing")} />
+        <DirectoryCard index="④" title="选卡全景" detail="六维热力 + 研发投入 vs 利润" onClick={() => onGo("r2-cards")} />
+        <DirectoryCard index="⑤" title="意图 vs 执行" detail="R1 承诺 vs R2 卡组 · 一致性判语" onClick={() => onGo("r2-intent")} />
+      </div>
+      <TeamButtonStrip teams={teams} anonymous={anonymous} onFocus={onFocus} round="r2" />
+    </div>
+  );
+}
+
 function GridMap({ teams, mode, anonymous, onFocus }) {
   const cellMap = {};
   teams.forEach((team) => {
@@ -448,7 +527,7 @@ function GridMap({ teams, mode, anonymous, onFocus }) {
                   <button
                     key={team.id}
                     type="button"
-                    onClick={() => onFocus(team.id)}
+                    onClick={() => onFocus(team.id, "r1")}
                     title={`${getTeamLabel(team, anonymous)} · ${normalizeGridLabel(team?.r1?.gridLabel)}`}
                     style={{
                       width: 38,
@@ -511,7 +590,7 @@ function R1VpSlide({ teams, anonymous, onFocus, revealed, onReveal }) {
               <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", marginBottom: 12 }}>
                 <div style={{ color: "#64748b", fontSize: 12, fontWeight: 950, letterSpacing: "0.14em" }}>VP {letters[index]}</div>
                 <Reveal id={`r1-vp-team-${team.id}`} order={index} revealed={revealed} onReveal={onReveal}>
-                  <TeamChip team={team} anonymous={anonymous} onFocus={onFocus} compact />
+                  <TeamChip team={team} anonymous={anonymous} onFocus={onFocus} compact round="r1" />
                 </Reveal>
               </div>
               <VpField label="WHO" scoreLabel="C" score={team?.r1?.C} value={team?.r1?.who} revealId={`r1-vp-c-${team.id}`} order={index} revealed={revealed} onReveal={onReveal} />
@@ -602,7 +681,7 @@ function R1ScatterSlide({ teams, anonymous, onFocus }) {
               {index === 2 ? <span style={{ position: "absolute", top: 8, left: 10, color: "#92400e", fontSize: 11, fontWeight: 900 }}>窄而深</span> : null}
               {index === 6 ? <span style={{ position: "absolute", top: 8, left: 10, color: "#92400e", fontSize: 11, fontWeight: 900 }}>宽而浅</span> : null}
               {zoneTeams.map((team) => (
-                <TeamChip key={team.id} team={team} anonymous={anonymous} onFocus={onFocus} compact />
+                <TeamChip key={team.id} team={team} anonymous={anonymous} onFocus={onFocus} compact round="r1" />
               ))}
             </div>
           ))}
@@ -665,7 +744,7 @@ function RankingRow({ rank, team, anonymous, onFocus, profit, product }) {
       background: "#fff"
     }}>
       <div style={{ fontSize: 24, fontWeight: 950, color: rank === 1 ? "#b45309" : "#64748b" }}>#{rank}</div>
-      <TeamChip team={team} anonymous={anonymous} onFocus={onFocus} />
+      <TeamChip team={team} anonymous={anonymous} onFocus={onFocus} round="r2" />
       <div style={{ color: "#334155", fontSize: 15, lineHeight: 1.55 }}>{product}</div>
       <div style={{ textAlign: "right", color: profit == null ? "#64748b" : (positive ? "#166534" : "#dc2626"), fontSize: profit == null ? 18 : 24, fontWeight: 950 }}>
         {profit == null ? "未完成" : formatWan(profit)}
@@ -721,7 +800,7 @@ function WaterfallCard({ team, anonymous, onFocus }) {
   return (
     <div style={{ ...CARD_STYLE, borderTop: `5px solid ${team.color || "#1a5c3a"}` }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
-        <TeamChip team={team} anonymous={anonymous} onFocus={onFocus} />
+        <TeamChip team={team} anonymous={anonymous} onFocus={onFocus} round="r2" />
         <div style={{ color: "#64748b", fontSize: 12, fontWeight: 800 }}>{normalizeGridLabel(team?.r1?.gridLabel)}</div>
       </div>
       <div style={{ display: "grid", gap: 8 }}>
@@ -767,7 +846,7 @@ function R2PricingSlide({ teams, anonymous, onFocus }) {
             const sweetWidth = clamp((30 / maxPct) * 100, 0, 100 - sweetLeft);
             return (
               <div key={team.id} style={{ display: "grid", gridTemplateColumns: "170px 1fr 94px", gap: 14, alignItems: "center" }}>
-                <TeamChip team={team} anonymous={anonymous} onFocus={onFocus} />
+                <TeamChip team={team} anonymous={anonymous} onFocus={onFocus} round="r2" />
                 <div style={{ position: "relative", height: 34, borderRadius: 999, background: "#f1f5f9", border: "1px solid #e2e8f0", overflow: "hidden" }}>
                   <div style={{ position: "absolute", left: `${sweetLeft}%`, width: `${sweetWidth}%`, top: 0, bottom: 0, background: "rgba(16,185,129,0.22)", borderLeft: "1px solid rgba(16,185,129,0.7)", borderRight: "1px solid rgba(16,185,129,0.7)" }} />
                   {valid ? (
@@ -802,7 +881,7 @@ function PricingFallbackScatter({ teams, anonymous, onFocus }) {
         <line x1="58" y1="30" x2="58" y2="330" stroke="#cbd5e1" />
         <line x1="58" y1={y(0)} x2="700" y2={y(0)} stroke="#e2e8f0" strokeDasharray="4 5" />
         {points.map((team) => (
-          <g key={team.id} onClick={() => onFocus(team.id)} style={{ cursor: "pointer" }}>
+          <g key={team.id} onClick={() => onFocus(team.id, "r2")} style={{ cursor: "pointer" }}>
             <circle cx={x(Number(team?.r2?.price || 0))} cy={y(Number(team?.r2?.profit || 0))} r="13" fill={team.color || "#1a5c3a"} fillOpacity="0.28" stroke={team.color || "#1a5c3a"} strokeWidth="2" />
             <text x={x(Number(team?.r2?.price || 0)) + 18} y={y(Number(team?.r2?.profit || 0)) + 5} fill="#334155" fontSize="13" fontWeight="800">
               {getTeamLabel(team, anonymous)}
@@ -839,7 +918,7 @@ function R2CardsSlide({ teams, anonymous, onFocus }) {
                   return (
                     <tr key={team.id}>
                       <td style={{ padding: "11px 10px", borderBottom: "1px solid #e2e8f0" }}>
-                        <TeamChip team={team} anonymous={anonymous} onFocus={onFocus} compact />
+                        <TeamChip team={team} anonymous={anonymous} onFocus={onFocus} compact round="r2" />
                       </td>
                       {DIMENSIONS.map((dim) => {
                         const picked = cards.filter((card) => cardDimLabel(card) === dim.label);
@@ -885,7 +964,7 @@ function RdProfitScatter({ teams, anonymous, onFocus }) {
         <line x1="46" y1="24" x2="46" y2="274" stroke="#cbd5e1" />
         <line x1="46" y1={y(0)} x2="390" y2={y(0)} stroke="#e2e8f0" strokeDasharray="4 5" />
         {teams.map((team) => (
-          <g key={team.id} onClick={() => onFocus(team.id)} style={{ cursor: "pointer" }}>
+          <g key={team.id} onClick={() => onFocus(team.id, "r2")} style={{ cursor: "pointer" }}>
             <circle cx={x(getSpend(team))} cy={y(Number(team?.r2?.profit || 0))} r="12" fill={team.color || "#1a5c3a"} fillOpacity="0.3" stroke={team.color || "#1a5c3a"} strokeWidth="2" />
             <text x={x(getSpend(team)) + 16} y={y(Number(team?.r2?.profit || 0)) + 5} fill="#334155" fontSize="12" fontWeight="800">
               {getTeamLabel(team, anonymous)}
@@ -924,7 +1003,7 @@ function R2IntentSlide({ teams, anonymous, onFocus, revealed, onReveal }) {
           );
           return (
             <div key={team.id} style={{ display: "grid", gridTemplateColumns: "150px 1fr 1fr 110px 1.35fr", gap: 12, alignItems: "center", borderRadius: 14, border: "1px solid #e2e8f0", background: "#fff", padding: "12px 10px" }}>
-              <TeamChip team={team} anonymous={anonymous} onFocus={onFocus} compact />
+              <TeamChip team={team} anonymous={anonymous} onFocus={onFocus} compact round="r2" />
               <div style={{ color: "#334155", fontSize: 13, lineHeight: 1.5 }}>{normalizeGridLabel(team?.r1?.gridLabel) || "未提交"} · {getArchText(team)}</div>
               <div style={{ color: consistent ? "#166534" : "#92400e", fontSize: 13, fontWeight: 800 }}>
                 {normalizeGridLabel(team?.r2?.bestGridLabel) || (isSubmittedR2(team) ? "未识别" : "未完成")}
@@ -936,6 +1015,144 @@ function R2IntentSlide({ teams, anonymous, onFocus, revealed, onReveal }) {
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+function MetaPill({ children, tone = "#334155" }) {
+  return (
+    <span style={{ padding: "7px 11px", borderRadius: 999, background: "#fff", border: "1px solid #dbe3ef", color: tone, fontSize: 12, fontWeight: 900 }}>
+      {children}
+    </span>
+  );
+}
+
+function EvidenceCard({ label, children }) {
+  return (
+    <div style={{ ...CARD_STYLE, padding: 16 }}>
+      <div style={{ color: "#64748b", fontSize: 11, fontWeight: 950, letterSpacing: "0.14em", marginBottom: 8 }}>{label}</div>
+      <div style={{ color: "#334155", fontSize: 15, lineHeight: 1.7 }}>{children || "未提交"}</div>
+    </div>
+  );
+}
+
+function TeamBackButton({ children, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{ border: "1px solid #cbd5e1", background: "#fff", color: "#334155", borderRadius: 999, padding: "7px 12px", fontSize: 12, fontWeight: 900, cursor: "pointer", marginBottom: 14 }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function R1TeamSlide({ team, anonymous, onBack }) {
+  if (!team) return <EmptySlide title="R1 组页暂无数据" detail="未找到该小组。" />;
+  const members = Array.isArray(team.members) ? team.members : [];
+  const teamGridKey = gridCellKeyFromGridId(team?.r1?.grid);
+  const devCount = members.filter((member) => {
+    const memberGridKey = gridCellKeyFromGridId(member?.r1_personal?.grid);
+    return teamGridKey && memberGridKey && memberGridKey !== teamGridKey;
+  }).length;
+  const feedback = team?.r1?.aiFeedback || team?.r1?.ai_feedback || team?.r1?.feedback || "";
+
+  return (
+    <div>
+      <TeamBackButton onClick={onBack}>返回 R1 目录</TeamBackButton>
+      <SlideTitle title={`${getTeamLabel(team, anonymous)} · R1 组页`} subtitle={getProductLabel(team)} />
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 9, marginBottom: 16 }}>
+        <MetaPill>{normalizeGridLabel(team?.r1?.gridLabel) || "R1 未提交"}</MetaPill>
+        <MetaPill>{getArchText(team)} {getArchSymbol(team)}</MetaPill>
+        <MetaPill>C {formatScore(team?.r1?.C)} · G {formatScore(team?.r1?.G)} · E {formatScore(team?.r1?.Eadj ?? team?.r1?.E)}</MetaPill>
+        <MetaPill tone={devCount > 0 ? "#92400e" : "#166534"}>{devCount > 0 ? `个人偏离团队定稿：${devCount} 人` : "个人与团队定稿一致"}</MetaPill>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 14 }}>
+        <EvidenceCard label="WHO">{team?.r1?.who}</EvidenceCard>
+        <EvidenceCard label="PAIN">{team?.r1?.pain}</EvidenceCard>
+        <EvidenceCard label="HOW">{team?.r1?.how}</EvidenceCard>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: feedback ? "1fr 1fr" : "1fr", gap: 14, marginTop: 14 }}>
+        <EvidenceCard label="成员个人选择">
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {members.length ? members.map((member, index) => (
+              <span key={member.id || index} style={{ padding: "6px 9px", borderRadius: 999, background: "#f8fafc", border: "1px solid #e2e8f0", color: "#334155", fontSize: 12, fontWeight: 800 }}>
+                {anonymous ? `成员${index + 1}` : (member.name || `成员${index + 1}`)} · {normalizeGridLabel(member?.r1_personal?.gridLabel) || "未提交"}
+              </span>
+            )) : "暂无成员提交"}
+          </div>
+        </EvidenceCard>
+        {feedback ? <EvidenceCard label="AI 反馈摘要">{feedback}</EvidenceCard> : null}
+      </div>
+    </div>
+  );
+}
+
+function CardsByDimension({ cards }) {
+  return (
+    <div style={{ display: "grid", gap: 10 }}>
+      {DIMENSIONS.map((dim) => {
+        const picked = cards.filter((card) => cardDimLabel(card) === dim.label);
+        return (
+          <div key={dim.key} style={{ display: "grid", gridTemplateColumns: "58px 1fr", gap: 10, alignItems: "start" }}>
+            <div style={{ color: "#64748b", fontSize: 12, fontWeight: 950, paddingTop: 6 }}>{dim.label}</div>
+            <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
+              {picked.length ? picked.map((card, index) => {
+                const tone = tierTone(getTierRank(card));
+                return (
+                  <span key={`${card.id || card.name}-${index}`} title={card.label || card.name} style={{ padding: "6px 9px", borderRadius: 999, background: tone.bg, color: tone.color, fontSize: 12, fontWeight: 900 }}>
+                    {card.name || card.id || "能力卡"} · {card.tierLabel || tone.text}
+                  </span>
+                );
+              }) : <span style={{ color: "#94a3b8", fontSize: 13, paddingTop: 6 }}>未选</span>}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function R2TeamSlide({ team, anonymous, onFocus, onBack, revealed, onReveal }) {
+  if (!team) return <EmptySlide title="R2 组页暂无数据" detail="未找到该小组。" />;
+  const cards = getCardDetails(team);
+  const submitted = isSubmittedR2(team);
+  const consistent = String(team?.r1?.grid || "") && String(team?.r1?.grid || "") === String(team?.r2?.bestGrid || "");
+  const note = team?.r2?.consistencyNote || team?.r2?.consistency_note || (
+    submitted
+      ? (consistent ? "R1 定位与 R2 匹配格保持一致，执行没有明显漂移。" : "R2 匹配格偏离 R1 定位，值得追问打开卡组后的取舍。")
+      : "未完成 R2，先记录 R1 意图，等结算后再追执行证据。"
+  );
+
+  return (
+    <div>
+      <TeamBackButton onClick={onBack}>返回 R2 目录</TeamBackButton>
+      <SlideTitle title={`${getTeamLabel(team, anonymous)} · R2 组页`} subtitle={getProductLabel(team)} />
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 9, marginBottom: 16 }}>
+        <MetaPill>R1 {normalizeGridLabel(team?.r1?.gridLabel) || "未提交"}</MetaPill>
+        <MetaPill>R2 {normalizeGridLabel(team?.r2?.bestGridLabel) || (submitted ? "未识别" : "未完成")}</MetaPill>
+        <MetaPill>定价 {submitted ? formatMoney(team?.r2?.price) : "未完成"}</MetaPill>
+        <MetaPill tone={submitted ? (Number(team?.r2?.profit) >= 0 ? "#166534" : "#dc2626") : "#64748b"}>利润 {submitted ? formatWan(team?.r2?.profit) : "未完成"}</MetaPill>
+        <MetaPill>选卡 {cards.length || Number(team?.r2?.cardCount || 0)} 张</MetaPill>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(320px, 0.9fr)", gap: 14 }}>
+        <div style={CARD_STYLE}>
+          <div style={{ color: "#64748b", fontSize: 11, fontWeight: 950, letterSpacing: "0.14em", marginBottom: 12 }}>六维选卡明细</div>
+          <CardsByDimension cards={cards} />
+          <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid #e2e8f0" }}>
+            <div style={{ color: "#64748b", fontSize: 11, fontWeight: 950, letterSpacing: "0.14em", marginBottom: 8 }}>一致性判语</div>
+            <Reveal id={`r2-team-note-${team.id}`} order={0} revealed={revealed} onReveal={onReveal} block>
+              <div style={{ color: "#334155", fontSize: 15, lineHeight: 1.7 }}>{note}</div>
+            </Reveal>
+          </div>
+        </div>
+        {submitted ? (
+          <WaterfallCard team={team} anonymous={anonymous} onFocus={onFocus} />
+        ) : (
+          <EmptySlide title="未完成结算" detail="该组暂无可展示的 R2 利润瀑布。" compact />
+        )}
       </div>
     </div>
   );
@@ -1030,19 +1247,56 @@ export default function ClassroomDebrief({ teams = [], meta = null }) {
   const [revealed, setRevealed] = useState(() => readRevealSet(storageKey));
   const stageRef = useRef(null);
 
-  const round1Teams = useMemo(
-    () => (teams || []).filter((team) => team?.r1?.grid).slice(),
+  const sortedTeams = useMemo(
+    () => (teams || []).filter((team) => team?.id).slice().sort((a, b) => getTeamNo(a) - getTeamNo(b)),
     [teams]
+  );
+
+  const round1Teams = useMemo(
+    () => sortedTeams.filter((team) => team?.r1?.grid).slice(),
+    [sortedTeams]
   );
 
   const round2Teams = useMemo(
-    () => (teams || []).filter(isSubmittedR2).slice().sort((a, b) => Number(b?.r2?.profit || 0) - Number(a?.r2?.profit || 0)),
-    [teams]
+    () => sortedTeams.filter(isSubmittedR2).slice().sort((a, b) => Number(b?.r2?.profit || 0) - Number(a?.r2?.profit || 0)),
+    [sortedTeams]
+  );
+
+  const slides = useMemo(
+    () => {
+      const r1TeamSlides = sortedTeams.map((team) => ({
+        id: teamSlideId("r1", team.id),
+        label: `R1 第${getTeamNo(team)}组`,
+        section: "R1",
+        teamRound: "r1",
+        teamId: team.id
+      }));
+      const r2TeamSlides = sortedTeams.map((team) => ({
+        id: teamSlideId("r2", team.id),
+        label: `R2 第${getTeamNo(team)}组`,
+        section: "R2",
+        teamRound: "r2",
+        teamId: team.id
+      }));
+      const nextSlides = [];
+      BASE_SLIDES.forEach((slide) => {
+        nextSlides.push(slide);
+        if (slide.id === "r1-scatter") nextSlides.push(...r1TeamSlides);
+        if (slide.id === "r2-intent") nextSlides.push(...r2TeamSlides);
+      });
+      return nextSlides;
+    },
+    [sortedTeams]
+  );
+
+  const navSlides = useMemo(
+    () => slides.filter((slide) => !slide.teamRound),
+    [slides]
   );
 
   const focusedTeam = useMemo(
-    () => (teams || []).find((team) => team.id === focusedTeamId) || null,
-    [teams, focusedTeamId]
+    () => sortedTeams.find((team) => team.id === focusedTeamId) || null,
+    [sortedTeams, focusedTeamId]
   );
 
   useEffect(() => {
@@ -1055,13 +1309,21 @@ export default function ClassroomDebrief({ teams = [], meta = null }) {
   }, [revealed, storageKey]);
 
   useEffect(() => {
+    setPageIndex((prev) => clamp(prev, 0, Math.max(0, slides.length - 1)));
+  }, [slides.length]);
+
+  useEffect(() => {
+    stageRef.current?.scrollTo?.({ top: 0 });
+  }, [pageIndex]);
+
+  useEffect(() => {
     const onKeyDown = (event) => {
       const target = event.target;
       if (target?.matches?.("input,textarea,select") || target?.isContentEditable) return;
       if (event.key === "ArrowRight") {
-        setPageIndex((prev) => clamp(prev + 1, 0, SLIDES.length - 1));
+        setPageIndex((prev) => clamp(prev + 1, 0, slides.length - 1));
       } else if (event.key === "ArrowLeft") {
-        setPageIndex((prev) => clamp(prev - 1, 0, SLIDES.length - 1));
+        setPageIndex((prev) => clamp(prev - 1, 0, slides.length - 1));
       } else if (event.key === " ") {
         event.preventDefault();
         revealNext();
@@ -1104,17 +1366,44 @@ export default function ClassroomDebrief({ teams = [], meta = null }) {
     setRevealed(new Set());
   };
 
-  const current = SLIDES[pageIndex] || SLIDES[0];
+  const goToSlide = (slideId) => {
+    const nextIndex = slides.findIndex((slide) => slide.id === slideId);
+    if (nextIndex < 0) return;
+    setFocusedTeamId("");
+    setPageIndex(nextIndex);
+  };
+
+  const current = slides[pageIndex] || slides[0];
+
+  const handleTeamFocus = (teamId, round = "") => {
+    const targetRound = round || (current?.section === "R2" ? "r2" : "r1");
+    const nextIndex = slides.findIndex((slide) => slide.id === teamSlideId(targetRound, teamId));
+    if (nextIndex >= 0) {
+      setFocusedTeamId("");
+      setPageIndex(nextIndex);
+      return;
+    }
+    setFocusedTeamId(teamId);
+  };
+
   const renderSlide = () => {
-    if (current.id === "cover") return <CoverSlide teams={teams} round1Teams={round1Teams} round2Teams={round2Teams} />;
-    if (current.id === "r1-map") return <R1MapSlide teams={round1Teams} anonymous={anonymous} onFocus={setFocusedTeamId} />;
-    if (current.id === "r1-vp") return <R1VpSlide teams={round1Teams} anonymous={anonymous} onFocus={setFocusedTeamId} revealed={revealed} onReveal={revealOne} />;
-    if (current.id === "r1-scatter") return <R1ScatterSlide teams={round1Teams} anonymous={anonymous} onFocus={setFocusedTeamId} />;
-    if (current.id === "r2-board") return <R2BoardSlide teams={teams} anonymous={anonymous} onFocus={setFocusedTeamId} revealed={revealed} onReveal={revealOne} />;
-    if (current.id === "r2-autopsy") return <R2AutopsySlide teams={teams} anonymous={anonymous} onFocus={setFocusedTeamId} />;
-    if (current.id === "r2-pricing") return <R2PricingSlide teams={teams} anonymous={anonymous} onFocus={setFocusedTeamId} />;
-    if (current.id === "r2-cards") return <R2CardsSlide teams={teams} anonymous={anonymous} onFocus={setFocusedTeamId} />;
-    if (current.id === "r2-intent") return <R2IntentSlide teams={teams} anonymous={anonymous} onFocus={setFocusedTeamId} revealed={revealed} onReveal={revealOne} />;
+    if (current.teamRound === "r1") {
+      return <R1TeamSlide team={sortedTeams.find((team) => team.id === current.teamId)} anonymous={anonymous} onBack={() => goToSlide("r1-index")} />;
+    }
+    if (current.teamRound === "r2") {
+      return <R2TeamSlide team={sortedTeams.find((team) => team.id === current.teamId)} anonymous={anonymous} onFocus={handleTeamFocus} onBack={() => goToSlide("r2-index")} revealed={revealed} onReveal={revealOne} />;
+    }
+    if (current.id === "cover") return <CoverSlide teams={sortedTeams} round1Teams={round1Teams} round2Teams={round2Teams} />;
+    if (current.id === "r1-index") return <R1IndexSlide teams={sortedTeams} anonymous={anonymous} onFocus={handleTeamFocus} onGo={goToSlide} />;
+    if (current.id === "r1-map") return <R1MapSlide teams={round1Teams} anonymous={anonymous} onFocus={handleTeamFocus} />;
+    if (current.id === "r1-vp") return <R1VpSlide teams={round1Teams} anonymous={anonymous} onFocus={handleTeamFocus} revealed={revealed} onReveal={revealOne} />;
+    if (current.id === "r1-scatter") return <R1ScatterSlide teams={round1Teams} anonymous={anonymous} onFocus={handleTeamFocus} />;
+    if (current.id === "r2-index") return <R2IndexSlide teams={sortedTeams} anonymous={anonymous} onFocus={handleTeamFocus} onGo={goToSlide} />;
+    if (current.id === "r2-board") return <R2BoardSlide teams={sortedTeams} anonymous={anonymous} onFocus={handleTeamFocus} revealed={revealed} onReveal={revealOne} />;
+    if (current.id === "r2-autopsy") return <R2AutopsySlide teams={sortedTeams} anonymous={anonymous} onFocus={handleTeamFocus} />;
+    if (current.id === "r2-pricing") return <R2PricingSlide teams={sortedTeams} anonymous={anonymous} onFocus={handleTeamFocus} />;
+    if (current.id === "r2-cards") return <R2CardsSlide teams={sortedTeams} anonymous={anonymous} onFocus={handleTeamFocus} />;
+    if (current.id === "r2-intent") return <R2IntentSlide teams={sortedTeams} anonymous={anonymous} onFocus={handleTeamFocus} revealed={revealed} onReveal={revealOne} />;
     if (current.id === "end") return <EndSlide revealed={revealed} onReveal={revealOne} />;
     return null;
   };
@@ -1128,15 +1417,20 @@ export default function ClassroomDebrief({ teams = [], meta = null }) {
             <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 3 }}>{current.section} · {current.label}</div>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {SLIDES.map((slide, index) => (
+            {navSlides.map((slide) => {
+              const index = slides.findIndex((item) => item.id === slide.id);
+              const active = pageIndex === index
+                || (current?.teamRound === "r1" && slide.id === "r1-index")
+                || (current?.teamRound === "r2" && slide.id === "r2-index");
+              return (
               <button
                 key={slide.id}
                 type="button"
-                onClick={() => setPageIndex(index)}
+                onClick={() => goToSlide(slide.id)}
                 style={{
-                  border: pageIndex === index ? "1px solid #86efac" : "1px solid rgba(255,255,255,0.14)",
-                  background: pageIndex === index ? "rgba(134,239,172,0.16)" : "rgba(255,255,255,0.06)",
-                  color: pageIndex === index ? "#dcfce7" : "#cbd5e1",
+                  border: active ? "1px solid #86efac" : "1px solid rgba(255,255,255,0.14)",
+                  background: active ? "rgba(134,239,172,0.16)" : "rgba(255,255,255,0.06)",
+                  color: active ? "#dcfce7" : "#cbd5e1",
                   borderRadius: 999,
                   padding: "7px 10px",
                   fontSize: 11,
@@ -1146,7 +1440,8 @@ export default function ClassroomDebrief({ teams = [], meta = null }) {
               >
                 {slide.label}
               </button>
-            ))}
+            );
+            })}
           </div>
         </div>
         <div ref={stageRef} style={{ padding: 22, minHeight: 640, background: "#f8fafc" }}>
@@ -1155,14 +1450,14 @@ export default function ClassroomDebrief({ teams = [], meta = null }) {
         </div>
         <div style={{ borderTop: "1px solid #e2e8f0", background: "#fff", padding: "12px 18px", display: "flex", gap: 10, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <ControlButton onClick={() => setPageIndex((prev) => clamp(prev - 1, 0, SLIDES.length - 1))} disabled={pageIndex === 0}>上一页</ControlButton>
-            <ControlButton onClick={() => setPageIndex((prev) => clamp(prev + 1, 0, SLIDES.length - 1))} disabled={pageIndex === SLIDES.length - 1}>下一页</ControlButton>
+            <ControlButton onClick={() => setPageIndex((prev) => clamp(prev - 1, 0, slides.length - 1))} disabled={pageIndex === 0}>上一页</ControlButton>
+            <ControlButton onClick={() => setPageIndex((prev) => clamp(prev + 1, 0, slides.length - 1))} disabled={pageIndex === slides.length - 1}>下一页</ControlButton>
             <ControlButton onClick={revealNext} primary>揭晓</ControlButton>
             <ControlButton onClick={() => setAnonymous((prev) => !prev)}>{anonymous ? "匿名开" : "实名开"}</ControlButton>
             <ControlButton onClick={resetReveals}>重置揭晓</ControlButton>
           </div>
           <div style={{ color: "#64748b", fontSize: 12, fontWeight: 850 }}>
-            {pageIndex + 1} / {SLIDES.length}
+            {pageIndex + 1} / {slides.length}
           </div>
         </div>
       </div>
