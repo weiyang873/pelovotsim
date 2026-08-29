@@ -1,18 +1,31 @@
+const SEGMENTS = [
+  ["who", "目标客户"],
+  ["pain", "核心痛点"],
+  ["how", "解决方式"],
+  ["boundary", "适用边界"]
+];
+
+const EMPTY_VALUES = new Set(["", "未明确", "未填写", "无", "-", "—"]);
+
+function strip(value) {
+  return String(value || "").trim().replace(/[。．.！!？?；;，,、\s]+$/g, "").trim();
+}
+
 export function buildVpRecapSentence(summary, fallbackText) {
   const src = summary && typeof summary === "object" ? summary : {};
-  const strip = (value) => String(value || "").trim().replace(/[。．.！!？?；;，,、\s]+$/g, "").trim();
-  const who = strip(src.who);
-  const pain = strip(src.pain);
-  const how = strip(src.how);
-  const boundary = strip(src.boundary);
 
-  if (who && pain && how) {
-    let sentence = `为${who}，在${pain}的场景下，这款 AI 宠物机器人通过${how}创造更好的结果。`;
-    if (boundary && boundary !== "未明确") {
-      sentence += ` 适用边界：${boundary}。`;
-    }
-    return sentence;
+  const parts = [];
+  for (const [key, label] of SEGMENTS) {
+    const value = strip(src[key]);
+    if (!value || EMPTY_VALUES.has(value)) continue;
+    parts.push(`${label}：${value}`);
   }
+
+  const hasCore = ["who", "pain", "how"].every((key) => {
+    const value = strip(src[key]);
+    return value && !EMPTY_VALUES.has(value);
+  });
+  if (hasCore) return parts.join("｜");
 
   const raw = String(fallbackText || "").trim();
   if (!raw) return "未生成最终价值主张。";
