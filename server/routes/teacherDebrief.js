@@ -604,6 +604,26 @@ async function buildTeamMembers(teamId) {
   });
 }
 
+async function getRound1AiFeedback(teamId) {
+  const tid = String(teamId || "").trim();
+  if (!tid) return "";
+
+  const sessions = await getTeamSessions(tid).catch(() => []);
+  const latestSession = Array.isArray(sessions) && sessions.length ? sessions[sessions.length - 1] : null;
+  const sessionFeedback = String(latestSession?.pmfScore?._vp_feedback || "").trim();
+  if (sessionFeedback) return sessionFeedback;
+
+  const rows = await runSql(`
+    SELECT vp_feedback
+    FROM team_members
+    WHERE team_id = ${sqlQuote(tid)}
+      AND NULLIF(BTRIM(COALESCE(vp_feedback, '')), '') IS NOT NULL
+    ORDER BY vp_confirmed_at DESC NULLS LAST, joined_at ASC NULLS LAST, id ASC
+    LIMIT 1;
+  `);
+  return String(rows[0]?.vp_feedback || "").trim();
+}
+
 async function getMarketMatchStrength(teamId) {
   const rows = await runSql(`
     SELECT effect_applied
@@ -868,8 +888,11 @@ async function buildVpIterationData(teamId, sessionId, fallbackVpText) {
 async function buildTeamRecord(teamRow, sessionId, teamIndex) {
   const rawScores = safeJsonParse(teamRow.final_vp_scores, {}) || {};
   const vpSummary = safeJsonParse(teamRow.final_vp_summary, {}) || {};
-  const members = await buildTeamMembers(teamRow.id);
-  const vpJourney = await buildVpIterationData(teamRow.id, sessionId, teamRow.final_vp_text);
+  const [members, vpJourney, r1AiFeedback] = await Promise.all([
+    buildTeamMembers(teamRow.id),
+    buildVpIterationData(teamRow.id, sessionId, teamRow.final_vp_text),
+    getRound1AiFeedback(teamRow.id)
+  ]);
   const r1Money = buildTeacherR1MoneyFields(teamRow);
   const r1 = {
     grid: teamRow.final_grid_id || "",
@@ -881,6 +904,7 @@ async function buildTeamRecord(teamRow, sessionId, teamIndex) {
     who: String(vpSummary.who || vpSummary.WHO || extractVpField(teamRow.final_vp_text, "WHO") || "").trim(),
     pain: String(vpSummary.pain || vpSummary.PAIN || extractVpField(teamRow.final_vp_text, "PAIN") || "").trim(),
     how: String(vpSummary.how || vpSummary.HOW || extractVpField(teamRow.final_vp_text, "HOW") || "").trim(),
+    ai_feedback: r1AiFeedback,
     C: teamRow.final_vp_c != null ? Number(teamRow.final_vp_c) : Number(rawScores.C || 0),
     G: teamRow.final_vp_g != null ? Number(teamRow.final_vp_g) : Number(rawScores.G || 0),
     E: teamRow.final_vp_e_raw != null ? Number(teamRow.final_vp_e_raw) : Number(rawScores.E || 0),

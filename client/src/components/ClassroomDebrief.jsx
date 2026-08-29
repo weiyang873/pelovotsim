@@ -1057,7 +1057,7 @@ function R1TeamSlide({ team, anonymous, onBack }) {
     const memberGridKey = gridCellKeyFromGridId(member?.r1_personal?.grid);
     return teamGridKey && memberGridKey && memberGridKey !== teamGridKey;
   }).length;
-  const feedback = team?.r1?.aiFeedback || team?.r1?.ai_feedback || team?.r1?.feedback || "";
+  const feedback = String(team?.r1?.ai_feedback || team?.r1?.aiFeedback || team?.r1?.feedback || "").trim();
 
   return (
     <div>
@@ -1074,7 +1074,13 @@ function R1TeamSlide({ team, anonymous, onBack }) {
         <EvidenceCard label="PAIN">{team?.r1?.pain}</EvidenceCard>
         <EvidenceCard label="HOW">{team?.r1?.how}</EvidenceCard>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: feedback ? "1fr 1fr" : "1fr", gap: 14, marginTop: 14 }}>
+      {feedback ? (
+        <div style={{ ...CARD_STYLE, marginTop: 14, padding: 18, borderLeft: `5px solid ${team.color || "#1a5c3a"}` }}>
+          <div style={{ color: "#64748b", fontSize: 11, fontWeight: 950, letterSpacing: "0.14em", marginBottom: 8 }}>AI 点评</div>
+          <div style={{ color: "#334155", fontSize: 15, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{feedback}</div>
+        </div>
+      ) : null}
+      <div style={{ marginTop: 14 }}>
         <EvidenceCard label="成员个人选择">
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {members.length ? members.map((member, index) => (
@@ -1084,7 +1090,6 @@ function R1TeamSlide({ team, anonymous, onBack }) {
             )) : "暂无成员提交"}
           </div>
         </EvidenceCard>
-        {feedback ? <EvidenceCard label="AI 反馈摘要">{feedback}</EvidenceCard> : null}
       </div>
     </div>
   );
