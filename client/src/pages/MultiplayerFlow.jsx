@@ -2554,18 +2554,6 @@ export default function App() {
                 </div>
               ))}
             </div>
-            {isRound1TeamStage && hasLeaderLock && (
-              <div style={{
-                marginTop: 12,
-                paddingTop: 12,
-                borderTop: "1px solid #e2e8f0",
-                fontSize: 12,
-                color: isLeader ? "#166534" : "#92400e",
-                fontWeight: 700
-              }}>
-                {isLeader ? "你是本组操作人" : `请到组长 ${leaderBannerName(leaderName)} 的设备上操作`}
-              </div>
-            )}
           </div>
         )}
 
@@ -3303,7 +3291,7 @@ export default function App() {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16, marginBottom: 24 }}>
                   <div style={{ background: VP_FLOW_COLORS.white, border: `1px solid ${VP_FLOW_COLORS.border}`, borderRadius: 10, padding: 18 }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: VP_FLOW_COLORS.textMuted, marginBottom: 16 }}>你的初稿</div>
-                    {VP_FORM_FIELDS.filter((field) => ["who_raw", "pain_raw", "how_raw", "alternative_raw"].includes(field.key)).map((field) => (
+                    {VP_FORM_FIELDS.filter((field) => ["who_raw", "pain_raw", "how_raw", "alternative_raw", "boundary_raw"].includes(field.key)).map((field) => (
                       <div key={`review_${field.key}`} style={{ marginBottom: 12 }}>
                         <div style={{ fontSize: 11, fontWeight: 800, color: VP_FLOW_COLORS.textLight, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>{field.label.split("—")[0].trim()}</div>
                         <div style={{ fontSize: 13, color: VP_FLOW_COLORS.text, lineHeight: 1.7 }}>{vpConfirmedFields[field.key] || "(未填写)"}</div>
@@ -3369,7 +3357,7 @@ export default function App() {
                     价值主张已提交
                     <span style={{ background: VP_FLOW_COLORS.greenBg, color: VP_FLOW_COLORS.green, fontSize: 12, fontWeight: 700, padding: "4px 12px", borderRadius: 4 }}>已锁定</span>
                   </div>
-                  {VP_FORM_FIELDS.filter((field) => ["who_raw", "pain_raw", "how_raw"].includes(field.key)).map((field) => (
+                  {VP_FORM_FIELDS.filter((field) => ["who_raw", "pain_raw", "how_raw", "alternative_raw", "boundary_raw"].includes(field.key)).map((field) => (
                     <div key={`locked_${field.key}`} style={{ marginBottom: 12 }}>
                       <div style={{ fontSize: 11, fontWeight: 800, color: VP_FLOW_COLORS.textLight, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>{field.label.split("—")[0].trim()}</div>
                       <div style={{ fontSize: 13, color: VP_FLOW_COLORS.text, lineHeight: 1.7 }}>{vpConfirmedFields[field.key] || "(未填写)"}</div>

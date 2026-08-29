@@ -220,6 +220,28 @@ test.describe.serial("Round 2 summary/live gating", () => {
     await page.getByRole("button", { name: /提交个人选卡/ }).click();
     await expect(page.locator("[data-testid='r2-merge-container']")).toBeVisible({ timeout: 30000 });
 
+    const narrative = page.locator("[data-testid='r2-merge-container']");
+    await expect(narrative).not.toContainText("**");
+    await expect(narrative).not.toContainText("━━");
+    const radarLabels = ["交互与表达", "感知与理解", "运动与导航", "安全与信任", "可扩展与连接", "可运营与可维护"];
+    for (const label of radarLabels) {
+      await expect(narrative.locator("svg text").filter({ hasText: label })).toBeVisible();
+    }
+    const clippedRadarLabels = await narrative.locator("svg").first().evaluate((svg, labels) => {
+      const svgRect = svg.getBoundingClientRect();
+      return labels.filter((label) => {
+        const node = Array.from(svg.querySelectorAll("text"))
+          .find((item) => String(item.textContent || "").trim() === label);
+        if (!node) return true;
+        const rect = node.getBoundingClientRect();
+        return rect.left < svgRect.left - 1
+          || rect.right > svgRect.right + 1
+          || rect.top < svgRect.top - 1
+          || rect.bottom > svgRect.bottom + 1;
+      });
+    }, radarLabels);
+    expect(clippedRadarLabels).toEqual([]);
+
     const mergeContinueBtn = page.locator("[data-testid='r2-merge-continue-btn']");
     await expect(mergeContinueBtn).toBeDisabled();
     await expect(mergeContinueBtn).toHaveText(/还需选 1 张能力卡/);

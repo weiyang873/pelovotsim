@@ -1432,15 +1432,23 @@ function buildFallbackDraftFeedback(fields) {
   };
 }
 
-function fitFinalVpComment(text, min = 150, max = 250) {
+function fitFinalVpComment(text, min = 180, max = 350) {
   const plain = String(text || "").replace(/\s+/g, " ").trim();
   if (!plain) return "";
-  if (countChars(plain) <= max && countChars(plain) >= min) return plain;
-  if (countChars(plain) > max) {
-    const clipped = sliceChars(plain, max);
-    return /[。！？]$/.test(clipped) ? clipped : `${clipped}。`;
+  if (countChars(plain) <= max) return plain;
+
+  const sentences = plain.match(/[^。！？]*[。！？]/g) || [];
+  let fitted = "";
+  for (const sentence of sentences) {
+    const part = sentence.trim();
+    if (!part) continue;
+    if (countChars(fitted + part) > max) break;
+    fitted += part;
   }
-  return plain;
+  if (countChars(fitted) >= min) return fitted;
+
+  const clipped = sliceChars(plain, max);
+  return /[。！？]$/.test(clipped) ? clipped : `${clipped}。`;
 }
 
 async function generateDraftVpFeedback({ teamId, memberId, gridLabel, archLabel, fields }) {
@@ -1514,7 +1522,7 @@ async function generateFinalVpComment({ teamId, memberId, fields, scores }) {
     `- 痛点泛化能力 G = ${scoreSet.G}（满分 5）`,
     `- 方案有效性 E = ${scoreSet.E}（满分 5）`,
     "",
-    "请用 150-250 字中文写一段评语，包含：",
+    "请用 200-300 字中文写一段评语，包含：",
     "1. 对初稿的整体判断（一句话）",
     "2. 最突出的优点（引用原文中的具体措辞）",
     "3. 最需要改进的地方和改进方向",
@@ -1541,10 +1549,10 @@ async function generateFinalVpComment({ teamId, memberId, fields, scores }) {
       timeoutMs: VP_LLM_TIMEOUT_MS
     }));
     const cleaned = sanitizeGeneratedFeedback(raw);
-    return fitFinalVpComment(cleaned, 150, 250);
+    return fitFinalVpComment(cleaned, 180, 350);
   } catch (err) {
     console.warn("[round1/vp-submit] feedback fallback:", err?.message || err);
-    return fitFinalVpComment(buildFallbackVpFeedback({ vpText: buildVpTextFromConfirmedFields(src), confirmedFields: src, scores }), 150, 250);
+    return fitFinalVpComment(buildFallbackVpFeedback({ vpText: buildVpTextFromConfirmedFields(src), confirmedFields: src, scores }), 180, 350);
   }
 }
 
@@ -3865,5 +3873,6 @@ module.exports = {
   vpResultToApiScores,
   buildVpResultScoringText,
   vpResultToConfirmedFields,
-  sanitizeStudentR1Result
+  sanitizeStudentR1Result,
+  fitFinalVpComment
 };

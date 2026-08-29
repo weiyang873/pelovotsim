@@ -22,6 +22,7 @@ import { getRdCards } from "../api/rdApi";
 import { formatSignedYuan, formatWan, formatYuan } from "../utils/formatMoney";
 import { clearStudentSession, mergeStudentSession, readStudentSession } from "../utils/studentSession";
 import { downloadTxtFile, formatExportTime } from "../utils/txtExport";
+import { buildVpRecapSentence } from "../utils/vpRecap";
 
 // ── Constants ──
 const DIMS = [
@@ -773,26 +774,6 @@ function normalizeVpSummaryData(summary, fallbackText = "") {
     };
   }
   return parseVpSummaryText(fallbackText);
-}
-
-function buildVpRecapSentence(summary, fallbackText) {
-  const src = summary && typeof summary === "object" ? summary : {};
-  const who = String(src.who || "").trim();
-  const pain = String(src.pain || "").trim();
-  const how = String(src.how || "").trim();
-  const boundary = String(src.boundary || "").trim();
-
-  if (who && pain && how) {
-    let sentence = `为${who}，在${pain}的场景下，这款 AI 宠物机器人通过${how}创造更好的结果。`;
-    if (boundary && boundary !== "未明确") {
-      sentence += ` 适用边界：${boundary}。`;
-    }
-    return sentence;
-  }
-
-  const raw = String(fallbackText || "").trim();
-  if (!raw) return "未生成最终价值主张。";
-  return raw.replace(/\s+/g, " ").trim();
 }
 
 function normalizeScoreValue(value) {
@@ -2898,7 +2879,7 @@ export default function App() {
       if (!hasAnySelection) return 0;
       return clamp(Number(capabilityScores[dim.id] || 0) / 9, 0, 1);
     });
-    const cx=120, cy=120, r=90;
+    const cx=170, cy=170, r=90;
     const pts = dimScores.map((s,i) => {
       const a = (Math.PI*2*i/6) - Math.PI/2;
       return [cx+r*s*Math.cos(a), cy+r*s*Math.sin(a)];
@@ -2908,16 +2889,23 @@ export default function App() {
       return [cx+r*Math.cos(a), cy+r*Math.sin(a)];
     });
     return (
-      <svg width={240} height={240} style={{display:"block",margin:"0 auto"}}>
+      <svg width={340} height={340} style={{display:"block",margin:"0 auto"}}>
         {[0.33,0.66,1].map(s => (
           <polygon key={s} points={bgPts.map(([x,y])=>`${cx+(x-cx)*s},${cy+(y-cy)*s}`).join(" ")} fill="none" stroke="#e5e7eb" strokeWidth={1}/>
         ))}
-        {bgPts.map(([x,y],i) => (
-          <g key={i}>
-            <line x1={cx} y1={cy} x2={x} y2={y} stroke="#e5e7eb" strokeWidth={1}/>
-            <text x={cx+(x-cx)*1.15} y={cy+(y-cy)*1.15} textAnchor="middle" dominantBaseline="middle" fontSize={10} fill={DIMS[i].c} fontWeight={700}>{DIMS[i].icon}</text>
-          </g>
-        ))}
+        {bgPts.map(([x,y],i) => {
+          const lx = cx + (x - cx) * 1.22;
+          const ly = cy + (y - cy) * 1.22;
+          const dx = lx - cx;
+          const anchor = Math.abs(dx) < 8 ? "middle" : (dx > 0 ? "start" : "end");
+          return (
+            <g key={i}>
+              <line x1={cx} y1={cy} x2={x} y2={y} stroke="#e5e7eb" strokeWidth={1}/>
+              <text x={lx} y={ly - 6} textAnchor={anchor} dominantBaseline="middle" fontSize={11} fill={DIMS[i].c} fontWeight={700}>{DIMS[i].icon}</text>
+              <text x={lx} y={ly + 7} textAnchor={anchor} dominantBaseline="middle" fontSize={10} fill={DIMS[i].c} fontWeight={700}>{DIMS[i].l}</text>
+            </g>
+          );
+        })}
         <polygon points={pts.map(p=>p.join(",")).join(" ")} fill="#1a5c3a20" stroke="#1a5c3a" strokeWidth={2}/>
       </svg>
     );
@@ -3838,7 +3826,7 @@ export default function App() {
             {isSummaryMode && mergeData?.mergedInterview?.summaryText && (
               <div style={{padding:"12px 14px",borderRadius:10,background:"#f8fafc",border:"1px solid #e5e7eb",fontSize:13,color:"#374151",lineHeight:1.8,marginBottom:10}}>
                 <strong style={{display:"block",marginBottom:6,color:"#111827"}}>团队共享客户叙事</strong>
-                {mergeData.mergedInterview.summaryText}
+                {renderReportText(mergeData.mergedInterview.summaryText, { compact: true })}
               </div>
             )}
             {!isSummaryMode && mergeData?.mergedInterview?.tags?.length > 0 && (
@@ -4308,7 +4296,7 @@ export default function App() {
                       <div style={{fontSize:13,color:"#1f2937",lineHeight:1.8}}>
                         <div>目标市场：<strong>{recapComparison.round1.gridLabel}</strong></div>
                         <div>市场规模：<strong>{recapComparison.round1.sam}</strong></div>
-                        <div>WTP：<strong>{recapComparison.round1.wtp}</strong></div>
+                        <div>WTP（含 VP 加成）：<strong>{recapComparison.round1.wtp}</strong></div>
                       </div>
                     </div>
                     <div style={{padding:"10px 12px",borderRadius:10,background:"#f8fafc",border:"1px solid #dbeafe"}}>
@@ -4316,7 +4304,7 @@ export default function App() {
                       <div style={{fontSize:13,color:"#1f2937",lineHeight:1.8}}>
                         <div>最匹配格子：<strong>{recapComparison.round2.gridLabel}</strong></div>
                         <div>市场规模：<strong>{recapComparison.round2.sam}</strong></div>
-                        <div>WTP：<strong>{recapComparison.round2.wtp}</strong></div>
+                        <div>WTP（该格子基准）：<strong>{recapComparison.round2.wtp}</strong></div>
                       </div>
                       {recapComparison.round2.detail && (
                         <div style={{fontSize:10,color:"#64748b",marginTop:6}}>{recapComparison.round2.detail}</div>
@@ -4326,6 +4314,9 @@ export default function App() {
                   <div style={{fontSize:13,color:"#475569",lineHeight:1.8}}>
                     <div>市场锦囊反馈：<strong>{teamRecap?.jinang_market?.match_tier || "待揭示"}</strong></div>
                     <div>VP 评分：<strong>{round1ScoresRevealed ? `C ${recapVpC.toFixed(1)} / G ${recapVpG.toFixed(1)} / E ${recapVpE.toFixed(1)}` : "待揭示"}</strong></div>
+                  </div>
+                  <div style={{fontSize:12,color:"#6b7280",lineHeight:1.7,marginTop:8}}>
+                    两个 WTP 口径不同：左侧是你们价值主张加成后的支付意愿，右侧是该格子的基准支付意愿，不是"下降"。
                   </div>
                   {recapComparison.alignmentLabel && (
                     <div style={{marginTop:10,padding:"10px 12px",borderRadius:10,background:"#ffffff",border:"1px dashed #cbd5e1",fontSize:12,color:"#475569",lineHeight:1.7}}>
